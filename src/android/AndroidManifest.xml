@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-sdk android:minSdkVersion="4" android:targetSdkVersion="21"/>
-    <application android:label="FiatTraderMobile" android:name="android.support.multidex.MultiDexApplication"
+    <application android:label="Fiat Trader" android:name="android.support.multidex.MultiDexApplication"
                  android:icon="@mipmap/ic_launcher">
         <activity android:name="javafxports.android.FXActivity" android:label="FiatTraderMobile"
                   android:configChanges="orientation|screenSize">

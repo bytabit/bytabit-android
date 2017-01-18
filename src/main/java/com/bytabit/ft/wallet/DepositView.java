@@ -1,4 +1,4 @@
-package com.bytabit.ft.views;
+package com.bytabit.ft.wallet;
 
 import com.airhacks.afterburner.views.FXMLView;
 

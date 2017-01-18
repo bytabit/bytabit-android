@@ -1,13 +1,20 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
 buildscript {
     repositories {
         jcenter()
+        maven {
+            url "http://dl.bintray.com/palantir/releases"
+        }
     }
     dependencies {
         classpath 'org.javafxports:jfxmobile-plugin:1.2.0'
+        classpath 'com.palantir:gradle-gitsemver:0.6.0'
     }
 }
 
 apply plugin: 'org.javafxports.jfxmobile'
+apply plugin: 'gitsemver'
 
 repositories {
     jcenter()
@@ -18,9 +25,27 @@ repositories {
 
 mainClassName = 'com.bytabit.ft.FiatTraderMobile'
 
+def semver = semverVersion().toString()
+def btcNetwork = 'testnet'
+
+if (project.hasProperty('regtest')) {
+    btcNetwork = 'regtest'
+}
+
+processResources {
+    filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: btcNetwork]
+}
+
 dependencies {
     compile 'com.gluonhq:charm:4.3.0'
-    compileNoRetrolambda 'com.airhacks:afterburner.fx:1.7.0'
+    compile 'com.airhacks:afterburner.fx:1.6.0'
+    compile "org.bitcoinj:bitcoinj-core:0.14.3"
+    compile "com.madgag.spongycastle:prov:1.51.0.0"
+    compile "joda-time:joda-time:2.9.1"
+
+    androidRuntime "com.gluonhq:charm-android:3.0.0"
+    iosRuntime "com.gluonhq:charm-ios:3.0.0"
+    desktopRuntime "com.gluonhq:charm-desktop:3.0.0"
 }
 
 jfxmobile {

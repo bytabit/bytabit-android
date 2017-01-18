@@ -1,5 +1,6 @@
 package com.bytabit.ft;
 
+import com.bytabit.ft.config.AppConfig;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.LifecycleService;
@@ -11,6 +12,11 @@ import com.gluonhq.charm.glisten.control.NavigationDrawer.ViewItem;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+
+import javax.inject.Inject;
+
+import java.io.IOException;
 
 import static com.bytabit.ft.FiatTraderMobile.*;
 
@@ -19,21 +25,23 @@ public class DrawerManager {
     private final NavigationDrawer drawer;
 
     public DrawerManager() {
+        AppConfig appConfig = new AppConfig();
+
         this.drawer = new NavigationDrawer();
 
         NavigationDrawer.Header header = new NavigationDrawer.Header("Fiat Trader Mobile",
-                "Multi View Project",
-                new Avatar(21, new Image(DrawerManager.class.getResourceAsStream("/icon.png"))));
+                String.format("%s (%s)", appConfig.getVersion(), appConfig.getBtcNetwork()),
+                new ImageView(new Image(DrawerManager.class.getResourceAsStream("/logo42.png"))));
         drawer.setHeader(header);
 
+        final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFER_VIEW);
+        final Item tradesItem = new ViewItem("Trades", MaterialDesignIcon.SWAP_VERTICAL_CIRCLE.graphic(), TRADE_VIEW);
         final Item walletItem = new ViewItem("Wallet", MaterialDesignIcon.ACCOUNT_BALANCE_WALLET.graphic(), WALLET_VIEW);
-//        final Item tradesItem = new ViewItem("Trades", MaterialDesignIcon.SWAP_VERTICAL_CIRCLE.graphic(), TRADE_VIEW);
-//        final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFER_VIEW);
-//        final Item paymentDetailsItem = new ViewItem("Payment Details", MaterialDesignIcon.ACCOUNT_BALANCE.graphic(), PAYMENT_VIEW);
-//        final Item profileItem = new ViewItem("Profile", MaterialDesignIcon.ACCOUNT_CIRCLE.graphic(), PROFILE_VIEW);
-//        final Item contractsItem = new ViewItem("Contracts", MaterialDesignIcon.DESCRIPTION.graphic(), CONTRACT_VIEW);
+        final Item paymentDetailsItem = new ViewItem("Payment Details", MaterialDesignIcon.ACCOUNT_BALANCE.graphic(), PAYMENT_VIEW);
+        final Item profileItem = new ViewItem("Profile", MaterialDesignIcon.ACCOUNT_CIRCLE.graphic(), PROFILE_VIEW);
+        final Item contractsItem = new ViewItem("Contracts", MaterialDesignIcon.DESCRIPTION.graphic(), CONTRACT_VIEW);
 
-//        drawer.getItems().addAll(walletItem);
+        drawer.getItems().addAll(offersItem, tradesItem, walletItem, paymentDetailsItem, profileItem, contractsItem);
 
         if (Platform.isDesktop()) {
             final Item quitItem = new Item("Quit", MaterialDesignIcon.EXIT_TO_APP.graphic());
