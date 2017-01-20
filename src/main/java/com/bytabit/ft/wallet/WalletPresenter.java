@@ -9,11 +9,18 @@ import com.gluonhq.charm.glisten.control.ProgressBar;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import com.google.common.util.concurrent.Service;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
+import org.bitcoinj.core.listeners.DownloadProgressTracker;
+
+import javax.inject.Inject;
 
 public class WalletPresenter {
+
+    @Inject
+    private TradeWalletManager tradeWalletManager;
 
     @FXML
     private View wallet;
@@ -46,6 +53,34 @@ public class WalletPresenter {
 
                 wallet.getLayers().add(withdrawButton.getLayer());
             }
+        });
+        tradeWalletManager.startWallet(new Service.Listener() {
+            @Override
+            public void starting() {
+                super.starting();
+            }
+
+            @Override
+            public void running() {
+                super.running();
+            }
+
+            @Override
+            public void stopping(Service.State from) {
+                super.stopping(from);
+            }
+
+            @Override
+            public void terminated(Service.State from) {
+                super.terminated(from);
+            }
+
+            @Override
+            public void failed(Service.State from, Throwable failure) {
+                super.failed(from, failure);
+            }
+        }, new DownloadProgressTracker() {
+
         });
     }
 }

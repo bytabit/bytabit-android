@@ -15,19 +15,20 @@ import java.util.concurrent.Executors;
 
 public abstract class WalletManager {
 
+    private final String configName;
     private final NetworkParameters netParams;
     private final Context btcContext;
 
-    private WalletAppKit kit;
+    private final WalletAppKit kit;
+    private final Executor executor;
     private TransactionConfidence.Listener kitListener;
 
-    private final Executor executor;
-
-    WalletManager() {
-        netParams = NetworkParameters.fromID(AppConfig.getBtcNetwork());
+    WalletManager(String configName) {
+        this.configName = configName;
+        netParams = NetworkParameters.fromID("org.bitcoin."+AppConfig.getBtcNetwork());
         btcContext = Context.getOrCreate(netParams);
-        new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), AppConfig.getConfigName());
         executor = Executors.newSingleThreadExecutor();
+        kit = new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), configName);
     }
 
     WalletAppKit startWallet(Listener kitListener, DownloadProgressTracker downloadProgressTracker) {
@@ -40,7 +41,7 @@ public abstract class WalletManager {
         // TODO figure out which dispatcher to use
         kit.addListener(kitListener, executor);
         if (netParams.equals(RegTestParams.get())) {
-            kit.setPeerNodes(new PeerAddress(netParams, "regtest.bytabit.org", 18444));
+            kit.setPeerNodes(new PeerAddress(netParams, "regtest.bytabit.net", 18444));
             //kit.connectToLocalHost()
         }
         // start wallet app kit
@@ -48,7 +49,7 @@ public abstract class WalletManager {
         return kit;
     }
 
-    void stopWallet(WalletAppKit kit) {
+    void stopWallet() {
         Context.propagate(btcContext);
         kit.stopAsync();
     }
