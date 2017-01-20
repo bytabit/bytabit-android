@@ -27,13 +27,18 @@ mainClassName = 'com.bytabit.ft.FiatTraderMobile'
 
 def semver = semverVersion().toString()
 def btcNetwork = 'testnet'
+def configName = 'default'
 
 if (project.hasProperty('regtest')) {
     btcNetwork = 'regtest'
 }
 
+if (project.hasProperty('trader2')) {
+    configName = 'trader2'
+}
+
 processResources {
-    filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: btcNetwork]
+    filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: btcNetwork, CONFIGNAME: configName]
 }
 
 dependencies {
@@ -42,6 +47,7 @@ dependencies {
     compile "org.bitcoinj:bitcoinj-core:0.14.3"
     compile "com.madgag.spongycastle:prov:1.51.0.0"
     compile "joda-time:joda-time:2.9.1"
+    compile "org.slf4j:slf4j-jdk14:1.7.21"
 
     androidRuntime "com.gluonhq:charm-android:3.0.0"
     iosRuntime "com.gluonhq:charm-ios:3.0.0"

@@ -1,7 +1,6 @@
 package com.bytabit.ft.wallet;
 
 import com.bytabit.ft.FiatTraderMobile;
-import com.bytabit.ft.config.AppConfig;
 import com.bytabit.ft.wallet.model.TransactionUIModel;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -14,12 +13,7 @@ import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
 
-import javax.inject.Inject;
-
 public class WalletPresenter {
-
-    @Inject
-    private AppConfig appConfig;
 
     @FXML
     private View wallet;

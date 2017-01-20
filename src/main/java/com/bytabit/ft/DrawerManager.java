@@ -5,7 +5,6 @@ import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.LifecycleService;
 import com.gluonhq.charm.glisten.application.MobileApplication;
-import com.gluonhq.charm.glisten.control.Avatar;
 import com.gluonhq.charm.glisten.control.NavigationDrawer;
 import com.gluonhq.charm.glisten.control.NavigationDrawer.Item;
 import com.gluonhq.charm.glisten.control.NavigationDrawer.ViewItem;
@@ -13,8 +12,6 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-
-import javax.inject.Inject;
 
 import java.io.IOException;
 
@@ -25,12 +22,11 @@ public class DrawerManager {
     private final NavigationDrawer drawer;
 
     public DrawerManager() {
-        AppConfig appConfig = new AppConfig();
 
         this.drawer = new NavigationDrawer();
 
         NavigationDrawer.Header header = new NavigationDrawer.Header("Fiat Trader Mobile",
-                String.format("%s (%s)", appConfig.getVersion(), appConfig.getBtcNetwork()),
+                String.format("%s (%s)", AppConfig.getVersion(), AppConfig.getBtcNetwork()),
                 new ImageView(new Image(DrawerManager.class.getResourceAsStream("/logo42.png"))));
         drawer.setHeader(header);
 

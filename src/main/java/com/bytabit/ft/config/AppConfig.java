@@ -1,38 +1,65 @@
 package com.bytabit.ft.config;
 
+import com.gluonhq.charm.down.Services;
+import com.gluonhq.charm.down.plugins.StorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-import java.util.logging.Logger;
+
 
 public class AppConfig {
 
-    private static final Logger LOGGER = Logger.getLogger(AppConfig.class.getName());
-    final Properties prop = new Properties();
+    private static final Logger log = LoggerFactory.getLogger(AppConfig.class.getName());
 
-    public AppConfig() {
+    private final static String PROP_FILE_NAME = "config.properties";
+    private static Properties props;
+    private static File privateStorage;
 
-        String propFileName = "config.properties";
-
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream(propFileName);
-
-        if (inputStream != null) {
+    private static Properties getProps() {
+        if (props == null) {
             try {
-                prop.load(inputStream);
-            } catch (IOException e) {
-                LOGGER.severe(String.format("IOException reading props from: '%s'", propFileName));
+                InputStream inputStream = AppConfig.class.getClassLoader().getResourceAsStream(PROP_FILE_NAME);
+
+                if (inputStream != null) {
+                    props = new Properties();
+                    props.load(inputStream);
+                } else {
+                    log.error("property file '%s' not found in the classpath", PROP_FILE_NAME);
+                }
+            } catch (IOException ioe) {
+                log.error("could not load properties", ioe);
             }
-        } else {
-            LOGGER.severe(String.format("property file '%s' not found in the classpath", propFileName));
         }
+        return props;
     }
 
-    public String getVersion() {
-        return prop.getProperty("version");
+    public static String getVersion() {
+        return getProps().getProperty("version");
     }
 
-    public String getBtcNetwork() {
-        return prop.getProperty("btcNetwork");
+    public static String getBtcNetwork() {
+        return getProps().getProperty("btcNetwork");
+    }
+
+    public static String getConfigName() {
+        return getProps().getProperty("configName");
+    }
+
+    public static File getPrivateStorage() {
+        if (privateStorage == null) {
+            try {
+                privateStorage = Services.get(StorageService.class)
+                        .flatMap(StorageService::getPrivateStorage)
+                        .orElseThrow(() -> new FileNotFoundException("Could not access private storage."));
+            } catch (FileNotFoundException fnfe) {
+                log.error("could not get private storage", fnfe);
+            }
+        }
+        return privateStorage;
     }
 }
