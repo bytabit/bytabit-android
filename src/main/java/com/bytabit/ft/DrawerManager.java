@@ -13,8 +13,6 @@ import javafx.scene.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
-import java.io.IOException;
-
 import static com.bytabit.ft.FiatTraderMobile.*;
 
 public class DrawerManager {

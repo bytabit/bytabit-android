@@ -10,6 +10,9 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
 public class FiatTraderMobile extends MobileApplication {
 
     final public static String WALLET_VIEW = HOME_VIEW;
@@ -29,6 +32,8 @@ public class FiatTraderMobile extends MobileApplication {
     final public static String ADD_CONTRACT_VIEW = "Add Contract";
 
     final public static String MENU_LAYER = "Side Menu";
+
+    final public static Executor EXECUTOR = Executors.newFixedThreadPool(5);
 
     @Override
     public void init() {
@@ -57,5 +62,10 @@ public class FiatTraderMobile extends MobileApplication {
 
         scene.getStylesheets().add(FiatTraderMobile.class.getResource("style.css").toExternalForm());
         ((Stage) scene.getWindow()).getIcons().add(new Image(FiatTraderMobile.class.getResourceAsStream("/logo.png")));
+    }
+
+    @Override
+    public void stop() {
+
     }
 }

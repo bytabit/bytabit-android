@@ -10,14 +10,21 @@ import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import com.google.common.util.concurrent.Service;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import rx.Observable;
+import rx.observables.JavaFxObservable;
 
 import javax.inject.Inject;
 
 public class WalletPresenter {
+
+    Logger log = LoggerFactory.getLogger(WalletPresenter.class);
 
     @Inject
     private TradeWalletManager tradeWalletManager;
@@ -52,6 +59,11 @@ public class WalletPresenter {
                 depositButton.attachTo(withdrawButton, Side.LEFT);
 
                 wallet.getLayers().add(withdrawButton.getLayer());
+
+                Observable<ActionEvent> events = JavaFxObservable.eventsOf(withdrawButton.getLayer(), ActionEvent.ACTION);
+                events.subscribe(e -> {
+                    log.debug("event {}", e);
+                });
             }
         });
         tradeWalletManager.startWallet(new Service.Listener() {
