@@ -49,10 +49,9 @@ dependencies {
     compile "joda-time:joda-time:2.9.1"
     compile 'io.reactivex:rxjavafx:1.0.0'
     compile 'org.slf4j:slf4j-api:1.7.21'
+    compile 'ch.qos.logback:logback-core:1.1.7'
 
     desktopCompile 'ch.qos.logback:logback-classic:1.1.7'
-    desktopCompile 'ch.qos.logback:logback-core:1.1.7'
-
     androidCompile('com.github.tony19:logback-android-classic:1.1.1-6') {
         // workaround issue #73
         exclude group: 'com.google.android', module: 'android'
