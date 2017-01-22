@@ -9,12 +9,10 @@ import com.gluonhq.charm.glisten.control.ProgressBar;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import com.google.common.util.concurrent.Service;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
-import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -60,39 +58,27 @@ public class WalletPresenter {
 
                 wallet.getLayers().add(withdrawButton.getLayer());
 
-                Observable<ActionEvent> events = JavaFxObservable.eventsOf(withdrawButton.getLayer(), ActionEvent.ACTION);
-                events.subscribe(e -> {
-                    log.debug("event {}", e);
+                Observable<ActionEvent> withdrawEvents = JavaFxObservable.eventsOf(withdrawButton.getLayer().getChildren().get(0), ActionEvent.ACTION);
+
+                withdrawEvents.subscribe(e -> {
+                    log.debug("withdrawEvent {}", e);
+                });
+
+                withdrawEvents.subscribe(e -> {
+                    log.debug("withdrawEvent2 {}", e);
+                });
+
+                Observable<ActionEvent> depositEvents = JavaFxObservable.eventsOf(withdrawButton.getLayer().getChildren().get(1), ActionEvent.ACTION);
+
+                depositEvents.subscribe(e -> {
+                    log.debug("depositEvent {}", e);
+                });
+
+                depositEvents.subscribe(e -> {
+                    log.debug("depositEvent2 {}", e);
                 });
             }
         });
-        tradeWalletManager.startWallet(new Service.Listener() {
-            @Override
-            public void starting() {
-                super.starting();
-            }
 
-            @Override
-            public void running() {
-                super.running();
-            }
-
-            @Override
-            public void stopping(Service.State from) {
-                super.stopping(from);
-            }
-
-            @Override
-            public void terminated(Service.State from) {
-                super.terminated(from);
-            }
-
-            @Override
-            public void failed(Service.State from, Throwable failure) {
-                super.failed(from, failure);
-            }
-        }, new DownloadProgressTracker() {
-
-        });
     }
 }

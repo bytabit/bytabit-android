@@ -33,7 +33,7 @@ public class FiatTraderMobile extends MobileApplication {
 
     final public static String MENU_LAYER = "Side Menu";
 
-    final public static Executor EXECUTOR = Executors.newFixedThreadPool(5);
+    final public static Executor EXECUTOR = Executors.newWorkStealingPool();
 
     @Override
     public void init() {
