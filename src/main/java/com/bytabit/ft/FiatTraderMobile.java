@@ -1,5 +1,6 @@
 package com.bytabit.ft;
 
+import com.bytabit.ft.nav.NavManager;
 import com.bytabit.ft.wallet.DepositView;
 import com.bytabit.ft.wallet.WalletView;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -53,7 +54,7 @@ public class FiatTraderMobile extends MobileApplication {
 //        addViewFactory(CONTRACT_VIEW, () -> new ContractsView(CONTRACT_VIEW));
 //        addViewFactory(ADD_CONTRACT_VIEW, () -> new AddContractView(ADD_CONTRACT_VIEW));
 
-        addLayerFactory(MENU_LAYER, () -> new SidePopupView(new DrawerManager().getDrawer()));
+        addLayerFactory(MENU_LAYER, () -> new SidePopupView(new NavManager().getDrawer()));
     }
 
     @Override

@@ -1,6 +1,8 @@
 package com.bytabit.ft.wallet;
 
+import com.bytabit.ft.EventObservables;
 import com.bytabit.ft.FiatTraderMobile;
+import com.bytabit.ft.nav.evt.QuitEvent;
 import com.bytabit.ft.wallet.model.TransactionUIModel;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -9,14 +11,11 @@ import com.gluonhq.charm.glisten.control.ProgressBar;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
-import rx.observables.JavaFxObservable;
 
 import javax.inject.Inject;
 
@@ -58,26 +57,51 @@ public class WalletPresenter {
 
                 wallet.getLayers().add(withdrawButton.getLayer());
 
-                Observable<ActionEvent> withdrawEvents = JavaFxObservable.eventsOf(withdrawButton.getLayer().getChildren().get(0), ActionEvent.ACTION);
-
-                withdrawEvents.subscribe(e -> {
-                    log.debug("withdrawEvent {}", e);
+                EventObservables.getNavEvents().toObservable().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
+                    tradeWalletManager.stopWallet();
                 });
 
-                withdrawEvents.subscribe(e -> {
-                    log.debug("withdrawEvent2 {}", e);
+                tradeWalletManager.getWalletDownloadEvents().subscribe(e -> {
+                    log.debug("event: {}", e);
                 });
 
-                Observable<ActionEvent> depositEvents = JavaFxObservable.eventsOf(withdrawButton.getLayer().getChildren().get(1), ActionEvent.ACTION);
-
-                depositEvents.subscribe(e -> {
-                    log.debug("depositEvent {}", e);
-                });
-
-                depositEvents.subscribe(e -> {
-                    log.debug("depositEvent2 {}", e);
+                tradeWalletManager.getWalletDownloadEvents().subscribe(e -> {
+                    log.debug("event2: {}", e);
                 });
             }
+
+            tradeWalletManager.startWallet();
+
+//                Observable<ActionEvent> withdrawEvents = JavaFxObservable
+//                        .actionEventsOf(withdrawButton.getLayer().getChildren().get(0));
+
+//                Observable<AppCommand> withdrawCommands = withdrawEvents.map(e -> new WithdrawCommand() {
+//                });
+//                appObservables.getAppCommands().add(withdrawCommands);
+//
+//                Observable<ActionEvent> depositEvents = JavaFxObservable
+//                        .actionEventsOf(withdrawButton.getLayer().getChildren().get(1));
+//
+//                appObservables.getAppCommands().toObservable().subscribe(c -> {
+//                   log.debug("command: {}", c);
+//                });
+//
+//                withdrawEvents.subscribe(e -> {
+//                    log.debug("withdrawEvent {}", e);
+//                });
+//
+//                depositEvents.subscribe(e -> {
+//                    log.debug("depositEvent {}", e);
+//                });
+//
+//                withdrawEvents.subscribe(e -> {
+//                    log.debug("withdrawEvent2 {}", e);
+//                });
+//
+//                depositEvents.subscribe(e -> {
+//                    log.debug("depositEvent2 {}", e);
+//                });
+//            }
         });
 
     }

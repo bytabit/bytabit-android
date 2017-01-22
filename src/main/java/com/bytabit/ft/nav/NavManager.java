@@ -1,6 +1,8 @@
-package com.bytabit.ft;
+package com.bytabit.ft.nav;
 
+import com.bytabit.ft.EventObservables;
 import com.bytabit.ft.config.AppConfig;
+import com.bytabit.ft.nav.evt.QuitEvent;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.LifecycleService;
@@ -12,20 +14,21 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import rx.Observable;
 
 import static com.bytabit.ft.FiatTraderMobile.*;
 
-public class DrawerManager {
+public class NavManager {
 
     private final NavigationDrawer drawer;
 
-    public DrawerManager() {
+    public NavManager() {
 
         this.drawer = new NavigationDrawer();
 
         NavigationDrawer.Header header = new NavigationDrawer.Header("Fiat Trader Mobile",
                 String.format("%s (%s)", AppConfig.getVersion(), AppConfig.getBtcNetwork()),
-                new ImageView(new Image(DrawerManager.class.getResourceAsStream("/logo42.png"))));
+                new ImageView(new Image(NavManager.class.getResourceAsStream("/logo42.png"))));
         drawer.setHeader(header);
 
         final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFER_VIEW);
@@ -41,6 +44,7 @@ public class DrawerManager {
             final Item quitItem = new Item("Quit", MaterialDesignIcon.EXIT_TO_APP.graphic());
             quitItem.selectedProperty().addListener((obs, ov, nv) -> {
                 if (nv) {
+                    EventObservables.getNavEvents().add(Observable.just(new QuitEvent()));
                     Services.get(LifecycleService.class).ifPresent(LifecycleService::shutdown);
                 }
             });
