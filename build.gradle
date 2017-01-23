@@ -18,9 +18,7 @@ apply plugin: 'gitsemver'
 
 repositories {
     jcenter()
-    maven {
-        url 'http://nexus.gluonhq.com/nexus/content/repositories/releases'
-    }
+    maven { url 'http://nexus.gluonhq.com/nexus/content/repositories/releases' }
 }
 
 mainClassName = 'com.bytabit.ft.FiatTraderMobile'
@@ -50,7 +48,16 @@ dependencies {
     compile "com.madgag.spongycastle:prov:1.51.0.0"
     compile "joda-time:joda-time:2.9.1"
     compile 'io.reactivex:rxjavafx:1.0.0'
-    compile "org.slf4j:slf4j-jdk14:1.7.21"
+    compile 'org.slf4j:slf4j-api:1.7.21'
+
+    desktopCompile "ch.qos.logback:logback-classic:1.1.9"
+    desktopCompile "ch.qos.logback:logback-core:1.1.9"
+
+    androidCompile 'com.github.tony19:logback-android-core:1.1.1-6'
+    androidCompile('com.github.tony19:logback-android-classic:1.1.1-6') {
+        // workaround issue #73
+        exclude group: 'com.google.android', module: 'android'
+    }
 
     desktopRuntime "com.gluonhq:charm-desktop:3.0.0"
     androidRuntime "com.gluonhq:charm-android:3.0.0"

@@ -11,9 +11,6 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-
 public class FiatTraderMobile extends MobileApplication {
 
     final public static String WALLET_VIEW = HOME_VIEW;
@@ -34,7 +31,7 @@ public class FiatTraderMobile extends MobileApplication {
 
     final public static String MENU_LAYER = "Side Menu";
 
-    final public static Executor EXECUTOR = Executors.newWorkStealingPool();
+    //final public static Executor EXECUTOR = Executors.newWorkStealingPool();
 
     @Override
     public void init() {

@@ -8,6 +8,8 @@
         </encoder>
     </appender>
 
+    <logger name="com.bytabit.ft" level="DEBUG"/>
+
     <root level="DEBUG">
         <appender-ref ref="logcat"/>
     </root>
