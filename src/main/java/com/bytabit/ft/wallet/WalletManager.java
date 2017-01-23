@@ -1,12 +1,10 @@
 package com.bytabit.ft.wallet;
 
 import com.bytabit.ft.config.AppConfig;
-import com.bytabit.ft.wallet.evt.WalletEvent;
 import org.bitcoinj.core.Context;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
-import rx.Observable;
 
 public abstract class WalletManager {
 
@@ -16,8 +14,8 @@ public abstract class WalletManager {
 
     private final WalletAppKit kit;
 
-    private Observable<WalletEvent> walletDownloadEvents;
-    private Observable<WalletEvent> walletServiceEvents;
+//    private Observable<WalletEvent> walletDownloadEvents;
+//    private Observable<WalletEvent> walletServiceEvents;
 
     WalletManager(String configName) {
         this.configName = configName;
@@ -77,7 +75,7 @@ public abstract class WalletManager {
         kit.stopAsync();
     }
 
-    public Observable<WalletEvent> getWalletDownloadEvents() {
-        return walletDownloadEvents;
-    }
+//    public Observable<WalletEvent> getWalletDownloadEvents() {
+//        return walletDownloadEvents;
+//    }
 }

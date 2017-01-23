@@ -1,6 +1,7 @@
 package com.bytabit.ft;
 
 import com.bytabit.ft.nav.NavManager;
+import com.bytabit.ft.nav.evt.QuitEvent;
 import com.bytabit.ft.wallet.DepositView;
 import com.bytabit.ft.wallet.WalletView;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -10,8 +11,13 @@ import com.gluonhq.charm.glisten.visual.Swatch;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import rx.Observable;
 
 public class FiatTraderMobile extends MobileApplication {
+
+    private static Logger LOG = LoggerFactory.getLogger(FiatTraderMobile.class);
 
     final public static String WALLET_VIEW = HOME_VIEW;
     final public static String DEPOSIT_VIEW = "Deposit";
@@ -64,6 +70,7 @@ public class FiatTraderMobile extends MobileApplication {
 
     @Override
     public void stop() {
-
+        EventObservables.getNavEvents().add(Observable.just(new QuitEvent()));
+        LOG.debug("Stop app");
     }
 }

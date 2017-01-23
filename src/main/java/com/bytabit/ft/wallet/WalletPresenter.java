@@ -1,6 +1,8 @@
 package com.bytabit.ft.wallet;
 
+import com.bytabit.ft.EventObservables;
 import com.bytabit.ft.FiatTraderMobile;
+import com.bytabit.ft.nav.evt.QuitEvent;
 import com.bytabit.ft.wallet.model.TransactionUIModel;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -19,8 +21,7 @@ public class WalletPresenter {
 
     private static Logger LOG = LoggerFactory.getLogger(WalletPresenter.class);
 
-//    @Inject
-//    private TradeWalletManager tradeWalletManager;
+    private TradeWalletManager tradeWalletManager;
 
     @FXML
     private View walletView;
@@ -40,6 +41,8 @@ public class WalletPresenter {
 
     public void initialize() {
         LOG.debug("initialize wallet presenter");
+        tradeWalletManager = new TradeWalletManager();
+
         walletView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
@@ -54,9 +57,10 @@ public class WalletPresenter {
 
                 walletView.getLayers().add(withdrawButton.getLayer());
 
-//                EventObservables.getNavEvents().toObservable().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
-//                    tradeWalletManager.stopWallet();
-//                });
+                EventObservables.getNavEvents().toObservable().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
+                    LOG.debug("Got quit event");
+                    tradeWalletManager.stopWallet();
+                });
 
 //                tradeWalletManager.getWalletDownloadEvents().subscribe(e -> {
 //                    log.debug("event: {}", e);
@@ -67,7 +71,7 @@ public class WalletPresenter {
 //                });
             }
 
-            //tradeWalletManager.startWallet();
+            tradeWalletManager.startWallet();
 
 //                Observable<ActionEvent> withdrawEvents = JavaFxObservable
 //                        .actionEventsOf(withdrawButton.getLayer().getChildren().get(0));
