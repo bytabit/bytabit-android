@@ -24,20 +24,23 @@ repositories {
 mainClassName = 'com.bytabit.ft.FiatTraderMobile'
 
 def semver = semverVersion().toString()
-def btcNetwork = 'test'
-def configName = 'default'
+def net = 'test'
+def config = 'default'
 
-if (project.hasProperty('regtest')) {
-    btcNetwork = 'regtest'
+if (project.hasProperty('btcNetwork')) {
+    net = btcNetwork
 }
 
-if (project.hasProperty('trader2')) {
-    configName = 'trader2'
+if (project.hasProperty('configName')) {
+    config = configName
 }
+
+println net
+println config
 
 processResources {
     filesMatching("*.properties") {
-        filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: btcNetwork, CONFIGNAME: configName]
+        filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config]
     }
 }
 

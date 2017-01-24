@@ -13,14 +13,8 @@ git clone git@bitbucket.org:bytabit/fiat-trader.git
 ### Install projects dependencies
 
 1. Install [JDK 8u111](https://jdk8.java.net/download.html)
-2. Install [Gradle version 2.13](https://gradle.org/gradle-download/)
+2. Install [Gradle version 3.3](https://gradle.org/gradle-download/)
 3. Verify your JAVA_HOME environment variable is set to your JDK home
-
-### Run event server with Gradle using custom config
-
-```
-gradle server -Dconfig.file=./src/test/resources/server1-regtest.conf
-```
 
 ### Run trader client with Gradle using default (testnet) config
 
@@ -28,16 +22,10 @@ gradle server -Dconfig.file=./src/test/resources/server1-regtest.conf
 gradle run
 ```
 
-### Run arbitrator client on regtest network with Grade using custom config 
+### Run client on regtest network with Grade using custom config name
 
 ```
-gradle run -Dconfig.file=./src/test/resources/arbitrator1-regtest.conf
-```
-
-### Run trader client on regtest network with Gradle using custom config 
-
-```
-gradle run -Dconfig.file=./src/test/resources/trader1-regtest.conf
+gradle clean run -PbtcNetwork=regtest -PconfigName=tester2
 ```
 
 ### IntelliJ Setup
