@@ -15,6 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
 public class FiatTraderMobile extends MobileApplication {
 
     private static Logger LOG = LoggerFactory.getLogger(FiatTraderMobile.class);
@@ -37,7 +40,7 @@ public class FiatTraderMobile extends MobileApplication {
 
     final public static String MENU_LAYER = "Side Menu";
 
-    //final public static Executor EXECUTOR = Executors.newWorkStealingPool();
+    final public static Executor EXECUTOR = Executors.newWorkStealingPool();
 
     @Override
     public void init() {

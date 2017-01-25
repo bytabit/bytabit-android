@@ -62,13 +62,13 @@ public class WalletPresenter {
                     tradeWalletManager.stopWallet();
                 });
 
-//                tradeWalletManager.getWalletDownloadEvents().subscribe(e -> {
-//                    log.debug("event: {}", e);
-//                });
-//
-//                tradeWalletManager.getWalletDownloadEvents().subscribe(e -> {
-//                    log.debug("event2: {}", e);
-//                });
+                EventObservables.getWalletEvents().toObservable().subscribe(e -> {
+                    LOG.debug("event: {}", e);
+                });
+
+                EventObservables.getWalletEvents().toObservable().subscribe(e -> {
+                    LOG.debug("event2: {}", e);
+                });
             }
 
             tradeWalletManager.startWallet();
