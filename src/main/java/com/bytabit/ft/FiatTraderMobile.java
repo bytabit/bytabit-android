@@ -1,6 +1,7 @@
 package com.bytabit.ft;
 
-import com.bytabit.ft.nav.NavManager;
+import com.bytabit.ft.nav.NavDrawer;
+import com.bytabit.ft.nav.evt.NavEvent;
 import com.bytabit.ft.nav.evt.QuitEvent;
 import com.bytabit.ft.wallet.DepositView;
 import com.bytabit.ft.wallet.WalletView;
@@ -14,6 +15,7 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.javafx.sources.CompositeObservable;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -42,6 +44,8 @@ public class FiatTraderMobile extends MobileApplication {
 
     final public static Executor EXECUTOR = Executors.newWorkStealingPool();
 
+    private static CompositeObservable<NavEvent> navEventsComposite = new CompositeObservable<>();
+
     @Override
     public void init() {
 
@@ -60,11 +64,12 @@ public class FiatTraderMobile extends MobileApplication {
 //        addViewFactory(CONTRACT_VIEW, () -> new ContractsView(CONTRACT_VIEW));
 //        addViewFactory(ADD_CONTRACT_VIEW, () -> new AddContractView(ADD_CONTRACT_VIEW));
 
-        addLayerFactory(MENU_LAYER, () -> new SidePopupView(new NavManager().getDrawer()));
+        addLayerFactory(MENU_LAYER, () -> new SidePopupView(new NavDrawer().getDrawer()));
     }
 
     @Override
     public void postInit(Scene scene) {
+
         Swatch.ORANGE.assignTo(scene);
 
         scene.getStylesheets().add(FiatTraderMobile.class.getResource("style.css").toExternalForm());
@@ -73,7 +78,15 @@ public class FiatTraderMobile extends MobileApplication {
 
     @Override
     public void stop() {
-        EventObservables.getNavEvents().add(Observable.just(new QuitEvent()));
+        navEventsComposite.add(Observable.just(new QuitEvent()));
         LOG.debug("Stop app");
+    }
+
+    public static CompositeObservable<NavEvent> getNavEventsComposite() {
+        return navEventsComposite;
+    }
+
+    public static Observable<NavEvent> getNavEvents() {
+        return navEventsComposite.toObservable();
     }
 }

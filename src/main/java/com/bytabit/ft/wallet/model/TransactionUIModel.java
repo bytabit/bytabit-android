@@ -1,8 +1,8 @@
 package com.bytabit.ft.wallet.model;
 
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.Transaction;
 import org.joda.time.LocalDateTime;
-
-import java.math.BigDecimal;
 
 public class TransactionUIModel {
 
@@ -11,10 +11,15 @@ public class TransactionUIModel {
     private Integer depth;
     private LocalDateTime date;
     private String memo;
-    private BigDecimal btcAmt;
+    private Coin btcAmt;
+
+    public TransactionUIModel(Transaction tx, Coin amt) {
+        this(tx.getHashAsString(), tx.getConfidence().getConfidenceType().name(),
+                tx.getConfidence().getDepthInBlocks(), new LocalDateTime(tx.getUpdateTime()), tx.getMemo(), amt);
+    }
 
     public TransactionUIModel(String hash, String confidenceType, Integer depth,
-                              LocalDateTime date, String memo, BigDecimal btcAmt) {
+                              LocalDateTime date, String memo, Coin btcAmt) {
         this.hash = hash;
         this.confidenceType = confidenceType;
         this.depth = depth;
@@ -43,7 +48,7 @@ public class TransactionUIModel {
         return memo;
     }
 
-    public BigDecimal getBtcAmt() {
+    public Coin getBtcAmt() {
         return btcAmt;
     }
 

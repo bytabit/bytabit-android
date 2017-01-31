@@ -1,13 +1,11 @@
 package com.bytabit.ft.wallet;
 
-import com.bytabit.ft.EventObservables;
 import com.bytabit.ft.FiatTraderMobile;
 import com.bytabit.ft.nav.evt.QuitEvent;
+import com.bytabit.ft.wallet.evt.TransactionUpdatedEvent;
 import com.bytabit.ft.wallet.model.TransactionUIModel;
 import com.gluonhq.charm.glisten.application.MobileApplication;
-import com.gluonhq.charm.glisten.control.AppBar;
-import com.gluonhq.charm.glisten.control.CharmListView;
-import com.gluonhq.charm.glisten.control.ProgressBar;
+import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
@@ -17,10 +15,13 @@ import javafx.scene.control.Label;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+
 public class WalletPresenter {
 
     private static Logger LOG = LoggerFactory.getLogger(WalletPresenter.class);
 
+    @Inject
     private TradeWalletManager tradeWalletManager;
 
     @FXML
@@ -39,71 +40,66 @@ public class WalletPresenter {
 
     private FloatingActionButton withdrawButton = new FloatingActionButton();
 
+    @FXML
     public void initialize() {
         LOG.debug("initialize wallet presenter");
-        tradeWalletManager = new TradeWalletManager();
+
+        // setup transaction list view
+        transactionListView.setCellFactory((view) -> new CharmListCell<TransactionUIModel>() {
+            @Override
+            public void updateItem(TransactionUIModel tx, boolean empty) {
+                super.updateItem(tx, empty);
+                if (tx != null && !empty) {
+                    ListTile tile = new ListTile();
+                    String amount = String.format("%s, %tc", tx.getBtcAmt(), tx.getDate().toDate());
+                    String details = String.format("%s (%d), Hash: %s",
+                            tx.getConfidenceType(), tx.getDepth(), tx.getHash());
+                    tile.textProperty().addAll(amount, details, tx.getMemo());
+                    setText(null);
+                    setGraphic(tile);
+                } else {
+                    setText(null);
+                    setGraphic(null);
+                }
+            }
+        });
+
+        withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
+        depositButton.attachTo(withdrawButton, Side.LEFT);
+
+        walletView.getLayers().add(withdrawButton.getLayer());
+
+        depositButton.setOnAction((e) ->
+                MobileApplication.getInstance().switchView(FiatTraderMobile.DEPOSIT_VIEW));
 
         walletView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
+
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
                         MobileApplication.getInstance().showLayer(FiatTraderMobile.MENU_LAYER)));
                 appBar.setTitleText("Wallet");
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
-
-                withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
-                depositButton.attachTo(withdrawButton, Side.LEFT);
-
-                walletView.getLayers().add(withdrawButton.getLayer());
-
-                EventObservables.getNavEvents().toObservable().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
-                    LOG.debug("Got quit event");
-                    tradeWalletManager.stopWallet();
-                });
-
-                EventObservables.getWalletEvents().toObservable().subscribe(e -> {
-                    LOG.debug("event: {}", e);
-                });
-
-                EventObservables.getWalletEvents().toObservable().subscribe(e -> {
-                    LOG.debug("event2: {}", e);
-                });
             }
 
-            tradeWalletManager.startWallet();
-
-//                Observable<ActionEvent> withdrawEvents = JavaFxObservable
-//                        .actionEventsOf(withdrawButton.getLayer().getChildren().get(0));
-
-//                Observable<AppCommand> withdrawCommands = withdrawEvents.map(e -> new WithdrawCommand() {
-//                });
-//                appObservables.getAppCommands().add(withdrawCommands);
-//
-//                Observable<ActionEvent> depositEvents = JavaFxObservable
-//                        .actionEventsOf(withdrawButton.getLayer().getChildren().get(1));
-//
-//                appObservables.getAppCommands().toObservable().subscribe(c -> {
-//                   log.debug("command: {}", c);
-//                });
-//
-//                withdrawEvents.subscribe(e -> {
-//                    log.debug("withdrawEvent {}", e);
-//                });
-//
-//                depositEvents.subscribe(e -> {
-//                    log.debug("depositEvent {}", e);
-//                });
-//
-//                withdrawEvents.subscribe(e -> {
-//                    log.debug("withdrawEvent2 {}", e);
-//                });
-//
-//                depositEvents.subscribe(e -> {
-//                    log.debug("depositEvent2 {}", e);
-//                });
-//            }
         });
 
+        FiatTraderMobile.getNavEvents().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
+            LOG.debug("Got quit event");
+            tradeWalletManager.stopWallet();
+        });
+
+        tradeWalletManager.getWalletEvents().subscribe(e -> {
+            LOG.debug("wallet event : {}", e);
+            if (e instanceof TransactionUpdatedEvent) {
+                TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
+                TransactionUIModel txu = new TransactionUIModel(txe.getTx(), txe.getAmt());
+                transactionListView.itemsProperty().add(txu);
+            }
+            //transactionListView.setItems(walletService.transactions());
+        });
+
+        tradeWalletManager.startWallet();
     }
 }

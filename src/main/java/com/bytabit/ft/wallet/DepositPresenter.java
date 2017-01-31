@@ -1,34 +1,105 @@
 package com.bytabit.ft.wallet;
 
-import com.bytabit.ft.FiatTraderMobile;
-import com.gluonhq.charm.glisten.animation.BounceInRightTransition;
+import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
-import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import net.glxn.qrgen.javase.QRCode;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.uri.BitcoinURI;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 
 public class DepositPresenter {
 
+    private static Logger LOG = LoggerFactory.getLogger(DepositPresenter.class);
+
     @FXML
-    private View deposit;
+    private View depositView;
+
+    @FXML
+    private ImageView qrCodeImageView;
+
+    @FXML
+    private Label bitcoinAddressLabel;
+
+    @FXML
+    private Button copyButton;
+
+    @Inject
+    private TradeWalletManager tradeWalletManager;
 
     public void initialize() {
-        deposit.setShowTransitionFactory(BounceInRightTransition::new);
 
-        deposit.getLayers().add(new FloatingActionButton(MaterialDesignIcon.INFO.text,
-                e -> System.out.println("Info")).getLayer());
+        LOG.debug("initialize deposit presenter");
 
-        deposit.showingProperty().addListener((obs, oldValue, newValue) -> {
+        depositView.showingProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
-                appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
-                        MobileApplication.getInstance().showLayer(FiatTraderMobile.MENU_LAYER)));
-                appBar.setTitleText("Secondary");
-                appBar.getActionItems().add(MaterialDesignIcon.FAVORITE.button(e ->
-                        System.out.println("Favorite")));
+                appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
+
+                appBar.setTitleText("Deposit");
             }
         });
+
+        Address depositAddress = tradeWalletManager.getDepositAddress();
+        bitcoinAddressLabel.setText(depositAddress.toBase58());
+        LOG.debug("deposit address: {}", depositAddress.toBase58());
+
+        LOG.debug("Platform is: {}", Platform.getCurrent());
+
+        QRCode qrCode = QRCode.from(depositAddressUri(depositAddress));
+
+        // TODO FT-150 Cross platform QR code generator for wallet deposits
+        if (Platform.isDesktop()) {
+            ByteArrayOutputStream outputStream = qrCode.stream();
+            Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
+            qrCodeImageView.setImage(img);
+        }
+
+        copyButton.setOnAction((event) -> copyAddress(depositAddress));
     }
+
+    // TODO FT-147 make sure copy and paste works on Android and iOS
+    private void copyAddress(Address address) {
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+        ClipboardContent content = new ClipboardContent();
+        String addressStr = address.toString();
+
+        content.putString(addressStr);
+        content.putHtml("<a href=" + depositAddressUri(address) + ">" + addressStr + "</a>");
+        clipboard.setContent(content);
+    }
+
+    private String depositAddressUri(Address a) {
+        return BitcoinURI.convertToBitcoinURI(a, null, "FiatTrader", "FiatTrader deposit");
+    }
+
+//    public Image toImage(QRCode qrCode) {//BitMatrix matrix, MatrixToImageConfig config) {
+//        BitMatrix matrix = qrCode.getQrWriter().encode();
+//        int width = matrix.getWidth();
+//        int height = matrix.getHeight();
+//        PixelReader pixelReader
+//        WritableImage image = new WritableImage(width, height, config.getBufferedImageColorModel());
+//        int onColor = config.getPixelOnColor();
+//        int offColor = config.getPixelOffColor();
+//        for (int x = 0; x < width; x++) {
+//            for (int y = 0; y < height; y++) {
+//                image.setRGB(x, y, matrix.get(x, y) ? onColor : offColor);
+//            }
+//        }
+//        return image;
+//    }
 }

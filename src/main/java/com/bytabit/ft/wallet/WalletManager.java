@@ -1,43 +1,50 @@
 package com.bytabit.ft.wallet;
 
-import com.bytabit.ft.EventObservables;
 import com.bytabit.ft.FiatTraderMobile;
 import com.bytabit.ft.config.AppConfig;
 import com.bytabit.ft.wallet.evt.*;
-import com.google.common.util.concurrent.Service;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
+import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
+import org.bitcoinj.wallet.KeyChain;
+import org.bitcoinj.wallet.Wallet;
 import org.joda.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.schedulers.Schedulers;
+import rx.javafx.sources.CompositeObservable;
 import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
 import java.util.Date;
 
+import static com.google.common.util.concurrent.Service.Listener;
+
 public abstract class WalletManager {
 
-    private final String configName;
-    private final WalletPurpose walletPurpose;
+    private static Logger LOG = LoggerFactory.getLogger(WalletManager.class);
+
     private final NetworkParameters netParams;
     private final Context btcContext;
 
     private final WalletAppKit kit;
 
-    private Observable<WalletEvent> walletDownloadEvents;
-    private Observable<WalletEvent> walletServiceEvents;
+    private final CompositeObservable<WalletEvent> walletEvents;
+    private final Observable<WalletEvent> walletDownloadEvents;
+    private final Observable<WalletEvent> walletTxConfidenceEvents;
 
     WalletManager(String configName, WalletPurpose walletPurpose) {
 
-        this.configName = configName;
-        this.walletPurpose = walletPurpose;
         this.netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
         this.btcContext = Context.getOrCreate(netParams);
         Context.propagate(btcContext);
 
         kit = new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), configName);
+
+        // create observable composite wallet events
+        walletEvents = new CompositeObservable<>();
 
         // create observable download events
         walletDownloadEvents = Observable.create((Observable.OnSubscribe<WalletEvent>) subscriber -> {
@@ -62,22 +69,35 @@ public abstract class WalletManager {
             });
 
             subscriber.add(Subscriptions.create(() -> kit.setDownloadListener(null)));
-        }).subscribeOn(Schedulers.from(FiatTraderMobile.EXECUTOR)).share();
+        }).share();
 
         // create observable wallet running events
-        walletServiceEvents = Observable.create((Observable.OnSubscribe<WalletEvent>) subscriber -> {
-            Service.Listener listener = new Service.Listener() {
+        walletTxConfidenceEvents = Observable.create((Observable.OnSubscribe<WalletEvent>) subscriber -> {
+            TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
 
                 @Override
-                public void running() {
-                    subscriber.onNext(new WalletRunning(walletPurpose));
+                public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
+                    Context.propagate(btcContext);
+                    subscriber.onNext(new TransactionUpdatedEvent(tx, tx.getValue(wallet),
+                            tx.getConfidence().getConfidenceType(),
+                            tx.getConfidence().getDepthInBlocks()));
                 }
             };
-            kit.addListener(listener, FiatTraderMobile.EXECUTOR);
-        }).subscribeOn(Schedulers.from(FiatTraderMobile.EXECUTOR)).share();
+            kit.wallet().addTransactionConfidenceEventListener(FiatTraderMobile.EXECUTOR, listener);
 
-        // add observables to shared composite observable
-        EventObservables.getWalletEvents().addAll(walletDownloadEvents, walletServiceEvents);
+            subscriber.add(Subscriptions.create(() -> kit.wallet().removeTransactionConfidenceEventListener(listener)));
+        }).share();
+
+        // add TX observer when wallet is running
+        kit.addListener(new Listener() {
+
+            @Override
+            public void running() {
+                // add observables to shared composite observable
+                walletEvents.add(walletDownloadEvents);
+                walletEvents.add(walletTxConfidenceEvents);
+            }
+        }, FiatTraderMobile.EXECUTOR);
 
         // setup wallet app kit
         kit.setAutoSave(true);
@@ -92,7 +112,6 @@ public abstract class WalletManager {
 
     WalletAppKit startWallet() {
         Context.propagate(btcContext);
-
         // start wallet app kit
         kit.startAsync();
         return kit;
@@ -103,7 +122,11 @@ public abstract class WalletManager {
         kit.stopAsync();
     }
 
-    public Observable<WalletEvent> getWalletDownloadEvents() {
-        return walletDownloadEvents;
+    public Observable<WalletEvent> getWalletEvents() {
+        return walletEvents.toObservable();
+    }
+
+    public Address getDepositAddress() {
+        return kit.wallet().currentAddress(KeyChain.KeyPurpose.RECEIVE_FUNDS);
     }
 }

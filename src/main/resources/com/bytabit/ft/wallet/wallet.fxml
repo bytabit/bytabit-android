@@ -11,7 +11,8 @@
       xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bytabit.ft.wallet.WalletPresenter">
    <bottom>
-      <ProgressBar prefWidth="200.0" progress="0.0" BorderPane.alignment="CENTER" />
+      <ProgressBar fx:id="downloadProgressBar" prefWidth="200.0" progress="0.0"
+                   BorderPane.alignment="CENTER"/>
    </bottom>
    <top>
       <VBox BorderPane.alignment="CENTER">
@@ -19,7 +20,7 @@
             <HBox>
                <children>
                   <Label text="Total Balance: " />
-                  <Label text="Unknown" />
+                  <Label fx:id="balanceAmountLabel" text="Unknown"/>
                </children>
             </HBox>
             <Separator prefWidth="200.0" />
@@ -27,6 +28,6 @@
       </VBox>
    </top>
    <center>
-      <CharmListView BorderPane.alignment="CENTER" />
+      <CharmListView fx:id="transactionListView" BorderPane.alignment="CENTER"/>
    </center>
 </View>
