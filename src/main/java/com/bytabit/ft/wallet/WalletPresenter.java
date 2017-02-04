@@ -2,18 +2,25 @@ package com.bytabit.ft.wallet;
 
 import com.bytabit.ft.FiatTraderMobile;
 import com.bytabit.ft.nav.evt.QuitEvent;
+import com.bytabit.ft.wallet.evt.DownloadDone;
+import com.bytabit.ft.wallet.evt.DownloadProgress;
 import com.bytabit.ft.wallet.evt.TransactionUpdatedEvent;
 import com.bytabit.ft.wallet.model.TransactionUIModel;
 import com.gluonhq.charm.glisten.application.MobileApplication;
-import com.gluonhq.charm.glisten.control.*;
+import com.gluonhq.charm.glisten.control.AppBar;
+import com.gluonhq.charm.glisten.control.CharmListCell;
+import com.gluonhq.charm.glisten.control.CharmListView;
+import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rx.schedulers.JavaFxScheduler;
 
 import javax.inject.Inject;
 
@@ -51,7 +58,7 @@ public class WalletPresenter {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s, %tc", tx.getBtcAmt(), tx.getDate().toDate());
+                    String amount = String.format("%s BTC, %tc", tx.getBtcAmt().toPlainString(), tx.getDate().toDate());
                     String details = String.format("%s (%d), Hash: %s",
                             tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());
@@ -90,15 +97,27 @@ public class WalletPresenter {
             tradeWalletManager.stopWallet();
         });
 
-        tradeWalletManager.getWalletEvents().subscribe(e -> {
-            LOG.debug("wallet event : {}", e);
-            if (e instanceof TransactionUpdatedEvent) {
-                TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
-                TransactionUIModel txu = new TransactionUIModel(txe.getTx(), txe.getAmt());
-                transactionListView.itemsProperty().add(txu);
-            }
-            //transactionListView.setItems(walletService.transactions());
-        });
+        tradeWalletManager.getWalletEvents().observeOn(JavaFxScheduler.getInstance())
+                .subscribe(e -> {
+                    LOG.debug("wallet event : {}", e);
+                    if (e instanceof TransactionUpdatedEvent) {
+                        TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
+                        TransactionUIModel txu = new TransactionUIModel(txe.getTx(), txe.getAmt());
+                        Integer index = transactionListView.itemsProperty().indexOf(txu);
+                        if (index > -1) {
+                            transactionListView.itemsProperty().set(index, txu);
+                        } else {
+                            transactionListView.itemsProperty().add(txu);
+                            balanceAmountLabel.setText(tradeWalletManager.getWalletBalance().toPlainString() + " BTC");
+                        }
+                    } else if (e instanceof DownloadDone) {
+                        DownloadDone dde = DownloadDone.class.cast(e);
+                        downloadProgressBar.setProgress(1.0);
+                    } else if (e instanceof DownloadProgress) {
+                        DownloadProgress dpe = DownloadProgress.class.cast(e);
+                        downloadProgressBar.setProgress(dpe.getPct());
+                    }
+                });
 
         tradeWalletManager.startWallet();
     }

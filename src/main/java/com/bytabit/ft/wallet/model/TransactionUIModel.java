@@ -64,4 +64,20 @@ public class TransactionUIModel {
         sb.append('}');
         return sb.toString();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TransactionUIModel that = (TransactionUIModel) o;
+
+        return hash != null ? hash.equals(that.hash) : that.hash == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return hash != null ? hash.hashCode() : 0;
+    }
 }

@@ -13,6 +13,7 @@ import org.bitcoinj.wallet.Wallet;
 import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rx.BackpressureOverflow;
 import rx.Observable;
 import rx.javafx.sources.CompositeObservable;
 import rx.subscriptions.Subscriptions;
@@ -68,8 +69,9 @@ public abstract class WalletManager {
                 }
             });
 
-            subscriber.add(Subscriptions.create(() -> kit.setDownloadListener(null)));
-        }).share();
+            subscriber.add(Subscriptions.create(() ->
+                    kit.setDownloadListener(null)));
+        }).onBackpressureLatest().share();
 
         // create observable wallet running events
         walletTxConfidenceEvents = Observable.create((Observable.OnSubscribe<WalletEvent>) subscriber -> {
@@ -86,7 +88,8 @@ public abstract class WalletManager {
             kit.wallet().addTransactionConfidenceEventListener(FiatTraderMobile.EXECUTOR, listener);
 
             subscriber.add(Subscriptions.create(() -> kit.wallet().removeTransactionConfidenceEventListener(listener)));
-        }).share();
+        }).onBackpressureLatest().share();
+        walletEvents.add(walletDownloadEvents);
 
         // add TX observer when wallet is running
         kit.addListener(new Listener() {
@@ -94,7 +97,7 @@ public abstract class WalletManager {
             @Override
             public void running() {
                 // add observables to shared composite observable
-                walletEvents.add(walletDownloadEvents);
+                //walletEvents.add(walletDownloadEvents);
                 walletEvents.add(walletTxConfidenceEvents);
             }
         }, FiatTraderMobile.EXECUTOR);
@@ -123,10 +126,15 @@ public abstract class WalletManager {
     }
 
     public Observable<WalletEvent> getWalletEvents() {
-        return walletEvents.toObservable();
+        return walletEvents.toObservable()
+                .onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST);
     }
 
     public Address getDepositAddress() {
         return kit.wallet().currentAddress(KeyChain.KeyPurpose.RECEIVE_FUNDS);
+    }
+
+    public Coin getWalletBalance() {
+        return kit.wallet().getBalance();
     }
 }

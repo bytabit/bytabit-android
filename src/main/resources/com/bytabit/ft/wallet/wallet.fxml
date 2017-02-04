@@ -1,33 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import com.gluonhq.charm.glisten.control.CharmListView?>
-<?import com.gluonhq.charm.glisten.control.ProgressBar?>
 <?import com.gluonhq.charm.glisten.mvc.View?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
 <View fx:id="walletView" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity"
       minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
       xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bytabit.ft.wallet.WalletPresenter">
-   <bottom>
-      <ProgressBar fx:id="downloadProgressBar" prefWidth="200.0" progress="0.0"
-                   BorderPane.alignment="CENTER"/>
-   </bottom>
    <top>
-      <VBox BorderPane.alignment="CENTER">
+       <VBox alignment="CENTER" BorderPane.alignment="CENTER">
          <children>
-            <HBox>
+             <HBox alignment="CENTER">
                <children>
-                  <Label text="Total Balance: " />
-                  <Label fx:id="balanceAmountLabel" text="Unknown"/>
+                   <Label fx:id="balanceAmountLabel" text="Unknown">
+                       <font>
+                           <Font size="18.0"/>
+                       </font>
+                   </Label>
                </children>
             </HBox>
-            <Separator prefWidth="200.0" />
+             <ProgressBar fx:id="downloadProgressBar" maxHeight="1.7976931348623157E308"
+                          maxWidth="1.7976931348623157E308" minHeight="-Infinity"
+                          minWidth="-Infinity" nodeOrientation="LEFT_TO_RIGHT"
+                          VBox.vgrow="ALWAYS"/>
          </children>
       </VBox>
    </top>
    <center>
-      <CharmListView fx:id="transactionListView" BorderPane.alignment="CENTER"/>
+       <CharmListView fx:id="transactionListView" BorderPane.alignment="CENTER"/>
    </center>
+    <bottom>
+        <VBox alignment="CENTER" BorderPane.alignment="CENTER"/>
+    </bottom>
 </View>
