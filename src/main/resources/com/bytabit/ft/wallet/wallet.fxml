@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import com.gluonhq.charm.glisten.control.CharmListView?>
+<?import com.gluonhq.charm.glisten.control.ProgressBar?>
 <?import com.gluonhq.charm.glisten.mvc.View?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 <View fx:id="walletView" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity"
@@ -22,10 +22,7 @@
                    </Label>
                </children>
             </HBox>
-             <ProgressBar fx:id="downloadProgressBar" maxHeight="1.7976931348623157E308"
-                          maxWidth="1.7976931348623157E308" minHeight="-Infinity"
-                          minWidth="-Infinity" nodeOrientation="LEFT_TO_RIGHT"
-                          VBox.vgrow="ALWAYS"/>
+             <ProgressBar fx:id="downloadProgressBar" maxWidth="1.7976931348623157E308"/>
          </children>
       </VBox>
    </top>

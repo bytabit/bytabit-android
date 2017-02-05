@@ -59,7 +59,7 @@ public abstract class WalletManager {
                 @Override
                 protected void progress(double pct, int blocksSoFar, Date date) {
                     super.progress(pct, blocksSoFar, date);
-                    subscriber.onNext(new DownloadProgress(pct, blocksSoFar, LocalDateTime.fromDateFields(date)));
+                    subscriber.onNext(new DownloadProgress(pct/100.00, blocksSoFar, LocalDateTime.fromDateFields(date)));
                 }
 
                 @Override

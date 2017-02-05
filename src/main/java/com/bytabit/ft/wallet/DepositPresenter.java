@@ -68,19 +68,23 @@ public class DepositPresenter {
             Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
             qrCodeImageView.setImage(img);
         }
-
         copyButton.setOnAction((event) -> copyAddress(depositAddress));
     }
 
     // TODO FT-147 make sure copy and paste works on Android and iOS
     private void copyAddress(Address address) {
-        Clipboard clipboard = Clipboard.getSystemClipboard();
-        ClipboardContent content = new ClipboardContent();
         String addressStr = address.toString();
-
-        content.putString(addressStr);
-        content.putHtml("<a href=" + depositAddressUri(address) + ">" + addressStr + "</a>");
-        clipboard.setContent(content);
+        if (Platform.isDesktop()) {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString(addressStr);
+            content.putHtml("<a href=" + depositAddressUri(address) + ">" + addressStr + "</a>");
+            clipboard.setContent(content);
+        } else if (Platform.isAndroid()) {
+//            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+//            ClipData clip = ClipData.newPlainText("label", addressStr);
+//            clipboard.setPrimaryClip(clip);
+        }
     }
 
     private String depositAddressUri(Address a) {
