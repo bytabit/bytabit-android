@@ -20,6 +20,8 @@ import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import static com.google.common.util.concurrent.Service.Listener;
 
@@ -59,7 +61,7 @@ public abstract class WalletManager {
                 @Override
                 protected void progress(double pct, int blocksSoFar, Date date) {
                     super.progress(pct, blocksSoFar, date);
-                    subscriber.onNext(new DownloadProgress(pct/100.00, blocksSoFar, LocalDateTime.fromDateFields(date)));
+                    subscriber.onNext(new DownloadProgress(pct / 100.00, blocksSoFar, LocalDateTime.fromDateFields(date)));
                 }
 
                 @Override
@@ -71,7 +73,7 @@ public abstract class WalletManager {
 
             subscriber.add(Subscriptions.create(() ->
                     kit.setDownloadListener(null)));
-        }).onBackpressureLatest().share();
+        }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
         // create observable wallet running events
         walletTxConfidenceEvents = Observable.create((Observable.OnSubscribe<WalletEvent>) subscriber -> {
@@ -80,15 +82,13 @@ public abstract class WalletManager {
                 @Override
                 public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
                     Context.propagate(btcContext);
-                    subscriber.onNext(new TransactionUpdatedEvent(tx, tx.getValue(wallet),
-                            tx.getConfidence().getConfidenceType(),
-                            tx.getConfidence().getDepthInBlocks()));
+                    subscriber.onNext(new TransactionUpdatedEvent(tx, wallet));
                 }
             };
             kit.wallet().addTransactionConfidenceEventListener(FiatTraderMobile.EXECUTOR, listener);
 
             subscriber.add(Subscriptions.create(() -> kit.wallet().removeTransactionConfidenceEventListener(listener)));
-        }).onBackpressureLatest().share();
+        }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
         walletEvents.add(walletDownloadEvents);
 
         // add TX observer when wallet is running
@@ -96,9 +96,15 @@ public abstract class WalletManager {
 
             @Override
             public void running() {
-                // add observables to shared composite observable
-                //walletEvents.add(walletDownloadEvents);
-                walletEvents.add(walletTxConfidenceEvents);
+                // send current existing TX
+                Set<Transaction> txs = kit.wallet().getTransactions(false);
+                Set<WalletEvent> txe = new HashSet<>();
+                for (Transaction t : txs) {
+                    txe.add(new TransactionUpdatedEvent(t, kit.wallet()));
+                }
+                // add observable to shared composite observable
+                walletEvents.add(Observable.from(txe)
+                        .concatWith(walletTxConfidenceEvents));
             }
         }, FiatTraderMobile.EXECUTOR);
 

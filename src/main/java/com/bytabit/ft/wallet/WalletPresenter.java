@@ -104,8 +104,8 @@ public class WalletPresenter {
                             transactionListView.itemsProperty().set(index, txu);
                         } else {
                             transactionListView.itemsProperty().add(txu);
-                            balanceAmountLabel.setText(tradeWalletManager.getWalletBalance().toPlainString() + " BTC");
                         }
+                        balanceAmountLabel.setText(tradeWalletManager.getWalletBalance().toPlainString() + " BTC");
                     } else if (e instanceof DownloadDone) {
                         DownloadDone dde = DownloadDone.class.cast(e);
                         downloadProgressBar.setProgress(1.0);
