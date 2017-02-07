@@ -15,7 +15,7 @@
          <children>
              <HBox alignment="CENTER">
                <children>
-                   <Label fx:id="balanceAmountLabel" text="Unknown">
+                   <Label fx:id="balanceAmountLabel">
                        <font>
                            <Font size="18.0"/>
                        </font>

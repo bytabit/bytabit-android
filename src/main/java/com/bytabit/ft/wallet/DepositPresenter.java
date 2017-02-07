@@ -52,39 +52,37 @@ public class DepositPresenter {
 
                 appBar.setTitleText("Deposit");
             }
+
+            Address depositAddress = tradeWalletManager.getDepositAddress();
+            bitcoinAddressLabel.setText(depositAddress.toBase58());
+            LOG.debug("deposit address: {}", depositAddress.toBase58());
+
+            LOG.debug("Platform is: {}", Platform.getCurrent());
+
+            QRCode qrCode = QRCode.from(depositAddressUri(depositAddress));
+
+            // TODO FT-150 Cross platform QR code generator for wallet deposits
+            if (Platform.isDesktop()) {
+                ByteArrayOutputStream outputStream = qrCode.stream();
+                Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
+                qrCodeImageView.setImage(img);
+                copyButton.visibleProperty().setValue(true);
+                copyButton.setOnAction((event) -> copyAddress(depositAddress));
+            }
         });
-
-        Address depositAddress = tradeWalletManager.getDepositAddress();
-        bitcoinAddressLabel.setText(depositAddress.toBase58());
-        LOG.debug("deposit address: {}", depositAddress.toBase58());
-
-        LOG.debug("Platform is: {}", Platform.getCurrent());
-
-        QRCode qrCode = QRCode.from(depositAddressUri(depositAddress));
-
-        // TODO FT-150 Cross platform QR code generator for wallet deposits
-        if (Platform.isDesktop()) {
-            ByteArrayOutputStream outputStream = qrCode.stream();
-            Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
-            qrCodeImageView.setImage(img);
-        }
-        copyButton.setOnAction((event) -> copyAddress(depositAddress));
     }
 
     // TODO FT-147 make sure copy and paste works on Android and iOS
     private void copyAddress(Address address) {
         String addressStr = address.toString();
-        if (Platform.isDesktop()) {
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-            ClipboardContent content = new ClipboardContent();
-            content.putString(addressStr);
-            content.putHtml("<a href=" + depositAddressUri(address) + ">" + addressStr + "</a>");
-            clipboard.setContent(content);
-        } else if (Platform.isAndroid()) {
+        Clipboard clipboard = Clipboard.getSystemClipboard();
+        ClipboardContent content = new ClipboardContent();
+        content.putString(addressStr);
+        content.putHtml("<a href=" + depositAddressUri(address) + ">" + addressStr + "</a>");
+        clipboard.setContent(content);
 //            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 //            ClipData clip = ClipData.newPlainText("label", addressStr);
 //            clipboard.setPrimaryClip(clip);
-        }
     }
 
     private String depositAddressUri(Address a) {

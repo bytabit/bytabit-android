@@ -8,7 +8,6 @@ import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
-import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.Wallet;
 import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
@@ -137,7 +136,7 @@ public abstract class WalletManager {
     }
 
     public Address getDepositAddress() {
-        return kit.wallet().currentAddress(KeyChain.KeyPurpose.RECEIVE_FUNDS);
+        return kit.wallet().currentReceiveAddress();
     }
 
     public Coin getWalletBalance() {
