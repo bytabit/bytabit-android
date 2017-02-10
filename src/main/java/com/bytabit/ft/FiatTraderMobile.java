@@ -3,6 +3,7 @@ package com.bytabit.ft;
 import com.bytabit.ft.nav.NavDrawer;
 import com.bytabit.ft.nav.evt.NavEvent;
 import com.bytabit.ft.nav.evt.QuitEvent;
+import com.bytabit.ft.profile.ProfileView;
 import com.bytabit.ft.wallet.DepositView;
 import com.bytabit.ft.wallet.WalletView;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -59,7 +60,7 @@ public class FiatTraderMobile extends MobileApplication {
 //        addViewFactory(PAYMENT_VIEW, () -> new PaymentDetailsView(PAYMENT_VIEW));
 //        addViewFactory(ADD_PAYMENT_VIEW, () -> new AddPaymentDetailView(ADD_PAYMENT_VIEW));
 
-//        addViewFactory(PROFILE_VIEW, () -> new ProfileView(PROFILE_VIEW));
+        addViewFactory(PROFILE_VIEW, () -> (View) new ProfileView().getView());
 
 //        addViewFactory(CONTRACT_VIEW, () -> new ContractsView(CONTRACT_VIEW));
 //        addViewFactory(ADD_CONTRACT_VIEW, () -> new AddContractView(ADD_CONTRACT_VIEW));

@@ -39,7 +39,6 @@ public class NavDrawer {
         final Item paymentDetailsItem = new ViewItem("Payment Details", MaterialDesignIcon.ACCOUNT_BALANCE.graphic(), PAYMENT_VIEW);
         paymentDetailsItem.setDisable(true);
         final Item profileItem = new ViewItem("Profile", MaterialDesignIcon.ACCOUNT_CIRCLE.graphic(), PROFILE_VIEW);
-        profileItem.setDisable(true);
         final Item contractsItem = new ViewItem("Contracts", MaterialDesignIcon.DESCRIPTION.graphic(), CONTRACT_VIEW);
         contractsItem.setDisable(true);
 

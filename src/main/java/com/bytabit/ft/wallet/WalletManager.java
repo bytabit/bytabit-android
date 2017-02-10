@@ -6,8 +6,10 @@ import com.bytabit.ft.wallet.evt.*;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
+import org.bitcoinj.crypto.DeterministicKey;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
+import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.Wallet;
 import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
@@ -139,7 +141,15 @@ public abstract class WalletManager {
         return kit.wallet().currentReceiveAddress();
     }
 
+    public Address getNewProfileKeyAddress() {
+        return kit.wallet().freshKey(KeyChain.KeyPurpose.AUTHENTICATION).toAddress(netParams);
+    }
+
     public Coin getWalletBalance() {
         return kit.wallet().getBalance();
+    }
+
+    private ECKey getECKeyFromAddress(Address address) {
+        return kit.wallet().findKeyFromPubHash(address.getHash160());
     }
 }
