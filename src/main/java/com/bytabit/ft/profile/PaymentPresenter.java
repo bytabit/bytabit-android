@@ -7,6 +7,7 @@ import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.Optional;
 
 public class PaymentPresenter {
 
@@ -37,6 +39,9 @@ public class PaymentPresenter {
 
     @FXML
     private TextField paymentDetailsTextField;
+
+    @FXML
+    private Button addPaymentDetailButton;
 
     public void initialize() {
 
@@ -86,5 +91,16 @@ public class PaymentPresenter {
 
         currencyChoiceBox.getItems().setAll(CurrencyCode.values());
         currencyChoiceBox.getSelectionModel().select(0);
+
+        addPaymentDetailButton.onActionProperty().setValue(e -> {
+            CurrencyCode currencyCode = currencyChoiceBox.getSelectionModel().getSelectedItem();
+            PaymentMethod paymentMethod = paymentMethodChoiceBox.getSelectionModel().getSelectedItem();
+            String paymentDetails = paymentDetailsTextField.getText();
+            if (currencyCode != null && paymentMethod != null && paymentDetails.length() > 0) {
+                profileManager.setPaymentDetails(currencyCode, paymentMethod, paymentDetails);
+            }
+            Optional<String> addedPaymentDetails = profileManager.getPaymentDetails(currencyCode, paymentMethod);
+            addedPaymentDetails.ifPresent(pd -> LOG.debug("added payment details: {}", pd));
+        });
     }
 }
