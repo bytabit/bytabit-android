@@ -40,7 +40,7 @@ public class FiatTraderMobile extends MobileApplication {
     final public static String PAYMENT_VIEW = "PaymentDetails";
     final public static String ADD_PAYMENT_VIEW = "AddPaymentDetail";
 
-    final public static String CONTRACT_VIEW = "Contracts";
+    final public static String HELP_VIEW = "Contracts";
     final public static String ADD_CONTRACT_VIEW = "AddContract";
 
     final public static String MENU_LAYER = "SideMenu";
@@ -64,7 +64,7 @@ public class FiatTraderMobile extends MobileApplication {
 
         addViewFactory(PROFILE_VIEW, () -> (View) new ProfileView().getView());
 
-//        addViewFactory(CONTRACT_VIEW, () -> new ContractsView(CONTRACT_VIEW));
+//        addViewFactory(HELP_VIEW, () -> new ContractsView(HELP_VIEW));
 //        addViewFactory(ADD_CONTRACT_VIEW, () -> new AddContractView(ADD_CONTRACT_VIEW));
 
         addLayerFactory(MENU_LAYER, () -> new SidePopupView(new NavDrawer().getDrawer()));

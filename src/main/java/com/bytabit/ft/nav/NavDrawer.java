@@ -38,10 +38,10 @@ public class NavDrawer {
         final Item walletItem = new ViewItem("Wallet", MaterialDesignIcon.ACCOUNT_BALANCE_WALLET.graphic(), WALLET_VIEW);
         final Item paymentDetailsItem = new ViewItem("Payment Details", MaterialDesignIcon.ACCOUNT_BALANCE.graphic(), PAYMENT_VIEW);
         final Item profileItem = new ViewItem("Profile", MaterialDesignIcon.ACCOUNT_CIRCLE.graphic(), PROFILE_VIEW);
-        final Item contractsItem = new ViewItem("Contracts", MaterialDesignIcon.DESCRIPTION.graphic(), CONTRACT_VIEW);
-        contractsItem.setDisable(true);
+        final Item aboutItem = new ViewItem("Help", MaterialDesignIcon.HELP.graphic(), HELP_VIEW);
+        aboutItem.setDisable(true);
 
-        drawer.getItems().addAll(offersItem, tradesItem, walletItem, paymentDetailsItem, profileItem, contractsItem);
+        drawer.getItems().addAll(offersItem, tradesItem, walletItem, paymentDetailsItem, profileItem, aboutItem);
 
         if (Platform.isDesktop()) {
             final Item quitItem = new Item("Quit", MaterialDesignIcon.EXIT_TO_APP.graphic());
