@@ -1,5 +1,7 @@
 package com.bytabit.ft.profile;
 
+import com.bytabit.ft.profile.model.CurrencyCode;
+import com.bytabit.ft.profile.model.PaymentMethod;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.SettingsService;
 import org.slf4j.Logger;
@@ -14,9 +16,10 @@ public class ProfileManager {
     private String PROFILE_PUBKEY = "profile.pubkey";
     private String PROFILE_NAME = "profile.name";
     private String PROFILE_PHONENUM = "profile.phoneNum";
+    private String PROFILE_PAYMENTDTLS = "profile.paymentDtls";
 
     private Optional<String> retrieve(String key) {
-            return Services.get(SettingsService.class).map(s -> s.retrieve(key));
+        return Services.get(SettingsService.class).map(s -> s.retrieve(key));
     }
 
     private void store(String key, String value) {
@@ -45,5 +48,25 @@ public class ProfileManager {
 
     public void setPhoneNum(String pubKey) {
         store(PROFILE_PHONENUM, pubKey);
+    }
+
+    public Optional<String> getPaymentDetails(CurrencyCode currencyCode,
+                                              PaymentMethod paymentMethod) {
+
+        return retrieve(paymentDetailsKey(currencyCode, paymentMethod));
+    }
+
+    public void setPaymentDetails(CurrencyCode currencyCode,
+                                  PaymentMethod paymentMethod,
+                                  String paymentDetails) {
+
+        store(paymentDetailsKey(currencyCode, paymentMethod), paymentDetails);
+    }
+
+    private String paymentDetailsKey(CurrencyCode currencyCode,
+                                     PaymentMethod paymentMethod) {
+
+        return String.format("%s.%s.%s", PROFILE_PAYMENTDTLS, currencyCode.name(),
+                paymentMethod.displayName());
     }
 }

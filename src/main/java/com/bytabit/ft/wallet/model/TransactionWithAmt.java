@@ -4,7 +4,16 @@ import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 import org.joda.time.LocalDateTime;
 
-public class TransactionUIModel {
+public class TransactionWithAmt {
+
+    public TransactionWithAmt(Transaction tx, Coin btcAmt) {
+        this.hash = tx.getHashAsString();
+        this.confidenceType = tx.getConfidence().getConfidenceType().name();
+        this.depth = tx.getConfidence().getDepthInBlocks();
+        this.date = new LocalDateTime(tx.getUpdateTime());
+        this.memo = tx.getMemo();
+        this.btcAmt = btcAmt;
+    }
 
     private String hash;
     private String confidenceType;
@@ -12,21 +21,6 @@ public class TransactionUIModel {
     private LocalDateTime date;
     private String memo;
     private Coin btcAmt;
-
-    public TransactionUIModel(Transaction tx, Coin amt) {
-        this(tx.getHashAsString(), tx.getConfidence().getConfidenceType().name(),
-                tx.getConfidence().getDepthInBlocks(), new LocalDateTime(tx.getUpdateTime()), tx.getMemo(), amt);
-    }
-
-    public TransactionUIModel(String hash, String confidenceType, Integer depth,
-                              LocalDateTime date, String memo, Coin btcAmt) {
-        this.hash = hash;
-        this.confidenceType = confidenceType;
-        this.depth = depth;
-        this.date = date;
-        this.memo = memo;
-        this.btcAmt = btcAmt;
-    }
 
     public String getHash() {
         return hash;
@@ -70,7 +64,7 @@ public class TransactionUIModel {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TransactionUIModel that = (TransactionUIModel) o;
+        TransactionWithAmt that = (TransactionWithAmt) o;
 
         return hash != null ? hash.equals(that.hash) : that.hash == null;
 

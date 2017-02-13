@@ -5,7 +5,7 @@ import com.bytabit.ft.nav.evt.QuitEvent;
 import com.bytabit.ft.wallet.evt.DownloadDone;
 import com.bytabit.ft.wallet.evt.DownloadProgress;
 import com.bytabit.ft.wallet.evt.TransactionUpdatedEvent;
-import com.bytabit.ft.wallet.model.TransactionUIModel;
+import com.bytabit.ft.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
@@ -34,7 +34,7 @@ public class WalletPresenter {
     private Label balanceAmountLabel;
 
     @FXML
-    private CharmListView<TransactionUIModel, Integer> transactionListView;
+    private CharmListView<TransactionWithAmt, Integer> transactionListView;
 
     @FXML
     private ProgressBar downloadProgressBar;
@@ -43,14 +43,13 @@ public class WalletPresenter {
 
     private FloatingActionButton withdrawButton = new FloatingActionButton();
 
-    @FXML
     public void initialize() {
         LOG.debug("initialize wallet presenter");
 
         // setup transaction list view
-        transactionListView.setCellFactory((view) -> new CharmListCell<TransactionUIModel>() {
+        transactionListView.setCellFactory((view) -> new CharmListCell<TransactionWithAmt>() {
             @Override
-            public void updateItem(TransactionUIModel tx, boolean empty) {
+            public void updateItem(TransactionWithAmt tx, boolean empty) {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
@@ -99,7 +98,7 @@ public class WalletPresenter {
                     LOG.debug("wallet event : {}", e);
                     if (e instanceof TransactionUpdatedEvent) {
                         TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
-                        TransactionUIModel txu = new TransactionUIModel(txe.getTx(), txe.getAmt());
+                        TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(), txe.getAmt());
                         Integer index = transactionListView.itemsProperty().indexOf(txu);
                         if (index > -1) {
                             transactionListView.itemsProperty().set(index, txu);

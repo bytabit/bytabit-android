@@ -4,16 +4,15 @@ import com.bytabit.ft.FiatTraderMobile;
 import com.bytabit.ft.wallet.TradeWalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
-import com.gluonhq.charm.glisten.control.TextField;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
+import javafx.scene.control.TextField;
 import org.bitcoinj.core.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Optional;
 
 public class ProfilePresenter {
 
@@ -59,17 +58,17 @@ public class ProfilePresenter {
 
         profileManager.getName().ifPresent(n -> nameTextField.textProperty().setValue(n));
 
-        nameTextField.textProperty().addListener(((observable, oldValue, newValue) -> {
+        nameTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
             if (!oldValue.equals(newValue)) {
-                profileManager.setName(newValue);
+                profileManager.setName(nameTextField.getText());
             }
         }));
 
         profileManager.getPhoneNum().ifPresent(pn -> phoneNumTextField.textProperty().setValue(pn));
 
-        phoneNumTextField.textProperty().addListener(((observable, oldValue, newValue) -> {
+        phoneNumTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
             if (!oldValue.equals(newValue)) {
-                profileManager.setPhoneNum(newValue);
+                profileManager.setPhoneNum(phoneNumTextField.getText());
             }
         }));
     }

@@ -22,7 +22,7 @@ git clone git@bitbucket.org:bytabit/fiat-trader.git
 gradle run
 ```
 
-### Run client on regtest network with Grade using custom config name
+### Run client on regtest network with Grade using custom config pubName
 
 ```
 gradle clean run -PbtcNetwork=regtest -PconfigName=tester2

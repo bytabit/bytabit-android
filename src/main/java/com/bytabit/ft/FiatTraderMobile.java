@@ -3,6 +3,8 @@ package com.bytabit.ft;
 import com.bytabit.ft.nav.NavDrawer;
 import com.bytabit.ft.nav.evt.NavEvent;
 import com.bytabit.ft.nav.evt.QuitEvent;
+import com.bytabit.ft.profile.PaymentView;
+import com.bytabit.ft.profile.PaymentsView;
 import com.bytabit.ft.profile.ProfileView;
 import com.bytabit.ft.wallet.DepositView;
 import com.bytabit.ft.wallet.WalletView;
@@ -29,19 +31,19 @@ public class FiatTraderMobile extends MobileApplication {
     final public static String DEPOSIT_VIEW = "Deposit";
 
     final public static String OFFER_VIEW = "Offers";
-    final public static String ADD_OFFER_VIEW = "Add Offer";
-    final public static String OFFER_DETAILS_VIEW = "Offer Details";
+    final public static String ADD_OFFER_VIEW = "AddOffer";
+    final public static String OFFER_DETAILS_VIEW = "OfferDetails";
 
     final public static String TRADE_VIEW = "Trades"; //HOME_VIEW;
 
     final public static String PROFILE_VIEW = "Profile";
-    final public static String PAYMENT_VIEW = "Payment Details";
-    final public static String ADD_PAYMENT_VIEW = "Add Payment Detail";
+    final public static String PAYMENT_VIEW = "PaymentDetails";
+    final public static String ADD_PAYMENT_VIEW = "AddPaymentDetail";
 
     final public static String CONTRACT_VIEW = "Contracts";
-    final public static String ADD_CONTRACT_VIEW = "Add Contract";
+    final public static String ADD_CONTRACT_VIEW = "AddContract";
 
-    final public static String MENU_LAYER = "Side Menu";
+    final public static String MENU_LAYER = "SideMenu";
 
     final public static Executor EXECUTOR = Executors.newWorkStealingPool();
 
@@ -57,8 +59,8 @@ public class FiatTraderMobile extends MobileApplication {
         addViewFactory(WALLET_VIEW, () -> (View) new WalletView().getView());
         addViewFactory(DEPOSIT_VIEW, () -> (View) new DepositView().getView());
 
-//        addViewFactory(PAYMENT_VIEW, () -> new PaymentDetailsView(PAYMENT_VIEW));
-//        addViewFactory(ADD_PAYMENT_VIEW, () -> new AddPaymentDetailView(ADD_PAYMENT_VIEW));
+        addViewFactory(PAYMENT_VIEW, () -> (View) new PaymentsView().getView());
+        addViewFactory(ADD_PAYMENT_VIEW, () -> (View) new PaymentView().getView());
 
         addViewFactory(PROFILE_VIEW, () -> (View) new ProfileView().getView());
 
