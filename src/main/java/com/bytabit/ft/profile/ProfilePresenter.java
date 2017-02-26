@@ -7,6 +7,7 @@ import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
 import org.bitcoinj.core.Address;
 import org.slf4j.Logger;
@@ -31,6 +32,9 @@ public class ProfilePresenter {
     private TextField pubKeyTextField;
 
     @FXML
+    private CheckBox arbitratorCheckbox;
+
+    @FXML
     private TextField nameTextField;
 
     @FXML
@@ -50,12 +54,24 @@ public class ProfilePresenter {
             }
         });
 
+        // pubkey init and focus handler
         if (!profileManager.getPubKey().isPresent()) {
             Address profileKeyAddress = tradeWalletManager.getNewProfileKeyAddress();
             profileManager.setPubKey(profileKeyAddress.toBase58());
         }
+
         profileManager.getPubKey().ifPresent(pk -> pubKeyTextField.textProperty().setValue(pk));
 
+        // isArbitrator init and focus handler
+        profileManager.isArbitrator().ifPresent(a -> arbitratorCheckbox.setSelected(a));
+
+        arbitratorCheckbox.focusedProperty().addListener(((observable, oldValue, newValue) -> {
+            if (!oldValue.equals(newValue)) {
+                profileManager.setIsArbitrator(arbitratorCheckbox.isSelected());
+            }
+        }));
+
+        // name init and focus handler
         profileManager.getName().ifPresent(n -> nameTextField.textProperty().setValue(n));
 
         nameTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
@@ -64,6 +80,7 @@ public class ProfilePresenter {
             }
         }));
 
+        // phone num init and focus handler
         profileManager.getPhoneNum().ifPresent(pn -> phoneNumTextField.textProperty().setValue(pn));
 
         phoneNumTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
@@ -71,5 +88,6 @@ public class ProfilePresenter {
                 profileManager.setPhoneNum(phoneNumTextField.getText());
             }
         }));
+
     }
 }

@@ -5,7 +5,7 @@ import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.wallet.Wallet;
 
-public class TransactionUpdatedEvent implements WalletEvent {
+public class TransactionUpdatedEvent extends WalletEvent {
 
     private final Transaction tx;
     private final Coin amt;

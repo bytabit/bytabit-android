@@ -2,7 +2,7 @@ package com.bytabit.ft.wallet.evt;
 
 import org.joda.time.LocalDateTime;
 
-public class DownloadProgress implements WalletEvent {
+public class DownloadProgress extends WalletEvent {
     final private Double pct;
     final private Integer blocksSoFar;
     final private LocalDateTime date;

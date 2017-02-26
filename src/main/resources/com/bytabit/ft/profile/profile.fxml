@@ -6,7 +6,7 @@
 <?import javafx.scene.layout.*?>
 <View fx:id="profileView" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0" xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.bytabit.ft.profile.ProfilePresenter">
    <center>
-      <VBox BorderPane.alignment="CENTER">
+       <VBox alignment="TOP_CENTER" BorderPane.alignment="CENTER">
          <children>
             <GridPane maxHeight="-Infinity" maxWidth="1.7976931348623157E308">
               <columnConstraints>
@@ -15,17 +15,25 @@
               </columnConstraints>
               <rowConstraints>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                 <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
                   <Label focusTraversable="false" text="Public Key " />
                    <Label focusTraversable="false" text="Public Name"
-                          GridPane.rowIndex="1"/>
-                  <Label focusTraversable="false" text="Phone Number" GridPane.rowIndex="2" />
+                          GridPane.rowIndex="2"/>
+                   <Label focusTraversable="false" text="Phone Number"
+                          GridPane.rowIndex="3"/>
                   <TextField fx:id="pubKeyTextField" disable="true" focusTraversable="false" maxHeight="-Infinity" GridPane.columnIndex="1" />
-                  <TextField fx:id="nameTextField" maxHeight="-Infinity" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                  <TextField fx:id="phoneNumTextField" maxHeight="-Infinity" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                   <TextField fx:id="nameTextField" maxHeight="-Infinity"
+                              GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                   <TextField fx:id="phoneNumTextField" maxHeight="-Infinity"
+                              GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                   <CheckBox fx:id="arbitratorCheckbox" alignment="CENTER_RIGHT"
+                             contentDisplay="RIGHT" mnemonicParsing="false"
+                             text="Arbitrator" GridPane.columnIndex="1"
+                             GridPane.rowIndex="1"/>
                </children>
                <opaqueInsets>
                   <Insets top="10.0" />

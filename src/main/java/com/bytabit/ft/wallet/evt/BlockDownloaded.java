@@ -4,7 +4,7 @@ import org.bitcoinj.core.Block;
 import org.bitcoinj.core.FilteredBlock;
 import org.bitcoinj.core.Peer;
 
-public class BlockDownloaded implements WalletEvent {
+public class BlockDownloaded extends WalletEvent {
 
     final private Peer peer;
     final private Block block;

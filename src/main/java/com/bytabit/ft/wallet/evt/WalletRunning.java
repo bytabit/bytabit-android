@@ -1,6 +1,6 @@
 package com.bytabit.ft.wallet.evt;
 
-public class WalletRunning implements WalletEvent {
+public class WalletRunning extends WalletEvent {
 
     private final WalletPurpose walletPurpose;
 

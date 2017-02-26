@@ -53,7 +53,8 @@ dependencies {
     compile "joda-time:joda-time:2.9.1"
     compile 'io.reactivex:rxjavafx:1.0.0'
     compile 'org.slf4j:slf4j-api:1.7.21'
-
+    compile 'com.fasterxml.jackson.jr:jackson-jr-retrofit2:2.8.7'
+    
     compile 'com.github.kenglxn.QRGen:javase:2.2.0'
     desktopCompile "ch.qos.logback:logback-classic:1.1.9"
     desktopCompile "ch.qos.logback:logback-core:1.1.9"
@@ -64,11 +65,12 @@ dependencies {
         // workaround issue #73
         exclude group: 'com.google.android', module: 'android'
     }
-    //compile 'com.github.kenglxn.QRGen:android:2.2.0'
 
     desktopRuntime "com.gluonhq:charm-desktop:3.0.0"
     androidRuntime "com.gluonhq:charm-android:3.0.0"
     iosRuntime "com.gluonhq:charm-ios:3.0.0"
+
+    testCompile 'junit:junit:4.12'
 }
 
 jfxmobile {

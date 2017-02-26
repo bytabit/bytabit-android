@@ -1,6 +1,6 @@
 package com.bytabit.ft.wallet.evt;
 
-public class DownloadDone implements WalletEvent {
+public class DownloadDone extends WalletEvent {
 
     public DownloadDone() {
     }
