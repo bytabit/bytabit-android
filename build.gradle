@@ -80,6 +80,14 @@ jfxmobile {
     }
     android {
         manifest = 'src/android/AndroidManifest.xml'
+        dexOptions {
+            incremental true
+            javaMaxHeapSize "4g"
+        }
+        packagingOptions {
+            exclude 'META-INF/LICENSE'
+            exclude 'META-INF/NOTICE'
+        }
     }
     ios {
         infoPList = file('src/ios/Default-Info.plist')
