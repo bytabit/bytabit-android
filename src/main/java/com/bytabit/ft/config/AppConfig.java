@@ -50,6 +50,10 @@ public class AppConfig {
         return getProps().getProperty("configName");
     }
 
+    public static String getBaseUrl() {
+        return getProps().getProperty("baseUrl");
+    }
+
     public static File getPrivateStorage() {
         if (privateStorage == null) {
             try {

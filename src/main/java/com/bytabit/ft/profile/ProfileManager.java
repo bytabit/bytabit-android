@@ -1,5 +1,6 @@
 package com.bytabit.ft.profile;
 
+import com.bytabit.ft.config.AppConfig;
 import com.bytabit.ft.profile.model.CurrencyCode;
 import com.bytabit.ft.profile.model.PaymentDetails;
 import com.bytabit.ft.profile.model.PaymentMethod;
@@ -31,7 +32,7 @@ public class ProfileManager {
 
     public ProfileManager() {
         retrofit = new Retrofit.Builder()
-                .baseUrl("http://localhost:8080")
+                .baseUrl(AppConfig.getBaseUrl())
                 .addConverterFactory(new JacksonJrConverter<Profile>(Profile.class))
                 .build();
 
