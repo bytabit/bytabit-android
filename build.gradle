@@ -22,7 +22,7 @@ repositories {
     maven { url "https://jitpack.io" }
 }
 
-mainClassName = 'com.bytabit.ft.FiatTraderMobile'
+mainClassName = 'com.bytabit.mobile.BytabitMobile'
 
 def semver = semverVersion().toString()
 def net = 'test'
@@ -92,7 +92,7 @@ jfxmobile {
     ios {
         infoPList = file('src/ios/Default-Info.plist')
         forceLinkClasses = [
-                'com.bytabit.ft.**.*',
+                'com.bytabit.mobile.**.*',
                 'com.gluonhq.**.*',
                 'javax.annotations.**.*',
                 'javax.inject.**.*',
