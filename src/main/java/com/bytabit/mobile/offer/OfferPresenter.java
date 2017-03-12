@@ -1,4 +1,4 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
@@ -15,18 +15,15 @@ import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
+import java.math.BigDecimal;
 import java.util.Optional;
 
-public class PaymentPresenter {
+public class OfferPresenter {
 
-    private static Logger LOG = LoggerFactory.getLogger(PaymentPresenter.class);
-
-    @Inject
-    private ProfileManager profileManager;
+    private static Logger LOG = LoggerFactory.getLogger(OfferPresenter.class);
 
     @FXML
-    private View paymentView;
+    private View offerView;
 
     @FXML
     private ChoiceBox<CurrencyCode> currencyChoiceBox;
@@ -35,24 +32,33 @@ public class PaymentPresenter {
     private ChoiceBox<PaymentMethod> paymentMethodChoiceBox;
 
     @FXML
-    private Label paymentDetailsLabel;
+    private TextField btcPriceTextField;
 
     @FXML
-    private TextField paymentDetailsTextField;
+    private Button addOfferButton;
 
     @FXML
-    private Button addPaymentDetailButton;
+    private TextField minTradeAmtTextField;
+
+    @FXML
+    private Label minTradeAmtCurrencyLabel;
+
+    @FXML
+    private TextField maxTradeAmtTextField;
+
+    @FXML
+    private Label maxTradeAmtCurrencyLabel;
 
     public void initialize() {
 
         LOG.debug("initialize add payment details presenter");
 
-        paymentView.showingProperty().addListener((observable, oldValue, newValue) -> {
+        offerView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-                appBar.setTitleText("Add Payment Details");
+                appBar.setTitleText("Create Sell Offer");
             }
             paymentMethodChoiceBox.requestFocus();
         });
@@ -60,6 +66,8 @@ public class PaymentPresenter {
         currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, currencyCode) -> {
             paymentMethodChoiceBox.getItems().setAll(currencyCode.paymentMethods());
             paymentMethodChoiceBox.getSelectionModel().select(0);
+            minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
+            maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
         });
 
         paymentMethodChoiceBox.setConverter(new StringConverter<PaymentMethod>() {
@@ -81,21 +89,15 @@ public class PaymentPresenter {
             }
         });
 
-        paymentMethodChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, paymentMethod) -> {
-            if (paymentMethod != null) {
-                paymentDetailsTextField.setPromptText(paymentMethod.requiredDetails());
-            } else {
-                paymentDetailsTextField.setPromptText("");
-            }
-        });
-
         currencyChoiceBox.getItems().setAll(CurrencyCode.values());
         currencyChoiceBox.getSelectionModel().select(0);
 
-        addPaymentDetailButton.onActionProperty().setValue(e -> {
+        btcPriceTextField
+
+        addOfferButton.onActionProperty().setValue(e -> {
             CurrencyCode currencyCode = currencyChoiceBox.getSelectionModel().getSelectedItem();
             PaymentMethod paymentMethod = paymentMethodChoiceBox.getSelectionModel().getSelectedItem();
-            String paymentDetails = paymentDetailsTextField.getText();
+            BigDecimal price = new BigDecimal(btcPriceTextField.getText());
             if (currencyCode != null && paymentMethod != null && paymentDetails.length() > 0) {
                 profileManager.setPaymentDetails(currencyCode, paymentMethod, paymentDetails);
             }
@@ -103,4 +105,5 @@ public class PaymentPresenter {
             addedPaymentDetails.ifPresent(pd -> LOG.debug("added payment details: {}", pd));
         });
     }
+
 }
