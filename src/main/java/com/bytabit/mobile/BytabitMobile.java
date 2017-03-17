@@ -3,6 +3,7 @@ package com.bytabit.mobile;
 import com.bytabit.mobile.nav.NavDrawer;
 import com.bytabit.mobile.nav.evt.NavEvent;
 import com.bytabit.mobile.nav.evt.QuitEvent;
+import com.bytabit.mobile.offer.OfferView;
 import com.bytabit.mobile.profile.PaymentView;
 import com.bytabit.mobile.profile.PaymentsView;
 import com.bytabit.mobile.profile.ProfileView;
@@ -52,7 +53,7 @@ public class BytabitMobile extends MobileApplication {
     @Override
     public void init() {
 
-//        addViewFactory(OFFER_VIEW, () -> (View) new OffersView().getView(OFFER_VIEW));
+        addViewFactory(OFFER_VIEW, () -> (View) new OfferView().getView());
 //        addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView(ADD_OFFER_VIEW));
 //        addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView(OFFER_DETAILS_VIEW));
 

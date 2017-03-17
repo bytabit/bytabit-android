@@ -1,23 +1,19 @@
 package com.bytabit.mobile.profile;
 
-import com.bytabit.mobile.config.AppConfig;
+import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
-import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
-import com.gluonhq.charm.down.Services;
-import com.gluonhq.charm.down.plugins.SettingsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import retrofit2.Retrofit;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class ProfileManager {
+public class ProfileManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(ProfileManager.class);
 
@@ -27,28 +23,11 @@ public class ProfileManager {
     private String PROFILE_PHONENUM = "profile.phoneNum";
     private String PROFILE_PAYMENTDTLS = "profile.paymentDtls";
 
-    private final Retrofit retrofit;
     private final ProfileService profileService;
 
     public ProfileManager() {
-        retrofit = new Retrofit.Builder()
-                .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(new JacksonJrConverter<Profile>(Profile.class))
-                .build();
-
+        super();
         profileService = retrofit.create(ProfileService.class);
-    }
-
-    private Optional<String> retrieve(String key) {
-        return Services.get(SettingsService.class).map(s -> s.retrieve(key));
-    }
-
-    private void store(String key, String value) {
-        Services.get(SettingsService.class).ifPresent(s -> s.store(key, value));
-    }
-
-    private void remove(String key) {
-        Services.get(SettingsService.class).ifPresent(s -> s.remove(key));
     }
 
     public Optional<String> getPubKey() {

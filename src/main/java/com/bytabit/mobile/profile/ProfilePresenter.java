@@ -9,7 +9,6 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
-import org.bitcoinj.core.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,8 +55,8 @@ public class ProfilePresenter {
 
         // pubkey init and focus handler
         if (!profileManager.getPubKey().isPresent()) {
-            Address profileKeyAddress = tradeWalletManager.getNewProfileKeyAddress();
-            profileManager.setPubKey(profileKeyAddress.toBase58());
+            String profilePubKey = tradeWalletManager.getFreshBase58PubKey();
+            profileManager.setPubKey(profilePubKey);
         }
 
         profileManager.getPubKey().ifPresent(pk -> pubKeyTextField.textProperty().setValue(pk));

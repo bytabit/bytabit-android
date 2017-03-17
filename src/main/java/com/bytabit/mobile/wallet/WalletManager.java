@@ -140,8 +140,16 @@ public abstract class WalletManager {
         return kit.wallet().currentReceiveAddress();
     }
 
-    public Address getNewProfileKeyAddress() {
+    public Address getFreshAuthenticationAddress() {
         return kit.wallet().freshKey(KeyChain.KeyPurpose.AUTHENTICATION).toAddress(netParams);
+    }
+
+    public Address getFreshReceiveAddress() {
+        return kit.wallet().freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).toAddress(netParams);
+    }
+
+    public String getFreshBase58PubKey() {
+        return Base58.encode(kit.wallet().freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
     }
 
     public Coin getWalletBalance() {

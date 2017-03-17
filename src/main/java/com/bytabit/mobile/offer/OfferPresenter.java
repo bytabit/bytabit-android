@@ -1,7 +1,10 @@
 package com.bytabit.mobile.offer;
 
+import com.bytabit.mobile.profile.PaymentMethodStringConverter;
+import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -11,16 +14,24 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.math.BigDecimal;
-import java.util.Optional;
 
 public class OfferPresenter {
 
     private static Logger LOG = LoggerFactory.getLogger(OfferPresenter.class);
+
+    @Inject
+    OfferManager offerManager;
+
+    @Inject
+    ProfileManager profileManager;
+
+    @Inject
+    TradeWalletManager tradeWalletManager;
 
     @FXML
     private View offerView;
@@ -33,6 +44,9 @@ public class OfferPresenter {
 
     @FXML
     private TextField btcPriceTextField;
+
+    @FXML
+    private Label btcPriceCurrencyLabel;
 
     @FXML
     private Button addOfferButton;
@@ -68,41 +82,31 @@ public class OfferPresenter {
             paymentMethodChoiceBox.getSelectionModel().select(0);
             minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
             maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
+            btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
         });
 
-        paymentMethodChoiceBox.setConverter(new StringConverter<PaymentMethod>() {
-            @Override
-            public String toString(PaymentMethod paymentMethod) {
-                return paymentMethod.displayName();
-            }
-
-            @Override
-            public PaymentMethod fromString(String displayName) {
-                PaymentMethod found = null;
-                for (PaymentMethod paymentMethod : PaymentMethod.values()) {
-                    if (paymentMethod.displayName().equals(displayName)) {
-                        found = paymentMethod;
-                        break;
-                    }
-                }
-                return found;
-            }
-        });
+        paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
 
         currencyChoiceBox.getItems().setAll(CurrencyCode.values());
         currencyChoiceBox.getSelectionModel().select(0);
 
-        btcPriceTextField
-
         addOfferButton.onActionProperty().setValue(e -> {
             CurrencyCode currencyCode = currencyChoiceBox.getSelectionModel().getSelectedItem();
             PaymentMethod paymentMethod = paymentMethodChoiceBox.getSelectionModel().getSelectedItem();
+            BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
+            BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
             BigDecimal price = new BigDecimal(btcPriceTextField.getText());
-            if (currencyCode != null && paymentMethod != null && paymentDetails.length() > 0) {
-                profileManager.setPaymentDetails(currencyCode, paymentMethod, paymentDetails);
-            }
-            Optional<String> addedPaymentDetails = profileManager.getPaymentDetails(currencyCode, paymentMethod);
-            addedPaymentDetails.ifPresent(pd -> LOG.debug("added payment details: {}", pd));
+            profileManager.getPubKey().ifPresent(sellerPubKey -> {
+
+                String offerPubKey = tradeWalletManager.getFreshBase58PubKey();
+                if (currencyCode != null &&
+                        paymentMethod != null &&
+                        minAmount.compareTo(BigDecimal.ZERO) >= 0 &&
+                        maxAmount.compareTo(BigDecimal.ZERO) > 0 &&
+                        price.compareTo(BigDecimal.ZERO) > 0) {
+                    offerManager.createOffer(offerPubKey, sellerPubKey, currencyCode, paymentMethod, minAmount, maxAmount, price);
+                }
+            });
         });
     }
 
