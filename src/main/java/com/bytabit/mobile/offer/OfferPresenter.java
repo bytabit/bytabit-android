@@ -96,7 +96,7 @@ public class OfferPresenter {
             BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
             BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
             BigDecimal price = new BigDecimal(btcPriceTextField.getText());
-            profileManager.getPubKey().ifPresent(sellerPubKey -> {
+            profileManager.readPubKey().ifPresent(sellerPubKey -> {
 
                 String offerPubKey = tradeWalletManager.getFreshBase58PubKey();
                 if (currencyCode != null &&

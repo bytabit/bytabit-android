@@ -97,9 +97,9 @@ public class PaymentPresenter {
             PaymentMethod paymentMethod = paymentMethodChoiceBox.getSelectionModel().getSelectedItem();
             String paymentDetails = paymentDetailsTextField.getText();
             if (currencyCode != null && paymentMethod != null && paymentDetails.length() > 0) {
-                profileManager.setPaymentDetails(currencyCode, paymentMethod, paymentDetails);
+                profileManager.updatePaymentDetails(currencyCode, paymentMethod, paymentDetails);
             }
-            Optional<String> addedPaymentDetails = profileManager.getPaymentDetails(currencyCode, paymentMethod);
+            Optional<String> addedPaymentDetails = profileManager.readPaymentDetails(currencyCode, paymentMethod);
             addedPaymentDetails.ifPresent(pd -> LOG.debug("added payment details: {}", pd));
         });
     }

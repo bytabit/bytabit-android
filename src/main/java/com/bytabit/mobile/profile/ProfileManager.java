@@ -30,51 +30,51 @@ public class ProfileManager extends AbstractManager {
         profileService = retrofit.create(ProfileService.class);
     }
 
-    public Optional<String> getPubKey() {
+    public Optional<String> readPubKey() {
         return retrieve(PROFILE_PUBKEY);
     }
 
-    public void setPubKey(String pubKey) {
+    public void updatePubKey(String pubKey) {
         store(PROFILE_PUBKEY, pubKey);
         createProfile(pubKey);
     }
 
-    public void setIsArbitrator(Boolean isArbitrator) {
+    public void updateIsArbitrator(Boolean isArbitrator) {
         store(PROFILE_ISARBITRATOR, isArbitrator.toString());
         updateProfile();
     }
 
-    public Optional<Boolean> isArbitrator() {
+    public Optional<Boolean> readIsArbitrator() {
         return retrieve(PROFILE_ISARBITRATOR).map(Boolean::parseBoolean);
     }
 
-    public Optional<String> getName() {
+    public Optional<String> readName() {
         return retrieve(PROFILE_NAME);
     }
 
-    public void setName(String name) {
+    public void updateName(String name) {
         store(PROFILE_NAME, name);
         updateProfile();
     }
 
-    public Optional<String> getPhoneNum() {
+    public Optional<String> readPhoneNum() {
         return retrieve(PROFILE_PHONENUM);
     }
 
-    public void setPhoneNum(String phoneNum) {
+    public void updatePhoneNum(String phoneNum) {
         store(PROFILE_PHONENUM, phoneNum);
         updateProfile();
     }
 
-    public Optional<String> getPaymentDetails(CurrencyCode currencyCode,
-                                              PaymentMethod paymentMethod) {
+    public Optional<String> readPaymentDetails(CurrencyCode currencyCode,
+                                               PaymentMethod paymentMethod) {
 
         return retrieve(paymentDetailsKey(currencyCode, paymentMethod));
     }
 
-    public void setPaymentDetails(CurrencyCode currencyCode,
-                                  PaymentMethod paymentMethod,
-                                  String paymentDetails) {
+    public void updatePaymentDetails(CurrencyCode currencyCode,
+                                     PaymentMethod paymentMethod,
+                                     String paymentDetails) {
 
         String key = paymentDetailsKey(currencyCode, paymentMethod);
         //retrieve(key).ifPresent(pd -> remove(key));
@@ -88,11 +88,11 @@ public class ProfileManager extends AbstractManager {
                 paymentMethod.displayName());
     }
 
-    public List<PaymentDetails> getPaymentDetails() {
+    public List<PaymentDetails> readPaymentDetails() {
         List<PaymentDetails> paymentDetails = new ArrayList<PaymentDetails>();
         for (CurrencyCode c : CurrencyCode.values()) {
             for (PaymentMethod p : c.paymentMethods()) {
-                getPaymentDetails(c, p).ifPresent(pd -> {
+                readPaymentDetails(c, p).ifPresent(pd -> {
                     paymentDetails.add(new PaymentDetails(c, p, pd));
                 });
             }
@@ -110,10 +110,10 @@ public class ProfileManager extends AbstractManager {
     }
 
     public void updateProfile() {
-        String pubKey = getPubKey().get();
-        Boolean isArbitrator = isArbitrator().orElse(null);
-        String name = getName().orElse(null);
-        String phoneNum = getPhoneNum().orElse(null);
+        String pubKey = readPubKey().get();
+        Boolean isArbitrator = readIsArbitrator().orElse(null);
+        String name = readName().orElse(null);
+        String phoneNum = readPhoneNum().orElse(null);
         Profile profile = new Profile(null, isArbitrator, name, phoneNum);
 
         try {

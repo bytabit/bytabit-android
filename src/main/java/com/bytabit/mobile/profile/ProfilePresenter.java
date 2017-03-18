@@ -54,37 +54,37 @@ public class ProfilePresenter {
         });
 
         // pubkey init and focus handler
-        if (!profileManager.getPubKey().isPresent()) {
+        if (!profileManager.readPubKey().isPresent()) {
             String profilePubKey = tradeWalletManager.getFreshBase58PubKey();
-            profileManager.setPubKey(profilePubKey);
+            profileManager.updatePubKey(profilePubKey);
         }
 
-        profileManager.getPubKey().ifPresent(pk -> pubKeyTextField.textProperty().setValue(pk));
+        profileManager.readPubKey().ifPresent(pk -> pubKeyTextField.textProperty().setValue(pk));
 
-        // isArbitrator init and focus handler
-        profileManager.isArbitrator().ifPresent(a -> arbitratorCheckbox.setSelected(a));
+        // readIsArbitrator init and focus handler
+        profileManager.readIsArbitrator().ifPresent(a -> arbitratorCheckbox.setSelected(a));
 
         arbitratorCheckbox.focusedProperty().addListener(((observable, oldValue, newValue) -> {
             if (!oldValue.equals(newValue)) {
-                profileManager.setIsArbitrator(arbitratorCheckbox.isSelected());
+                profileManager.updateIsArbitrator(arbitratorCheckbox.isSelected());
             }
         }));
 
         // name init and focus handler
-        profileManager.getName().ifPresent(n -> nameTextField.textProperty().setValue(n));
+        profileManager.readName().ifPresent(n -> nameTextField.textProperty().setValue(n));
 
         nameTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
             if (!oldValue.equals(newValue)) {
-                profileManager.setName(nameTextField.getText());
+                profileManager.updateName(nameTextField.getText());
             }
         }));
 
         // phone num init and focus handler
-        profileManager.getPhoneNum().ifPresent(pn -> phoneNumTextField.textProperty().setValue(pn));
+        profileManager.readPhoneNum().ifPresent(pn -> phoneNumTextField.textProperty().setValue(pn));
 
         phoneNumTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
             if (!oldValue.equals(newValue)) {
-                profileManager.setPhoneNum(phoneNumTextField.getText());
+                profileManager.updatePhoneNum(phoneNumTextField.getText());
             }
         }));
 

@@ -12,7 +12,7 @@ public interface ProfileService {
     Call<Profile> createProfile(@Body Profile profile);
 
     @GET("/v1/profiles")
-    Call<List<Profile>> retrieveProfiles();
+    Call<List<Profile>> readProfiles();
 
     @PUT("/v1/profiles/{pubkey}")
     Call<Profile> updateProfile(@Path("pubkey") String pubkey, @Body Profile profile);

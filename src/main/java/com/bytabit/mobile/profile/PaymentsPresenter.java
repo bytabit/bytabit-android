@@ -71,7 +71,7 @@ public class PaymentsPresenter {
                         MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
                 appBar.setTitleText("Payment Details");
 
-                paymentDetailsListView.itemsProperty().setAll(profileManager.getPaymentDetails());
+                paymentDetailsListView.itemsProperty().setAll(profileManager.readPaymentDetails());
             }
 
         });
