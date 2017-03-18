@@ -27,7 +27,7 @@ public class PaymentsPresenter {
     private View paymentsView;
 
     @FXML
-    private CharmListView<PaymentDetails, Integer> paymentDetailsListView;
+    private CharmListView<PaymentDetails, String> paymentDetailsListView;
 
     private FloatingActionButton addPaymentDetailsButton = new FloatingActionButton();
 

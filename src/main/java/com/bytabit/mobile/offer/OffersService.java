@@ -6,7 +6,7 @@ import retrofit2.http.*;
 
 import java.util.List;
 
-public interface OfferService {
+public interface OffersService {
 
     @POST("/v1/offers")
     Call<Offer> createOffer(@Body Offer offer);

@@ -10,15 +10,15 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
 
-public class OfferManager extends AbstractManager {
+public class AddOfferManager extends AbstractManager {
 
-    private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
+    private static Logger LOG = LoggerFactory.getLogger(AddOfferManager.class);
 
-    private final OfferService offerService;
+    private final OffersService offersService;
 
-    public OfferManager() {
+    public AddOfferManager() {
         super();
-        offerService = retrofit.create(OfferService.class);
+        offersService = retrofit.create(OffersService.class);
     }
 
     public Offer createOffer(String pubKey, String sellerPubKey, CurrencyCode currencyCode,
@@ -27,7 +27,7 @@ public class OfferManager extends AbstractManager {
 
         Offer offer = null;
         try {
-            offer = offerService.createOffer(new Offer(pubKey, sellerPubKey, currencyCode,
+            offer = offersService.createOffer(new Offer(pubKey, sellerPubKey, currencyCode,
                     paymentMethod, minAmount, maxAmount, price)).execute().body();
         } catch (IOException ex) {
             LOG.error(ex.getMessage());

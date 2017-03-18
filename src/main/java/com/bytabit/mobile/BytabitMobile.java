@@ -3,7 +3,8 @@ package com.bytabit.mobile;
 import com.bytabit.mobile.nav.NavDrawer;
 import com.bytabit.mobile.nav.evt.NavEvent;
 import com.bytabit.mobile.nav.evt.QuitEvent;
-import com.bytabit.mobile.offer.OfferView;
+import com.bytabit.mobile.offer.AddOfferView;
+import com.bytabit.mobile.offer.OffersView;
 import com.bytabit.mobile.profile.PaymentView;
 import com.bytabit.mobile.profile.PaymentsView;
 import com.bytabit.mobile.profile.ProfileView;
@@ -31,7 +32,7 @@ public class BytabitMobile extends MobileApplication {
     final public static String WALLET_VIEW = HOME_VIEW;
     final public static String DEPOSIT_VIEW = "Deposit";
 
-    final public static String OFFER_VIEW = "Offers";
+    final public static String OFFERS_VIEW = "Offers";
     final public static String ADD_OFFER_VIEW = "AddOffer";
     final public static String OFFER_DETAILS_VIEW = "OfferDetails";
 
@@ -53,8 +54,8 @@ public class BytabitMobile extends MobileApplication {
     @Override
     public void init() {
 
-        addViewFactory(OFFER_VIEW, () -> (View) new OfferView().getView());
-//        addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView(ADD_OFFER_VIEW));
+        addViewFactory(OFFERS_VIEW, () -> (View) new OffersView().getView());
+        addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView());
 //        addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView(OFFER_DETAILS_VIEW));
 
         addViewFactory(WALLET_VIEW, () -> (View) new WalletView().getView());

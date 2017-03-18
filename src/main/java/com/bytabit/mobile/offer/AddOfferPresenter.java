@@ -20,12 +20,12 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.math.BigDecimal;
 
-public class OfferPresenter {
+public class AddOfferPresenter {
 
-    private static Logger LOG = LoggerFactory.getLogger(OfferPresenter.class);
+    private static Logger LOG = LoggerFactory.getLogger(AddOfferPresenter.class);
 
     @Inject
-    OfferManager offerManager;
+    AddOfferManager addOfferManager;
 
     @Inject
     ProfileManager profileManager;
@@ -34,7 +34,7 @@ public class OfferPresenter {
     TradeWalletManager tradeWalletManager;
 
     @FXML
-    private View offerView;
+    private View addOfferView;
 
     @FXML
     private ChoiceBox<CurrencyCode> currencyChoiceBox;
@@ -67,7 +67,7 @@ public class OfferPresenter {
 
         LOG.debug("initialize add payment details presenter");
 
-        offerView.showingProperty().addListener((observable, oldValue, newValue) -> {
+        addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
@@ -104,7 +104,7 @@ public class OfferPresenter {
                         minAmount.compareTo(BigDecimal.ZERO) >= 0 &&
                         maxAmount.compareTo(BigDecimal.ZERO) > 0 &&
                         price.compareTo(BigDecimal.ZERO) > 0) {
-                    offerManager.createOffer(offerPubKey, sellerPubKey, currencyCode, paymentMethod, minAmount, maxAmount, price);
+                    addOfferManager.createOffer(offerPubKey, sellerPubKey, currencyCode, paymentMethod, minAmount, maxAmount, price);
                 }
             });
         });
