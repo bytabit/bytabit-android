@@ -7,6 +7,9 @@ import java.math.BigDecimal;
 
 public class Offer {
 
+    protected Offer() {
+    }
+
     public Offer(String pubKey, String sellerPubKey, CurrencyCode currencyCode,
                  PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount,
                  BigDecimal price) {

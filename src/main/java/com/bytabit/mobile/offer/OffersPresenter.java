@@ -17,7 +17,7 @@ import javax.inject.Inject;
 public class OffersPresenter {
 
     @Inject
-    AddOfferManager addOfferManager;
+    OfferManager offerManager;
 
     @FXML
     private View offersView;
@@ -34,7 +34,7 @@ public class OffersPresenter {
                 super.updateItem(o, empty);
                 if (o != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s %s per BTC via %s", o.getPrice().toPlainString(), o.getCurrencyCode().toString(), o.getPaymentMethod().toString());
+                    String amount = String.format("%s %s per BTC via %s", o.getPrice().toPlainString(), o.getCurrencyCode().toString(), o.getPaymentMethod().displayName());
                     String details = String.format("%s to %s %s",
                             o.getMinAmount(), o.getMaxAmount(), o.getCurrencyCode());
                     tile.textProperty().addAll(amount, details);
@@ -65,6 +65,9 @@ public class OffersPresenter {
 
         });
 
+        //offersListView.itemsProperty().addAll(offerManager.readOffers());
+        offersListView.itemsProperty().setValue(offerManager.getOffersObservableList());
+        offerManager.startOfferPolling();
     }
 
 }

@@ -4,6 +4,7 @@ import com.bytabit.mobile.nav.NavDrawer;
 import com.bytabit.mobile.nav.evt.NavEvent;
 import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.bytabit.mobile.offer.AddOfferView;
+import com.bytabit.mobile.offer.OfferDetailsView;
 import com.bytabit.mobile.offer.OffersView;
 import com.bytabit.mobile.profile.PaymentView;
 import com.bytabit.mobile.profile.PaymentsView;
@@ -43,7 +44,6 @@ public class BytabitMobile extends MobileApplication {
     final public static String ADD_PAYMENT_VIEW = "AddPaymentDetail";
 
     final public static String HELP_VIEW = "Contracts";
-    final public static String ADD_CONTRACT_VIEW = "AddContract";
 
     final public static String MENU_LAYER = "SideMenu";
 
@@ -56,7 +56,7 @@ public class BytabitMobile extends MobileApplication {
 
         addViewFactory(OFFERS_VIEW, () -> (View) new OffersView().getView());
         addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView());
-//        addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView(OFFER_DETAILS_VIEW));
+        addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView());
 
         addViewFactory(WALLET_VIEW, () -> (View) new WalletView().getView());
         addViewFactory(DEPOSIT_VIEW, () -> (View) new DepositView().getView());
@@ -67,7 +67,6 @@ public class BytabitMobile extends MobileApplication {
         addViewFactory(PROFILE_VIEW, () -> (View) new ProfileView().getView());
 
 //        addViewFactory(HELP_VIEW, () -> new ContractsView(HELP_VIEW));
-//        addViewFactory(ADD_CONTRACT_VIEW, () -> new AddContractView(ADD_CONTRACT_VIEW));
 
         addLayerFactory(MENU_LAYER, () -> new SidePopupView(new NavDrawer().getDrawer()));
     }

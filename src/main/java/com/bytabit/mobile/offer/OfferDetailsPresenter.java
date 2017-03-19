@@ -20,9 +20,9 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.math.BigDecimal;
 
-public class AddOfferPresenter {
+public class OfferDetailsPresenter {
 
-    private static Logger LOG = LoggerFactory.getLogger(AddOfferPresenter.class);
+    private static Logger LOG = LoggerFactory.getLogger(OfferDetailsPresenter.class);
 
     @Inject
     OfferManager offerManager;
