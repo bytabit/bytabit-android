@@ -2,8 +2,6 @@ package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.offer.model.Offer;
-import com.bytabit.mobile.profile.model.CurrencyCode;
-import com.bytabit.mobile.profile.model.PaymentMethod;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.slf4j.Logger;
@@ -13,7 +11,6 @@ import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -25,31 +22,29 @@ public class OfferManager extends AbstractManager {
 
     private final ObservableList<Offer> offersObservableList;
 
+    private final Offer newOffer;
+
+    private final Offer viewOffer;
+
     public OfferManager() {
         super();
         offersService = retrofit.create(OffersService.class);
         offersObservableList = FXCollections.observableArrayList();
+        newOffer = new Offer();
+        viewOffer = new Offer();
     }
 
-    public void createOffer(String pubKey, String sellerPubKey, CurrencyCode currencyCode,
-                            PaymentMethod paymentMethod, BigDecimal minAmount,
-                            BigDecimal maxAmount, BigDecimal price) {
+    public void createOffer() {
 
-        Offer offer = null;
         try {
-            offer = offersService.createOffer(new Offer(pubKey, sellerPubKey, currencyCode,
-                    paymentMethod, minAmount, maxAmount, price)).execute().body();
-            offersObservableList.add(offer);
+            Offer createdOffer = offersService.createOffer(newOffer).execute().body();
+            offersObservableList.add(createdOffer);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
     }
 
-    public ObservableList<Offer> getOffersObservableList() {
-        return offersObservableList;
-    }
-
-    public void startOfferPolling() {
+    public void readOffers() {
         try {
             List<Offer> offers = offersService.readOffers().execute().body();
             offersObservableList.setAll(offers);
@@ -68,5 +63,17 @@ public class OfferManager extends AbstractManager {
                         LOG.error(ioe.getMessage());
                     }
                 });
+    }
+
+    public ObservableList<Offer> getOffersObservableList() {
+        return offersObservableList;
+    }
+
+    public Offer getNewOffer() {
+        return newOffer;
+    }
+
+    public Offer getViewOffer() {
+        return viewOffer;
     }
 }

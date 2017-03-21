@@ -67,7 +67,7 @@ public class OffersPresenter {
 
         //offersListView.itemsProperty().addAll(offerManager.readOffers());
         offersListView.itemsProperty().setValue(offerManager.getOffersObservableList());
-        offerManager.startOfferPolling();
+        offerManager.readOffers();
     }
 
 }

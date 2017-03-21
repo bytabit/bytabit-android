@@ -1,5 +1,6 @@
 package com.bytabit.mobile.offer;
 
+import com.bytabit.mobile.common.StringBigDecimalConverter;
 import com.bytabit.mobile.profile.PaymentMethodStringConverter;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
@@ -14,6 +15,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,12 +69,20 @@ public class AddOfferPresenter {
 
         LOG.debug("initialize add payment details presenter");
 
+        StringConverter<BigDecimal> converter = new StringBigDecimalConverter();
+
+        minTradeAmtTextField.textProperty().bindBidirectional(offerManager.getNewOffer().minAmountProperty(), converter);
+        maxTradeAmtTextField.textProperty().bindBidirectional(offerManager.getNewOffer().maxAmountProperty(), converter);
+        btcPriceTextField.textProperty().bindBidirectional(offerManager.getNewOffer().priceProperty(), converter);
+
         addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Create Sell Offer");
+                String offerPubKey = tradeWalletManager.getFreshBase58PubKey();
+                offerManager.getNewOffer().setPubKey(offerPubKey);
             }
             paymentMethodChoiceBox.requestFocus();
         });
@@ -83,31 +93,26 @@ public class AddOfferPresenter {
             minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
             maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
             btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
+            offerManager.getNewOffer().setCurrencyCode(currencyCode);
         });
 
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
+        paymentMethodChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, paymentMethod) -> {
+            offerManager.getNewOffer().setPaymentMethod(paymentMethod);
+        });
 
         currencyChoiceBox.getItems().setAll(CurrencyCode.values());
         currencyChoiceBox.getSelectionModel().select(0);
 
-        addOfferButton.onActionProperty().setValue(e -> {
-            CurrencyCode currencyCode = currencyChoiceBox.getSelectionModel().getSelectedItem();
-            PaymentMethod paymentMethod = paymentMethodChoiceBox.getSelectionModel().getSelectedItem();
-            BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
-            BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
-            BigDecimal price = new BigDecimal(btcPriceTextField.getText());
-            profileManager.readPubKey().ifPresent(sellerPubKey -> {
+        profileManager.readPubKey().ifPresent(sellerPubKey -> {
+            offerManager.getNewOffer().setSellerPubKey(sellerPubKey);
+        });
 
-                String offerPubKey = tradeWalletManager.getFreshBase58PubKey();
-                if (currencyCode != null &&
-                        paymentMethod != null &&
-                        minAmount.compareTo(BigDecimal.ZERO) >= 0 &&
-                        maxAmount.compareTo(BigDecimal.ZERO) > 0 &&
-                        price.compareTo(BigDecimal.ZERO) > 0) {
-                    offerManager.createOffer(offerPubKey, sellerPubKey, currencyCode, paymentMethod, minAmount, maxAmount, price);
-                }
-            });
+        addOfferButton.onActionProperty().setValue(e -> {
+
+            if (offerManager.getNewOffer().isComplete()) {
+                offerManager.createOffer();
+            }
         });
     }
-
 }

@@ -104,7 +104,7 @@ public class OfferDetailsPresenter {
                         minAmount.compareTo(BigDecimal.ZERO) >= 0 &&
                         maxAmount.compareTo(BigDecimal.ZERO) > 0 &&
                         price.compareTo(BigDecimal.ZERO) > 0) {
-                    offerManager.createOffer(offerPubKey, sellerPubKey, currencyCode, paymentMethod, minAmount, maxAmount, price);
+                    offerManager.createOffer();
                 }
             });
         });
