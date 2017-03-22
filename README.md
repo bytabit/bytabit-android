@@ -28,6 +28,12 @@ gradle run
 gradle clean run -PbtcNetwork=regtest -PconfigName=tester2
 ```
 
+### Create android APK
+
+```
+gradle clean zipalignDebug
+```
+
 ### IntelliJ Setup
 
 1. Install scala and gradle plugins (if not already installed)
