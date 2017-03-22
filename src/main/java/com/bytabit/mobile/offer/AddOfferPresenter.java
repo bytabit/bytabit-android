@@ -67,7 +67,7 @@ public class AddOfferPresenter {
 
     public void initialize() {
 
-        LOG.debug("initialize add payment details presenter");
+        LOG.debug("initialize add offer presenter");
 
         StringConverter<BigDecimal> converter = new StringBigDecimalConverter();
 

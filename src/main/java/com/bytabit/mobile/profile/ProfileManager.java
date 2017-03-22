@@ -103,7 +103,7 @@ public class ProfileManager extends AbstractManager {
     public void createProfile(String pubKey) {
         Profile profile = new Profile(pubKey, null, null, null);
         try {
-            profileService.createProfile(profile).execute();
+            profileService.create(profile).execute();
         } catch (IOException ex) {
             LOG.error(ex.getMessage());
         }
@@ -117,7 +117,7 @@ public class ProfileManager extends AbstractManager {
         Profile profile = new Profile(null, isArbitrator, name, phoneNum);
 
         try {
-            profileService.updateProfile(pubKey, profile).execute();
+            profileService.update(pubKey, profile).execute();
         } catch (IOException ex) {
             LOG.error(ex.getMessage());
         }

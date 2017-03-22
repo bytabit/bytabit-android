@@ -65,8 +65,19 @@ public class OffersPresenter {
 
         });
 
-        //offersListView.itemsProperty().addAll(offerManager.readOffers());
+        //offersListView.itemsProperty().addAll(offerManager.read());
         offersListView.itemsProperty().setValue(offerManager.getOffersObservableList());
+        offersListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+            Offer viewOffer = offerManager.getViewOffer();
+            viewOffer.setPubKey(newValue.getPubKey());
+            viewOffer.setSellerPubKey(newValue.getSellerPubKey());
+            viewOffer.setCurrencyCode(newValue.getCurrencyCode());
+            viewOffer.setPaymentMethod(newValue.getPaymentMethod());
+            viewOffer.setMinAmount(newValue.getMinAmount());
+            viewOffer.setMaxAmount(newValue.getMaxAmount());
+            viewOffer.setPrice(newValue.getPrice());
+            MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+        });
         offerManager.readOffers();
     }
 

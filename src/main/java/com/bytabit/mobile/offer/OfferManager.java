@@ -18,7 +18,7 @@ public class OfferManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
 
-    private final OffersService offersService;
+    private final OfferService offerService;
 
     private final ObservableList<Offer> offersObservableList;
 
@@ -28,7 +28,7 @@ public class OfferManager extends AbstractManager {
 
     public OfferManager() {
         super();
-        offersService = retrofit.create(OffersService.class);
+        offerService = retrofit.create(OfferService.class);
         offersObservableList = FXCollections.observableArrayList();
         newOffer = new Offer();
         viewOffer = new Offer();
@@ -37,7 +37,7 @@ public class OfferManager extends AbstractManager {
     public void createOffer() {
 
         try {
-            Offer createdOffer = offersService.createOffer(newOffer).execute().body();
+            Offer createdOffer = offerService.create(newOffer).execute().body();
             offersObservableList.add(createdOffer);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
@@ -46,13 +46,13 @@ public class OfferManager extends AbstractManager {
 
     public void readOffers() {
         try {
-            List<Offer> offers = offersService.readOffers().execute().body();
+            List<Offer> offers = offerService.read().execute().body();
             offersObservableList.setAll(offers);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
         Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> offersService.readOffers())
+                .map(tick -> offerService.read())
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
                 .subscribe(c -> {
@@ -63,6 +63,18 @@ public class OfferManager extends AbstractManager {
                         LOG.error(ioe.getMessage());
                     }
                 });
+    }
+
+    public void deleteOffer() {
+
+        try {
+            Offer removedOffer = offerService.delete(viewOffer.getPubKey()).execute().body();
+            if (removedOffer != null) {
+                offersObservableList.removeIf(o -> o.getPubKey().equals(removedOffer.getPubKey()));
+            }
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+        }
     }
 
     public ObservableList<Offer> getOffersObservableList() {

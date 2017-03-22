@@ -9,11 +9,11 @@ import java.util.List;
 public interface ProfileService {
 
     @POST("/v1/profiles")
-    Call<Profile> createProfile(@Body Profile profile);
+    Call<Profile> create(@Body Profile profile);
 
     @GET("/v1/profiles")
-    Call<List<Profile>> readProfiles();
+    Call<List<Profile>> read();
 
     @PUT("/v1/profiles/{pubkey}")
-    Call<Profile> updateProfile(@Path("pubkey") String pubkey, @Body Profile profile);
+    Call<Profile> update(@Path("pubkey") String pubkey, @Body Profile profile);
 }

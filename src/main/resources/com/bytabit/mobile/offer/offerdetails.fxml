@@ -30,33 +30,32 @@
                                         vgrow="SOMETIMES"/>
                         <RowConstraints minHeight="10.0" prefHeight="30.0"
                                         vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
                         <RowConstraints vgrow="SOMETIMES"/>
                     </rowConstraints>
                     <children>
-                        <Label text="Currency"/>
-                        <Label text="Payment Method" GridPane.rowIndex="1"/>
-                        <ChoiceBox fx:id="currencyChoiceBox" maxWidth="-Infinity"
-                                   GridPane.columnIndex="1"/>
-                        <ChoiceBox fx:id="paymentMethodChoiceBox" maxWidth="-Infinity"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <Label text="Currency" GridPane.rowIndex="2"/>
+                        <Label text="Payment Method" GridPane.rowIndex="3"/>
                         <Label focusTraversable="false" text="Min Trade Amt"
-                               GridPane.rowIndex="2"/>
-                        <Label focusTraversable="false" text="Max Trade Amt"
-                               GridPane.rowIndex="3"/>
-                        <Label focusTraversable="false" text="Price per BTC"
                                GridPane.rowIndex="4"/>
+                        <Label focusTraversable="false" text="Max Trade Amt"
+                               GridPane.rowIndex="5"/>
+                        <Label focusTraversable="false" text="Price per BTC"
+                               GridPane.rowIndex="6"/>
                         <Button fx:id="removeOfferButton" mnemonicParsing="false"
                                 text="REMOVE" GridPane.columnIndex="1"
-                                GridPane.rowIndex="5">
+                                GridPane.rowIndex="7">
                             <GridPane.margin>
                                 <Insets top="10.0"/>
                             </GridPane.margin>
                         </Button>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="2">
+                              GridPane.columnIndex="1" GridPane.rowIndex="4">
                             <children>
-                                <TextField fx:id="minTradeAmtTextField"
-                                           maxHeight="-Infinity"/>
+                                <Label fx:id="minTradeAmtLabel" text="TBD"/>
                                 <Label fx:id="minTradeAmtCurrencyLabel"
                                        contentDisplay="CENTER" text="CUR">
                                     <padding>
@@ -66,10 +65,9 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="3">
+                              GridPane.columnIndex="1" GridPane.rowIndex="5">
                             <children>
-                                <TextField fx:id="maxTradeAmtTextField"
-                                           maxHeight="-Infinity"/>
+                                <Label fx:id="maxTradeAmtLabel" text="TBD"/>
                                 <Label fx:id="maxTradeAmtCurrencyLabel"
                                        contentDisplay="CENTER" text="CUR">
                                     <padding>
@@ -79,18 +77,27 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="4">
+                              GridPane.columnIndex="1" GridPane.rowIndex="6">
                             <children>
-                                <TextField fx:id="btcPriceTextField"
-                                           maxHeight="-Infinity"/>
-                                <Label fx:id="btcPriceCurrencyLabel"
-                                       contentDisplay="CENTER" text="CUR">
+                                <Label fx:id="priceLabel" text="TBD"/>
+                                <Label fx:id="priceCurrencyLabel" contentDisplay="CENTER"
+                                       text="CUR">
                                     <padding>
                                         <Insets left="5.0"/>
                                     </padding>
                                 </Label>
                             </children>
                         </HBox>
+                        <Label text="Offer PubKey"/>
+                        <Label text="Seller PubKey" GridPane.rowIndex="1"/>
+                        <Label fx:id="offerPubKeyLabel" text="TBD"
+                               GridPane.columnIndex="1"/>
+                        <Label fx:id="sellerPubKeyLabel" text="TBD"
+                               GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <Label fx:id="currencyLabel" text="TBD" GridPane.columnIndex="1"
+                               GridPane.rowIndex="2"/>
+                        <Label fx:id="paymentMethodLabel" text="TBD"
+                               GridPane.columnIndex="1" GridPane.rowIndex="3"/>
                     </children>
                     <opaqueInsets>
                         <Insets top="10.0"/>
