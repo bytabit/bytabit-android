@@ -1,6 +1,7 @@
-package com.bytabit.mobile.offer;
+package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.common.AbstractManager;
+import com.bytabit.mobile.offer.OfferService;
 import com.bytabit.mobile.offer.model.SellOffer;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -14,9 +15,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class OfferManager extends AbstractManager {
+public class TradeManager extends AbstractManager {
 
-    private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
+    private static Logger LOG = LoggerFactory.getLogger(TradeManager.class);
 
     private final OfferService offerService;
 
@@ -26,7 +27,7 @@ public class OfferManager extends AbstractManager {
 
     private final SellOffer viewOffer;
 
-    public OfferManager() {
+    public TradeManager() {
         super();
         offerService = retrofit.create(OfferService.class);
         offersObservableList = FXCollections.observableArrayList();

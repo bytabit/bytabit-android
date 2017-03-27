@@ -1,6 +1,7 @@
-package com.bytabit.mobile.offer;
+package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.offer.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -14,7 +15,7 @@ import javafx.fxml.FXML;
 
 import javax.inject.Inject;
 
-public class OffersPresenter {
+public class TradesPresenter {
 
     @Inject
     OfferManager offerManager;

@@ -1,7 +1,7 @@
 package com.bytabit.mobile.common;
 
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.offer.model.Offer;
+import com.bytabit.mobile.offer.model.SellOffer;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.SettingsService;
@@ -17,7 +17,7 @@ public abstract class AbstractManager {
 
         retrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(new JacksonJrConverter<Offer>(Offer.class))
+                .addConverterFactory(new JacksonJrConverter<SellOffer>(SellOffer.class))
                 .build();
     }
 

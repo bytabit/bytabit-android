@@ -45,6 +45,9 @@ public class AddOfferPresenter {
     private ChoiceBox<PaymentMethod> paymentMethodChoiceBox;
 
     @FXML
+    private ChoiceBox<PaymentMethod> arbitratorChoiceBox;
+
+    @FXML
     private TextField btcPriceTextField;
 
     @FXML
@@ -82,13 +85,16 @@ public class AddOfferPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Create Sell Offer");
                 String offerPubKey = tradeWalletManager.getFreshBase58PubKey();
-                offerManager.getNewOffer().setPubKey(offerPubKey);
+                offerManager.getNewOffer().setSellerEscrowPubKey(offerPubKey);
+
+                currencyChoiceBox.getItems().setAll(profileManager.readPaymentDetailsCurrencies());
+                currencyChoiceBox.getSelectionModel().select(0);
             }
             paymentMethodChoiceBox.requestFocus();
         });
 
         currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, currencyCode) -> {
-            paymentMethodChoiceBox.getItems().setAll(currencyCode.paymentMethods());
+            paymentMethodChoiceBox.getItems().setAll(profileManager.readPaymentDetailsMethods(currencyCode));
             paymentMethodChoiceBox.getSelectionModel().select(0);
             minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
             maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
@@ -96,16 +102,16 @@ public class AddOfferPresenter {
             offerManager.getNewOffer().setCurrencyCode(currencyCode);
         });
 
+        currencyChoiceBox.getItems().setAll(profileManager.readPaymentDetailsCurrencies());
+        currencyChoiceBox.getSelectionModel().select(0);
+
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
         paymentMethodChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, paymentMethod) -> {
             offerManager.getNewOffer().setPaymentMethod(paymentMethod);
         });
 
-        currencyChoiceBox.getItems().setAll(CurrencyCode.values());
-        currencyChoiceBox.getSelectionModel().select(0);
-
         profileManager.readPubKey().ifPresent(sellerPubKey -> {
-            offerManager.getNewOffer().setSellerPubKey(sellerPubKey);
+            offerManager.getNewOffer().setSellerProfilePubKey(sellerPubKey);
         });
 
         addOfferButton.onActionProperty().setValue(e -> {

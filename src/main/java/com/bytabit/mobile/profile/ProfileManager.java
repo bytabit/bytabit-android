@@ -9,9 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class ProfileManager extends AbstractManager {
 
@@ -98,6 +96,26 @@ public class ProfileManager extends AbstractManager {
             }
         }
         return paymentDetails;
+    }
+
+    public List<CurrencyCode> readPaymentDetailsCurrencies() {
+        Set<CurrencyCode> currencyCodes = new HashSet<>();
+        for (PaymentDetails d : readPaymentDetails()) {
+            currencyCodes.add(d.getCurrencyCode());
+        }
+        List<CurrencyCode> codes = new ArrayList<>();
+        codes.addAll(currencyCodes);
+        return codes;
+    }
+
+    public List<PaymentMethod> readPaymentDetailsMethods(CurrencyCode currencyCode) {
+        List<PaymentMethod> paymentMethods = new ArrayList<>();
+        for (PaymentDetails d : readPaymentDetails()) {
+            if (d.getCurrencyCode().equals(currencyCode)) {
+                paymentMethods.add(d.getPaymentMethod());
+            }
+        }
+        return paymentMethods;
     }
 
     public void createProfile(String pubKey) {

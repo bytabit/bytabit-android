@@ -1,5 +1,7 @@
-package com.bytabit.mobile.offer;
+package com.bytabit.mobile.trade;
 
+import com.bytabit.mobile.offer.AddOfferPresenter;
+import com.bytabit.mobile.offer.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
@@ -15,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
-public class OfferDetailsPresenter {
+public class TradeDetailsPresenter {
 
     private static Logger LOG = LoggerFactory.getLogger(AddOfferPresenter.class);
 
