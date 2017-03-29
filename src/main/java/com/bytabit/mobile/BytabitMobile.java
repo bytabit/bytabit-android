@@ -30,14 +30,14 @@ public class BytabitMobile extends MobileApplication {
 
     private static Logger LOG = LoggerFactory.getLogger(BytabitMobile.class);
 
-    final public static String WALLET_VIEW = HOME_VIEW;
+    final public static String WALLET_VIEW = "Wallet";
     final public static String DEPOSIT_VIEW = "Deposit";
 
-    final public static String OFFERS_VIEW = "Offers";
+    final public static String OFFERS_VIEW = HOME_VIEW;
     final public static String ADD_OFFER_VIEW = "AddOffer";
     final public static String OFFER_DETAILS_VIEW = "OfferDetails";
 
-    final public static String TRADE_VIEW = "Trades"; //HOME_VIEW;
+    final public static String TRADE_VIEW = "Trades";
 
     final public static String PROFILE_VIEW = "Profile";
     final public static String PAYMENT_VIEW = "PaymentDetails";

@@ -1,4 +1,4 @@
 package com.bytabit.mobile.wallet.evt;
 
-public abstract class WalletEvent {
+public interface BlockDownloadEvent {
 }

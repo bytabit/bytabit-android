@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Optional;
 
 public class PaymentPresenter {
 
@@ -54,7 +53,11 @@ public class PaymentPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Add Payment Details");
             }
-            paymentMethodChoiceBox.requestFocus();
+
+            paymentDetailsTextField.textProperty().setValue(null);
+            currencyChoiceBox.getItems().setAll(CurrencyCode.values());
+            currencyChoiceBox.getSelectionModel().select(0);
+            currencyChoiceBox.requestFocus();
         });
 
         currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, currencyCode) -> {
@@ -89,18 +92,12 @@ public class PaymentPresenter {
             }
         });
 
-        currencyChoiceBox.getItems().setAll(CurrencyCode.values());
-        currencyChoiceBox.getSelectionModel().select(0);
+        profileManager.newPaymentDetails().currencyCodeProperty().bind(currencyChoiceBox.valueProperty());
+        profileManager.newPaymentDetails().paymentMethodProperty().bind(paymentMethodChoiceBox.valueProperty());
+        profileManager.newPaymentDetails().paymentDetailsProperty().bind(paymentDetailsTextField.textProperty());
 
         addPaymentDetailButton.onActionProperty().setValue(e -> {
-            CurrencyCode currencyCode = currencyChoiceBox.getSelectionModel().getSelectedItem();
-            PaymentMethod paymentMethod = paymentMethodChoiceBox.getSelectionModel().getSelectedItem();
-            String paymentDetails = paymentDetailsTextField.getText();
-            if (currencyCode != null && paymentMethod != null && paymentDetails.length() > 0) {
-                profileManager.updatePaymentDetails(currencyCode, paymentMethod, paymentDetails);
-            }
-            Optional<String> addedPaymentDetails = profileManager.readPaymentDetails(currencyCode, paymentMethod);
-            addedPaymentDetails.ifPresent(pd -> LOG.debug("added payment details: {}", pd));
+            profileManager.addPaymentDetails();
         });
     }
 }

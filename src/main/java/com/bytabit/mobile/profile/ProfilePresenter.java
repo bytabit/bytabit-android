@@ -1,6 +1,7 @@
 package com.bytabit.mobile.profile;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -43,6 +44,19 @@ public class ProfilePresenter {
 
         LOG.debug("initialize profile presenter");
 
+        tradeWalletManager.startWallet();
+        tradeWalletManager.walletRunningProperty().addListener((obj, oldVal, isRunning) -> {
+            if (isRunning) {
+                LOG.debug("Wallet Running");
+                // pubkey init
+                if (profileManager.profile().getPubKey() == null) {
+                    String profilePubKey = tradeWalletManager.getFreshBase58PubKey();
+                    profileManager.createProfile(profilePubKey);
+                    LOG.debug("Profile PubKey Initialized");
+                }
+            }
+        });
+
         profileView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             if (newValue) {
@@ -53,40 +67,10 @@ public class ProfilePresenter {
             }
         });
 
-        // pubkey init and focus handler
-        if (!profileManager.readPubKey().isPresent()) {
-            String profilePubKey = tradeWalletManager.getFreshBase58PubKey();
-            profileManager.updatePubKey(profilePubKey);
-        }
-
-        profileManager.readPubKey().ifPresent(pk -> pubKeyTextField.textProperty().setValue(pk));
-
-        // readIsArbitrator init and focus handler
-        profileManager.readIsArbitrator().ifPresent(a -> arbitratorCheckbox.setSelected(a));
-
-        arbitratorCheckbox.focusedProperty().addListener(((observable, oldValue, newValue) -> {
-            if (!oldValue.equals(newValue)) {
-                profileManager.updateIsArbitrator(arbitratorCheckbox.isSelected());
-            }
-        }));
-
-        // name init and focus handler
-        profileManager.readName().ifPresent(n -> nameTextField.textProperty().setValue(n));
-
-        nameTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
-            if (!oldValue.equals(newValue)) {
-                profileManager.updateName(nameTextField.getText());
-            }
-        }));
-
-        // phone num init and focus handler
-        profileManager.readPhoneNum().ifPresent(pn -> phoneNumTextField.textProperty().setValue(pn));
-
-        phoneNumTextField.focusedProperty().addListener(((observable, oldValue, newValue) -> {
-            if (!oldValue.equals(newValue)) {
-                profileManager.updatePhoneNum(phoneNumTextField.getText());
-            }
-        }));
-
+        Profile profile = profileManager.profile();
+        pubKeyTextField.textProperty().bind(profile.pubKeyProperty());
+        arbitratorCheckbox.selectedProperty().bindBidirectional(profile.isArbitratorProperty());
+        nameTextField.textProperty().bindBidirectional(profile.nameProperty());
+        phoneNumTextField.textProperty().bindBidirectional(profile.phoneNumProperty());
     }
 }

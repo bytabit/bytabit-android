@@ -2,6 +2,7 @@ package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.profile.ProfileManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -19,6 +20,9 @@ public class OffersPresenter {
     @Inject
     OfferManager offerManager;
 
+    @Inject
+    ProfileManager profileManager;
+
     @FXML
     private View offersView;
 
@@ -28,6 +32,12 @@ public class OffersPresenter {
     private FloatingActionButton addOfferButton = new FloatingActionButton();
 
     public void initialize() {
+
+        // make sure profile initialized, do this here because this is HOME view
+        if (profileManager.profile().getPubKey() == null) {
+            MobileApplication.getInstance().switchView(BytabitMobile.PROFILE_VIEW);
+        }
+
         offersListView.setCellFactory((view) -> new CharmListCell<SellOffer>() {
             @Override
             public void updateItem(SellOffer o, boolean empty) {
@@ -62,7 +72,6 @@ public class OffersPresenter {
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
             }
-
         });
 
         //offersListView.itemsProperty().addAll(offerManager.read());

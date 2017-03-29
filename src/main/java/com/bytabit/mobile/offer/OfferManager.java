@@ -81,7 +81,7 @@ public class OfferManager extends AbstractManager {
         return offersObservableList;
     }
 
-    public SellOffer getNewOffer() {
+    public SellOffer newOffer() {
         return newOffer;
     }
 

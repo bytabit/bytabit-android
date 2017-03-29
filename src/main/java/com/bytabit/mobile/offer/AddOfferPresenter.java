@@ -74,9 +74,9 @@ public class AddOfferPresenter {
 
         StringConverter<BigDecimal> converter = new StringBigDecimalConverter();
 
-        minTradeAmtTextField.textProperty().bindBidirectional(offerManager.getNewOffer().minAmountProperty(), converter);
-        maxTradeAmtTextField.textProperty().bindBidirectional(offerManager.getNewOffer().maxAmountProperty(), converter);
-        btcPriceTextField.textProperty().bindBidirectional(offerManager.getNewOffer().priceProperty(), converter);
+        minTradeAmtTextField.textProperty().bindBidirectional(offerManager.newOffer().minAmountProperty(), converter);
+        maxTradeAmtTextField.textProperty().bindBidirectional(offerManager.newOffer().maxAmountProperty(), converter);
+        btcPriceTextField.textProperty().bindBidirectional(offerManager.newOffer().priceProperty(), converter);
 
         addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
@@ -85,38 +85,38 @@ public class AddOfferPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Create Sell Offer");
                 String offerPubKey = tradeWalletManager.getFreshBase58PubKey();
-                offerManager.getNewOffer().setSellerEscrowPubKey(offerPubKey);
+                offerManager.newOffer().setSellerEscrowPubKey(offerPubKey);
 
-                currencyChoiceBox.getItems().setAll(profileManager.readPaymentDetailsCurrencies());
+                currencyChoiceBox.getItems().setAll(profileManager.currencyCodes());
                 currencyChoiceBox.getSelectionModel().select(0);
             }
             paymentMethodChoiceBox.requestFocus();
         });
 
         currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, currencyCode) -> {
-            paymentMethodChoiceBox.getItems().setAll(profileManager.readPaymentDetailsMethods(currencyCode));
+            paymentMethodChoiceBox.getItems().setAll(profileManager.paymentMethods(currencyCode));
             paymentMethodChoiceBox.getSelectionModel().select(0);
             minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
             maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
             btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
-            offerManager.getNewOffer().setCurrencyCode(currencyCode);
+            offerManager.newOffer().setCurrencyCode(currencyCode);
         });
 
-        currencyChoiceBox.getItems().setAll(profileManager.readPaymentDetailsCurrencies());
+        currencyChoiceBox.getItems().setAll(profileManager.currencyCodes());
         currencyChoiceBox.getSelectionModel().select(0);
 
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
         paymentMethodChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, paymentMethod) -> {
-            offerManager.getNewOffer().setPaymentMethod(paymentMethod);
+            offerManager.newOffer().setPaymentMethod(paymentMethod);
         });
 
-        profileManager.readPubKey().ifPresent(sellerPubKey -> {
-            offerManager.getNewOffer().setSellerProfilePubKey(sellerPubKey);
-        });
+        if (profileManager.profile().getPubKey() != null) {
+            offerManager.newOffer().setSellerProfilePubKey(profileManager.profile().getPubKey());
+        }
 
         addOfferButton.onActionProperty().setValue(e -> {
 
-            if (offerManager.getNewOffer().isComplete()) {
+            if (offerManager.newOffer().isComplete()) {
                 offerManager.createOffer();
             }
         });

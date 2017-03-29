@@ -1,8 +1,8 @@
 package com.bytabit.mobile.wallet.evt;
 
-public class DownloadDone extends WalletEvent {
+public class BlockDownloadDone implements BlockDownloadEvent {
 
-    public DownloadDone() {
+    public BlockDownloadDone() {
     }
 
     @Override

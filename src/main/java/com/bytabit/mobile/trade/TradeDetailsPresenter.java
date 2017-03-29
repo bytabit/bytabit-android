@@ -90,8 +90,8 @@ public class TradeDetailsPresenter {
                 maxTradeAmtCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
                 priceCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
 
-                String sellerPubKey = profileManager.readPubKey().get();
-                if (sellerPubKey.equals(viewOffer.getSellerProfilePubKey())) {
+                String sellerPubKey = profileManager.profile().getPubKey();
+                if (sellerPubKey != null && sellerPubKey.equals(viewOffer.getSellerProfilePubKey())) {
                     removeOfferButton.visibleProperty().setValue(true);
                 } else {
                     removeOfferButton.visibleProperty().setValue(false);

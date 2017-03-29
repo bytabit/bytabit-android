@@ -3,6 +3,10 @@ package com.bytabit.mobile.wallet;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.wallet.evt.*;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import javafx.beans.property.*;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
@@ -15,7 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.BackpressureOverflow;
 import rx.Observable;
-import rx.javafx.sources.CompositeObservable;
+import rx.schedulers.JavaFxScheduler;
 import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
@@ -34,11 +38,20 @@ public abstract class WalletManager {
 
     private final WalletAppKit kit;
 
-    private final CompositeObservable<WalletEvent> walletEvents;
-    private final Observable<WalletEvent> walletDownloadEvents;
-    private final Observable<WalletEvent> walletTxConfidenceEvents;
+    private final Observable<BlockDownloadEvent> blkDownloadEvents;
+    private final Observable<TransactionUpdatedEvent> txUpdatedEvents;
+
+    private final ObservableList<TransactionWithAmt> transactions;
+    private final StringProperty balance;
+    private final DoubleProperty downloadProgress;
+    private final BooleanProperty walletRunning;
 
     WalletManager(String configName, WalletPurpose walletPurpose) {
+
+        this.transactions = FXCollections.observableArrayList();
+        this.balance = new SimpleStringProperty();
+        this.downloadProgress = new SimpleDoubleProperty();
+        this.walletRunning = new SimpleBooleanProperty(false);
 
         this.netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
         this.btcContext = Context.getOrCreate(netParams);
@@ -46,11 +59,8 @@ public abstract class WalletManager {
 
         kit = new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), configName);
 
-        // create observable composite wallet events
-        walletEvents = new CompositeObservable<>();
-
         // create observable download events
-        walletDownloadEvents = Observable.create((Observable.OnSubscribe<WalletEvent>) subscriber -> {
+        blkDownloadEvents = Observable.create((Observable.OnSubscribe<BlockDownloadEvent>) subscriber -> {
             kit.setDownloadListener(new DownloadProgressTracker() {
                 @Override
                 public void onBlocksDownloaded(Peer peer, Block block, @Nullable FilteredBlock filteredBlock, int blocksLeft) {
@@ -61,13 +71,13 @@ public abstract class WalletManager {
                 @Override
                 protected void progress(double pct, int blocksSoFar, Date date) {
                     super.progress(pct, blocksSoFar, date);
-                    subscriber.onNext(new DownloadProgress(pct / 100.00, blocksSoFar, LocalDateTime.fromDateFields(date)));
+                    subscriber.onNext(new BlockDownloadProgress(pct / 100.00, blocksSoFar, LocalDateTime.fromDateFields(date)));
                 }
 
                 @Override
                 protected void doneDownload() {
                     super.doneDownload();
-                    subscriber.onNext(new DownloadDone());
+                    subscriber.onNext(new BlockDownloadDone());
                 }
             });
 
@@ -76,7 +86,7 @@ public abstract class WalletManager {
         }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
         // create observable wallet running events
-        walletTxConfidenceEvents = Observable.create((Observable.OnSubscribe<WalletEvent>) subscriber -> {
+        txUpdatedEvents = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
             TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
 
                 @Override
@@ -89,22 +99,48 @@ public abstract class WalletManager {
 
             subscriber.add(Subscriptions.create(() -> kit.wallet().removeTransactionConfidenceEventListener(listener)));
         }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
-        walletEvents.add(walletDownloadEvents);
 
         // add TX observer when wallet is running
         kit.addListener(new Listener() {
 
             @Override
             public void running() {
-                // send current existing TX
-                Set<Transaction> txs = kit.wallet().getTransactions(false);
-                Set<WalletEvent> txe = new HashSet<>();
-                for (Transaction t : txs) {
-                    txe.add(new TransactionUpdatedEvent(t, kit.wallet()));
+                walletRunning.setValue(true);
+
+                // get existing tx
+                Set<TransactionWithAmt> txsWithAmt = new HashSet<>();
+                for (Transaction t : kit.wallet().getTransactions(false)) {
+                    txsWithAmt.add(new TransactionWithAmt(t, t.getValue(kit.wallet())));
                 }
-                // add observable to shared composite observable
-                walletEvents.add(Observable.from(txe)
-                        .concatWith(walletTxConfidenceEvents));
+                transactions.addAll(txsWithAmt);
+
+                // listen for other events
+                txUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
+                        .subscribe(e -> {
+                            LOG.debug("tx updated event : {}", e);
+                            TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
+                            TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(), txe.getAmt());
+                            Integer index = transactions.indexOf(txu);
+                            if (index > -1) {
+                                transactions.set(index, txu);
+                            } else {
+                                transactions.add(txu);
+                            }
+                            balance.setValue(getWalletBalance().toFriendlyString());
+                        });
+
+                blkDownloadEvents.observeOn(JavaFxScheduler.getInstance())
+                        .subscribe(e -> {
+                            LOG.debug("block download event : {}", e);
+                            if (e instanceof BlockDownloadDone) {
+                                BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
+                                downloadProgress.setValue(1.0);
+                            } else if (e instanceof BlockDownloadProgress) {
+                                BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
+                                downloadProgress.setValue(dpe.getPct());
+                            }
+                        });
+
             }
         }, BytabitMobile.EXECUTOR);
 
@@ -119,21 +155,35 @@ public abstract class WalletManager {
         }
     }
 
-    WalletAppKit startWallet() {
-        Context.propagate(btcContext);
-        // start wallet app kit
-        kit.startAsync();
+    public ObservableList<TransactionWithAmt> getTransactions() {
+        return transactions;
+    }
+
+    public StringProperty balanceProperty() {
+        return balance;
+    }
+
+    public DoubleProperty downloadProgressProperty() {
+        return downloadProgress;
+    }
+
+    public BooleanProperty walletRunningProperty() {
+        return walletRunning;
+    }
+
+    public WalletAppKit startWallet() {
+        if (!walletRunning.getValue()) {
+
+            Context.propagate(btcContext);
+            // start wallet app kit
+            kit.startAsync();
+        }
         return kit;
     }
 
     void stopWallet() {
         Context.propagate(btcContext);
         kit.stopAsync();
-    }
-
-    public Observable<WalletEvent> getWalletEvents() {
-        return walletEvents.toObservable()
-                .onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST);
     }
 
     public Address getDepositAddress() {

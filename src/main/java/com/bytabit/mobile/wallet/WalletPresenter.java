@@ -2,9 +2,6 @@ package com.bytabit.mobile.wallet;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.nav.evt.QuitEvent;
-import com.bytabit.mobile.wallet.evt.DownloadDone;
-import com.bytabit.mobile.wallet.evt.DownloadProgress;
-import com.bytabit.mobile.wallet.evt.TransactionUpdatedEvent;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
@@ -16,7 +13,6 @@ import javafx.geometry.Side;
 import javafx.scene.control.Label;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.schedulers.JavaFxScheduler;
 
 import javax.inject.Inject;
 
@@ -66,6 +62,7 @@ public class WalletPresenter {
             }
         });
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
+        transactionListView.itemsProperty().bindContent(tradeWalletManager.getTransactions());
 
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
         depositButton.attachTo(withdrawButton, Side.LEFT);
@@ -93,27 +90,8 @@ public class WalletPresenter {
             tradeWalletManager.stopWallet();
         });
 
-        tradeWalletManager.getWalletEvents().observeOn(JavaFxScheduler.getInstance())
-                .subscribe(e -> {
-                    LOG.debug("wallet event : {}", e);
-                    if (e instanceof TransactionUpdatedEvent) {
-                        TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
-                        TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(), txe.getAmt());
-                        Integer index = transactionListView.itemsProperty().indexOf(txu);
-                        if (index > -1) {
-                            transactionListView.itemsProperty().set(index, txu);
-                        } else {
-                            transactionListView.itemsProperty().add(txu);
-                        }
-                        balanceAmountLabel.setText(tradeWalletManager.getWalletBalance().toPlainString() + " BTC");
-                    } else if (e instanceof DownloadDone) {
-                        DownloadDone dde = DownloadDone.class.cast(e);
-                        downloadProgressBar.setProgress(1.0);
-                    } else if (e instanceof DownloadProgress) {
-                        DownloadProgress dpe = DownloadProgress.class.cast(e);
-                        downloadProgressBar.setProgress(dpe.getPct());
-                    }
-                });
+        balanceAmountLabel.textProperty().bind(tradeWalletManager.balanceProperty());
+        downloadProgressBar.progressProperty().bind(tradeWalletManager.downloadProgressProperty());
 
         tradeWalletManager.startWallet();
     }
