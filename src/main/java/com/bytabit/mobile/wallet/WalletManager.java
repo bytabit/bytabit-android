@@ -4,6 +4,7 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -112,7 +113,13 @@ public abstract class WalletManager {
                 for (Transaction t : kit.wallet().getTransactions(false)) {
                     txsWithAmt.add(new TransactionWithAmt(t, t.getValue(kit.wallet())));
                 }
-                transactions.addAll(txsWithAmt);
+                Platform.runLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        transactions.addAll(txsWithAmt);
+                        balance.setValue(kit.wallet().getBalance().toFriendlyString());
+                    }
+                });
 
                 // listen for other events
                 txUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
@@ -120,25 +127,36 @@ public abstract class WalletManager {
                             LOG.debug("tx updated event : {}", e);
                             TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
                             TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(), txe.getAmt());
-                            Integer index = transactions.indexOf(txu);
-                            if (index > -1) {
-                                transactions.set(index, txu);
-                            } else {
-                                transactions.add(txu);
-                            }
-                            balance.setValue(getWalletBalance().toFriendlyString());
+                            Platform.runLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Integer index = transactions.indexOf(txu);
+                                    if (index > -1) {
+                                        transactions.set(index, txu);
+                                    } else {
+                                        transactions.add(txu);
+                                    }
+                                    balance.setValue(getWalletBalance().toFriendlyString());
+                                }
+                            });
                         });
 
                 blkDownloadEvents.observeOn(JavaFxScheduler.getInstance())
                         .subscribe(e -> {
                             LOG.debug("block download event : {}", e);
-                            if (e instanceof BlockDownloadDone) {
-                                BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
-                                downloadProgress.setValue(1.0);
-                            } else if (e instanceof BlockDownloadProgress) {
-                                BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
-                                downloadProgress.setValue(dpe.getPct());
-                            }
+                            Platform.runLater(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (e instanceof BlockDownloadDone) {
+                                        BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
+                                        downloadProgress.setValue(1.0);
+                                    } else if (e instanceof BlockDownloadProgress) {
+                                        BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
+                                        downloadProgress.setValue(dpe.getPct());
+                                    }
+                                    balance.setValue(getWalletBalance().toFriendlyString());
+                                }
+                            });
                         });
 
             }
