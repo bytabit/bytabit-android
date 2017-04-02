@@ -44,7 +44,7 @@ public class ProfilePresenter {
 
         LOG.debug("initialize profile presenter");
 
-        tradeWalletManager.startWallet();
+        //tradeWalletManager.startWallet();
         tradeWalletManager.walletRunningProperty().addListener((obj, oldVal, isRunning) -> {
             if (isRunning) {
                 LOG.debug("Wallet Running");
@@ -72,5 +72,7 @@ public class ProfilePresenter {
         arbitratorCheckbox.selectedProperty().bindBidirectional(profile.isArbitratorProperty());
         nameTextField.textProperty().bindBidirectional(profile.nameProperty());
         phoneNumTextField.textProperty().bindBidirectional(profile.phoneNumProperty());
+
+        //profileManager.readProfiles();
     }
 }

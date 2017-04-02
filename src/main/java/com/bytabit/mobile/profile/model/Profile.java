@@ -7,6 +7,9 @@ import javafx.beans.property.StringProperty;
 
 public class Profile {
 
+    public Profile() {
+    }
+
     public Profile(String pubkey, Boolean isArbitrator, String name, String phoneNum) {
         setPubKey(pubkey);
         setIsArbitrator(isArbitrator);

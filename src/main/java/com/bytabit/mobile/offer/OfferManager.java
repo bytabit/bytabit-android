@@ -1,11 +1,14 @@
 package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.common.AbstractManager;
+import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import retrofit2.Retrofit;
 import rx.Observable;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
@@ -27,7 +30,11 @@ public class OfferManager extends AbstractManager {
     private final SellOffer viewOffer;
 
     public OfferManager() {
-        super();
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(new JacksonJrConverter<>(SellOffer.class))
+                .build();
+
         offerService = retrofit.create(OfferService.class);
         offersObservableList = FXCollections.observableArrayList();
         newOffer = new SellOffer();

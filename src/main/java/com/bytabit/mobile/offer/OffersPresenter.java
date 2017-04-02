@@ -80,6 +80,7 @@ public class OffersPresenter {
             SellOffer viewOffer = offerManager.getViewOffer();
             viewOffer.setSellerEscrowPubKey(newValue.getSellerEscrowPubKey());
             viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
+            viewOffer.setArbitratorProfilePubKey(newValue.getArbitratorProfilePubKey());
             viewOffer.setCurrencyCode(newValue.getCurrencyCode());
             viewOffer.setPaymentMethod(newValue.getPaymentMethod());
             viewOffer.setMinAmount(newValue.getMinAmount());

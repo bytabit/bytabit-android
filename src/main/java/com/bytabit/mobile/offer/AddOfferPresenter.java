@@ -3,8 +3,10 @@ package com.bytabit.mobile.offer;
 import com.bytabit.mobile.common.StringBigDecimalConverter;
 import com.bytabit.mobile.profile.PaymentMethodStringConverter;
 import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.profile.ProfileStringConverter;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -45,7 +47,7 @@ public class AddOfferPresenter {
     private ChoiceBox<PaymentMethod> paymentMethodChoiceBox;
 
     @FXML
-    private ChoiceBox<PaymentMethod> arbitratorChoiceBox;
+    private ChoiceBox<Profile> arbitratorChoiceBox;
 
     @FXML
     private TextField btcPriceTextField;
@@ -70,6 +72,8 @@ public class AddOfferPresenter {
 
     public void initialize() {
 
+        //profileManager.readProfiles();
+
         LOG.debug("initialize add offer presenter");
 
         StringConverter<BigDecimal> converter = new StringBigDecimalConverter();
@@ -78,14 +82,17 @@ public class AddOfferPresenter {
         maxTradeAmtTextField.textProperty().bindBidirectional(offerManager.newOffer().maxAmountProperty(), converter);
         btcPriceTextField.textProperty().bindBidirectional(offerManager.newOffer().priceProperty(), converter);
 
+        arbitratorChoiceBox.setConverter(new ProfileStringConverter());
+        arbitratorChoiceBox.itemsProperty().setValue(profileManager.getArbitratorProfiles());
+        arbitratorChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, arbitrator) -> {
+            offerManager.newOffer().arbitratorProfilePubKeyProperty().setValue(arbitrator.getPubKey());
+        });
         addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Create Sell Offer");
-                String offerPubKey = tradeWalletManager.getFreshBase58PubKey();
-                offerManager.newOffer().setSellerEscrowPubKey(offerPubKey);
 
                 currencyChoiceBox.getItems().setAll(profileManager.currencyCodes());
                 currencyChoiceBox.getSelectionModel().select(0);
@@ -94,12 +101,14 @@ public class AddOfferPresenter {
         });
 
         currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, currencyCode) -> {
-            paymentMethodChoiceBox.getItems().setAll(profileManager.paymentMethods(currencyCode));
-            paymentMethodChoiceBox.getSelectionModel().select(0);
-            minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
-            maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
-            btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
-            offerManager.newOffer().setCurrencyCode(currencyCode);
+            if (currencyCode != null) {
+                paymentMethodChoiceBox.getItems().setAll(profileManager.paymentMethods(currencyCode));
+                paymentMethodChoiceBox.getSelectionModel().select(0);
+                minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
+                maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
+                btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
+                offerManager.newOffer().setCurrencyCode(currencyCode);
+            }
         });
 
         currencyChoiceBox.getItems().setAll(profileManager.currencyCodes());
@@ -116,8 +125,12 @@ public class AddOfferPresenter {
 
         addOfferButton.onActionProperty().setValue(e -> {
 
+            if (tradeWalletManager.walletRunningProperty().getValue()) {
+                offerManager.newOffer().setSellerEscrowPubKey(tradeWalletManager.getFreshBase58PubKey());
+            }
             if (offerManager.newOffer().isComplete()) {
                 offerManager.createOffer();
+                MobileApplication.getInstance().switchToPreviousView();
             }
         });
     }

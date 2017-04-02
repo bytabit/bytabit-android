@@ -77,7 +77,7 @@
                        </children>
                    </HBox>
                    <Label text="Arbitrator" GridPane.rowIndex="2"/>
-                   <ChoiceBox fx:id="arbitratorChoiceBox1" maxWidth="-Infinity"
+                   <ChoiceBox fx:id="arbitratorChoiceBox" maxWidth="-Infinity"
                               GridPane.columnIndex="1" GridPane.rowIndex="2"/>
                </children>
                <opaqueInsets>

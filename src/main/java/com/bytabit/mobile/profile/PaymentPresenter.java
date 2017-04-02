@@ -61,8 +61,10 @@ public class PaymentPresenter {
         });
 
         currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, currencyCode) -> {
-            paymentMethodChoiceBox.getItems().setAll(currencyCode.paymentMethods());
-            paymentMethodChoiceBox.getSelectionModel().select(0);
+            if (currencyCode != null) {
+                paymentMethodChoiceBox.getItems().setAll(currencyCode.paymentMethods());
+                paymentMethodChoiceBox.getSelectionModel().select(0);
+            }
         });
 
         paymentMethodChoiceBox.setConverter(new StringConverter<PaymentMethod>() {

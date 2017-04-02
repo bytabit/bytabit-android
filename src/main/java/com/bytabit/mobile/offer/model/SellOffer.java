@@ -122,6 +122,7 @@ public class SellOffer {
 
     public Boolean isComplete() {
         return getSellerEscrowPubKey() != null && getSellerProfilePubKey() != null &&
+                getArbitratorProfilePubKey() != null &&
                 getMinAmount() != null && getMaxAmount() != null &&
                 getCurrencyCode() != null && getPaymentMethod() != null &&
                 getPrice() != null;

@@ -7,6 +7,8 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import javafx.beans.binding.Bindings;
+import javafx.beans.binding.StringBinding;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -53,10 +55,13 @@ public class OfferDetailsPresenter {
     private Label priceCurrencyLabel;
 
     @FXML
-    private Label offerPubKeyLabel;
+    private Label sellerEscrowPubKeyLabel;
 
     @FXML
-    private Label sellerPubKeyLabel;
+    private Label sellerProfilePubKeyLabel;
+
+    @FXML
+    private Label arbitratorProfilePubKeyLabel;
 
     @FXML
     private Label currencyLabel;
@@ -74,31 +79,35 @@ public class OfferDetailsPresenter {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Offer Details");
-
-                SellOffer viewOffer = offerManager.getViewOffer();
-                offerPubKeyLabel.textProperty().setValue(viewOffer.getSellerEscrowPubKey());
-                sellerPubKeyLabel.textProperty().setValue(viewOffer.getSellerProfilePubKey());
-                currencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
-                paymentMethodLabel.textProperty().setValue(viewOffer.getPaymentMethod().displayName());
-                minTradeAmtLabel.textProperty().setValue(viewOffer.getMinAmount().toString());
-                maxTradeAmtLabel.textProperty().setValue(viewOffer.getMaxAmount().toString());
-                priceLabel.textProperty().setValue(viewOffer.getPrice().toString());
-
-                minTradeAmtCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
-                maxTradeAmtCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
-                priceCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
-
-                String sellerPubKey = profileManager.profile().getPubKey();
-                if (sellerPubKey.equals(viewOffer.getSellerProfilePubKey())) {
-                    removeOfferButton.visibleProperty().setValue(true);
-                } else {
-                    removeOfferButton.visibleProperty().setValue(false);
-                }
             }
         });
 
+        SellOffer viewOffer = offerManager.getViewOffer();
+        sellerEscrowPubKeyLabel.textProperty().bind(viewOffer.sellerEscrowPubKeyProperty());
+        sellerProfilePubKeyLabel.textProperty().bind(viewOffer.sellerProfilePubKeyProperty());
+        arbitratorProfilePubKeyLabel.textProperty().bind(viewOffer.arbitratorProfilePubKeyProperty());
+        minTradeAmtLabel.textProperty().bind(Bindings.createStringBinding(() -> viewOffer.minAmountProperty().get().toString(),
+                viewOffer.minAmountProperty()));
+        maxTradeAmtLabel.textProperty().bind(Bindings.createStringBinding(() -> viewOffer.maxAmountProperty().get().toString(),
+                viewOffer.maxAmountProperty()));
+        priceLabel.textProperty().bind(Bindings.createStringBinding(() -> viewOffer.priceProperty().get().toString(),
+                viewOffer.priceProperty()));
+
+        StringBinding currencyCodeBinding = Bindings.createStringBinding(() -> viewOffer.currencyCodeProperty().get().toString(),
+                viewOffer.minAmountProperty(), viewOffer.currencyCodeProperty());
+
+        currencyLabel.textProperty().bind(currencyCodeBinding);
+        paymentMethodLabel.textProperty().bind(Bindings.createStringBinding(() ->
+                viewOffer.paymentMethodProperty().get().displayName(), viewOffer.paymentMethodProperty()));
+
+        minTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
+        minTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
+        maxTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
+        priceCurrencyLabel.textProperty().bind(currencyCodeBinding);
+
         removeOfferButton.onActionProperty().setValue(e -> {
             offerManager.deleteOffer();
+            MobileApplication.getInstance().switchToPreviousView();
         });
     }
 }

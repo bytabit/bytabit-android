@@ -113,12 +113,9 @@ public abstract class WalletManager {
                 for (Transaction t : kit.wallet().getTransactions(false)) {
                     txsWithAmt.add(new TransactionWithAmt(t, t.getValue(kit.wallet())));
                 }
-                Platform.runLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        transactions.addAll(txsWithAmt);
-                        balance.setValue(kit.wallet().getBalance().toFriendlyString());
-                    }
+                Platform.runLater(() -> {
+                    transactions.addAll(txsWithAmt);
+                    balance.setValue(kit.wallet().getBalance().toFriendlyString());
                 });
 
                 // listen for other events
@@ -127,17 +124,14 @@ public abstract class WalletManager {
                             LOG.debug("tx updated event : {}", e);
                             TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
                             TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(), txe.getAmt());
-                            Platform.runLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Integer index = transactions.indexOf(txu);
-                                    if (index > -1) {
-                                        transactions.set(index, txu);
-                                    } else {
-                                        transactions.add(txu);
-                                    }
-                                    balance.setValue(getWalletBalance().toFriendlyString());
+                            Platform.runLater(() -> {
+                                Integer index = transactions.indexOf(txu);
+                                if (index > -1) {
+                                    transactions.set(index, txu);
+                                } else {
+                                    transactions.add(txu);
                                 }
+                                balance.setValue(getWalletBalance().toFriendlyString());
                             });
                         });
 
@@ -171,6 +165,10 @@ public abstract class WalletManager {
             //kit.setPeerNodes(new PeerAddress(netParams, "regtest.bytabit.net", 18444));
             kit.connectToLocalHost();
         }
+
+        Context.propagate(btcContext);
+        // start wallet app kit
+        kit.startAsync();
     }
 
     public ObservableList<TransactionWithAmt> getTransactions() {
@@ -189,15 +187,15 @@ public abstract class WalletManager {
         return walletRunning;
     }
 
-    public WalletAppKit startWallet() {
-        if (!walletRunning.getValue()) {
-
-            Context.propagate(btcContext);
-            // start wallet app kit
-            kit.startAsync();
-        }
-        return kit;
-    }
+//    public WalletAppKit startWallet() {
+//        if (!walletRunning.getValue()) {
+//
+//            Context.propagate(btcContext);
+//            // start wallet app kit
+//            kit.startAsync();
+//        }
+//        return kit;
+//    }
 
     void stopWallet() {
         Context.propagate(btcContext);

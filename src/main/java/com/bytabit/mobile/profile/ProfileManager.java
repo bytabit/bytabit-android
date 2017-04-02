@@ -1,17 +1,24 @@
 package com.bytabit.mobile.profile;
 
 import com.bytabit.mobile.common.AbstractManager;
+import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
+import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import retrofit2.Retrofit;
+import rx.schedulers.JavaFxScheduler;
+import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class ProfileManager extends AbstractManager {
 
@@ -29,10 +36,15 @@ public class ProfileManager extends AbstractManager {
     private final PaymentDetails newPaymentDetails;
     private final ObservableList<PaymentDetails> paymentDetails;
 
-    private final ObservableList<Profile> otherProfiles;
+    private final ObservableList<Profile> traderProfiles;
+    private final ObservableList<Profile> arbitratorProfiles;
 
     public ProfileManager() {
-        super();
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(new JacksonJrConverter<>(Profile.class))
+                .build();
+
         profileService = retrofit.create(ProfileService.class);
 
         // profile
@@ -67,7 +79,34 @@ public class ProfileManager extends AbstractManager {
 
         // other profiles
 
-        otherProfiles = FXCollections.observableArrayList();
+        traderProfiles = FXCollections.observableArrayList();
+        arbitratorProfiles = FXCollections.observableArrayList();
+
+        rx.Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
+                .map(tick -> profileService.read())
+                .retry()
+                .observeOn(JavaFxScheduler.getInstance())
+                .subscribe(c -> {
+                    try {
+                        List<Profile> profiles = c.execute().body();
+                        profiles.removeIf(p -> p.getPubKey().equals(profile.getPubKey()));
+                        List<Profile> traders = new ArrayList<>();
+                        List<Profile> arbitrators = new ArrayList<>();
+                        profiles.forEach(p -> {
+                            if (p.isIsArbitrator()) {
+                                arbitrators.add(p);
+                            } else {
+                                traders.add(p);
+                            }
+                        });
+                        Platform.runLater(() -> {
+                            traderProfiles.setAll(traders);
+                            arbitratorProfiles.setAll(arbitrators);
+                        });
+                    } catch (IOException ioe) {
+                        LOG.error(ioe.getMessage());
+                    }
+                });
     }
 
     // profile methods
@@ -86,6 +125,14 @@ public class ProfileManager extends AbstractManager {
         return profile;
     }
 
+    public ObservableList<Profile> getTraderProfiles() {
+        return traderProfiles;
+    }
+
+    public ObservableList<Profile> getArbitratorProfiles() {
+        return arbitratorProfiles;
+    }
+
     private void updateProfile() {
         try {
             profileService.update(profile.getPubKey(), profile).execute();
@@ -93,6 +140,27 @@ public class ProfileManager extends AbstractManager {
             LOG.error(ex.getMessage());
         }
     }
+
+//    public void readProfiles() {
+//        try {
+//            List<Profile> profiles = profileService.read().execute().body();
+//            profiles.removeIf(p -> p.getPubKey().equals(profile.getPubKey()));
+//            List<Profile> traders = new ArrayList<>();
+//            List<Profile> arbitrators = new ArrayList<>();
+//            profiles.forEach(p -> {
+//                if (p.isIsArbitrator()) {
+//                    arbitrators.add(p);
+//                } else {
+//                    traders.add(p);
+//                }
+//            });
+//            traderProfiles.setAll(traders);
+//            arbitratorProfiles.setAll(arbitrators);
+//
+//        } catch (IOException ioe) {
+//            LOG.error(ioe.getMessage());
+//        }
+//    }
 
     // payment details methods
 

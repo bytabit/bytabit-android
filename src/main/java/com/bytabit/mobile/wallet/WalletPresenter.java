@@ -93,6 +93,6 @@ public class WalletPresenter {
         balanceAmountLabel.textProperty().bind(tradeWalletManager.balanceProperty());
         downloadProgressBar.progressProperty().bind(tradeWalletManager.downloadProgressProperty());
 
-        tradeWalletManager.startWallet();
+        //tradeWalletManager.startWallet();
     }
 }
