@@ -12,10 +12,13 @@ import javafx.beans.binding.StringBinding;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.math.BigDecimal;
 
 public class OfferDetailsPresenter {
 
@@ -61,13 +64,31 @@ public class OfferDetailsPresenter {
     private Label sellerProfilePubKeyLabel;
 
     @FXML
-    private Label arbitratorProfilePubKeyLabel;
-
-    @FXML
     private Label currencyLabel;
 
     @FXML
     private Label paymentMethodLabel;
+
+    @FXML
+    private Label arbitratorProfilePubKeyLabel;
+
+    @FXML
+    private GridPane buyGridPane;
+
+    @FXML
+    private Button buyBtcButton;
+
+    @FXML
+    private TextField buyCurrencyAmtTextField;
+
+    @FXML
+    private Label currencyAmtLabel;
+
+    @FXML
+    private TextField buyBtcAmtTextField;
+
+    @FXML
+    private Label btcPriceCurrencyLabel;
 
     public void initialize() {
 
@@ -98,16 +119,35 @@ public class OfferDetailsPresenter {
 
         currencyLabel.textProperty().bind(currencyCodeBinding);
         paymentMethodLabel.textProperty().bind(Bindings.createStringBinding(() ->
-                viewOffer.paymentMethodProperty().get().displayName(), viewOffer.paymentMethodProperty()));
+                        viewOffer.paymentMethodProperty().get().displayName(),
+                viewOffer.paymentMethodProperty()));
 
         minTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
         minTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
         maxTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
         priceCurrencyLabel.textProperty().bind(currencyCodeBinding);
+        currencyAmtLabel.textProperty().bind(currencyCodeBinding);
+
+        removeOfferButton.visibleProperty().bind(Bindings.createBooleanBinding(() ->
+                        profileManager.profile().getPubKey().equals(viewOffer.getSellerProfilePubKey()),
+                viewOffer.sellerProfilePubKeyProperty()));
 
         removeOfferButton.onActionProperty().setValue(e -> {
             offerManager.deleteOffer();
             MobileApplication.getInstance().switchToPreviousView();
         });
+
+        buyGridPane.visibleProperty().bind(Bindings.createBooleanBinding(() ->
+                        !profileManager.profile().getPubKey().equals(viewOffer.getSellerProfilePubKey()),
+                viewOffer.sellerProfilePubKeyProperty()));
+
+        buyBtcAmtTextField.textProperty().bind(Bindings.createStringBinding(() -> {
+            String curAmtStr = buyCurrencyAmtTextField.textProperty().getValue();
+            if (curAmtStr != null && curAmtStr.length() > 0) {
+                return new BigDecimal(curAmtStr).divide(viewOffer.priceProperty().get(), 8, BigDecimal.ROUND_HALF_UP).toString();
+            } else {
+                return null;
+            }
+        }, viewOffer.priceProperty(), buyCurrencyAmtTextField.textProperty()));
     }
 }

@@ -142,8 +142,8 @@
                             <children>
                                 <TextField fx:id="buyCurrencyAmtTextField"
                                            maxHeight="-Infinity"/>
-                                <Label fx:id="maxTradeAmtCurrencyLabel1"
-                                       contentDisplay="CENTER" text="CUR">
+                                <Label fx:id="currencyAmtLabel" contentDisplay="CENTER"
+                                       text="CUR">
                                     <padding>
                                         <Insets left="5.0"/>
                                     </padding>
@@ -153,7 +153,8 @@
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
                               GridPane.columnIndex="1" GridPane.rowIndex="1">
                             <children>
-                                <TextField fx:id="buyBtcAmtTextField"
+                                <TextField fx:id="buyBtcAmtTextField" editable="false"
+                                           focusTraversable="false"
                                            maxHeight="-Infinity"/>
                                 <Label fx:id="btcPriceCurrencyLabel"
                                        contentDisplay="CENTER" text="BTC">
