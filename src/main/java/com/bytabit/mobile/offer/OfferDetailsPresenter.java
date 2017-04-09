@@ -2,6 +2,7 @@ package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.wallet.EscrowWalletManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -32,6 +33,9 @@ public class OfferDetailsPresenter {
 
     @Inject
     TradeWalletManager tradeWalletManager;
+
+    @Inject
+    EscrowWalletManager escrowWalletManager;
 
     @FXML
     private View offerDetailsView;
@@ -132,7 +136,7 @@ public class OfferDetailsPresenter {
                         profileManager.profile().getPubKey().equals(viewOffer.getSellerProfilePubKey()),
                 viewOffer.sellerProfilePubKeyProperty()));
 
-        removeOfferButton.onActionProperty().setValue(e -> {
+        removeOfferButton.setOnAction(e -> {
             offerManager.deleteOffer();
             MobileApplication.getInstance().switchToPreviousView();
         });
@@ -144,10 +148,19 @@ public class OfferDetailsPresenter {
         buyBtcAmtTextField.textProperty().bind(Bindings.createStringBinding(() -> {
             String curAmtStr = buyCurrencyAmtTextField.textProperty().getValue();
             if (curAmtStr != null && curAmtStr.length() > 0) {
-                return new BigDecimal(curAmtStr).divide(viewOffer.priceProperty().get(), 8, BigDecimal.ROUND_HALF_UP).toString();
+                BigDecimal buyBtcAmt = new BigDecimal(curAmtStr).divide(viewOffer.priceProperty().get(), 8, BigDecimal.ROUND_HALF_UP);
+                offerManager.getBuyBtcAmount().set(buyBtcAmt);
+                return buyBtcAmt.toString();
             } else {
                 return null;
             }
         }, viewOffer.priceProperty(), buyCurrencyAmtTextField.textProperty()));
+
+        buyBtcButton.setOnAction(e -> {
+            String buyerEscrowPubKey = escrowWalletManager.getFreshBase58PubKey();
+            String buyerProfilePubKey = profileManager.profile().getPubKey();
+            String buyerPayoutAddress = tradeWalletManager.getDepositAddress().toBase58();
+            offerManager.createBuyRequest(buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress);
+        });
     }
 }

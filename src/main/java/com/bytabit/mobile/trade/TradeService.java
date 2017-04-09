@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface TradeService {
 
-    @POST("/v1/trades/{offerPubkey}")
+    @POST("/v1/trades/{offerPubkey}/buyRequests")
     Call<Trade> create(@Body Trade trade);
 
     @GET("/v1/trades/{offerPubkey}")

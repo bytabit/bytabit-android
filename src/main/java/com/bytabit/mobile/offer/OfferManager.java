@@ -2,8 +2,11 @@ package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
+import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.slf4j.Logger;
@@ -14,6 +17,7 @@ import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -29,22 +33,26 @@ public class OfferManager extends AbstractManager {
 
     private final SellOffer viewOffer;
 
+    private final ObjectProperty<BigDecimal> buyBtcAmount;
+
     public OfferManager() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
                 .addConverterFactory(new JacksonJrConverter<>(SellOffer.class))
+                .addConverterFactory(new JacksonJrConverter<>(BuyRequest.class))
                 .build();
 
         offerService = retrofit.create(OfferService.class);
         offersObservableList = FXCollections.observableArrayList();
         newOffer = new SellOffer();
         viewOffer = new SellOffer();
+        buyBtcAmount = new SimpleObjectProperty<>();
     }
 
     public void createOffer() {
 
         try {
-            SellOffer createdOffer = offerService.create(newOffer).execute().body();
+            SellOffer createdOffer = offerService.createOffer(newOffer).execute().body();
             offersObservableList.add(createdOffer);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
@@ -84,6 +92,19 @@ public class OfferManager extends AbstractManager {
         }
     }
 
+    public void createBuyRequest(String buyerEscrowPubKey, String buyerProfilePubKey, String buyerPayoutAddress) {
+
+        try {
+            BuyRequest newBuyRequest = new BuyRequest(viewOffer.getSellerEscrowPubKey(),
+                    buyerEscrowPubKey, buyBtcAmount.get(), buyerProfilePubKey, buyerPayoutAddress);
+
+            BuyRequest createdBuyRequest = offerService.createBuyRequest(newBuyRequest).execute().body();
+            LOG.debug("Created buy request: %s", createdBuyRequest.toString());
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+        }
+    }
+
     public ObservableList<SellOffer> getOffersObservableList() {
         return offersObservableList;
     }
@@ -94,5 +115,9 @@ public class OfferManager extends AbstractManager {
 
     public SellOffer getViewOffer() {
         return viewOffer;
+    }
+
+    public ObjectProperty<BigDecimal> getBuyBtcAmount() {
+        return buyBtcAmount;
     }
 }

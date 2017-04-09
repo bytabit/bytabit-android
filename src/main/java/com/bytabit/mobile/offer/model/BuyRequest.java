@@ -1,4 +1,4 @@
-package com.bytabit.mobile.trade.model;
+package com.bytabit.mobile.offer.model;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -10,6 +10,15 @@ import java.math.BigDecimal;
 public class BuyRequest {
 
     public BuyRequest() {
+    }
+
+    public BuyRequest(String sellerEscrowPubKey, String buyerEscrowPubKey, BigDecimal btcAmount,
+                      String buyerProfilePubKey, String buyerPayoutAddress) {
+        setSellerEscrowPubKey(sellerEscrowPubKey);
+        setBuyerEscrowPubKey(buyerEscrowPubKey);
+        setBtcAmount(btcAmount);
+        setBuyerProfilePubKey(buyerProfilePubKey);
+        setBuyerPayoutAddress(buyerPayoutAddress);
     }
 
     private final StringProperty sellerEscrowPubKey = new SimpleStringProperty();

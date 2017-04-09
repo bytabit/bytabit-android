@@ -58,7 +58,7 @@ public abstract class WalletManager {
         this.btcContext = Context.getOrCreate(netParams);
         Context.propagate(btcContext);
 
-        kit = new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), configName);
+        kit = new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), configName + walletPurpose);
 
         // create observable download events
         blkDownloadEvents = Observable.create((Observable.OnSubscribe<BlockDownloadEvent>) subscriber -> {
