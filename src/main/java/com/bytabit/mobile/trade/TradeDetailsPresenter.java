@@ -77,7 +77,7 @@ public class TradeDetailsPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Offer Details");
 
-                SellOffer viewOffer = offerManager.getViewOffer();
+                SellOffer viewOffer = offerManager.getViewSellOffer();
                 offerPubKeyLabel.textProperty().setValue(viewOffer.getSellerEscrowPubKey());
                 sellerPubKeyLabel.textProperty().setValue(viewOffer.getSellerProfilePubKey());
                 currencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());

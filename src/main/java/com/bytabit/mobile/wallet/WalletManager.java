@@ -13,6 +13,7 @@ import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
+import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.Wallet;
 import org.joda.time.LocalDateTime;
@@ -24,9 +25,7 @@ import rx.schedulers.JavaFxScheduler;
 import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.util.concurrent.Service.Listener;
 
@@ -202,6 +201,10 @@ public abstract class WalletManager {
         kit.stopAsync();
     }
 
+    public NetworkParameters getNetParams() {
+        return netParams;
+    }
+
     public Address getDepositAddress() {
         return kit.wallet().currentReceiveAddress();
     }
@@ -220,6 +223,18 @@ public abstract class WalletManager {
 
     public Coin getWalletBalance() {
         return kit.wallet().getBalance();
+    }
+
+    public static String escrowAddress(NetworkParameters netParams,
+                                       String arbitratorProfilePubKey,
+                                       String sellerEscrowPubKey,
+                                       String buyerEscrowPubKey) {
+        ECKey apk = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKey));
+        ECKey spk = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKey));
+        ECKey bpk = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKey));
+        List<ECKey> pubkeys = Arrays.asList(apk, spk, bpk);
+
+        return ScriptBuilder.createP2SHOutputScript(2, pubkeys).getToAddress(netParams).toBase58();
     }
 
     private ECKey getECKeyFromAddress(Address address) {

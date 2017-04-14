@@ -73,7 +73,7 @@ public class TradeManager extends AbstractManager {
 //        }
 //    }
 //
-//    public ObservableList<SellOffer> getOffersObservableList() {
+//    public ObservableList<SellOffer> getSellOffersObservableList() {
 //        return offersObservableList;
 //    }
 //
@@ -81,7 +81,7 @@ public class TradeManager extends AbstractManager {
 //        return newOffer;
 //    }
 //
-//    public SellOffer getViewOffer() {
+//    public SellOffer getViewSellOffer() {
 //        return viewOffer;
 //    }
 }

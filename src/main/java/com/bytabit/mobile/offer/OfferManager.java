@@ -4,11 +4,13 @@ import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import org.bitcoinj.core.NetworkParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
@@ -25,35 +27,44 @@ public class OfferManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
 
-    private final OfferService offerService;
+    private final SellOfferService sellOfferService;
 
-    private final ObservableList<SellOffer> offersObservableList;
+    private final BuyRequestService buyRequestService;
 
-    private final SellOffer newOffer;
+    private final ObservableList<SellOffer> sellOffersObservableList;
 
-    private final SellOffer viewOffer;
+    private final SellOffer newSellOffer;
+
+    private final SellOffer viewSellOffer;
 
     private final ObjectProperty<BigDecimal> buyBtcAmount;
 
     public OfferManager() {
-        Retrofit retrofit = new Retrofit.Builder()
+        Retrofit retrofitSellOffer = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
                 .addConverterFactory(new JacksonJrConverter<>(SellOffer.class))
+                .build();
+
+        sellOfferService = retrofitSellOffer.create(SellOfferService.class);
+
+        Retrofit retrofitBuyRequest = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
                 .addConverterFactory(new JacksonJrConverter<>(BuyRequest.class))
                 .build();
 
-        offerService = retrofit.create(OfferService.class);
-        offersObservableList = FXCollections.observableArrayList();
-        newOffer = new SellOffer();
-        viewOffer = new SellOffer();
+        buyRequestService = retrofitBuyRequest.create(BuyRequestService.class);
+
+        sellOffersObservableList = FXCollections.observableArrayList();
+        newSellOffer = new SellOffer();
+        viewSellOffer = new SellOffer();
         buyBtcAmount = new SimpleObjectProperty<>();
     }
 
     public void createOffer() {
 
         try {
-            SellOffer createdOffer = offerService.createOffer(newOffer).execute().body();
-            offersObservableList.add(createdOffer);
+            SellOffer createdOffer = sellOfferService.createOffer(newSellOffer).execute().body();
+            sellOffersObservableList.add(createdOffer);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
@@ -61,19 +72,19 @@ public class OfferManager extends AbstractManager {
 
     public void readOffers() {
         try {
-            List<SellOffer> offers = offerService.read().execute().body();
-            offersObservableList.setAll(offers);
+            List<SellOffer> offers = sellOfferService.read().execute().body();
+            sellOffersObservableList.setAll(offers);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
         Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> offerService.read())
+                .map(tick -> sellOfferService.read())
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
                 .subscribe(c -> {
                     try {
                         List<SellOffer> offers = c.execute().body();
-                        offersObservableList.setAll(offers);
+                        sellOffersObservableList.setAll(offers);
                     } catch (IOException ioe) {
                         LOG.error(ioe.getMessage());
                     }
@@ -83,38 +94,43 @@ public class OfferManager extends AbstractManager {
     public void deleteOffer() {
 
         try {
-            SellOffer removedOffer = offerService.delete(viewOffer.getSellerEscrowPubKey()).execute().body();
+            SellOffer removedOffer = sellOfferService.delete(viewSellOffer.getSellerEscrowPubKey()).execute().body();
             if (removedOffer != null) {
-                offersObservableList.removeIf(o -> o.getSellerEscrowPubKey().equals(removedOffer.getSellerEscrowPubKey()));
+                sellOffersObservableList.removeIf(o -> o.getSellerEscrowPubKey().equals(removedOffer.getSellerEscrowPubKey()));
             }
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
     }
 
-    public void createBuyRequest(String buyerEscrowPubKey, String buyerProfilePubKey, String buyerPayoutAddress) {
+    public void createBuyRequest(NetworkParameters params, String buyerEscrowPubKey, String buyerProfilePubKey, String buyerPayoutAddress) {
 
         try {
-            BuyRequest newBuyRequest = new BuyRequest(viewOffer.getSellerEscrowPubKey(),
+            BuyRequest newBuyRequest = new BuyRequest(viewSellOffer.getSellerEscrowPubKey(),
                     buyerEscrowPubKey, buyBtcAmount.get(), buyerProfilePubKey, buyerPayoutAddress);
 
-            BuyRequest createdBuyRequest = offerService.createBuyRequest(newBuyRequest).execute().body();
-            LOG.debug("Created buy request: %s", createdBuyRequest.toString());
+            String apk = viewSellOffer.arbitratorProfilePubKeyProperty().get();
+            String spk = viewSellOffer.sellerEscrowPubKeyProperty().get();
+            BuyRequest createdBuyRequest = buyRequestService.createBuyRequest(spk, newBuyRequest).execute().body();
+
+            String escrowAddress = WalletManager.escrowAddress(params, apk, spk, buyerProfilePubKey);
+            AppConfig.getPrivateStorage().toPath().resolve("trades").resolve(escrowAddress);
+            LOG.debug("Created buy request: {}", createdBuyRequest.toString());
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
     }
 
-    public ObservableList<SellOffer> getOffersObservableList() {
-        return offersObservableList;
+    public ObservableList<SellOffer> getSellOffersObservableList() {
+        return sellOffersObservableList;
     }
 
     public SellOffer newOffer() {
-        return newOffer;
+        return newSellOffer;
     }
 
-    public SellOffer getViewOffer() {
-        return viewOffer;
+    public SellOffer getViewSellOffer() {
+        return viewSellOffer;
     }
 
     public ObjectProperty<BigDecimal> getBuyBtcAmount() {

@@ -75,9 +75,9 @@ public class OffersPresenter {
         });
 
         //offersListView.itemsProperty().addAll(offerManager.read());
-        offersListView.itemsProperty().setValue(offerManager.getOffersObservableList());
+        offersListView.itemsProperty().setValue(offerManager.getSellOffersObservableList());
         offersListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            SellOffer viewOffer = offerManager.getViewOffer();
+            SellOffer viewOffer = offerManager.getViewSellOffer();
             viewOffer.setSellerEscrowPubKey(newValue.getSellerEscrowPubKey());
             viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
             viewOffer.setArbitratorProfilePubKey(newValue.getArbitratorProfilePubKey());

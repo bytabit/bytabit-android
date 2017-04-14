@@ -107,7 +107,7 @@ public class OfferDetailsPresenter {
             }
         });
 
-        SellOffer viewOffer = offerManager.getViewOffer();
+        SellOffer viewOffer = offerManager.getViewSellOffer();
         sellerEscrowPubKeyLabel.textProperty().bind(viewOffer.sellerEscrowPubKeyProperty());
         sellerProfilePubKeyLabel.textProperty().bind(viewOffer.sellerProfilePubKeyProperty());
         arbitratorProfilePubKeyLabel.textProperty().bind(viewOffer.arbitratorProfilePubKeyProperty());
@@ -160,7 +160,8 @@ public class OfferDetailsPresenter {
             String buyerEscrowPubKey = escrowWalletManager.getFreshBase58PubKey();
             String buyerProfilePubKey = profileManager.profile().getPubKey();
             String buyerPayoutAddress = tradeWalletManager.getDepositAddress().toBase58();
-            offerManager.createBuyRequest(buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress);
+            offerManager.createBuyRequest(tradeWalletManager.getNetParams(),
+                    buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress);
         });
     }
 }

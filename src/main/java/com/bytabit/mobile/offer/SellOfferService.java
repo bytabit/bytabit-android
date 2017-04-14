@@ -7,13 +7,13 @@ import retrofit2.http.*;
 
 import java.util.List;
 
-public interface OfferService {
+public interface SellOfferService {
 
     @POST("/v1/offers")
     Call<SellOffer> createOffer(@Body SellOffer offer);
 
     @POST("/v1/offers/{sellerEscrowPubkey}/buyRequests")
-    Call<BuyRequest> createBuyRequest(@Body BuyRequest buyRequest);
+    Call<BuyRequest> createBuyRequest(@Path("sellerEscrowPubkey") String sellerEscrowPubkey, @Body BuyRequest buyRequest);
 
     @GET("/v1/offers")
     Call<List<SellOffer>> read();
