@@ -160,8 +160,9 @@ public class OfferDetailsPresenter {
             String buyerEscrowPubKey = escrowWalletManager.getFreshBase58PubKey();
             String buyerProfilePubKey = profileManager.profile().getPubKey();
             String buyerPayoutAddress = tradeWalletManager.getDepositAddress().toBase58();
-            offerManager.createBuyRequest(tradeWalletManager.getNetParams(),
+            String tradeEscrowAddress = offerManager.createBuyRequest(tradeWalletManager.getNetParams(),
                     buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress);
+            escrowWalletManager.watchTradeEscrowAddress(tradeEscrowAddress);
         });
     }
 }

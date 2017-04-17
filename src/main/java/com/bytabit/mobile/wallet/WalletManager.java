@@ -34,9 +34,8 @@ public abstract class WalletManager {
     private static Logger LOG = LoggerFactory.getLogger(WalletManager.class);
 
     private final NetworkParameters netParams;
-    private final Context btcContext;
-
-    private final WalletAppKit kit;
+    final Context btcContext;
+    final WalletAppKit kit;
 
     private final Observable<BlockDownloadEvent> blkDownloadEvents;
     private final Observable<TransactionUpdatedEvent> txUpdatedEvents;
@@ -185,16 +184,6 @@ public abstract class WalletManager {
     public BooleanProperty walletRunningProperty() {
         return walletRunning;
     }
-
-//    public WalletAppKit startWallet() {
-//        if (!walletRunning.getValue()) {
-//
-//            Context.propagate(btcContext);
-//            // start wallet app kit
-//            kit.startAsync();
-//        }
-//        return kit;
-//    }
 
     void stopWallet() {
         Context.propagate(btcContext);

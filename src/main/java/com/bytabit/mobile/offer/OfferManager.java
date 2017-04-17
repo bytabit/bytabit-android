@@ -5,6 +5,7 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.wallet.WalletManager;
+import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -20,6 +21,8 @@ import rx.schedulers.Schedulers;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -103,7 +106,7 @@ public class OfferManager extends AbstractManager {
         }
     }
 
-    public void createBuyRequest(NetworkParameters params, String buyerEscrowPubKey, String buyerProfilePubKey, String buyerPayoutAddress) {
+    public String createBuyRequest(NetworkParameters params, String buyerEscrowPubKey, String buyerProfilePubKey, String buyerPayoutAddress) {
 
         try {
             BuyRequest newBuyRequest = new BuyRequest(viewSellOffer.getSellerEscrowPubKey(),
@@ -113,11 +116,17 @@ public class OfferManager extends AbstractManager {
             String spk = viewSellOffer.sellerEscrowPubKeyProperty().get();
             BuyRequest createdBuyRequest = buyRequestService.createBuyRequest(spk, newBuyRequest).execute().body();
 
-            String escrowAddress = WalletManager.escrowAddress(params, apk, spk, buyerProfilePubKey);
-            AppConfig.getPrivateStorage().toPath().resolve("trades").resolve(escrowAddress);
+            String tradeEscrowAddress = WalletManager.escrowAddress(params, apk, spk, buyerProfilePubKey);
+
+            Path tradePath = AppConfig.getPrivateStorage().toPath().resolve("trades").resolve(tradeEscrowAddress);
+            tradePath.toFile().mkdirs();
+            Path buyRequestPath = tradePath.resolve("buyRequest.json");
+            Files.write(buyRequestPath, JSON.std.asBytes(createdBuyRequest));
             LOG.debug("Created buy request: {}", createdBuyRequest.toString());
+            return tradeEscrowAddress;
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
         }
     }
 
