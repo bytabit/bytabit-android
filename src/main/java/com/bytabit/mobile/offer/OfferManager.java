@@ -97,10 +97,8 @@ public class OfferManager extends AbstractManager {
     public void deleteOffer() {
 
         try {
-            SellOffer removedOffer = sellOfferService.delete(viewSellOffer.getSellerEscrowPubKey()).execute().body();
-            if (removedOffer != null) {
-                sellOffersObservableList.removeIf(o -> o.getSellerEscrowPubKey().equals(removedOffer.getSellerEscrowPubKey()));
-            }
+            sellOfferService.delete(viewSellOffer.getSellerEscrowPubKey()).execute().body();
+            sellOffersObservableList.removeIf(o -> o.getSellerEscrowPubKey().equals(viewSellOffer.getSellerEscrowPubKey()));
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }

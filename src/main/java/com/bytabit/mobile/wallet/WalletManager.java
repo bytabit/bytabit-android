@@ -34,14 +34,16 @@ public abstract class WalletManager {
     private static Logger LOG = LoggerFactory.getLogger(WalletManager.class);
 
     private final NetworkParameters netParams;
+
     final Context btcContext;
     final WalletAppKit kit;
 
-    private final Observable<BlockDownloadEvent> blkDownloadEvents;
-    private final Observable<TransactionUpdatedEvent> txUpdatedEvents;
+    final Observable<BlockDownloadEvent> blkDownloadEvents;
+    final Observable<TransactionUpdatedEvent> txUpdatedEvents;
 
-    private final ObservableList<TransactionWithAmt> transactions;
-    private final StringProperty balance;
+    final ObservableList<TransactionWithAmt> transactions;
+    final StringProperty balance;
+
     private final DoubleProperty downloadProgress;
     private final BooleanProperty walletRunning;
 
@@ -167,14 +169,6 @@ public abstract class WalletManager {
         Context.propagate(btcContext);
         // start wallet app kit
         kit.startAsync();
-    }
-
-    public ObservableList<TransactionWithAmt> getTransactions() {
-        return transactions;
-    }
-
-    public StringProperty balanceProperty() {
-        return balance;
     }
 
     public DoubleProperty downloadProgressProperty() {

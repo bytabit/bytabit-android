@@ -18,5 +18,5 @@ public interface SellOfferService {
     Call<SellOffer> update(@Path("sellerEscrowPubkey") String sellerEscrowPubkey, @Body SellOffer offer);
 
     @DELETE("/v1/offers/{sellerEscrowPubkey}")
-    Call<SellOffer> delete(@Path("sellerEscrowPubkey") String sellerEscrowPubkey);
+    Call<Void> delete(@Path("sellerEscrowPubkey") String sellerEscrowPubkey);
 }
