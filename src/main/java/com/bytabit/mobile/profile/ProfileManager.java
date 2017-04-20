@@ -89,16 +89,20 @@ public class ProfileManager extends AbstractManager {
                 .subscribe(c -> {
                     try {
                         List<Profile> profiles = c.execute().body();
-                        profiles.removeIf(p -> p.getPubKey().equals(profile.getPubKey()));
+                        for (Profile p : profiles) {
+                            if (p.getPubKey().equals(profile.getPubKey())) {
+                                profiles.remove(p);
+                            }
+                        }
                         List<Profile> traders = new ArrayList<>();
                         List<Profile> arbitrators = new ArrayList<>();
-                        profiles.forEach(p -> {
+                        for (Profile p : profiles) {
                             if (p.isIsArbitrator()) {
                                 arbitrators.add(p);
                             } else {
                                 traders.add(p);
                             }
-                        });
+                        }
                         Platform.runLater(() -> {
                             traderProfiles.setAll(traders);
                             arbitratorProfiles.setAll(arbitrators);
@@ -141,27 +145,6 @@ public class ProfileManager extends AbstractManager {
         }
     }
 
-//    public void readProfiles() {
-//        try {
-//            List<Profile> profiles = profileService.read().execute().body();
-//            profiles.removeIf(p -> p.getPubKey().equals(profile.getPubKey()));
-//            List<Profile> traders = new ArrayList<>();
-//            List<Profile> arbitrators = new ArrayList<>();
-//            profiles.forEach(p -> {
-//                if (p.isIsArbitrator()) {
-//                    arbitrators.add(p);
-//                } else {
-//                    traders.add(p);
-//                }
-//            });
-//            traderProfiles.setAll(traders);
-//            arbitratorProfiles.setAll(arbitrators);
-//
-//        } catch (IOException ioe) {
-//            LOG.error(ioe.getMessage());
-//        }
-//    }
-
     // payment details methods
 
     public ObservableList<PaymentDetails> paymentDetails() {
@@ -199,7 +182,11 @@ public class ProfileManager extends AbstractManager {
 
         if (cc != null && pm != null && pd.length() > 0) {
             store(paymentDetailsKey(cc, pm), pd);
-            paymentDetails.removeIf(p -> p.getCurrencyCode().equals(cc) && p.getPaymentMethod().equals(pm));
+            for (PaymentDetails p : paymentDetails) {
+                if (p.getCurrencyCode().equals(cc) && p.getPaymentMethod().equals(pm)) {
+                   paymentDetails.remove(p);
+                }
+            }
             paymentDetails.add(new PaymentDetails(cc, pm, pd));
         }
     }

@@ -19,6 +19,8 @@ import rx.Observable;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -98,7 +100,11 @@ public class OfferManager extends AbstractManager {
 
         try {
             sellOfferService.delete(viewSellOffer.getSellerEscrowPubKey()).execute().body();
-            sellOffersObservableList.removeIf(o -> o.getSellerEscrowPubKey().equals(viewSellOffer.getSellerEscrowPubKey()));
+            for (SellOffer so : sellOffersObservableList) {
+                if (so.getSellerEscrowPubKey().equals(viewSellOffer.getSellerEscrowPubKey())) {
+                    sellOffersObservableList.remove(so);
+                }
+            }
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
@@ -116,10 +122,13 @@ public class OfferManager extends AbstractManager {
 
             String tradeEscrowAddress = WalletManager.escrowAddress(params, apk, spk, buyerProfilePubKey);
 
-            Path tradePath = AppConfig.getPrivateStorage().toPath().resolve("trades").resolve(tradeEscrowAddress);
-            tradePath.toFile().mkdirs();
-            Path buyRequestPath = tradePath.resolve("buyRequest.json");
-            Files.write(buyRequestPath, JSON.std.asBytes(createdBuyRequest));
+            String tradePath = AppConfig.getPrivateStorage().getPath()+ File.pathSeparator + "trades" + File.pathSeparator + tradeEscrowAddress;
+            File tradeDir = new File(tradePath);
+            tradeDir.mkdirs();
+            String buyRequestPath = tradePath + File.pathSeparator + "buyRequest.json";
+            FileWriter buyRequestFileWriter = new FileWriter(buyRequestPath);
+            buyRequestFileWriter.write(JSON.std.asString(createdBuyRequest));
+            buyRequestFileWriter.flush();
             LOG.debug("Created buy request: {}", createdBuyRequest.toString());
             return tradeEscrowAddress;
         } catch (IOException ioe) {

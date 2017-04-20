@@ -39,49 +39,4 @@ public class TradeManager extends AbstractManager {
         activeTrade = new Trade();
         viewTrade = new Trade();
     }
-
-//    public void readOffers() {
-//        try {
-//            List<SellOffer> offers = offerService.read().execute().body();
-//            offersObservableList.setAll(offers);
-//        } catch (IOException ioe) {
-//            LOG.error(ioe.getMessage());
-//        }
-//        Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-//                .map(tick -> offerService.read())
-//                .retry()
-//                .observeOn(JavaFxScheduler.getInstance())
-//                .subscribe(c -> {
-//                    try {
-//                        List<SellOffer> offers = c.execute().body();
-//                        offersObservableList.setAll(offers);
-//                    } catch (IOException ioe) {
-//                        LOG.error(ioe.getMessage());
-//                    }
-//                });
-//    }
-//
-//    public void deleteOffer() {
-//
-//        try {
-//            SellOffer removedOffer = offerService.delete(viewOffer.getSellerEscrowPubKey()).execute().body();
-//            if (removedOffer != null) {
-//                offersObservableList.removeIf(o -> o.getSellerEscrowPubKey().equals(removedOffer.getSellerEscrowPubKey()));
-//            }
-//        } catch (IOException ioe) {
-//            LOG.error(ioe.getMessage());
-//        }
-//    }
-//
-//    public ObservableList<SellOffer> getSellOffersObservableList() {
-//        return offersObservableList;
-//    }
-//
-//    public SellOffer getNewOffer() {
-//        return newOffer;
-//    }
-//
-//    public SellOffer getViewSellOffer() {
-//        return viewOffer;
-//    }
 }
