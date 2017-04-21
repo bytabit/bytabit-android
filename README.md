@@ -61,6 +61,15 @@ gradle clean zipalignDebug
 
 3. Follow bitcoin-testnet-box [README.md](https://github.com/freewil/bitcoin-testnet-box) instructions
 
+### ADB file system debugging
+
+1. connect via adb shell and run as com.bytabit.mobile
+    ```
+    ./adb shell 
+    run-as com.bytabit.mobile
+    cd /data/data/com.bytabit.mobile
+    ```
+    
 ### Versioning
 
 We follow the [Semantic Versioning 2.0](http://semver.org/spec/v2.0.0.html) specification for this project.
