@@ -23,8 +23,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -122,10 +120,10 @@ public class OfferManager extends AbstractManager {
 
             String tradeEscrowAddress = WalletManager.escrowAddress(params, apk, spk, buyerProfilePubKey);
 
-            String tradePath = AppConfig.getPrivateStorage().getPath()+ File.pathSeparator + "trades" + File.pathSeparator + tradeEscrowAddress;
+            String tradePath = AppConfig.getPrivateStorage().getPath() + File.separator + "trades" + File.pathSeparator + tradeEscrowAddress;
             File tradeDir = new File(tradePath);
             tradeDir.mkdirs();
-            String buyRequestPath = tradePath + File.pathSeparator + "buyRequest.json";
+            String buyRequestPath = tradePath + File.separator + "buyRequest.json";
             FileWriter buyRequestFileWriter = new FileWriter(buyRequestPath);
             buyRequestFileWriter.write(JSON.std.asString(createdBuyRequest));
             buyRequestFileWriter.flush();

@@ -89,10 +89,14 @@ public class ProfileManager extends AbstractManager {
                 .subscribe(c -> {
                     try {
                         List<Profile> profiles = c.execute().body();
+                        Profile found = null;
                         for (Profile p : profiles) {
                             if (p.getPubKey().equals(profile.getPubKey())) {
-                                profiles.remove(p);
+                                found = p;
                             }
+                        }
+                        if (found != null) {
+                            profiles.remove(found);
                         }
                         List<Profile> traders = new ArrayList<>();
                         List<Profile> arbitrators = new ArrayList<>();
@@ -182,10 +186,14 @@ public class ProfileManager extends AbstractManager {
 
         if (cc != null && pm != null && pd.length() > 0) {
             store(paymentDetailsKey(cc, pm), pd);
+            PaymentDetails found = null;
             for (PaymentDetails p : paymentDetails) {
                 if (p.getCurrencyCode().equals(cc) && p.getPaymentMethod().equals(pm)) {
-                   paymentDetails.remove(p);
+                    found = p;
                 }
+            }
+            if (found != null) {
+                paymentDetails.remove(found);
             }
             paymentDetails.add(new PaymentDetails(cc, pm, pd));
         }
