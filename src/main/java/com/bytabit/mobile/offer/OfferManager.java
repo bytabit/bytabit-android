@@ -120,7 +120,8 @@ public class OfferManager extends AbstractManager {
 
             String tradeEscrowAddress = WalletManager.escrowAddress(params, apk, spk, buyerProfilePubKey);
 
-            String tradePath = AppConfig.getPrivateStorage().getPath() + File.separator + "trades" + File.pathSeparator + tradeEscrowAddress;
+            String tradePath = AppConfig.getPrivateStorage().getPath() + File.separator +
+                    "trades" + File.separator + tradeEscrowAddress;
             File tradeDir = new File(tradePath);
             tradeDir.mkdirs();
             String buyRequestPath = tradePath + File.separator + "buyRequest.json";

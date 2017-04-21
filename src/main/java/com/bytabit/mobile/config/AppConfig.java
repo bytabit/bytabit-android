@@ -57,11 +57,15 @@ public class AppConfig {
     public static File getPrivateStorage() {
         if (privateStorage == null) {
             try {
-                privateStorage = Services.get(StorageService.class)
+                File storage = Services.get(StorageService.class)
                         .flatMap(StorageService::getPrivateStorage)
                         .orElseThrow(() -> new FileNotFoundException("Could not access private storage."));
+                privateStorage = new File(storage.getPath() + File.separator + getBtcNetwork() + File.separator + getConfigName());
+                if (!privateStorage.mkdirs()) {
+                    log.error("Can't create private storage sub-directory: {}", privateStorage.getPath());
+                }
             } catch (FileNotFoundException fnfe) {
-                log.error("could not get private storage", fnfe);
+                log.error("could not get private storage {}", fnfe);
             }
         }
         return privateStorage;
