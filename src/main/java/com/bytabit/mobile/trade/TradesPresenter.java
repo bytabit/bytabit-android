@@ -1,8 +1,8 @@
 package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.offer.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -18,26 +18,24 @@ import javax.inject.Inject;
 public class TradesPresenter {
 
     @Inject
-    OfferManager offerManager;
+    TradeManager tradeManager;
 
     @FXML
-    private View offersView;
+    private View tradesView;
 
     @FXML
-    private CharmListView<SellOffer, String> offersListView;
-
-    private FloatingActionButton addOfferButton = new FloatingActionButton();
+    private CharmListView<Trade, String> tradesListView;
 
     public void initialize() {
-        offersListView.setCellFactory((view) -> new CharmListCell<SellOffer>() {
+        tradesListView.setCellFactory((view) -> new CharmListCell<Trade>() {
             @Override
-            public void updateItem(SellOffer o, boolean empty) {
-                super.updateItem(o, empty);
-                if (o != null && !empty) {
+            public void updateItem(Trade t, boolean empty) {
+                super.updateItem(t, empty);
+                if (t != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s %s per BTC via %s", o.getPrice().toPlainString(), o.getCurrencyCode().toString(), o.getPaymentMethod().displayName());
-                    String details = String.format("%s to %s %s",
-                            o.getMinAmount(), o.getMaxAmount(), o.getCurrencyCode());
+                    String amount = String.format("%s BTC @ %s per BTC", t.getBuyRequest().getBtcAmount(), t.getOffer().getPrice());
+                    String details = String.format("for %s %s via %s", t.getBuyRequest().getBtcAmount().multiply(t.getOffer().getPrice()),
+                            t.getOffer().getCurrencyCode(), t.getOffer().getPaymentMethod().displayName());
                     tile.textProperty().addAll(amount, details);
                     setText(null);
                     setGraphic(tile);
@@ -47,19 +45,14 @@ public class TradesPresenter {
                 }
             }
         });
-        //offersListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
 
-        offersView.getLayers().add(addOfferButton.getLayer());
-        addOfferButton.setOnAction((e) ->
-                MobileApplication.getInstance().switchView(BytabitMobile.ADD_OFFER_VIEW));
-
-        offersView.showingProperty().addListener((obs, oldValue, newValue) -> {
+        tradesView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
 
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
                         MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
-                appBar.setTitleText("Offers");
+                appBar.setTitleText("Trades");
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
             }
@@ -67,19 +60,19 @@ public class TradesPresenter {
         });
 
         //offersListView.itemsProperty().addAll(offerManager.read());
-        offersListView.itemsProperty().setValue(offerManager.getSellOffersObservableList());
-        offersListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            SellOffer viewOffer = offerManager.getViewSellOffer();
-            viewOffer.setSellerEscrowPubKey(newValue.getSellerEscrowPubKey());
-            viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
-            viewOffer.setCurrencyCode(newValue.getCurrencyCode());
-            viewOffer.setPaymentMethod(newValue.getPaymentMethod());
-            viewOffer.setMinAmount(newValue.getMinAmount());
-            viewOffer.setMaxAmount(newValue.getMaxAmount());
-            viewOffer.setPrice(newValue.getPrice());
-            MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+        tradesListView.itemsProperty().setValue(tradeManager.getTradesObservableList());
+        tradesListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+//            SellOffer viewOffer = tradeManager.getViewTrade();
+//            viewOffer.setSellerEscrowPubKey(newValue.getSellerEscrowPubKey());
+//            viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
+//            viewOffer.setCurrencyCode(newValue.getCurrencyCode());
+//            viewOffer.setPaymentMethod(newValue.getPaymentMethod());
+//            viewOffer.setMinAmount(newValue.getMinAmount());
+//            viewOffer.setMaxAmount(newValue.getMaxAmount());
+//            viewOffer.setPrice(newValue.getPrice());
+//            MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
         });
-        offerManager.readOffers();
+        tradeManager.readTrades();
     }
 
 }

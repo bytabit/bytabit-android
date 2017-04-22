@@ -1,4 +1,4 @@
-package com.bytabit.mobile.offer;
+package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.offer.model.BuyRequest;
 import retrofit2.Call;

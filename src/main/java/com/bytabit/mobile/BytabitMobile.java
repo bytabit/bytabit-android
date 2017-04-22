@@ -9,6 +9,7 @@ import com.bytabit.mobile.offer.OffersView;
 import com.bytabit.mobile.profile.PaymentView;
 import com.bytabit.mobile.profile.PaymentsView;
 import com.bytabit.mobile.profile.ProfileView;
+import com.bytabit.mobile.trade.TradesView;
 import com.bytabit.mobile.wallet.DepositView;
 import com.bytabit.mobile.wallet.WalletView;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -33,7 +34,7 @@ public class BytabitMobile extends MobileApplication {
     final public static String WALLET_VIEW = "Wallet";
     final public static String DEPOSIT_VIEW = "Deposit";
 
-    final public static String OFFERS_VIEW = HOME_VIEW;
+    final public static String OFFER_VIEW = HOME_VIEW;
     final public static String ADD_OFFER_VIEW = "AddOffer";
     final public static String OFFER_DETAILS_VIEW = "OfferDetails";
 
@@ -54,9 +55,11 @@ public class BytabitMobile extends MobileApplication {
     @Override
     public void init() {
 
-        addViewFactory(OFFERS_VIEW, () -> (View) new OffersView().getView());
+        addViewFactory(OFFER_VIEW, () -> (View) new OffersView().getView());
         addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView());
         addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView());
+
+        addViewFactory(TRADE_VIEW, () -> (View) new TradesView().getView());
 
         addViewFactory(WALLET_VIEW, () -> (View) new WalletView().getView());
         addViewFactory(DEPOSIT_VIEW, () -> (View) new DepositView().getView());
