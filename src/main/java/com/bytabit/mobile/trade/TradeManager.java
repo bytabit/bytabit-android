@@ -93,6 +93,11 @@ public class TradeManager extends AbstractManager {
 
     public void readTrades() {
         File tradesDir = new File(tradesPath);
-
+        List<String> tradePaths;
+        if (tradesDir.list() != null) {
+            tradePaths = Arrays.asList(tradesDir.list());
+        } else {
+            tradePaths = new ArrayList<>();
+        }
     }
 }
