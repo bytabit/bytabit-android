@@ -43,6 +43,8 @@ processResources {
     filesMatching("*.properties") {
         filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config]
     }
+
+    outputs.upToDateWhen { false }
 }
 
 dependencies {

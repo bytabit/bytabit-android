@@ -142,4 +142,41 @@ public class SellOffer {
         sb.append('}');
         return sb.toString();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        SellOffer sellOffer = (SellOffer) o;
+
+        if (sellerEscrowPubKey != null ? !sellerEscrowPubKey.equals(sellOffer.sellerEscrowPubKey) : sellOffer.sellerEscrowPubKey != null)
+            return false;
+        if (sellerProfilePubKey != null ? !sellerProfilePubKey.equals(sellOffer.sellerProfilePubKey) : sellOffer.sellerProfilePubKey != null)
+            return false;
+        if (arbitratorProfilePubKey != null ? !arbitratorProfilePubKey.equals(sellOffer.arbitratorProfilePubKey) : sellOffer.arbitratorProfilePubKey != null)
+            return false;
+        if (currencyCode != null ? !currencyCode.equals(sellOffer.currencyCode) : sellOffer.currencyCode != null)
+            return false;
+        if (paymentMethod != null ? !paymentMethod.equals(sellOffer.paymentMethod) : sellOffer.paymentMethod != null)
+            return false;
+        if (minAmount != null ? !minAmount.equals(sellOffer.minAmount) : sellOffer.minAmount != null)
+            return false;
+        if (maxAmount != null ? !maxAmount.equals(sellOffer.maxAmount) : sellOffer.maxAmount != null)
+            return false;
+        return price != null ? price.equals(sellOffer.price) : sellOffer.price == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = sellerEscrowPubKey != null ? sellerEscrowPubKey.hashCode() : 0;
+        result = 31 * result + (sellerProfilePubKey != null ? sellerProfilePubKey.hashCode() : 0);
+        result = 31 * result + (arbitratorProfilePubKey != null ? arbitratorProfilePubKey.hashCode() : 0);
+        result = 31 * result + (currencyCode != null ? currencyCode.hashCode() : 0);
+        result = 31 * result + (paymentMethod != null ? paymentMethod.hashCode() : 0);
+        result = 31 * result + (minAmount != null ? minAmount.hashCode() : 0);
+        result = 31 * result + (maxAmount != null ? maxAmount.hashCode() : 0);
+        result = 31 * result + (price != null ? price.hashCode() : 0);
+        return result;
+    }
 }

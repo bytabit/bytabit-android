@@ -1,14 +1,12 @@
 package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
 import com.gluonhq.charm.glisten.control.CharmListView;
 import com.gluonhq.charm.glisten.control.ListTile;
-import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
@@ -33,10 +31,10 @@ public class TradesPresenter {
                 super.updateItem(t, empty);
                 if (t != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC @ %s per BTC", t.getBuyRequest().getBtcAmount(), t.getOffer().getPrice());
-                    String details = String.format("for %s %s via %s", t.getBuyRequest().getBtcAmount().multiply(t.getOffer().getPrice()),
-                            t.getOffer().getCurrencyCode(), t.getOffer().getPaymentMethod().displayName());
-                    tile.textProperty().addAll(amount, details);
+                    String amount = String.format("%s BTC @ %s %s per BTC", t.getBuyRequest().getBtcAmount(), t.getSellOffer().getPrice(), t.getSellOffer().getCurrencyCode());
+                    String details = String.format("for %s %s via %s", t.getBuyRequest().getBtcAmount().multiply(t.getSellOffer().getPrice()),
+                            t.getSellOffer().getCurrencyCode(), t.getSellOffer().getPaymentMethod().displayName());
+                    tile.textProperty().addAll(amount, details, t.getEscrowAddress());
                     setText(null);
                     setGraphic(tile);
                 } else {
@@ -72,7 +70,5 @@ public class TradesPresenter {
 //            viewOffer.setPrice(newValue.getPrice());
 //            MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
         });
-        tradeManager.readTrades();
     }
-
 }

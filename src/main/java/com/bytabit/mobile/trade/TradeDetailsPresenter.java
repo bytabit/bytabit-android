@@ -31,7 +31,7 @@ public class TradeDetailsPresenter {
     TradeWalletManager tradeWalletManager;
 
     @FXML
-    private View offerDetailsView;
+    private View tradeDetailsView;
 
     @FXML
     private Button removeOfferButton;
@@ -70,7 +70,7 @@ public class TradeDetailsPresenter {
 
         LOG.debug("initialize offer details presenter");
 
-        offerDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
+        tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
@@ -97,10 +97,6 @@ public class TradeDetailsPresenter {
                     removeOfferButton.visibleProperty().setValue(false);
                 }
             }
-        });
-
-        removeOfferButton.onActionProperty().setValue(e -> {
-            offerManager.deleteOffer();
         });
     }
 }

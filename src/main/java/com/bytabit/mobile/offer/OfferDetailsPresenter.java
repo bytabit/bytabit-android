@@ -1,8 +1,10 @@
 package com.bytabit.mobile.offer;
 
+import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.TradeManager;
+import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.EscrowWalletManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -164,10 +166,11 @@ public class OfferDetailsPresenter {
             String buyerEscrowPubKey = escrowWalletManager.getFreshBase58PubKey();
             String buyerProfilePubKey = profileManager.profile().getPubKey();
             String buyerPayoutAddress = tradeWalletManager.getDepositAddress().toBase58();
-            String tradeEscrowAddress = tradeManager.createBuyRequest(viewOffer,
-                    offerManager.getBuyBtcAmount().get(), tradeWalletManager.getNetParams(),
-                    buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress);
-            escrowWalletManager.watchTradeEscrowAddress(tradeEscrowAddress);
+            BuyRequest createdBuyRequest = tradeManager.createBuyRequest(viewOffer,
+                    offerManager.getBuyBtcAmount().get(), buyerEscrowPubKey,
+                    buyerProfilePubKey, buyerPayoutAddress);
+            Trade createdTrade = tradeManager.createTrade(viewOffer, createdBuyRequest);
+            escrowWalletManager.watchTradeEscrowAddress(createdTrade.getEscrowAddress());
         });
     }
 }

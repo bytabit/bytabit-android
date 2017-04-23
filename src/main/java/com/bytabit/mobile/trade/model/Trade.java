@@ -19,13 +19,32 @@ public class Trade {
     public Trade() {
     }
 
+    public Trade(SellOffer sellOffer, BuyRequest buyRequest, State state, String escrowAddress) {
+        setSellOffer(sellOffer);
+        setBuyRequest(buyRequest);
+        setState(state);
+        setEscrowAddress(escrowAddress);
+    }
+
+    private final StringProperty escrowAddress = new SimpleStringProperty();
     private final ObjectProperty<State> state = new SimpleObjectProperty<>();
-    private final ObjectProperty<SellOffer> offer = new SimpleObjectProperty<>();
+    private final ObjectProperty<SellOffer> sellOffer = new SimpleObjectProperty<>();
     private final ObjectProperty<BuyRequest> buyRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PaymentRequest> sellerPaymentRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutRequest> buyerPayoutRequest = new SimpleObjectProperty<>();
-
     private final StringProperty buyerPayoutTxId = new SimpleStringProperty();
+
+    public String getEscrowAddress() {
+        return escrowAddress.get();
+    }
+
+    public StringProperty escrowAddressProperty() {
+        return escrowAddress;
+    }
+
+    public void setEscrowAddress(String escrowAddress) {
+        this.escrowAddress.set(escrowAddress);
+    }
 
     public State getState() {
         return state.get();
@@ -39,16 +58,16 @@ public class Trade {
         this.state.set(state);
     }
 
-    public SellOffer getOffer() {
-        return offer.get();
+    public SellOffer getSellOffer() {
+        return sellOffer.get();
     }
 
-    public ObjectProperty<SellOffer> offerProperty() {
-        return offer;
+    public ObjectProperty<SellOffer> sellOfferProperty() {
+        return sellOffer;
     }
 
-    public void setOffer(SellOffer offer) {
-        this.offer.set(offer);
+    public void setSellOffer(SellOffer sellOffer) {
+        this.sellOffer.set(sellOffer);
     }
 
     public BuyRequest getBuyRequest() {
@@ -103,12 +122,27 @@ public class Trade {
     public String toString() {
         final StringBuffer sb = new StringBuffer("Trade{");
         sb.append("state=").append(state);
-        sb.append(", offer=").append(offer);
+        sb.append(", sellOffer=").append(sellOffer);
         sb.append(", buyRequest=").append(buyRequest);
         sb.append(", sellerPaymentRequest=").append(sellerPaymentRequest);
         sb.append(", buyerPayoutRequest=").append(buyerPayoutRequest);
         sb.append(", buyerPayoutTxId=").append(buyerPayoutTxId);
         sb.append('}');
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Trade trade = (Trade) o;
+
+        return escrowAddress.get() != null ? escrowAddress.get().equals(trade.escrowAddress.get()) : trade.escrowAddress.get() == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return escrowAddress.get() != null ? escrowAddress.get().hashCode() : 0;
     }
 }

@@ -98,4 +98,32 @@ public class BuyRequest {
         sb.append('}');
         return sb.toString();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        BuyRequest that = (BuyRequest) o;
+
+        if (sellerEscrowPubKey != null ? !sellerEscrowPubKey.equals(that.sellerEscrowPubKey) : that.sellerEscrowPubKey != null)
+            return false;
+        if (buyerEscrowPubKey != null ? !buyerEscrowPubKey.equals(that.buyerEscrowPubKey) : that.buyerEscrowPubKey != null)
+            return false;
+        if (btcAmount != null ? !btcAmount.equals(that.btcAmount) : that.btcAmount != null)
+            return false;
+        if (buyerProfilePubKey != null ? !buyerProfilePubKey.equals(that.buyerProfilePubKey) : that.buyerProfilePubKey != null)
+            return false;
+        return buyerPayoutAddress != null ? buyerPayoutAddress.equals(that.buyerPayoutAddress) : that.buyerPayoutAddress == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = sellerEscrowPubKey != null ? sellerEscrowPubKey.hashCode() : 0;
+        result = 31 * result + (buyerEscrowPubKey != null ? buyerEscrowPubKey.hashCode() : 0);
+        result = 31 * result + (btcAmount != null ? btcAmount.hashCode() : 0);
+        result = 31 * result + (buyerProfilePubKey != null ? buyerProfilePubKey.hashCode() : 0);
+        result = 31 * result + (buyerPayoutAddress != null ? buyerPayoutAddress.hashCode() : 0);
+        return result;
+    }
 }

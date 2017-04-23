@@ -31,9 +31,9 @@ import static com.google.common.util.concurrent.Service.Listener;
 
 public abstract class WalletManager {
 
-    private static Logger LOG = LoggerFactory.getLogger(WalletManager.class);
+    private final static Logger LOG = LoggerFactory.getLogger(WalletManager.class);
 
-    private final NetworkParameters netParams;
+    private final static NetworkParameters netParams;
 
     final Context btcContext;
     final WalletAppKit kit;
@@ -47,14 +47,16 @@ public abstract class WalletManager {
     private final DoubleProperty downloadProgress;
     private final BooleanProperty walletRunning;
 
+    static {
+        netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
+    }
+
     WalletManager(String configName, WalletPurpose walletPurpose) {
 
         this.transactions = FXCollections.observableArrayList();
         this.balance = new SimpleStringProperty();
         this.downloadProgress = new SimpleDoubleProperty();
         this.walletRunning = new SimpleBooleanProperty(false);
-
-        this.netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
         this.btcContext = Context.getOrCreate(netParams);
         Context.propagate(btcContext);
 
@@ -208,8 +210,7 @@ public abstract class WalletManager {
         return kit.wallet().getBalance();
     }
 
-    public static String escrowAddress(NetworkParameters netParams,
-                                       String arbitratorProfilePubKey,
+    public static String escrowAddress(String arbitratorProfilePubKey,
                                        String sellerEscrowPubKey,
                                        String buyerEscrowPubKey) {
         ECKey apk = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKey));
