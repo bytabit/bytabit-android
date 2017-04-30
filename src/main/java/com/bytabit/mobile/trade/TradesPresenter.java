@@ -1,7 +1,10 @@
 package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.EscrowWalletManager;
+import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -9,6 +12,7 @@ import com.gluonhq.charm.glisten.control.CharmListView;
 import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 
 import javax.inject.Inject;
@@ -17,6 +21,15 @@ public class TradesPresenter {
 
     @Inject
     TradeManager tradeManager;
+
+    @Inject
+    ProfileManager profileManager;
+
+    @Inject
+    EscrowWalletManager escrowWalletManager;
+
+    @Inject
+    TradeWalletManager tradeWalletManager;
 
     @FXML
     private View tradesView;
@@ -55,6 +68,19 @@ public class TradesPresenter {
                         System.out.println("Search")));
             }
 
+        });
+
+        tradeManager.getTradesObservableList().addListener((ListChangeListener<Trade>) change -> {
+            while (change.next()) {
+                for (Trade trade : change.getAddedSubList()) {
+                    if (trade.getSellOffer().getSellerProfilePubKey()
+                            .equals(profileManager.profile().getPubKey())) {
+                        // TODO verify trade not yet funded
+                        tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
+                                trade.getBuyRequest().getBtcAmount());
+                    }
+                }
+            }
         });
 
         //offersListView.itemsProperty().addAll(offerManager.read());

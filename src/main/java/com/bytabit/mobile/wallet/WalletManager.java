@@ -15,6 +15,7 @@ import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.wallet.KeyChain;
+import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
 import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
@@ -25,9 +26,11 @@ import rx.schedulers.JavaFxScheduler;
 import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
+import java.math.BigDecimal;
 import java.util.*;
 
 import static com.google.common.util.concurrent.Service.Listener;
+import static org.bitcoinj.wallet.Wallet.SendResult;
 
 public abstract class WalletManager {
 
@@ -208,6 +211,21 @@ public abstract class WalletManager {
 
     public Coin getWalletBalance() {
         return kit.wallet().getBalance();
+    }
+
+    public void fundEscrow(String escrowAddress, BigDecimal amount) {
+        // TODO add extra tx fee for payout?
+
+        SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
+                Coin.parseCoin(amount.toString()));
+        try {
+            SendResult sendResult = kit.wallet().sendCoins(sendRequest);
+            sendResult.broadcastComplete.addListener(() -> {
+                LOG.debug("Fund escrow tx send: {}", sendResult.tx);
+            }, BytabitMobile.EXECUTOR);
+        } catch (InsufficientMoneyException e) {
+            LOG.error("Insufficient BTC, missing {} BTC to fund escrow.", e.missing);
+        }
     }
 
     public static String escrowAddress(String arbitratorProfilePubKey,
