@@ -4,6 +4,7 @@ import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
@@ -29,6 +30,8 @@ public class TradeManager extends AbstractManager {
 
     private final BuyRequestService buyRequestService;
 
+    private final PaymentRequestService paymentRequestService;
+
     private final ObservableList<Trade> tradesObservableList;
 
     private final Trade viewTrade;
@@ -43,6 +46,14 @@ public class TradeManager extends AbstractManager {
                 .build();
 
         buyRequestService = buyRequestRetrofit.create(BuyRequestService.class);
+
+        Retrofit paymentRequestRetrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(new JacksonJrConverter<>(PaymentRequest.class))
+                .build();
+
+        paymentRequestService = paymentRequestRetrofit.create(PaymentRequestService.class);
+
         tradesObservableList = FXCollections.observableArrayList();
         viewTrade = new Trade();
         readTrades();
@@ -60,6 +71,31 @@ public class TradeManager extends AbstractManager {
             BuyRequest createdBuyRequest = buyRequestService.createBuyRequest(spk, newBuyRequest).execute().body();
             LOG.debug("Created buyRequest: {}", createdBuyRequest);
             return createdBuyRequest;
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
+    public PaymentRequest createPaymentRequest(Trade trade, String txHash, String paymentDetails) {
+        PaymentRequest newPaymentRequest = new PaymentRequest();
+        newPaymentRequest.setEscrowAddress(trade.getEscrowAddress());
+        newPaymentRequest.setFundingTxHash(txHash);
+        newPaymentRequest.setPaymentDetails(paymentDetails);
+
+        String tradePath = tradesPath + trade.getEscrowAddress();
+        String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
+        try {
+            FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
+            paymentRequestWriter.write(JSON.std.asString(newPaymentRequest));
+            paymentRequestWriter.flush();
+
+            // TODO save payment request to server
+            PaymentRequest createdPaymentRequest =
+                    paymentRequestService.createPaymentRequest(trade.getEscrowAddress(), newPaymentRequest).execute().body();
+            LOG.debug("Created paymentRequest: {}", createdPaymentRequest);
+            return createdPaymentRequest;
 
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());

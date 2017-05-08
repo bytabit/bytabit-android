@@ -8,32 +8,32 @@ public class PaymentRequest {
     public PaymentRequest() {
     }
 
-    private final StringProperty buyerEscrowPubKey = new SimpleStringProperty();
-    private final StringProperty fundingTxId = new SimpleStringProperty();
+    private final StringProperty escrowAddress = new SimpleStringProperty();
+    private final StringProperty fundingTxHash = new SimpleStringProperty();
     private final StringProperty paymentDetails = new SimpleStringProperty();
 
-    public String getBuyerEscrowPubKey() {
-        return buyerEscrowPubKey.get();
+    public String getEscrowAddress() {
+        return escrowAddress.get();
     }
 
-    public StringProperty buyerEscrowPubKeyProperty() {
-        return buyerEscrowPubKey;
+    public StringProperty escrowAddressProperty() {
+        return escrowAddress;
     }
 
-    public void setBuyerEscrowPubKey(String buyerEscrowPubKey) {
-        this.buyerEscrowPubKey.set(buyerEscrowPubKey);
+    public void setEscrowAddress(String escrowAddress) {
+        this.escrowAddress.set(escrowAddress);
     }
 
-    public String getFundingTxId() {
-        return fundingTxId.get();
+    public String getFundingTxHash() {
+        return fundingTxHash.get();
     }
 
-    public StringProperty fundingTxIdProperty() {
-        return fundingTxId;
+    public StringProperty fundingTxHashProperty() {
+        return fundingTxHash;
     }
 
-    public void setFundingTxId(String fundingTxId) {
-        this.fundingTxId.set(fundingTxId);
+    public void setFundingTxHash(String fundingTxHash) {
+        this.fundingTxHash.set(fundingTxHash);
     }
 
     public String getPaymentDetails() {
@@ -51,8 +51,8 @@ public class PaymentRequest {
     @Override
     public String toString() {
         final StringBuffer sb = new StringBuffer("PaymentRequest{");
-        sb.append("buyerEscrowPubKey=").append(buyerEscrowPubKey);
-        sb.append(", fundingTxId=").append(fundingTxId);
+        sb.append("escrowAddress=").append(escrowAddress);
+        sb.append(", fundingTxHash=").append(fundingTxHash);
         sb.append(", paymentDetails=").append(paymentDetails);
         sb.append('}');
         return sb.toString();

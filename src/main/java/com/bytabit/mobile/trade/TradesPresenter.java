@@ -2,6 +2,7 @@ package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.EscrowWalletManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
@@ -14,6 +15,7 @@ import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
+import org.bitcoinj.core.InsufficientMoneyException;
 
 import javax.inject.Inject;
 
@@ -76,8 +78,17 @@ public class TradesPresenter {
                     if (trade.getSellOffer().getSellerProfilePubKey()
                             .equals(profileManager.profile().getPubKey())) {
                         // TODO verify trade not yet funded
-                        tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
-                                trade.getBuyRequest().getBtcAmount());
+                        try {
+                            String txHash = tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
+                                    trade.getBuyRequest().getBtcAmount());
+
+                            String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer()
+                                    .getCurrencyCode(), trade.getSellOffer().getPaymentMethod()).get();
+                            PaymentRequest paymentRequest = tradeManager.createPaymentRequest(trade, txHash, paymentDetails);
+
+                        } catch (InsufficientMoneyException e) {
+                            // TODO let user know not enough BTC in wallet
+                        }
                     }
                 }
             }

@@ -211,8 +211,8 @@ public class ProfileManager extends AbstractManager {
         return paymentDetails;
     }
 
-    private Optional<String> retrievePaymentDetails(CurrencyCode currencyCode,
-                                                    PaymentMethod paymentMethod) {
+    public Optional<String> retrievePaymentDetails(CurrencyCode currencyCode,
+                                                   PaymentMethod paymentMethod) {
 
         return retrieve(paymentDetailsKey(currencyCode, paymentMethod));
     }

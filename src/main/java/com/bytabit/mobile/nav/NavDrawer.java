@@ -25,9 +25,9 @@ public class NavDrawer {
     public NavDrawer() {
 
         this.drawer = new NavigationDrawer();
-
+        String config = AppConfig.getConfigName().equals("default") ? "" : ", " + AppConfig.getConfigName();
         NavigationDrawer.Header header = new NavigationDrawer.Header("Bytabit Mobile",
-                String.format("%s (%s)", AppConfig.getVersion(), AppConfig.getBtcNetwork()),
+                String.format("%s (%s)", AppConfig.getVersion(), AppConfig.getBtcNetwork() + config),
                 new ImageView(new Image(NavDrawer.class.getResourceAsStream("/logo42.png"))));
         drawer.setHeader(header);
 

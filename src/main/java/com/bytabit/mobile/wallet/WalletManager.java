@@ -30,7 +30,6 @@ import java.math.BigDecimal;
 import java.util.*;
 
 import static com.google.common.util.concurrent.Service.Listener;
-import static org.bitcoinj.wallet.Wallet.SendResult;
 
 public abstract class WalletManager {
 
@@ -213,19 +212,17 @@ public abstract class WalletManager {
         return kit.wallet().getBalance();
     }
 
-    public void fundEscrow(String escrowAddress, BigDecimal amount) {
+    public String fundEscrow(String escrowAddress, BigDecimal amount) throws InsufficientMoneyException {
         // TODO add extra tx fee for payout?
 
         SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
                 Coin.parseCoin(amount.toString()));
-        try {
-            SendResult sendResult = kit.wallet().sendCoins(sendRequest);
-            sendResult.broadcastComplete.addListener(() -> {
-                LOG.debug("Fund escrow tx send: {}", sendResult.tx);
-            }, BytabitMobile.EXECUTOR);
-        } catch (InsufficientMoneyException e) {
-            LOG.error("Insufficient BTC, missing {} BTC to fund escrow.", e.missing);
-        }
+        Transaction tx = kit.wallet().sendCoins(sendRequest).tx;
+        return tx.getHashAsString();
+        //Sha256Hash sh = Sha256Hash.wrap(tx.getHashAsString());
+//            sendResult.broadcastComplete.addListener(() -> {
+//                LOG.debug("Fund escrow tx send: {}", sendResult.tx);
+//            }, BytabitMobile.EXECUTOR);
     }
 
     public static String escrowAddress(String arbitratorProfilePubKey,
