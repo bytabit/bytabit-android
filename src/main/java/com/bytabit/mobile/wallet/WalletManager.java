@@ -30,6 +30,7 @@ import java.math.BigDecimal;
 import java.util.*;
 
 import static com.google.common.util.concurrent.Service.Listener;
+import static org.bitcoinj.core.Transaction.DEFAULT_TX_FEE;
 
 public abstract class WalletManager {
 
@@ -115,7 +116,8 @@ public abstract class WalletManager {
                 // get existing tx
                 Set<TransactionWithAmt> txsWithAmt = new HashSet<>();
                 for (Transaction t : kit.wallet().getTransactions(false)) {
-                    txsWithAmt.add(new TransactionWithAmt(t, t.getValue(kit.wallet())));
+                    txsWithAmt.add(new TransactionWithAmt(t, t.getValue(kit.wallet()),
+                            getWatchedOutputAddress(t)));
                 }
                 Platform.runLater(() -> {
                     transactions.addAll(txsWithAmt);
@@ -127,7 +129,10 @@ public abstract class WalletManager {
                         .subscribe(e -> {
                             LOG.debug("tx updated event : {}", e);
                             TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
-                            TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(), txe.getAmt());
+
+                            TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(),
+                                    txe.getAmt(), getWatchedOutputAddress(txe.getTx()));
+
                             Platform.runLater(() -> {
                                 Integer index = transactions.indexOf(txu);
                                 if (index > -1) {
@@ -188,6 +193,10 @@ public abstract class WalletManager {
         kit.stopAsync();
     }
 
+    public ObservableList<TransactionWithAmt> getTransactions() {
+        return transactions;
+    }
+
     public NetworkParameters getNetParams() {
         return netParams;
     }
@@ -213,16 +222,11 @@ public abstract class WalletManager {
     }
 
     public String fundEscrow(String escrowAddress, BigDecimal amount) throws InsufficientMoneyException {
-        // TODO add extra tx fee for payout?
-
+        // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
-                Coin.parseCoin(amount.toString()));
+                Coin.parseCoin(amount.toString()).add(DEFAULT_TX_FEE));
         Transaction tx = kit.wallet().sendCoins(sendRequest).tx;
         return tx.getHashAsString();
-        //Sha256Hash sh = Sha256Hash.wrap(tx.getHashAsString());
-//            sendResult.broadcastComplete.addListener(() -> {
-//                LOG.debug("Fund escrow tx send: {}", sendResult.tx);
-//            }, BytabitMobile.EXECUTOR);
     }
 
     public static String escrowAddress(String arbitratorProfilePubKey,
@@ -238,5 +242,30 @@ public abstract class WalletManager {
 
     private ECKey getECKeyFromAddress(Address address) {
         return kit.wallet().findKeyFromPubHash(address.getHash160());
+    }
+
+    private String getWatchedOutputAddress(Transaction tx) {
+        List<String> watchedOutputAddresses = new ArrayList<>();
+        for (TransactionOutput output : tx.getOutputs()) {
+            Address address = output.getAddressFromP2PKHScript(netParams);
+            if (address != null && kit.wallet().isAddressWatched(address)) {
+                watchedOutputAddresses.add(address.toBase58());
+            } else {
+                address = output.getAddressFromP2SH(netParams);
+                if (address != null) {
+                    watchedOutputAddresses.add(address.toBase58());
+                } else {
+                    // TODO throw error
+                    LOG.error("Found output to unknown address type.");
+                }
+            }
+        }
+
+        if (watchedOutputAddresses.size() > 1) {
+            LOG.error("Found more than one watched output address.");
+        } else if (watchedOutputAddresses.size() < 1) {
+            LOG.error("Did not find a watched output address");
+        }
+        return watchedOutputAddresses.size() > 0 ? watchedOutputAddresses.get(0) : null;
     }
 }

@@ -7,6 +7,7 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.collections.FXCollections;
@@ -191,6 +192,7 @@ public class TradeManager extends AbstractManager {
         }
     }
 
+
     public boolean activeSellerEscrowPubKey(String sellerEscrowPubKey) {
         for (Trade trade : tradesObservableList) {
             // TODO also check if in active status
@@ -209,5 +211,21 @@ public class TradeManager extends AbstractManager {
             }
         }
         return false;
+    }
+
+    public void updateTradeTx(TransactionWithAmt updatedTx) {
+        for (Trade trade : tradesObservableList) {
+            if (trade.getEscrowAddress().equals(updatedTx.getOutputAddress())) {
+                // TODO check tx amount equals expected buy request
+            }
+        }
+    }
+
+    public void removeTradeTx(TransactionWithAmt updatedTx) {
+
+    }
+
+    public void addTradeTx(TransactionWithAmt updatedTx) {
+
     }
 }

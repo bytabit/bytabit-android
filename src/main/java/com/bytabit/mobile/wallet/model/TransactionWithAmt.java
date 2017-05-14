@@ -4,15 +4,18 @@ import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 import org.joda.time.LocalDateTime;
 
+import java.math.BigDecimal;
+
 public class TransactionWithAmt {
 
-    public TransactionWithAmt(Transaction tx, Coin btcAmt) {
+    public TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress) {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
         this.depth = tx.getConfidence().getDepthInBlocks();
         this.date = new LocalDateTime(tx.getUpdateTime());
         this.memo = tx.getMemo();
-        this.btcAmt = btcAmt;
+        this.coinAmt = coinAmt;
+        this.outputAddress = outputAddress;
     }
 
     private String hash;
@@ -20,7 +23,8 @@ public class TransactionWithAmt {
     private Integer depth;
     private LocalDateTime date;
     private String memo;
-    private Coin btcAmt;
+    private Coin coinAmt;
+    private String outputAddress;
 
     public String getHash() {
         return hash;
@@ -42,8 +46,16 @@ public class TransactionWithAmt {
         return memo;
     }
 
-    public Coin getBtcAmt() {
-        return btcAmt;
+    public Coin getCoinAmt() {
+        return coinAmt;
+    }
+
+    public BigDecimal getBtcAmt() {
+        return new BigDecimal(coinAmt.toPlainString());
+    }
+
+    public String getOutputAddress() {
+        return outputAddress;
     }
 
     @Override
@@ -54,7 +66,7 @@ public class TransactionWithAmt {
         sb.append(", depth=").append(depth);
         sb.append(", date=").append(date);
         sb.append(", memo='").append(memo).append('\'');
-        sb.append(", btcAmt=").append(btcAmt);
+        sb.append(", coinAmt=").append(coinAmt);
         sb.append('}');
         return sb.toString();
     }

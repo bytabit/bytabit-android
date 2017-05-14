@@ -6,6 +6,7 @@ import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.EscrowWalletManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -16,10 +17,15 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import org.bitcoinj.core.InsufficientMoneyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class TradesPresenter {
+
+    private static Logger LOG = LoggerFactory.getLogger(TradesPresenter.class);
+
 
     @Inject
     TradeManager tradeManager;
@@ -89,6 +95,28 @@ public class TradesPresenter {
                         } catch (InsufficientMoneyException e) {
                             // TODO let user know not enough BTC in wallet
                         }
+                    }
+                }
+            }
+        });
+
+        escrowWalletManager.getTransactions().addListener((ListChangeListener<TransactionWithAmt>) change -> {
+            while (change.next()) {
+                LOG.debug("Escrow transactions changed.");
+                if (change.wasUpdated()) {
+                    //update transactions, optional?
+                    for (int i = change.getFrom(); i < change.getTo(); ++i) {
+                        TransactionWithAmt updatedTx = change.getList().get(i);
+                        tradeManager.updateTradeTx(updatedTx);
+                    }
+                } else {
+                    for (TransactionWithAmt removedTx : change.getRemoved()) {
+                        // remove transactions
+                        tradeManager.removeTradeTx(removedTx);
+                    }
+                    for (TransactionWithAmt addedTx : change.getAddedSubList()) {
+                        // add transactions
+                        tradeManager.addTradeTx(addedTx);
                     }
                 }
             }

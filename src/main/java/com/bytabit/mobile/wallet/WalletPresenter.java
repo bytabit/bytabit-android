@@ -49,7 +49,7 @@ public class WalletPresenter {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC, %tc", tx.getBtcAmt().toPlainString(), tx.getDate().toDate());
+                    String amount = String.format("%s BTC, %tc", tx.getCoinAmt().toPlainString(), tx.getDate().toDate());
                     String details = String.format("%s (%d), Hash: %s",
                             tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());

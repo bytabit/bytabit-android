@@ -32,7 +32,7 @@ public class Trade {
     private final ObjectProperty<BuyRequest> buyRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PaymentRequest> sellerPaymentRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutRequest> buyerPayoutRequest = new SimpleObjectProperty<>();
-    private final StringProperty buyerPayoutTxId = new SimpleStringProperty();
+    private final StringProperty buyerPayoutTxHash = new SimpleStringProperty();
 
     public String getEscrowAddress() {
         return escrowAddress.get();
@@ -106,16 +106,16 @@ public class Trade {
         this.buyerPayoutRequest.set(buyerPayoutRequest);
     }
 
-    public String getBuyerPayoutTxId() {
-        return buyerPayoutTxId.get();
+    public String getBuyerPayoutTxHash() {
+        return buyerPayoutTxHash.get();
     }
 
-    public StringProperty buyerPayoutTxIdProperty() {
-        return buyerPayoutTxId;
+    public StringProperty buyerPayoutTxHashProperty() {
+        return buyerPayoutTxHash;
     }
 
-    public void setBuyerPayoutTxId(String buyerPayoutTxId) {
-        this.buyerPayoutTxId.set(buyerPayoutTxId);
+    public void setBuyerPayoutTxHash(String buyerPayoutTxHash) {
+        this.buyerPayoutTxHash.set(buyerPayoutTxHash);
     }
 
     @Override
@@ -126,7 +126,7 @@ public class Trade {
         sb.append(", buyRequest=").append(buyRequest);
         sb.append(", sellerPaymentRequest=").append(sellerPaymentRequest);
         sb.append(", buyerPayoutRequest=").append(buyerPayoutRequest);
-        sb.append(", buyerPayoutTxId=").append(buyerPayoutTxId);
+        sb.append(", buyerPayoutTxHash=").append(buyerPayoutTxHash);
         sb.append('}');
         return sb.toString();
     }
