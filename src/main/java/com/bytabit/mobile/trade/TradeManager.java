@@ -4,6 +4,7 @@ import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
@@ -12,10 +13,12 @@ import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import org.bitcoinj.core.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -36,6 +39,9 @@ public class TradeManager extends AbstractManager {
     private final ObservableList<Trade> tradesObservableList;
 
     private final Trade viewTrade;
+
+    @Inject
+    ProfileManager profileManager;
 
     String tradesPath = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
@@ -104,6 +110,27 @@ public class TradeManager extends AbstractManager {
         }
     }
 
+    public PaymentRequest readPaymentRequest(Trade trade) {
+
+        String tradePath = tradesPath + trade.getEscrowAddress();
+        String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
+        try {
+            PaymentRequest readPaymentRequest =
+                    paymentRequestService.readPaymentRequests(trade.getEscrowAddress()).execute().body();
+            LOG.debug("Read paymentRequest: {}", readPaymentRequest);
+
+            FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
+            paymentRequestWriter.write(JSON.std.asString(readPaymentRequest));
+            paymentRequestWriter.flush();
+
+            return readPaymentRequest;
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
     public void createTrades(String profilePubKey, List<? extends SellOffer> offers) {
         for (SellOffer sellOffer : offers) {
             try {
@@ -127,7 +154,7 @@ public class TradeManager extends AbstractManager {
             String tradePath = tradesPath + tradeEscrowAddress;
             File tradeDir = new File(tradePath);
 
-            Trade trade = new Trade(sellOffer, buyRequest, Trade.State.BUY_REQUESTED, tradeEscrowAddress);
+            Trade trade = new Trade(sellOffer, buyRequest, tradeEscrowAddress);
 
             if (!tradeDir.exists()) {
                 tradeDir.mkdirs();
@@ -213,19 +240,29 @@ public class TradeManager extends AbstractManager {
         return false;
     }
 
-    public void updateTradeTx(TransactionWithAmt updatedTx) {
-        for (Trade trade : tradesObservableList) {
-            if (trade.getEscrowAddress().equals(updatedTx.getOutputAddress())) {
-                // TODO check tx amount equals expected buy request
-            }
-        }
-    }
-
     public void removeTradeTx(TransactionWithAmt updatedTx) {
 
     }
 
     public void addTradeTx(TransactionWithAmt updatedTx) {
+        BigDecimal defaultTxFee = new BigDecimal(Transaction.DEFAULT_TX_FEE.toPlainString());
+        for (Trade trade : tradesObservableList) {
+            if (trade.getEscrowAddress().equals(updatedTx.getOutputAddress())
+                    && trade.getBuyRequest().getBtcAmount().add(defaultTxFee).equals(updatedTx.getBtcAmt())
+                    && updatedTx.getConfidenceType().equals("BUILDING")
+                    && trade.getPaymentRequest() == null) {
 
+                if (trade.getSellOffer().getSellerProfilePubKey()
+                        .equals(profileManager.profile().getPubKey())) {
+                    // create, publish and save payment request
+                    String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer().getCurrencyCode(), trade.getSellOffer().getPaymentMethod())
+                            .get();
+                    createPaymentRequest(trade, updatedTx.getHash(), paymentDetails);
+                } else {
+                    // read and save payment request
+                    readPaymentRequest(trade);
+                }
+            }
+        }
     }
 }

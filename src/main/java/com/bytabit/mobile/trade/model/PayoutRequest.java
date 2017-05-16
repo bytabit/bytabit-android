@@ -8,20 +8,20 @@ public class PayoutRequest {
     public PayoutRequest() {
     }
 
-    private final StringProperty buyerEscrowPubKey = new SimpleStringProperty();
+    private final StringProperty escrowAddress = new SimpleStringProperty();
     private final StringProperty paymentId = new SimpleStringProperty();
     private final StringProperty payoutSignature = new SimpleStringProperty();
 
-    public String getBuyerEscrowPubKey() {
-        return buyerEscrowPubKey.get();
+    public String getEscrowAddress() {
+        return escrowAddress.get();
     }
 
-    public StringProperty buyerEscrowPubKeyProperty() {
-        return buyerEscrowPubKey;
+    public StringProperty escrowAddressProperty() {
+        return escrowAddress;
     }
 
-    public void setBuyerEscrowPubKey(String buyerEscrowPubKey) {
-        this.buyerEscrowPubKey.set(buyerEscrowPubKey);
+    public void setEscrowAddress(String escrowAddress) {
+        this.escrowAddress.set(escrowAddress);
     }
 
     public String getPaymentId() {

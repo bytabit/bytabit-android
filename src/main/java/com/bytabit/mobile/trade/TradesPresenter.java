@@ -85,6 +85,8 @@ public class TradesPresenter {
                             .equals(profileManager.profile().getPubKey())) {
                         // TODO verify trade not yet funded
                         try {
+                            escrowWalletManager.watchTradeEscrowAddress(trade.getEscrowAddress());
+
                             String txHash = tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
                                     trade.getBuyRequest().getBtcAmount());
 
@@ -103,21 +105,13 @@ public class TradesPresenter {
         escrowWalletManager.getTransactions().addListener((ListChangeListener<TransactionWithAmt>) change -> {
             while (change.next()) {
                 LOG.debug("Escrow transactions changed.");
-                if (change.wasUpdated()) {
-                    //update transactions, optional?
-                    for (int i = change.getFrom(); i < change.getTo(); ++i) {
-                        TransactionWithAmt updatedTx = change.getList().get(i);
-                        tradeManager.updateTradeTx(updatedTx);
-                    }
-                } else {
-                    for (TransactionWithAmt removedTx : change.getRemoved()) {
-                        // remove transactions
-                        tradeManager.removeTradeTx(removedTx);
-                    }
-                    for (TransactionWithAmt addedTx : change.getAddedSubList()) {
-                        // add transactions
-                        tradeManager.addTradeTx(addedTx);
-                    }
+                for (TransactionWithAmt removedTx : change.getRemoved()) {
+                    // remove transactions
+                    tradeManager.removeTradeTx(removedTx);
+                }
+                for (TransactionWithAmt addedTx : change.getAddedSubList()) {
+                    // add transactions
+                    tradeManager.addTradeTx(addedTx);
                 }
             }
         });

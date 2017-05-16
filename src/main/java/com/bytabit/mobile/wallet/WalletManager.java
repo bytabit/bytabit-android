@@ -252,20 +252,15 @@ public abstract class WalletManager {
                 watchedOutputAddresses.add(address.toBase58());
             } else {
                 address = output.getAddressFromP2SH(netParams);
-                if (address != null) {
+                if (address != null && kit.wallet().isAddressWatched(address)) {
                     watchedOutputAddresses.add(address.toBase58());
-                } else {
-                    // TODO throw error
-                    LOG.error("Found output to unknown address type.");
-                }
+                } 
             }
         }
 
         if (watchedOutputAddresses.size() > 1) {
             LOG.error("Found more than one watched output address.");
-        } else if (watchedOutputAddresses.size() < 1) {
-            LOG.error("Did not find a watched output address");
-        }
+        } 
         return watchedOutputAddresses.size() > 0 ? watchedOutputAddresses.get(0) : null;
     }
 }

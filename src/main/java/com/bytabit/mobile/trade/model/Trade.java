@@ -9,30 +9,21 @@ import javafx.beans.property.StringProperty;
 
 public class Trade {
 
-    public enum State {
-        BUY_REQUESTED, ESCROW_FUNDED,
-        PAYMENT_REQUESTED, PAYMENT_SENT,
-        PAYMENT_RECEIVED, BUYER_PAYOUT, SELLER_REFUND,
-        ARBITRATION_REQUESTED, CANCEL_REQUESTED
-    }
-
     public Trade() {
     }
 
-    public Trade(SellOffer sellOffer, BuyRequest buyRequest, State state, String escrowAddress) {
+    public Trade(SellOffer sellOffer, BuyRequest buyRequest, String escrowAddress) {
         setSellOffer(sellOffer);
         setBuyRequest(buyRequest);
-        setState(state);
         setEscrowAddress(escrowAddress);
     }
 
     private final StringProperty escrowAddress = new SimpleStringProperty();
-    private final ObjectProperty<State> state = new SimpleObjectProperty<>();
     private final ObjectProperty<SellOffer> sellOffer = new SimpleObjectProperty<>();
     private final ObjectProperty<BuyRequest> buyRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<PaymentRequest> sellerPaymentRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<PayoutRequest> buyerPayoutRequest = new SimpleObjectProperty<>();
-    private final StringProperty buyerPayoutTxHash = new SimpleStringProperty();
+    private final ObjectProperty<PaymentRequest> paymentRequest = new SimpleObjectProperty<>();
+    private final ObjectProperty<PayoutRequest> payoutRequest = new SimpleObjectProperty<>();
+    private final StringProperty payoutTxHash = new SimpleStringProperty();
 
     public String getEscrowAddress() {
         return escrowAddress.get();
@@ -44,18 +35,6 @@ public class Trade {
 
     public void setEscrowAddress(String escrowAddress) {
         this.escrowAddress.set(escrowAddress);
-    }
-
-    public State getState() {
-        return state.get();
-    }
-
-    public ObjectProperty<State> stateProperty() {
-        return state;
-    }
-
-    public void setState(State state) {
-        this.state.set(state);
     }
 
     public SellOffer getSellOffer() {
@@ -82,51 +61,51 @@ public class Trade {
         this.buyRequest.set(buyRequest);
     }
 
-    public PaymentRequest getSellerPaymentRequest() {
-        return sellerPaymentRequest.get();
+    public PaymentRequest getPaymentRequest() {
+        return paymentRequest.get();
     }
 
-    public ObjectProperty<PaymentRequest> sellerPaymentRequestProperty() {
-        return sellerPaymentRequest;
+    public ObjectProperty<PaymentRequest> paymentRequestProperty() {
+        return paymentRequest;
     }
 
-    public void setSellerPaymentRequest(PaymentRequest sellerPaymentRequest) {
-        this.sellerPaymentRequest.set(sellerPaymentRequest);
+    public void setPaymentRequest(PaymentRequest paymentRequest) {
+        this.paymentRequest.set(paymentRequest);
     }
 
-    public PayoutRequest getBuyerPayoutRequest() {
-        return buyerPayoutRequest.get();
+    public PayoutRequest getPayoutRequest() {
+        return payoutRequest.get();
     }
 
-    public ObjectProperty<PayoutRequest> buyerPayoutRequestProperty() {
-        return buyerPayoutRequest;
+    public ObjectProperty<PayoutRequest> payoutRequestProperty() {
+        return payoutRequest;
     }
 
-    public void setBuyerPayoutRequest(PayoutRequest buyerPayoutRequest) {
-        this.buyerPayoutRequest.set(buyerPayoutRequest);
+    public void setPayoutRequest(PayoutRequest payoutRequest) {
+        this.payoutRequest.set(payoutRequest);
     }
 
-    public String getBuyerPayoutTxHash() {
-        return buyerPayoutTxHash.get();
+    public String getPayoutTxHash() {
+        return payoutTxHash.get();
     }
 
-    public StringProperty buyerPayoutTxHashProperty() {
-        return buyerPayoutTxHash;
+    public StringProperty payoutTxHashProperty() {
+        return payoutTxHash;
     }
 
-    public void setBuyerPayoutTxHash(String buyerPayoutTxHash) {
-        this.buyerPayoutTxHash.set(buyerPayoutTxHash);
+    public void setPayoutTxHash(String payoutTxHash) {
+        this.payoutTxHash.set(payoutTxHash);
     }
 
     @Override
     public String toString() {
         final StringBuffer sb = new StringBuffer("Trade{");
-        sb.append("state=").append(state);
+        sb.append("escrowAddress=").append(escrowAddress);
         sb.append(", sellOffer=").append(sellOffer);
         sb.append(", buyRequest=").append(buyRequest);
-        sb.append(", sellerPaymentRequest=").append(sellerPaymentRequest);
-        sb.append(", buyerPayoutRequest=").append(buyerPayoutRequest);
-        sb.append(", buyerPayoutTxHash=").append(buyerPayoutTxHash);
+        sb.append(", paymentRequest=").append(paymentRequest);
+        sb.append(", payoutRequest=").append(payoutRequest);
+        sb.append(", payoutTxHash=").append(payoutTxHash);
         sb.append('}');
         return sb.toString();
     }

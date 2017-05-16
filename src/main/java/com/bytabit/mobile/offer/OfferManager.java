@@ -2,9 +2,7 @@ package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.trade.BuyRequestService;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -28,8 +26,6 @@ public class OfferManager extends AbstractManager {
 
     private final SellOfferService sellOfferService;
 
-    private final BuyRequestService buyRequestService;
-
     private final ObservableList<SellOffer> sellOffersObservableList;
 
     private final SellOffer newSellOffer;
@@ -45,13 +41,6 @@ public class OfferManager extends AbstractManager {
                 .build();
 
         sellOfferService = sellOfferRetrofit.create(SellOfferService.class);
-
-        Retrofit buyRequestRetrofit = new Retrofit.Builder()
-                .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(new JacksonJrConverter<>(BuyRequest.class))
-                .build();
-
-        buyRequestService = buyRequestRetrofit.create(BuyRequestService.class);
 
         sellOffersObservableList = FXCollections.observableArrayList();
         newSellOffer = new SellOffer();

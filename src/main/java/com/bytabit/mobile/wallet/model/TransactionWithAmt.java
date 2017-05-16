@@ -51,7 +51,7 @@ public class TransactionWithAmt {
     }
 
     public BigDecimal getBtcAmt() {
-        return new BigDecimal(coinAmt.toPlainString());
+        return new BigDecimal(coinAmt.toPlainString()).setScale(8);
     }
 
     public String getOutputAddress() {
