@@ -101,7 +101,9 @@ public class TradeManager extends AbstractManager {
             // TODO save payment request to server
             PaymentRequest createdPaymentRequest =
                     paymentRequestService.createPaymentRequest(trade.getEscrowAddress(), newPaymentRequest).execute().body();
+
             LOG.debug("Created paymentRequest: {}", createdPaymentRequest);
+            trade.setPaymentRequest(createdPaymentRequest);
             return createdPaymentRequest;
 
         } catch (IOException ioe) {
@@ -123,6 +125,7 @@ public class TradeManager extends AbstractManager {
             paymentRequestWriter.write(JSON.std.asString(readPaymentRequest));
             paymentRequestWriter.flush();
 
+            trade.setPaymentRequest(readPaymentRequest);
             return readPaymentRequest;
 
         } catch (IOException ioe) {

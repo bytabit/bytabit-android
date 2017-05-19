@@ -116,18 +116,16 @@ public class TradesPresenter {
             }
         });
 
-        //offersListView.itemsProperty().addAll(offerManager.read());
         tradesListView.itemsProperty().setValue(tradeManager.getTradesObservableList());
         tradesListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-//            SellOffer viewOffer = tradeManager.getViewTrade();
-//            viewOffer.setSellerEscrowPubKey(newValue.getSellerEscrowPubKey());
-//            viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
-//            viewOffer.setCurrencyCode(newValue.getCurrencyCode());
-//            viewOffer.setPaymentMethod(newValue.getPaymentMethod());
-//            viewOffer.setMinAmount(newValue.getMinAmount());
-//            viewOffer.setMaxAmount(newValue.getMaxAmount());
-//            viewOffer.setPrice(newValue.getPrice());
-//            MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+            Trade viewTrade = tradeManager.getViewTrade();
+            viewTrade.setEscrowAddress(newValue.getEscrowAddress());
+            viewTrade.setSellOffer(newValue.getSellOffer());
+            viewTrade.setBuyRequest(newValue.getBuyRequest());
+            viewTrade.setPaymentRequest(newValue.getPaymentRequest());
+            viewTrade.setPayoutRequest(newValue.getPayoutRequest());
+            viewTrade.setPayoutTxHash(newValue.getPayoutTxHash());
+            MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
         });
     }
 }

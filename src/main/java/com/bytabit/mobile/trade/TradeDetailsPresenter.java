@@ -1,10 +1,8 @@
 package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.offer.AddOfferPresenter;
-import com.bytabit.mobile.offer.OfferManager;
-import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
-import com.bytabit.mobile.wallet.TradeWalletManager;
+import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -16,37 +14,57 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.math.BigDecimal;
 
 public class TradeDetailsPresenter {
 
     private static Logger LOG = LoggerFactory.getLogger(AddOfferPresenter.class);
 
     @Inject
-    OfferManager offerManager;
+    TradeManager tradeManager;
 
     @Inject
     ProfileManager profileManager;
 
-    @Inject
-    TradeWalletManager tradeWalletManager;
-
     @FXML
     private View tradeDetailsView;
 
-    @FXML
-    private Button removeOfferButton;
 
     @FXML
-    private Label minTradeAmtLabel;
+    private Label tradeStatusLabel;
 
     @FXML
-    private Label minTradeAmtCurrencyLabel;
+    private Label tradeRoleLabel;
 
     @FXML
-    private Label maxTradeAmtLabel;
+    private Label tradeEscrowAddressLabel;
 
     @FXML
-    private Label maxTradeAmtCurrencyLabel;
+    private Label sellerEscrowPubKeyLabel;
+
+    @FXML
+    private Label sellerProfilePubKeyLabel;
+
+    @FXML
+    private Label arbitratorProfilePubKeyLabel;
+
+    @FXML
+    private Label paymentCurrencyLabel;
+
+    @FXML
+    private Label paymentMethodLabel;
+
+    @FXML
+    private Label paymentDetailsLabel;
+
+    @FXML
+    private Label paymentAmountLabel;
+
+    @FXML
+    private Label paymentAmountCurrencyLabel;
+
+    @FXML
+    private Label purchasedAmountLabel;
 
     @FXML
     private Label priceLabel;
@@ -55,47 +73,74 @@ public class TradeDetailsPresenter {
     private Label priceCurrencyLabel;
 
     @FXML
-    private Label offerPubKeyLabel;
+    private Button paymentSentButton;
 
     @FXML
-    private Label sellerPubKeyLabel;
+    private Button paymentReceivedButton;
 
-    @FXML
-    private Label currencyLabel;
-
-    @FXML
-    private Label paymentMethodLabel;
+    enum TradeRole {
+        BUYER, SELLER, TBD
+    }
 
     public void initialize() {
 
-        LOG.debug("initialize offer details presenter");
+        LOG.debug("initialize trade details presenter");
 
         tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
+
+            paymentReceivedButton.visibleProperty().setValue(false);
+            paymentSentButton.visibleProperty().setValue(false);
+            TradeRole tradeRole = TradeRole.TBD;
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-                appBar.setTitleText("Offer Details");
+                appBar.setTitleText("Trade Details");
 
-                SellOffer viewOffer = offerManager.getViewSellOffer();
-                offerPubKeyLabel.textProperty().setValue(viewOffer.getSellerEscrowPubKey());
-                sellerPubKeyLabel.textProperty().setValue(viewOffer.getSellerProfilePubKey());
-                currencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
-                paymentMethodLabel.textProperty().setValue(viewOffer.getPaymentMethod().displayName());
-                minTradeAmtLabel.textProperty().setValue(viewOffer.getMinAmount().toString());
-                maxTradeAmtLabel.textProperty().setValue(viewOffer.getMaxAmount().toString());
-                priceLabel.textProperty().setValue(viewOffer.getPrice().toString());
+                Trade trade = tradeManager.getViewTrade();
+                BigDecimal price = trade.getSellOffer().getPrice();
+                BigDecimal amount = trade.getBuyRequest().getBtcAmount();
+                BigDecimal paymentAmount = price.multiply(amount);
 
-                minTradeAmtCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
-                maxTradeAmtCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
-                priceCurrencyLabel.textProperty().setValue(viewOffer.getCurrencyCode().toString());
 
-                String sellerPubKey = profileManager.profile().getPubKey();
-                if (sellerPubKey != null && sellerPubKey.equals(viewOffer.getSellerProfilePubKey())) {
-                    removeOfferButton.visibleProperty().setValue(true);
-                } else {
-                    removeOfferButton.visibleProperty().setValue(false);
+                if (profileManager.profile().getPubKey().equals(trade.getBuyRequest().getBuyerProfilePubKey())) {
+                    tradeRole = TradeRole.BUYER;
+                } else if (profileManager.profile().getPubKey().equals(trade.getSellOffer().getSellerProfilePubKey())) {
+                    tradeRole = TradeRole.SELLER;
                 }
+
+                tradeStatusLabel.textProperty().setValue("STARTED");
+                tradeRoleLabel.textProperty().setValue(tradeRole.toString());
+                tradeEscrowAddressLabel.textProperty().setValue(trade.getEscrowAddress());
+                sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerEscrowPubKey());
+                sellerProfilePubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerProfilePubKey());
+                arbitratorProfilePubKeyLabel.textProperty().setValue(trade.getSellOffer().getArbitratorProfilePubKey());
+                paymentCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
+                paymentMethodLabel.textProperty().setValue(trade.getSellOffer().getPaymentMethod().displayName());
+                paymentAmountLabel.textProperty().setValue(paymentAmount.toPlainString());
+                paymentAmountCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
+                purchasedAmountLabel.textProperty().setValue(amount.toPlainString());
+                priceLabel.textProperty().setValue(price.toPlainString());
+                priceCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
+
+                if (trade.getPaymentRequest() != null && trade.getPaymentRequest().getFundingTxHash() != null) {
+                    tradeStatusLabel.textProperty().setValue("FUNDED");
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
+                    if (tradeRole == TradeRole.BUYER) {
+                        paymentReceivedButton.visibleProperty().setValue(false);
+                        paymentSentButton.visibleProperty().setValue(true);
+                    } else if (tradeRole == TradeRole.SELLER) {
+                        paymentReceivedButton.visibleProperty().setValue(true);
+                        paymentSentButton.visibleProperty().setValue(false);
+                    }
+                }
+
+//                String sellerPubKey = profileManager.profile().getPubKey();
+//                if (sellerPubKey != null && sellerPubKey.equals(viewOffer.getSellerProfilePubKey())) {
+//                    removeOfferButton.visibleProperty().setValue(true);
+//                } else {
+//                    removeOfferButton.visibleProperty().setValue(false);
+//                }
             }
         });
     }
