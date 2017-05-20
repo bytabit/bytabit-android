@@ -134,14 +134,12 @@ public class TradeDetailsPresenter {
                         paymentSentButton.visibleProperty().setValue(false);
                     }
                 }
-
-//                String sellerPubKey = profileManager.profile().getPubKey();
-//                if (sellerPubKey != null && sellerPubKey.equals(viewOffer.getSellerProfilePubKey())) {
-//                    removeOfferButton.visibleProperty().setValue(true);
-//                } else {
-//                    removeOfferButton.visibleProperty().setValue(false);
-//                }
             }
+        });
+
+        paymentSentButton.onActionProperty().addListener(e -> {
+            LOG.debug("paymentSentButton pressed");
+
         });
     }
 }

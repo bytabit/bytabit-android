@@ -9,7 +9,7 @@ public class PayoutRequest {
     }
 
     private final StringProperty escrowAddress = new SimpleStringProperty();
-    private final StringProperty paymentId = new SimpleStringProperty();
+    private final StringProperty paymentReference = new SimpleStringProperty();
     private final StringProperty payoutSignature = new SimpleStringProperty();
 
     public String getEscrowAddress() {
@@ -24,16 +24,16 @@ public class PayoutRequest {
         this.escrowAddress.set(escrowAddress);
     }
 
-    public String getPaymentId() {
-        return paymentId.get();
+    public String getPaymentReference() {
+        return paymentReference.get();
     }
 
-    public StringProperty paymentIdProperty() {
-        return paymentId;
+    public StringProperty paymentReferenceProperty() {
+        return paymentReference;
     }
 
-    public void setPaymentId(String paymentId) {
-        this.paymentId.set(paymentId);
+    public void setPaymentReference(String paymentReference) {
+        this.paymentReference.set(paymentReference);
     }
 
     public String getPayoutSignature() {

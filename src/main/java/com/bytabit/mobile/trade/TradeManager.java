@@ -98,7 +98,6 @@ public class TradeManager extends AbstractManager {
             paymentRequestWriter.write(JSON.std.asString(newPaymentRequest));
             paymentRequestWriter.flush();
 
-            // TODO save payment request to server
             PaymentRequest createdPaymentRequest =
                     paymentRequestService.createPaymentRequest(trade.getEscrowAddress(), newPaymentRequest).execute().body();
 
@@ -214,6 +213,13 @@ public class TradeManager extends AbstractManager {
                 FileReader buyRequestReader = new FileReader(buyRequestFile);
                 BuyRequest buyRequest = JSON.std.beanFrom(BuyRequest.class, buyRequestReader);
                 trade.setBuyRequest(buyRequest);
+
+                File paymentRequestFile = new File(tradesPath + tradeId + File.separator + "paymentRequest.json");
+                if (paymentRequestFile.exists()) {
+                    FileReader paymentRequestReader = new FileReader(paymentRequestFile);
+                    PaymentRequest paymentRequest = JSON.std.beanFrom(PaymentRequest.class, paymentRequestReader);
+                    trade.setPaymentRequest(paymentRequest);
+                }
 
                 tradesObservableList.add(trade);
             } catch (IOException ioe) {
