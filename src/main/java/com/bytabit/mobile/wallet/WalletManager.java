@@ -2,6 +2,7 @@ package com.bytabit.mobile.wallet;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
+import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import javafx.application.Platform;
@@ -11,8 +12,10 @@ import javafx.collections.ObservableList;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
+import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
+import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.SendRequest;
@@ -229,15 +232,20 @@ public abstract class WalletManager {
         return tx.getHashAsString();
     }
 
+    private static Address escrowAddress(ECKey arbitratorProfilePubKey,
+                                         ECKey sellerEscrowPubKey,
+                                         ECKey buyerEscrowPubKey) {
+        return ScriptBuilder.createP2SHOutputScript(2, Arrays.asList(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey))
+                .getToAddress(netParams);
+    }
+
     public static String escrowAddress(String arbitratorProfilePubKey,
                                        String sellerEscrowPubKey,
                                        String buyerEscrowPubKey) {
         ECKey apk = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKey));
         ECKey spk = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKey));
         ECKey bpk = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKey));
-        List<ECKey> pubkeys = Arrays.asList(apk, spk, bpk);
-
-        return ScriptBuilder.createP2SHOutputScript(2, pubkeys).getToAddress(netParams).toBase58();
+        return escrowAddress(apk, spk, bpk).toBase58();
     }
 
     private ECKey getECKeyFromAddress(Address address) {
@@ -254,13 +262,98 @@ public abstract class WalletManager {
                 address = output.getAddressFromP2SH(netParams);
                 if (address != null && kit.wallet().isAddressWatched(address)) {
                     watchedOutputAddresses.add(address.toBase58());
-                } 
+                }
             }
         }
 
         if (watchedOutputAddresses.size() > 1) {
             LOG.error("Found more than one watched output address.");
-        } 
+        }
         return watchedOutputAddresses.size() > 0 ? watchedOutputAddresses.get(0) : null;
+    }
+
+    public Transaction getTransaction(String txHash) {
+        Sha256Hash hash = Sha256Hash.wrap(txHash);
+        return kit.wallet().getTransaction(hash);
+    }
+
+    public String getPayoutSignature(Trade trade, Transaction fundingTx) {
+        Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
+        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
+        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
+
+        // below works!
+//        ECKey freshKey = kit.wallet().freshReceiveKey();
+//        Boolean hasKey = kit.wallet().hasKey(freshKey);
+//        String freshKeyPubKeyStr = Base58.encode(freshKey.getPubKey());
+//        ECKey foundFreshKey = kit.wallet().findKeyFromPubKey(Base58.decode(freshKeyPubKeyStr));
+//        Boolean areEqual = freshKey.equals(foundFreshKey);
+
+        ECKey buyerEscrowPubKey = kit.wallet().findKeyFromPubKey(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+        //ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+
+        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
+        TransactionSignature signature = getPayoutSignature(payoutAmount, fundingTx,
+                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
+                buyerPayoutAddress);
+
+        return Base58.encode(signature.encodeToBitcoin());
+    }
+
+    private TransactionSignature getPayoutSignature(Coin payoutAmount,
+                                                    Transaction fundingTx,
+                                                    ECKey arbitratorProfilePubKey,
+                                                    ECKey sellerEscrowPubKey,
+                                                    ECKey buyerEscrowPubKey,
+                                                    Address buyerPayoutAddress) {
+
+        Transaction payoutTx = new Transaction(netParams);
+        payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
+
+        Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+        Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+
+        // add input to payout tx from single matching funding tx output
+        for (TransactionOutput txo : fundingTx.getOutputs()) {
+            Address outputAddress = txo.getAddressFromP2SH(netParams);
+            Coin outputAmount = payoutAmount.plus(Transaction.DEFAULT_TX_FEE);
+
+            // verify output from fundingTx exists and equals required payout amounts
+            if (outputAddress != null && outputAddress.equals(escrowAddress)
+                    && txo.getValue().equals(outputAmount)) {
+
+                // create payout input and funding output with empty unlock scripts
+                TransactionInput input = payoutTx.addInput(fundingTx.getOutput(0));
+                Script emptyUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(null, redeemScript);
+                input.setScriptSig(emptyUnlockScript);
+                break;
+            }
+        }
+
+        // add output to payout tx
+        payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
+
+        // find signing key
+        ECKey escrowKey = kit.wallet().findKeyFromPubKey(buyerEscrowPubKey.getPubKey());
+        if (escrowKey == null) {
+            escrowKey = kit.wallet().findKeyFromPubKey(sellerEscrowPubKey.getPubKey());
+        }
+        if (escrowKey == null) {
+            escrowKey = kit.wallet().findKeyFromPubKey(arbitratorProfilePubKey.getPubKey());
+        }
+        if (escrowKey != null) {
+            // sign tx input
+            Sha256Hash unlockSigHash = payoutTx.hashForSignature(0, redeemScript, Transaction.SigHash.ALL, false);
+            return new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false);
+        } else {
+            throw new RuntimeException("Can create payout signature, no signing key found.");
+        }
+    }
+
+    private Script redeemScript(ECKey arbitratorProfilePubKey,
+                                ECKey sellerEscrowPubKey,
+                                ECKey buyerEscrowPubKey) {
+
+        return ScriptBuilder.createRedeemScript(2, Arrays.asList(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
     }
 }

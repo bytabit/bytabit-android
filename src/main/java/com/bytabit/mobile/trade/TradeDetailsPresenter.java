@@ -10,6 +10,7 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +59,9 @@ public class TradeDetailsPresenter {
     private Label paymentDetailsLabel;
 
     @FXML
+    private Label paymentReferenceLabel;
+
+    @FXML
     private Label paymentAmountLabel;
 
     @FXML
@@ -78,6 +82,9 @@ public class TradeDetailsPresenter {
     @FXML
     private Button paymentReceivedButton;
 
+    @FXML
+    private TextField paymentReferenceField;
+
     enum TradeRole {
         BUYER, SELLER, TBD
     }
@@ -90,6 +97,8 @@ public class TradeDetailsPresenter {
 
             paymentReceivedButton.visibleProperty().setValue(false);
             paymentSentButton.visibleProperty().setValue(false);
+            paymentReferenceField.visibleProperty().setValue(false);
+            
             TradeRole tradeRole = TradeRole.TBD;
 
             if (newValue) {
@@ -122,6 +131,8 @@ public class TradeDetailsPresenter {
                 purchasedAmountLabel.textProperty().setValue(amount.toPlainString());
                 priceLabel.textProperty().setValue(price.toPlainString());
                 priceCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
+                paymentDetailsLabel.textProperty().setValue(null);
+                paymentReferenceLabel.textProperty().setValue(null);
 
                 if (trade.getPaymentRequest() != null && trade.getPaymentRequest().getFundingTxHash() != null) {
                     tradeStatusLabel.textProperty().setValue("FUNDED");
@@ -129,17 +140,33 @@ public class TradeDetailsPresenter {
                     if (tradeRole == TradeRole.BUYER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(true);
+                        paymentReferenceField.visibleProperty().setValue(true);
+                    } else if (tradeRole == TradeRole.SELLER) {
+                        paymentReceivedButton.visibleProperty().setValue(false);
+                        paymentSentButton.visibleProperty().setValue(false);
+                        paymentReferenceField.visibleProperty().setValue(false);
+                    }
+                }
+
+                if (trade.getPayoutRequest() != null && trade.getPayoutRequest().getPaymentReference() != null) {
+                    tradeStatusLabel.textProperty().setValue("PAYMENT SENT");
+                    paymentReferenceLabel.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    if (tradeRole == TradeRole.BUYER) {
+                        paymentReceivedButton.visibleProperty().setValue(false);
+                        paymentSentButton.visibleProperty().setValue(false);
+                        paymentReferenceField.visibleProperty().setValue(false);
                     } else if (tradeRole == TradeRole.SELLER) {
                         paymentReceivedButton.visibleProperty().setValue(true);
                         paymentSentButton.visibleProperty().setValue(false);
+                        paymentReferenceField.visibleProperty().setValue(false);
                     }
                 }
             }
         });
 
-        paymentSentButton.onActionProperty().addListener(e -> {
+        paymentSentButton.setOnAction(e -> {
             LOG.debug("paymentSentButton pressed");
-
+            tradeManager.createPayoutRequest(paymentReferenceField.getText());
         });
     }
 }

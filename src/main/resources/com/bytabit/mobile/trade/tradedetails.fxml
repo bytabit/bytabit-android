@@ -44,6 +44,8 @@
                                         vgrow="SOMETIMES"/>
                         <RowConstraints minHeight="10.0" prefHeight="30.0"
                                         vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
                     </rowConstraints>
                     <children>
                         <Label text="Payment Currency" GridPane.rowIndex="6"/>
@@ -51,9 +53,9 @@
                         <Label focusTraversable="false" text="Payment Details"
                                GridPane.rowIndex="8"/>
                         <Label focusTraversable="false" text="Purchased Amt"
-                               GridPane.rowIndex="10"/>
-                        <Label focusTraversable="false" text="Price per BTC"
                                GridPane.rowIndex="11"/>
+                        <Label focusTraversable="false" text="Price per BTC"
+                               GridPane.rowIndex="12"/>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
                               GridPane.columnIndex="1" GridPane.rowIndex="8">
                             <children>
@@ -61,7 +63,7 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="10">
+                              GridPane.columnIndex="1" GridPane.rowIndex="11">
                             <children>
                                 <Label fx:id="purchasedAmountLabel" text="TBD"/>
                                 <Label contentDisplay="CENTER" text="BTC">
@@ -72,7 +74,7 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="11">
+                              GridPane.columnIndex="1" GridPane.rowIndex="12">
                             <children>
                                 <Label fx:id="priceLabel" text="TBD"/>
                                 <Label fx:id="priceCurrencyLabel" contentDisplay="CENTER"
@@ -97,9 +99,9 @@
                         <Label fx:id="arbitratorProfilePubKeyLabel" text="TBD"
                                GridPane.columnIndex="1" GridPane.rowIndex="5"/>
                         <Label focusTraversable="false" text="Payment Amt"
-                               GridPane.rowIndex="9"/>
+                               GridPane.rowIndex="10"/>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="9">
+                              GridPane.columnIndex="1" GridPane.rowIndex="10">
                             <children>
                                 <Label fx:id="paymentAmountLabel" text="TBD"/>
                                 <Label fx:id="paymentAmountCurrencyLabel"
@@ -119,6 +121,10 @@
                         <Label text="Trade Role" GridPane.rowIndex="1"/>
                         <Label fx:id="tradeRoleLabel" text="TBD" GridPane.columnIndex="1"
                                GridPane.rowIndex="1"/>
+                        <Label focusTraversable="false" text="Payment Reference"
+                               GridPane.rowIndex="9"/>
+                        <Label fx:id="paymentReferenceLabel" text="TBD"
+                               GridPane.columnIndex="1" GridPane.rowIndex="9"/>
                     </children>
                     <opaqueInsets>
                         <Insets top="10.0"/>
@@ -127,17 +133,28 @@
                         <Insets left="10.0" right="10.0" top="10.0"/>
                     </VBox.margin>
                 </GridPane>
-                <HBox spacing="5.0">
+                <VBox prefHeight="200.0" prefWidth="100.0">
                     <children>
-                        <Button fx:id="paymentSentButton" mnemonicParsing="false"
-                                text="PAYMENT SENT"/>
-                        <Button fx:id="paymentReceivedButton" mnemonicParsing="false"
-                                text="PAYMENT RECEIVED"/>
+                        <HBox spacing="5.0">
+                            <VBox.margin>
+                                <Insets bottom="10.0" left="10.0" right="10.0"
+                                        top="10.0"/>
+                            </VBox.margin>
+                            <children>
+                                <Button fx:id="paymentSentButton" mnemonicParsing="false"
+                                        text="PAYMENT SENT"/>
+                                <Button fx:id="paymentReceivedButton"
+                                        mnemonicParsing="false" text="PAYMENT RECEIVED"/>
+                            </children>
+                        </HBox>
+                        <TextField fx:id="paymentReferenceField"
+                                   promptText="Payment Reference">
+                            <VBox.margin>
+                                <Insets left="10.0" right="10.0"/>
+                            </VBox.margin>
+                        </TextField>
                     </children>
-                    <VBox.margin>
-                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-                    </VBox.margin>
-                </HBox>
+                </VBox>
             </children>
             <opaqueInsets>
                 <Insets/>

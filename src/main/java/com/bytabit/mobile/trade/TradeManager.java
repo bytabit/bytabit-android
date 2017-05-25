@@ -6,7 +6,10 @@ import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.PaymentRequest;
+import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.EscrowWalletManager;
+import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.fasterxml.jackson.jr.ob.JSON;
@@ -36,12 +39,20 @@ public class TradeManager extends AbstractManager {
 
     private final PaymentRequestService paymentRequestService;
 
+    private final PayoutRequestService payoutRequestService;
+
     private final ObservableList<Trade> tradesObservableList;
 
     private final Trade viewTrade;
 
     @Inject
     ProfileManager profileManager;
+
+    @Inject
+    TradeWalletManager tradeWalletManager;
+
+    @Inject
+    EscrowWalletManager escrowWalletManager;
 
     String tradesPath = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
@@ -60,6 +71,14 @@ public class TradeManager extends AbstractManager {
                 .build();
 
         paymentRequestService = paymentRequestRetrofit.create(PaymentRequestService.class);
+
+        Retrofit payoutRequestRetrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(new JacksonJrConverter<>(PayoutRequest.class))
+                .build();
+
+        payoutRequestService = payoutRequestRetrofit.create(PayoutRequestService.class);
+
 
         tradesObservableList = FXCollections.observableArrayList();
         viewTrade = new Trade();
@@ -104,6 +123,69 @@ public class TradeManager extends AbstractManager {
             LOG.debug("Created paymentRequest: {}", createdPaymentRequest);
             trade.setPaymentRequest(createdPaymentRequest);
             return createdPaymentRequest;
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
+    public PayoutRequest createPayoutRequest(String paymentReference) {
+
+        PayoutRequest newPayoutRequest = new PayoutRequest();
+        newPayoutRequest.setEscrowAddress(viewTrade.getEscrowAddress());
+        newPayoutRequest.setPaymentReference(paymentReference);
+
+        Transaction fundingTx = escrowWalletManager.getTransaction(viewTrade.getPaymentRequest().getFundingTxHash());
+
+        if (fundingTx != null) {
+            String payoutSignature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTx);
+
+            newPayoutRequest.setPayoutTxSignature(payoutSignature);
+
+            String tradePath = tradesPath + viewTrade.getEscrowAddress();
+            String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
+            try {
+                FileWriter payoutRequestWriter = new FileWriter(payoutRequestPath);
+                payoutRequestWriter.write(JSON.std.asString(newPayoutRequest));
+                payoutRequestWriter.flush();
+
+                PayoutRequest createdPayoutRequest =
+                        payoutRequestService.createPayoutRequest(viewTrade.getEscrowAddress(), newPayoutRequest).execute().body();
+
+                LOG.debug("Created payoutRequest: {}", createdPayoutRequest);
+                for (Trade trade : tradesObservableList) {
+                    if (trade.getEscrowAddress().equals(createdPayoutRequest.getEscrowAddress())) {
+                        trade.setPayoutRequest(createdPayoutRequest);
+                    }
+                }
+                viewTrade.setPayoutRequest(createdPayoutRequest);
+                return createdPayoutRequest;
+
+            } catch (IOException ioe) {
+                LOG.error(ioe.getMessage());
+                throw new RuntimeException(ioe);
+            }
+        } else {
+            throw new RuntimeException("Can create payout request, no funding transaction found.");
+        }
+    }
+
+    public PayoutRequest readPayoutRequest(Trade trade) {
+
+        String tradePath = tradesPath + trade.getEscrowAddress();
+        String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
+        try {
+            PayoutRequest readPayoutRequest =
+                    payoutRequestService.readPayoutRequests(trade.getEscrowAddress()).execute().body();
+            LOG.debug("Read payoutRequest: {}", readPayoutRequest);
+
+            FileWriter payoutRequestWriter = new FileWriter(payoutRequestPath);
+            payoutRequestWriter.write(JSON.std.asString(readPayoutRequest));
+            payoutRequestWriter.flush();
+
+            trade.setPayoutRequest(readPayoutRequest);
+            return readPayoutRequest;
 
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
@@ -193,6 +275,9 @@ public class TradeManager extends AbstractManager {
     }
 
     private void readTrades() {
+
+        // read stored trades
+
         File tradesDir = new File(tradesPath);
         List<String> tradeIds;
         if (tradesDir.list() != null) {
@@ -219,6 +304,13 @@ public class TradeManager extends AbstractManager {
                     FileReader paymentRequestReader = new FileReader(paymentRequestFile);
                     PaymentRequest paymentRequest = JSON.std.beanFrom(PaymentRequest.class, paymentRequestReader);
                     trade.setPaymentRequest(paymentRequest);
+                }
+
+                File payoutRequestFile = new File(tradesPath + tradeId + File.separator + "payoutRequest.json");
+                if (payoutRequestFile.exists()) {
+                    FileReader payoutRequestReader = new FileReader(payoutRequestFile);
+                    PayoutRequest payoutRequest = JSON.std.beanFrom(PayoutRequest.class, payoutRequestReader);
+                    trade.setPayoutRequest(payoutRequest);
                 }
 
                 tradesObservableList.add(trade);
@@ -258,15 +350,22 @@ public class TradeManager extends AbstractManager {
         for (Trade trade : tradesObservableList) {
             if (trade.getEscrowAddress().equals(updatedTx.getOutputAddress())
                     && trade.getBuyRequest().getBtcAmount().add(defaultTxFee).equals(updatedTx.getBtcAmt())
-                    && updatedTx.getConfidenceType().equals("BUILDING")
-                    && trade.getPaymentRequest() == null) {
+                    && updatedTx.getConfidenceType().equals("BUILDING")) {
 
+                // Seller
                 if (trade.getSellOffer().getSellerProfilePubKey()
                         .equals(profileManager.profile().getPubKey())) {
-                    // create, publish and save payment request
-                    String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer().getCurrencyCode(), trade.getSellOffer().getPaymentMethod())
-                            .get();
-                    createPaymentRequest(trade, updatedTx.getHash(), paymentDetails);
+
+                    if (trade.getPaymentRequest() == null) {
+                        // create, publish and save payment request
+                        String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer().getCurrencyCode(), trade.getSellOffer().getPaymentMethod())
+                                .get();
+                        createPaymentRequest(trade, updatedTx.getHash(), paymentDetails);
+                    } else {
+                        // read and save payout request
+                        readPayoutRequest(trade);
+                    }
+                    // Buyer
                 } else {
                     // read and save payment request
                     readPaymentRequest(trade);

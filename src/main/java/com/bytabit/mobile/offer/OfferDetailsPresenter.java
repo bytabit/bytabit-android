@@ -163,7 +163,7 @@ public class OfferDetailsPresenter {
         }, viewOffer.priceProperty(), buyCurrencyAmtTextField.textProperty()));
 
         buyBtcButton.setOnAction(e -> {
-            String buyerEscrowPubKey = escrowWalletManager.getFreshBase58PubKey();
+            String buyerEscrowPubKey = tradeWalletManager.getFreshBase58PubKey();
             String buyerProfilePubKey = profileManager.profile().getPubKey();
             String buyerPayoutAddress = tradeWalletManager.getDepositAddress().toBase58();
             BuyRequest createdBuyRequest = tradeManager.createBuyRequest(viewOffer,

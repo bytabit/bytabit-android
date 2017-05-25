@@ -10,7 +10,7 @@ public class PayoutRequest {
 
     private final StringProperty escrowAddress = new SimpleStringProperty();
     private final StringProperty paymentReference = new SimpleStringProperty();
-    private final StringProperty payoutSignature = new SimpleStringProperty();
+    private final StringProperty payoutTxSignature = new SimpleStringProperty();
 
     public String getEscrowAddress() {
         return escrowAddress.get();
@@ -36,15 +36,15 @@ public class PayoutRequest {
         this.paymentReference.set(paymentReference);
     }
 
-    public String getPayoutSignature() {
-        return payoutSignature.get();
+    public String getPayoutTxSignature() {
+        return payoutTxSignature.get();
     }
 
-    public StringProperty payoutSignatureProperty() {
-        return payoutSignature;
+    public StringProperty payoutTxSignatureProperty() {
+        return payoutTxSignature;
     }
 
-    public void setPayoutSignature(String payoutSignature) {
-        this.payoutSignature.set(payoutSignature);
+    public void setPayoutTxSignature(String payoutTxSignature) {
+        this.payoutTxSignature.set(payoutTxSignature);
     }
 }
