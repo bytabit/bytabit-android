@@ -30,7 +30,6 @@ public class TradeDetailsPresenter {
     @FXML
     private View tradeDetailsView;
 
-
     @FXML
     private Label tradeStatusLabel;
 
@@ -167,6 +166,11 @@ public class TradeDetailsPresenter {
         paymentSentButton.setOnAction(e -> {
             LOG.debug("paymentSentButton pressed");
             tradeManager.createPayoutRequest(paymentReferenceField.getText());
+        });
+
+        paymentReceivedButton.setOnAction(e -> {
+            LOG.debug("paymentReceivedButton pressed");
+            tradeManager.payoutEscrow();
         });
     }
 }

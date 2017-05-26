@@ -5,6 +5,7 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import com.google.common.primitives.UnsignedBytes;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -347,5 +348,59 @@ public abstract class WalletManager {
                                 ECKey buyerEscrowPubKey) {
 
         return ScriptBuilder.createRedeemScript(2, Arrays.asList(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
+    }
+
+    public String payoutEscrow(Trade trade, Transaction fundingTx) throws InsufficientMoneyException {
+        Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
+        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
+        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
+        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+
+        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
+
+        TransactionSignature sellerSignature = getPayoutSignature(payoutAmount, fundingTx,
+                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
+                buyerPayoutAddress);
+
+        TransactionSignature buyerSignature = TransactionSignature
+                .decodeFromBitcoin(Base58.decode(trade.getPayoutRequest().getPayoutTxSignature()), true, true);
+
+        Transaction payoutTx = new Transaction(netParams);
+        payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
+
+        Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+        Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+        List<TransactionSignature> signatures = new ArrayList<>();
+        if (UnsignedBytes.lexicographicalComparator().compare(sellerEscrowPubKey.getPubKey(), buyerEscrowPubKey.getPubKey()) < 0) {
+            signatures.add(sellerSignature);
+            signatures.add(buyerSignature);
+        } else {
+            signatures.add(buyerSignature);
+            signatures.add(sellerSignature);
+        }
+
+        // add input to payout tx from single matching funding tx output
+        for (TransactionOutput txo : fundingTx.getOutputs()) {
+            Address outputAddress = txo.getAddressFromP2SH(netParams);
+            Coin outputAmount = payoutAmount.plus(Transaction.DEFAULT_TX_FEE);
+
+            // verify output from fundingTx exists and equals required payout amounts
+            if (outputAddress != null && outputAddress.equals(escrowAddress)
+                    && txo.getValue().equals(outputAmount)) {
+
+                // create payout input and funding output with signed unlock script
+                TransactionInput input = payoutTx.addInput(fundingTx.getOutput(0));
+                Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
+                input.setScriptSig(signedUnlockScript);
+                break;
+            }
+        }
+
+        // add output to payout tx
+        payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
+
+        SendRequest sendRequest = SendRequest.forTx(payoutTx);
+        Transaction tx = kit.wallet().sendCoins(sendRequest).tx;
+        return tx.getHashAsString();
     }
 }

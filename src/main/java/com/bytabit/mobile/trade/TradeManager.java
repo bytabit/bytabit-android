@@ -16,6 +16,7 @@ import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -376,10 +377,16 @@ public class TradeManager extends AbstractManager {
 
     public void payoutEscrow() {
 
-        Transaction fundingTx = escrowWalletManager.getTransaction(viewTrade.getPaymentRequest().getFundingTxHash());
+        Transaction fundingTx = tradeWalletManager.getTransaction(viewTrade.getPaymentRequest().getFundingTxHash());
 
         if (fundingTx != null) {
-            String payoutSignature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTx);
+
+            try {
+                tradeWalletManager.payoutEscrow(viewTrade, fundingTx);
+            } catch (InsufficientMoneyException e) {
+                // TODO notify user
+                LOG.error("Insufficient funds to payout escrow to buyer.");
+            }
 
         }
     }
