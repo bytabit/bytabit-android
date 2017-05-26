@@ -278,19 +278,11 @@ public abstract class WalletManager {
     }
 
     public String getPayoutSignature(Trade trade, Transaction fundingTx) {
+
         Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
-
-        // below works!
-//        ECKey freshKey = kit.wallet().freshReceiveKey();
-//        Boolean hasKey = kit.wallet().hasKey(freshKey);
-//        String freshKeyPubKeyStr = Base58.encode(freshKey.getPubKey());
-//        ECKey foundFreshKey = kit.wallet().findKeyFromPubKey(Base58.decode(freshKeyPubKeyStr));
-//        Boolean areEqual = freshKey.equals(foundFreshKey);
-
-        ECKey buyerEscrowPubKey = kit.wallet().findKeyFromPubKey(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
-        //ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
 
         Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
         TransactionSignature signature = getPayoutSignature(payoutAmount, fundingTx,

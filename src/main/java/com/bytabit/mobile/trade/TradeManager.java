@@ -373,4 +373,14 @@ public class TradeManager extends AbstractManager {
             }
         }
     }
+
+    public void payoutEscrow() {
+
+        Transaction fundingTx = escrowWalletManager.getTransaction(viewTrade.getPaymentRequest().getFundingTxHash());
+
+        if (fundingTx != null) {
+            String payoutSignature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTx);
+
+        }
+    }
 }

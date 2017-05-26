@@ -117,7 +117,9 @@ public class TradesPresenter {
         });
 
         tradesListView.itemsProperty().setValue(tradeManager.getTradesObservableList());
+
         tradesListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+            tradesListView.selectedItemProperty().setValue(null);
             Trade viewTrade = tradeManager.getViewTrade();
             viewTrade.setEscrowAddress(newValue.getEscrowAddress());
             viewTrade.setSellOffer(newValue.getSellOffer());
