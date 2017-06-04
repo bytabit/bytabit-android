@@ -3,9 +3,9 @@ package com.bytabit.mobile.trade.model;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
-public class TradeCompleted {
+public class PayoutDetails {
 
-    public TradeCompleted() {
+    public PayoutDetails() {
     }
 
     private StringProperty payoutTxHash = new SimpleStringProperty();

@@ -5,7 +5,10 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
-import com.bytabit.mobile.trade.model.*;
+import com.bytabit.mobile.trade.model.PaymentRequest;
+import com.bytabit.mobile.trade.model.PayoutDetails;
+import com.bytabit.mobile.trade.model.PayoutRequest;
+import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.EscrowWalletManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.bytabit.mobile.wallet.WalletManager;
@@ -13,7 +16,6 @@ import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.Transaction;
@@ -21,6 +23,9 @@ import org.bitcoinj.wallet.Wallet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
+import rx.Observable;
+import rx.schedulers.JavaFxScheduler;
+import rx.schedulers.Schedulers;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -31,10 +36,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-import static com.bytabit.mobile.trade.model.TradeRole.SELLER;
-import static com.bytabit.mobile.trade.model.TradeStatus.COMPLETED;
-import static com.bytabit.mobile.trade.model.TradeStatus.CREATED;
+import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
 
 public class TradeManager extends AbstractManager {
 
@@ -84,39 +88,76 @@ public class TradeManager extends AbstractManager {
 
         payoutRequestService = payoutRequestRetrofit.create(PayoutRequestService.class);
 
-
         tradesObservableList = FXCollections.observableArrayList();
 
-        tradesObservableList.addListener((ListChangeListener<Trade>) change -> {
-            while (change.next()) {
-                for (Trade trade : change.getAddedSubList()) {
-                    addTrade(trade);
-                }
-            }
-        });
+//        tradesObservableList.addListener((ListChangeListener<Trade>) change -> {
+//            while (change.next()) {
+//                for (Trade trade : change.getAddedSubList()) {
+//                    addTrade(trade);
+//                }
+//            }
+//        });
 
         viewTrade = new Trade();
 
         readTrades();
+        updateTrades();
     }
 
-    private void addTrade(Trade trade) {
+    // buyer create trade from sell offer + buy details
+    // 1. create buy request
+    // 2. write sell offer + buy request to trade folder
+    // 3. post buy request to server
 
-        TradeRole role = getTradeRule(trade);
-        TradeStatus status = getTradeStatus(trade);
+    // seller create trade from sell request + buy request
+    // 1. write sell offer + buy request to trade folder
 
-        // Add or Remove Watched Escrow Address
-        if (status != COMPLETED) {
-            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
-        } else {
-            escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
-        }
+    // seller fund escrow and create payment request
+    // 1. fund escrow
+    // 2. create payment request
+    // 3. write payment request to trade folder
+    // 4. post payment request to server
 
-        // Fund Escrow + Request Payment
-        if (status == CREATED && role == SELLER) {
-            fundEscrow(trade);
-        }
-    }
+    // buyer confirm funding tx, update trade with payment request
+    // 1. confirm funding tx
+    // 2. write payment request to trade folder
+
+    // buyer sends payment to seller and create payout request
+    // 1. send payment to seller
+    // 2. create payout request
+    // 3. write payout request to trade folder
+    // 4. post payout request to server
+
+    // seller update trade with payout request
+    // 1. write payout request to trade folder
+
+    // seller payout escrow to buyer and write payout details
+    // 1. payout escrow to buyer
+    // 2. create payout details
+    // 3. write payout details
+
+    // buyer confirm payout tx and write payout details
+    // 1. confirm payout tx
+    // 2. create payout details
+    // 3. write payout details
+
+//    private void addTrade(Trade trade) {
+//
+//        TradeRole role = getTradeRole(trade);
+//        Trade.Status status = trade.getStatus();
+//
+//        // Add or Remove Watched Escrow Address
+//        if (status != COMPLETED) {
+//            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+//        } else {
+//            escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+//        }
+//
+//        // Fund Escrow + Request Payment
+//        if (status == CREATED && role == SELLER) {
+//            fundEscrow(trade);
+//        }
+//    }
 
     private void fundEscrow(Trade trade) {
         // TODO verify trade not yet funded ?
@@ -137,51 +178,6 @@ public class TradeManager extends AbstractManager {
             LOG.error("Insufficient BTC to fund trade escrow.");
             // TODO let user know not enough BTC in wallet
         }
-    }
-
-    private TradeRole getTradeRule(Trade trade) {
-        TradeRole tradeRole = null;
-
-        String profilePubKey = profileManager.profile().getPubKey();
-
-        if (trade.getSellOffer().getSellerProfilePubKey().equals(profilePubKey)) {
-            tradeRole = SELLER;
-        } else if (trade.getBuyRequest().getBuyerProfilePubKey().equals(profilePubKey)) {
-            tradeRole = TradeRole.BUYER;
-        } else if (trade.getSellOffer().getArbitratorProfilePubKey().equals(profilePubKey)) {
-            tradeRole = TradeRole.ARBITRATOR;
-        }
-        return tradeRole;
-    }
-
-    private TradeStatus getTradeStatus(Trade trade) {
-        TradeStatus tradeStatus = null;
-
-        // created: SellOffer + BuyRequest
-        if (trade.getSellOffer() != null && trade.getBuyRequest() != null
-                && trade.getPaymentRequest() == null && trade.getPayoutRequest() == null
-                && trade.getTradeCompleted() == null) {
-            tradeStatus = CREATED;
-        }
-        // funded: fundEscrow + PaymentRequest
-        else if (trade.getSellOffer() != null && trade.getBuyRequest() != null
-                && trade.getPaymentRequest() != null && trade.getPayoutRequest() == null
-                && trade.getTradeCompleted() == null) {
-            tradeStatus = TradeStatus.FUNDED;
-        }
-        // paid: PayoutRequest + payoutEscrow
-        else if (trade.getSellOffer() != null && trade.getBuyRequest() != null
-                && trade.getPaymentRequest() != null && trade.getPayoutRequest() != null
-                && trade.getTradeCompleted() == null) {
-            tradeStatus = TradeStatus.PAID;
-        }
-        // complete: TradeCompleted
-        else if (trade.getSellOffer() != null && trade.getBuyRequest() != null
-                && trade.getPaymentRequest() != null && trade.getPayoutRequest() != null
-                && trade.getTradeCompleted() != null) {
-            tradeStatus = TradeStatus.COMPLETED;
-        }
-        return tradeStatus;
     }
 
     public BuyRequest createBuyRequest(SellOffer sellOffer, BigDecimal buyBtcAmount,
@@ -265,20 +261,20 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-    public TradeCompleted createTradeCompleted(Trade trade, String payoutTxHash) {
-        TradeCompleted newTradeCompleted = new TradeCompleted();
-        newTradeCompleted.setPayoutTxHash(payoutTxHash);
+    public PayoutDetails createTradeCompleted(Trade trade, String payoutTxHash) {
+        PayoutDetails newPayoutDetails = new PayoutDetails();
+        newPayoutDetails.setPayoutTxHash(payoutTxHash);
 
         String tradePath = tradesPath + trade.getEscrowAddress();
         String tradeCompleted = tradePath + File.separator + "tradeCompleted.json";
         try {
             FileWriter tradeCompletedWriter = new FileWriter(tradeCompleted);
-            tradeCompletedWriter.write(JSON.std.asString(newTradeCompleted));
+            tradeCompletedWriter.write(JSON.std.asString(newPayoutDetails));
             tradeCompletedWriter.flush();
 
-            LOG.debug("Created tradeCompleted: {}", newTradeCompleted);
-            trade.setTradeCompleted(newTradeCompleted);
-            return newTradeCompleted;
+            LOG.debug("Created tradeCompleted: {}", newPayoutDetails);
+            trade.setPayoutDetails(newPayoutDetails);
+            return newPayoutDetails;
 
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
@@ -314,7 +310,7 @@ public class TradeManager extends AbstractManager {
         String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
         try {
             PaymentRequest readPaymentRequest =
-                    paymentRequestService.readPaymentRequests(trade.getEscrowAddress()).execute().body();
+                    paymentRequestService.readPaymentRequest(trade.getEscrowAddress()).execute().body();
             LOG.debug("Read paymentRequest: {}", readPaymentRequest);
 
             FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
@@ -387,6 +383,53 @@ public class TradeManager extends AbstractManager {
 
     public Trade getViewTrade() {
         return viewTrade;
+    }
+
+    public void updateTrades() {
+
+        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
+                .map(tick -> tradesObservableList)
+                .flatMapIterable(tradeList -> tradeList)
+                .filter(trade -> trade.getStatus().equals(CREATED))
+                .map(trade -> paymentRequestService.readPaymentRequest(trade.getEscrowAddress()))
+                .retry()
+                .observeOn(JavaFxScheduler.getInstance())
+                .subscribe(c -> {
+                    try {
+                        PaymentRequest paymentRequest = c.execute().body();
+                        updateTrade(paymentRequest);
+                    } catch (IOException ioe) {
+                        LOG.error(ioe.getMessage());
+                    }
+                });
+    }
+
+    private void updateTrade(PaymentRequest paymentRequest) {
+
+        createLocalPaymentRequest(paymentRequest);
+        for (Trade trade : tradesObservableList) {
+            if (trade.getEscrowAddress().equals(paymentRequest.getEscrowAddress())) {
+                trade.setPaymentRequest(paymentRequest);
+            }
+        }
+    }
+
+    public void createLocalPaymentRequest(PaymentRequest paymentRequest) {
+
+        String tradePath = tradesPath + paymentRequest.getEscrowAddress();
+        String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
+
+        try {
+            FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
+            paymentRequestWriter.write(JSON.std.asString(paymentRequest));
+            paymentRequestWriter.flush();
+
+            LOG.debug("Created local paymentRequest: {}", paymentRequest);
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
     }
 
     private void readTrades() {
@@ -488,7 +531,7 @@ public class TradeManager extends AbstractManager {
                     && updatedTx.getConfidenceType().equals("BUILDING")) {
 
                 // create tradeCompleted.json
-                TradeCompleted tradeCompleted = createTradeCompleted(trade, updatedTx.getHash());
+                PayoutDetails payoutDetails = createTradeCompleted(trade, updatedTx.getHash());
 
                 // stop watching escrow address
                 escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());

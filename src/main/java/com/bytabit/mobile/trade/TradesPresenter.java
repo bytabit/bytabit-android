@@ -121,7 +121,7 @@ public class TradesPresenter {
                 viewTrade.setBuyRequest(newValue.getBuyRequest());
                 viewTrade.setPaymentRequest(newValue.getPaymentRequest());
                 viewTrade.setPayoutRequest(newValue.getPayoutRequest());
-                viewTrade.setTradeCompleted(newValue.getTradeCompleted());
+                viewTrade.setPayoutDetails(newValue.getPayoutDetails());
                 MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
             }
         });

@@ -13,5 +13,5 @@ public interface PaymentRequestService {
     Call<PaymentRequest> createPaymentRequest(@Path("escrowAddress") String escrowAddress, @Body PaymentRequest paymentRequest);
 
     @GET("/v1/trades/{escrowAddress}/paymentRequest")
-    Call<PaymentRequest> readPaymentRequests(@Path("escrowAddress") String escrowAddress);
+    Call<PaymentRequest> readPaymentRequest(@Path("escrowAddress") String escrowAddress);
 }
