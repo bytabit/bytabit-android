@@ -23,7 +23,7 @@ public class Trade {
     private final ObjectProperty<BuyRequest> buyRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PaymentRequest> paymentRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutRequest> payoutRequest = new SimpleObjectProperty<>();
-    private final StringProperty payoutTxHash = new SimpleStringProperty();
+    private final ObjectProperty<TradeCompleted> tradeCompleted = new SimpleObjectProperty<>();
 
     public String getEscrowAddress() {
         return escrowAddress.get();
@@ -85,29 +85,16 @@ public class Trade {
         this.payoutRequest.set(payoutRequest);
     }
 
-    public String getPayoutTxHash() {
-        return payoutTxHash.get();
+    public TradeCompleted getTradeCompleted() {
+        return tradeCompleted.get();
     }
 
-    public StringProperty payoutTxHashProperty() {
-        return payoutTxHash;
+    public ObjectProperty<TradeCompleted> tradeCompletedProperty() {
+        return tradeCompleted;
     }
 
-    public void setPayoutTxHash(String payoutTxHash) {
-        this.payoutTxHash.set(payoutTxHash);
-    }
-
-    @Override
-    public String toString() {
-        final StringBuffer sb = new StringBuffer("Trade{");
-        sb.append("escrowAddress=").append(escrowAddress);
-        sb.append(", sellOffer=").append(sellOffer);
-        sb.append(", buyRequest=").append(buyRequest);
-        sb.append(", paymentRequest=").append(paymentRequest);
-        sb.append(", payoutRequest=").append(payoutRequest);
-        sb.append(", payoutTxHash=").append(payoutTxHash);
-        sb.append('}');
-        return sb.toString();
+    public void setTradeCompleted(TradeCompleted tradeCompleted) {
+        this.tradeCompleted.set(tradeCompleted);
     }
 
     @Override
@@ -117,11 +104,11 @@ public class Trade {
 
         Trade trade = (Trade) o;
 
-        return escrowAddress.get() != null ? escrowAddress.get().equals(trade.escrowAddress.get()) : trade.escrowAddress.get() == null;
+        return escrowAddress != null ? escrowAddress.get().equals(trade.escrowAddress.get()) : trade.escrowAddress == null;
     }
 
     @Override
     public int hashCode() {
-        return escrowAddress.get() != null ? escrowAddress.get().hashCode() : 0;
+        return escrowAddress != null ? escrowAddress.hashCode() : 0;
     }
 }

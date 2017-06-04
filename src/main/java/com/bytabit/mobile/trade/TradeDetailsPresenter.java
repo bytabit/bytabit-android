@@ -3,6 +3,7 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.offer.AddOfferPresenter;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.TradeRole;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -84,10 +85,6 @@ public class TradeDetailsPresenter {
     @FXML
     private TextField paymentReferenceField;
 
-    enum TradeRole {
-        BUYER, SELLER, TBD
-    }
-
     public void initialize() {
 
         LOG.debug("initialize trade details presenter");
@@ -97,8 +94,8 @@ public class TradeDetailsPresenter {
             paymentReceivedButton.visibleProperty().setValue(false);
             paymentSentButton.visibleProperty().setValue(false);
             paymentReferenceField.visibleProperty().setValue(false);
-            
-            TradeRole tradeRole = TradeRole.TBD;
+
+            TradeRole tradeRole = TradeRole.UNKNOWN;
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();

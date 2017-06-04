@@ -121,7 +121,7 @@ public abstract class WalletManager {
                 Set<TransactionWithAmt> txsWithAmt = new HashSet<>();
                 for (Transaction t : kit.wallet().getTransactions(false)) {
                     txsWithAmt.add(new TransactionWithAmt(t, t.getValue(kit.wallet()),
-                            getWatchedOutputAddress(t)));
+                            getWatchedOutputAddress(t), t.getInput(0).getOutpoint().getHash().toString()));
                 }
                 Platform.runLater(() -> {
                     transactions.addAll(txsWithAmt);
@@ -135,7 +135,8 @@ public abstract class WalletManager {
                             TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
 
                             TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(),
-                                    txe.getAmt(), getWatchedOutputAddress(txe.getTx()));
+                                    txe.getAmt(), getWatchedOutputAddress(txe.getTx()),
+                                    txe.getTx().getInput(0).getOutpoint().getHash().toString());
 
                             Platform.runLater(() -> {
                                 Integer index = transactions.indexOf(txu);
@@ -350,17 +351,18 @@ public abstract class WalletManager {
         return ScriptBuilder.createRedeemScript(2, Arrays.asList(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
     }
 
-    public String payoutEscrow(Trade trade, Transaction fundingTx) throws InsufficientMoneyException {
+    public Wallet.SendResult payoutEscrow(Trade trade, Transaction fundingTx, String signature) throws InsufficientMoneyException {
+
         Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
+
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
         ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
 
         Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
 
-        TransactionSignature sellerSignature = getPayoutSignature(payoutAmount, fundingTx,
-                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
-                buyerPayoutAddress);
+        TransactionSignature sellerSignature = TransactionSignature
+                .decodeFromBitcoin(Base58.decode(signature), true, true);
 
         TransactionSignature buyerSignature = TransactionSignature
                 .decodeFromBitcoin(Base58.decode(trade.getPayoutRequest().getPayoutTxSignature()), true, true);
@@ -371,6 +373,7 @@ public abstract class WalletManager {
         Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
         Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
         List<TransactionSignature> signatures = new ArrayList<>();
+
         if (UnsignedBytes.lexicographicalComparator().compare(sellerEscrowPubKey.getPubKey(), buyerEscrowPubKey.getPubKey()) < 0) {
             signatures.add(sellerSignature);
             signatures.add(buyerSignature);
@@ -399,7 +402,10 @@ public abstract class WalletManager {
         // add output to payout tx
         payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
 
-        SendRequest sendRequest = SendRequest.forTx(payoutTx);
+        return kit.wallet().sendCoins(SendRequest.forTx(payoutTx));
+    }
+
+    public String sendCoins(SendRequest sendRequest) throws InsufficientMoneyException {
         Transaction tx = kit.wallet().sendCoins(sendRequest).tx;
         return tx.getHashAsString();
     }

@@ -82,21 +82,24 @@ public class OffersPresenter {
         //offersListView.itemsProperty().addAll(offerManager.read());
         offersListView.itemsProperty().setValue(offerManager.getSellOffersObservableList());
         offersListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            SellOffer viewOffer = offerManager.getViewSellOffer();
-            String sellerEscrowPubKey = newValue.getSellerEscrowPubKey();
-            if (tradeManager.activeSellerEscrowPubKey(sellerEscrowPubKey)) {
-                // TODO go to active trade view for this sell offer
-                MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
-            } else {
-                viewOffer.setSellerEscrowPubKey(sellerEscrowPubKey);
-                viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
-                viewOffer.setArbitratorProfilePubKey(newValue.getArbitratorProfilePubKey());
-                viewOffer.setCurrencyCode(newValue.getCurrencyCode());
-                viewOffer.setPaymentMethod(newValue.getPaymentMethod());
-                viewOffer.setMinAmount(newValue.getMinAmount());
-                viewOffer.setMaxAmount(newValue.getMaxAmount());
-                viewOffer.setPrice(newValue.getPrice());
-                MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+            if (newValue != null) {
+                SellOffer viewOffer = offerManager.getViewSellOffer();
+                String sellerEscrowPubKey = newValue.getSellerEscrowPubKey();
+                offersListView.selectedItemProperty().setValue(null);
+                if (tradeManager.activeSellerEscrowPubKey(sellerEscrowPubKey)) {
+                    // TODO go to active trade view for this sell offer
+                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
+                } else {
+                    viewOffer.setSellerEscrowPubKey(sellerEscrowPubKey);
+                    viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
+                    viewOffer.setArbitratorProfilePubKey(newValue.getArbitratorProfilePubKey());
+                    viewOffer.setCurrencyCode(newValue.getCurrencyCode());
+                    viewOffer.setPaymentMethod(newValue.getPaymentMethod());
+                    viewOffer.setMinAmount(newValue.getMinAmount());
+                    viewOffer.setMaxAmount(newValue.getMaxAmount());
+                    viewOffer.setPrice(newValue.getPrice());
+                    MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+                }
             }
         });
 

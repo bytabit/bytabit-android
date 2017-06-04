@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 public class TransactionWithAmt {
 
-    public TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress) {
+    public TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress, String inputTxHash) {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
         this.depth = tx.getConfidence().getDepthInBlocks();
@@ -16,6 +16,7 @@ public class TransactionWithAmt {
         this.memo = tx.getMemo();
         this.coinAmt = coinAmt;
         this.outputAddress = outputAddress;
+        this.inputTxHash = inputTxHash;
     }
 
     private String hash;
@@ -25,6 +26,7 @@ public class TransactionWithAmt {
     private String memo;
     private Coin coinAmt;
     private String outputAddress;
+    private String inputTxHash;
 
     public String getHash() {
         return hash;
@@ -58,15 +60,21 @@ public class TransactionWithAmt {
         return outputAddress;
     }
 
+    public String getInputTxHash() {
+        return inputTxHash;
+    }
+
     @Override
     public String toString() {
-        final StringBuffer sb = new StringBuffer("TransactionUIModel{");
+        final StringBuffer sb = new StringBuffer("TransactionWithAmt{");
         sb.append("hash='").append(hash).append('\'');
         sb.append(", confidenceType='").append(confidenceType).append('\'');
         sb.append(", depth=").append(depth);
         sb.append(", date=").append(date);
         sb.append(", memo='").append(memo).append('\'');
         sb.append(", coinAmt=").append(coinAmt);
+        sb.append(", outputAddress='").append(outputAddress).append('\'');
+        sb.append(", inputTxHash='").append(inputTxHash).append('\'');
         sb.append('}');
         return sb.toString();
     }
@@ -79,7 +87,6 @@ public class TransactionWithAmt {
         TransactionWithAmt that = (TransactionWithAmt) o;
 
         return hash != null ? hash.equals(that.hash) : that.hash == null;
-
     }
 
     @Override

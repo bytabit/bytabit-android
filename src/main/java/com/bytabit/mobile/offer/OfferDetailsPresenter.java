@@ -170,7 +170,8 @@ public class OfferDetailsPresenter {
                     offerManager.getBuyBtcAmount().get(), buyerEscrowPubKey,
                     buyerProfilePubKey, buyerPayoutAddress);
             Trade createdTrade = tradeManager.createTrade(viewOffer, createdBuyRequest);
-            escrowWalletManager.watchTradeEscrowAddress(createdTrade.getEscrowAddress());
+            escrowWalletManager.addWatchedEscrowAddress(createdTrade.getEscrowAddress());
+            escrowWalletManager.addWatchedEscrowAddress(createdTrade.getBuyRequest().getBuyerPayoutAddress());
         });
     }
 }

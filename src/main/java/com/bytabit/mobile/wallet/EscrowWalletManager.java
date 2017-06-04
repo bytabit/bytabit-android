@@ -16,13 +16,23 @@ public class EscrowWalletManager extends WalletManager {
         super(AppConfig.getConfigName(), WalletPurpose.ESCROW);
     }
 
-    public void watchTradeEscrowAddress(String tradeEscrowAddress) {
-        Address address = Address.fromBase58(getNetParams(), tradeEscrowAddress);
+    public void addWatchedEscrowAddress(String escrowAddress) {
+        Address address = Address.fromBase58(getNetParams(), escrowAddress);
         Context.propagate(btcContext);
         if (kit.wallet().addWatchedAddress(address, DateTime.now().getMillis() / 1000)) {
-            LOG.debug("Added watch address: {}", address.toBase58());
+            LOG.debug("Added watched address: {}", address.toBase58());
         } else {
-            LOG.error("Failed to add watch address: {}", address.toBase58());
+            LOG.warn("Failed to add watch address: {}", address.toBase58());
+        }
+    }
+
+    public void removeWatchedEscrowAddress(String escrowAddress) {
+        Address address = Address.fromBase58(getNetParams(), escrowAddress);
+        Context.propagate(btcContext);
+        if (kit.wallet().removeWatchedAddress(address)) {
+            LOG.debug("Removed watched address: {}", address.toBase58());
+        } else {
+            LOG.warn("Failed to remove watched address: {}", address.toBase58());
         }
     }
 }
