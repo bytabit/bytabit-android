@@ -79,7 +79,7 @@ public class OffersPresenter {
             }
         });
 
-        //offersListView.itemsProperty().addAll(offerManager.read());
+        //offersListView.itemsProperty().addAll(offerManager.get());
         offersListView.itemsProperty().setValue(offerManager.getSellOffersObservableList());
         offersListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue != null) {

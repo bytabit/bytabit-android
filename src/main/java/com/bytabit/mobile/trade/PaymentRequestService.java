@@ -10,8 +10,8 @@ import retrofit2.http.Path;
 public interface PaymentRequestService {
 
     @POST("/v1/trades/{escrowAddress}/paymentRequest")
-    Call<PaymentRequest> createPaymentRequest(@Path("escrowAddress") String escrowAddress, @Body PaymentRequest paymentRequest);
+    Call<PaymentRequest> post(@Path("escrowAddress") String escrowAddress, @Body PaymentRequest paymentRequest);
 
     @GET("/v1/trades/{escrowAddress}/paymentRequest")
-    Call<PaymentRequest> readPaymentRequest(@Path("escrowAddress") String escrowAddress);
+    Call<PaymentRequest> get(@Path("escrowAddress") String escrowAddress);
 }

@@ -3,7 +3,6 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.offer.AddOfferPresenter;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.trade.model.TradeRole;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -23,10 +22,10 @@ public class TradeDetailsPresenter {
     private static Logger LOG = LoggerFactory.getLogger(AddOfferPresenter.class);
 
     @Inject
-    TradeManager tradeManager;
+    private TradeManager tradeManager;
 
     @Inject
-    ProfileManager profileManager;
+    private ProfileManager profileManager;
 
     @FXML
     private View tradeDetailsView;
@@ -95,8 +94,6 @@ public class TradeDetailsPresenter {
             paymentSentButton.visibleProperty().setValue(false);
             paymentReferenceField.visibleProperty().setValue(false);
 
-            TradeRole tradeRole = TradeRole.UNKNOWN;
-
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
@@ -106,13 +103,8 @@ public class TradeDetailsPresenter {
                 BigDecimal price = trade.getSellOffer().getPrice();
                 BigDecimal amount = trade.getBuyRequest().getBtcAmount();
                 BigDecimal paymentAmount = price.multiply(amount);
-
-
-                if (profileManager.profile().getPubKey().equals(trade.getBuyRequest().getBuyerProfilePubKey())) {
-                    tradeRole = TradeRole.BUYER;
-                } else if (profileManager.profile().getPubKey().equals(trade.getSellOffer().getSellerProfilePubKey())) {
-                    tradeRole = TradeRole.SELLER;
-                }
+                String profilePubKey = profileManager.profile().getPubKey();
+                Trade.Role tradeRole = trade.getRole(profilePubKey);
 
                 tradeStatusLabel.textProperty().setValue("STARTED");
                 tradeRoleLabel.textProperty().setValue(tradeRole.toString());
@@ -133,11 +125,11 @@ public class TradeDetailsPresenter {
                 if (trade.getPaymentRequest() != null && trade.getPaymentRequest().getFundingTxHash() != null) {
                     tradeStatusLabel.textProperty().setValue("FUNDED");
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
-                    if (tradeRole == TradeRole.BUYER) {
+                    if (tradeRole == Trade.Role.BUYER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(true);
                         paymentReferenceField.visibleProperty().setValue(true);
-                    } else if (tradeRole == TradeRole.SELLER) {
+                    } else if (tradeRole == Trade.Role.SELLER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
@@ -147,11 +139,11 @@ public class TradeDetailsPresenter {
                 if (trade.getPayoutRequest() != null && trade.getPayoutRequest().getPaymentReference() != null) {
                     tradeStatusLabel.textProperty().setValue("PAYMENT SENT");
                     paymentReferenceLabel.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
-                    if (tradeRole == TradeRole.BUYER) {
+                    if (tradeRole == Trade.Role.BUYER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
-                    } else if (tradeRole == TradeRole.SELLER) {
+                    } else if (tradeRole == Trade.Role.SELLER) {
                         paymentReceivedButton.visibleProperty().setValue(true);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
@@ -162,12 +154,12 @@ public class TradeDetailsPresenter {
 
         paymentSentButton.setOnAction(e -> {
             LOG.debug("paymentSentButton pressed");
-            tradeManager.createPayoutRequest(paymentReferenceField.getText());
+            tradeManager.requestPayout(paymentReferenceField.getText());
         });
 
         paymentReceivedButton.setOnAction(e -> {
             LOG.debug("paymentReceivedButton pressed");
-            tradeManager.payoutEscrow();
+            tradeManager.confirmPaymentReceived();
         });
     }
 }

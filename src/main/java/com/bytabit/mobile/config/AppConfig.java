@@ -62,7 +62,7 @@ public class AppConfig {
                         .orElseThrow(() -> new FileNotFoundException("Could not access private storage."));
                 privateStorage = new File(storage.getPath() + File.separator + getBtcNetwork() + File.separator + getConfigName());
                 if (!privateStorage.mkdirs()) {
-                    log.error("Can't create private storage sub-directory: {}", privateStorage.getPath());
+                    log.error("Can't post private storage sub-directory: {}", privateStorage.getPath());
                 }
             } catch (FileNotFoundException fnfe) {
                 log.error("could not get private storage {}", fnfe);

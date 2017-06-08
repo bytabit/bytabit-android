@@ -5,7 +5,6 @@ import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.EscrowWalletManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
-import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -13,7 +12,6 @@ import com.gluonhq.charm.glisten.control.CharmListView;
 import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,15 +98,15 @@ public class TradesPresenter {
 //            }
 //        });
 
-        escrowWalletManager.getTransactions().addListener((ListChangeListener<TransactionWithAmt>) change -> {
-            while (change.next()) {
-                LOG.debug("Escrow transaction changed.");
-                for (TransactionWithAmt addedTx : change.getAddedSubList()) {
-                    // add transactions
-                    tradeManager.addTradeTx(addedTx);
-                }
-            }
-        });
+//        escrowWalletManager.getTransactions().addListener((ListChangeListener<TransactionWithAmt>) change -> {
+//            while (change.next()) {
+//                LOG.debug("Escrow transaction changed.");
+//                for (TransactionWithAmt addedTx : change.getAddedSubList()) {
+//                    // add transactions
+//                    tradeManager.updateTradeWithTx(addedTx);
+//                }
+//            }
+//        });
 
         tradesListView.itemsProperty().setValue(tradeManager.getTradesObservableList());
 
@@ -121,7 +119,7 @@ public class TradesPresenter {
                 viewTrade.setBuyRequest(newValue.getBuyRequest());
                 viewTrade.setPaymentRequest(newValue.getPaymentRequest());
                 viewTrade.setPayoutRequest(newValue.getPayoutRequest());
-                viewTrade.setPayoutDetails(newValue.getPayoutDetails());
+                viewTrade.setPayoutCompleted(newValue.getPayoutCompleted());
                 MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
             }
         });

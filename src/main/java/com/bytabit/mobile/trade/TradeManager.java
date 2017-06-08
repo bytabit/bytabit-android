@@ -2,13 +2,9 @@ package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
-import com.bytabit.mobile.trade.model.PaymentRequest;
-import com.bytabit.mobile.trade.model.PayoutDetails;
-import com.bytabit.mobile.trade.model.PayoutRequest;
-import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.*;
 import com.bytabit.mobile.wallet.EscrowWalletManager;
 import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.bytabit.mobile.wallet.WalletManager;
@@ -18,8 +14,6 @@ import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.bitcoinj.core.InsufficientMoneyException;
-import org.bitcoinj.core.Transaction;
-import org.bitcoinj.wallet.Wallet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
@@ -71,75 +65,338 @@ public class TradeManager extends AbstractManager {
                 .baseUrl(AppConfig.getBaseUrl())
                 .addConverterFactory(new JacksonJrConverter<>(BuyRequest.class))
                 .build();
-
         buyRequestService = buyRequestRetrofit.create(BuyRequestService.class);
 
         Retrofit paymentRequestRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
                 .addConverterFactory(new JacksonJrConverter<>(PaymentRequest.class))
                 .build();
-
         paymentRequestService = paymentRequestRetrofit.create(PaymentRequestService.class);
 
         Retrofit payoutRequestRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
                 .addConverterFactory(new JacksonJrConverter<>(PayoutRequest.class))
                 .build();
-
         payoutRequestService = payoutRequestRetrofit.create(PayoutRequestService.class);
 
         tradesObservableList = FXCollections.observableArrayList();
-
-//        tradesObservableList.addListener((ListChangeListener<Trade>) change -> {
-//            while (change.next()) {
-//                for (Trade trade : change.getAddedSubList()) {
-//                    addTrade(trade);
-//                }
-//            }
-//        });
-
         viewTrade = new Trade();
 
         readTrades();
         updateTrades();
     }
 
-    // buyer create trade from sell offer + buy details
-    // 1. create buy request
-    // 2. write sell offer + buy request to trade folder
-    // 3. post buy request to server
+    // 1.B: buyer create buy request, create trade, write sell offer + buy request, post buy request
+    public void createBuyRequest(SellOffer sellOffer, BigDecimal buyBtcAmount,
+                                 String buyerEscrowPubKey, String buyerProfilePubKey,
+                                 String buyerPayoutAddress) {
 
-    // seller create trade from sell request + buy request
-    // 1. write sell offer + buy request to trade folder
+        // 1. create buy request
+        BuyRequest buyRequest = new BuyRequest(sellOffer.getSellerEscrowPubKey(),
+                buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress);
 
-    // seller fund escrow and create payment request
-    // 1. fund escrow
-    // 2. create payment request
-    // 3. write payment request to trade folder
-    // 4. post payment request to server
+        // 2. create trade
+        Trade trade = createTrade(sellOffer, buyRequest);
 
-    // buyer confirm funding tx, update trade with payment request
-    // 1. confirm funding tx
-    // 2. write payment request to trade folder
+        if (!tradesObservableList.contains(trade)) {
 
-    // buyer sends payment to seller and create payout request
-    // 1. send payment to seller
-    // 2. create payout request
-    // 3. write payout request to trade folder
-    // 4. post payout request to server
+            // 3. watch trade escrow address
+            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
 
-    // seller update trade with payout request
-    // 1. write payout request to trade folder
+            // 4. write trade
+            writeTrade(trade);
 
-    // seller payout escrow to buyer and write payout details
-    // 1. payout escrow to buyer
-    // 2. create payout details
-    // 3. write payout details
+            // 5. post buy request to server
+            try {
+                String spk = sellOffer.getSellerEscrowPubKey();
+                BuyRequest postedBuyRequest = buyRequestService.post(spk, buyRequest).execute().body();
+                LOG.debug("Posted buyRequest: {}", postedBuyRequest);
+            } catch (IOException ioe) {
+                LOG.error(ioe.getMessage());
+                throw new RuntimeException(ioe);
+            }
 
-    // buyer confirm payout tx and write payout details
-    // 1. confirm payout tx
-    // 2. create payout details
-    // 3. write payout details
+            // 6. add trade to ui list
+            tradesObservableList.add(trade);
+            LOG.debug("Added trade to list: {}", trade);
+        }
+    }
+
+    // 1.S: seller receives buy request, create and write trade with sell offer + buy request
+    public void receiveBuyRequest(SellOffer sellOffer, BuyRequest buyRequest) {
+
+        // 1. create trade
+        Trade trade = createTrade(sellOffer, buyRequest);
+
+        if (!tradesObservableList.contains(trade)) {
+
+            // 2. watch trade escrow address
+            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+
+            // 3. fund escrow
+            fundEscrow(trade);
+
+            // 4. write sell offer + buy request to trade folder
+            writeTrade(trade);
+
+            // 5. add trade to ui list
+            tradesObservableList.add(trade);
+            LOG.debug("Added trade to list: {}", trade);
+        }
+    }
+
+    private Trade createTrade(SellOffer sellOffer, BuyRequest buyRequest) {
+        String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
+        return new Trade(sellOffer, buyRequest, tradeEscrowAddress);
+    }
+
+    private void writeTrade(Trade trade) {
+
+        try {
+            String tradePath = tradesPath + trade.getEscrowAddress();
+            File tradeDir = new File(tradePath);
+
+            if (!tradeDir.exists()) {
+                tradeDir.mkdirs();
+                String sellOfferPath = tradePath + File.separator + "sellOffer.json";
+                FileWriter sellOfferFileWriter = new FileWriter(sellOfferPath);
+                sellOfferFileWriter.write(JSON.std.asString(trade.getSellOffer()));
+                sellOfferFileWriter.flush();
+                String buyRequestPath = tradePath + File.separator + "buyRequest.json";
+                FileWriter buyRequestFileWriter = new FileWriter(buyRequestPath);
+                buyRequestFileWriter.write(JSON.std.asString(trade.getBuyRequest()));
+                buyRequestFileWriter.flush();
+                LOG.debug("Created new trade: {}", trade);
+            }
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
+    // 2.S: seller fund escrow and post payment request
+    private void fundEscrow(Trade trade) {
+        // TODO verify escrow not yet funded ?
+        try {
+            // 1. fund escrow
+            String txHash = tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
+                    trade.getBuyRequest().getBtcAmount());
+
+            // 2. create payment request
+            String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer()
+                    .getCurrencyCode(), trade.getSellOffer().getPaymentMethod()).get();
+            PaymentRequest paymentRequest = new PaymentRequest();
+            paymentRequest.setEscrowAddress(trade.getEscrowAddress());
+            paymentRequest.setFundingTxHash(txHash);
+            paymentRequest.setPaymentDetails(paymentDetails);
+
+            // 3. write payment request to trade folder
+            writePaymentRequest(trade, paymentRequest);
+
+            // 4. post payment request
+            try {
+                paymentRequestService.post(trade.getEscrowAddress(), paymentRequest).execute().body();
+            } catch (IOException e) {
+                LOG.error("Unable to POST payment request.");
+                // TODO retry posting payment request
+            }
+
+            // 5. update trade with payment request
+            trade.setPaymentRequest(paymentRequest);
+
+        } catch (InsufficientMoneyException e) {
+            LOG.error("Insufficient BTC to fund trade escrow.");
+            // TODO let user know not enough BTC in wallet
+        }
+    }
+
+    // 2.B: buyer receives payment request, confirm funding tx, write payment request
+    public void receivePaymentRequest(PaymentRequest paymentRequest) {
+
+        // 1. buyer confirm funding tx
+        TransactionWithAmt tx = escrowWalletManager.getTransactionWithAmt(paymentRequest.getFundingTxHash());
+        if (tx != null && viewTrade.getBuyRequest().getBtcAmount().equals(tx.getBtcAmt())) {
+
+            // 2. write payment request to trade folder
+            writePaymentRequest(paymentRequest);
+
+            // 3. update view and list trade with payment request
+            viewTrade.setPaymentRequest(paymentRequest);
+            getTrade(paymentRequest.getEscrowAddress()).setPaymentRequest(paymentRequest);
+        } else {
+            LOG.error("Payment request funding tx btc amount doesn't match buy offer btc amount.");
+        }
+    }
+
+    private PaymentRequest writePaymentRequest(Trade trade, PaymentRequest paymentRequest) {
+
+        String tradePath = tradesPath + trade.getEscrowAddress();
+        String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
+        try {
+            FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
+            paymentRequestWriter.write(JSON.std.asString(paymentRequest));
+            paymentRequestWriter.flush();
+
+            LOG.debug("Created paymentRequest: {}", paymentRequest);
+            return paymentRequest;
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
+    // 3.B: buyer sends payment to seller and post payout request
+    // * after manually send payment to seller
+
+    public void requestPayout(String paymentReference) {
+
+        // 1. create payout request with buyer payout signature
+        PayoutRequest payoutRequest = new PayoutRequest();
+        payoutRequest.setEscrowAddress(viewTrade.getEscrowAddress());
+        payoutRequest.setPaymentReference(paymentReference);
+        String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
+        String payoutSignature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTxHash);
+        payoutRequest.setPayoutTxSignature(payoutSignature);
+
+        // 2. write payout request to trade folder
+        writePayoutRequest(payoutRequest);
+
+        // 3. post payout request to server
+        try {
+            payoutRequestService.post(viewTrade.getEscrowAddress(), payoutRequest).execute().body();
+        } catch (IOException e) {
+            LOG.error("Can't post payout request to server.");
+        }
+
+        // 4. update view and list trade with payoutRequest
+        viewTrade.setPayoutRequest(payoutRequest);
+        getTrade(viewTrade.getEscrowAddress()).setPayoutRequest(payoutRequest);
+    }
+
+    // 3.S: seller receives payout request from buyer
+    public void receivePayoutRequest(PayoutRequest payoutRequest) {
+
+        Trade trade = getTrade(payoutRequest.getEscrowAddress());
+
+        if (trade.getPayoutRequest() != null) {
+            // 1. write payout request to trade folder
+            writePayoutRequest(payoutRequest);
+
+            // 2. update view and list trade with payoutRequest
+            viewTrade.setPayoutRequest(payoutRequest);
+            getTrade(viewTrade.getEscrowAddress()).setPayoutRequest(payoutRequest);
+        }
+    }
+
+    private void writePayoutRequest(PayoutRequest payoutRequest) {
+        String tradePath = tradesPath + viewTrade.getEscrowAddress();
+        String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
+        try {
+            FileWriter payoutRequestWriter = new FileWriter(payoutRequestPath);
+            payoutRequestWriter.write(JSON.std.asString(payoutRequest));
+            payoutRequestWriter.flush();
+
+
+            LOG.debug("Created payoutRequest: {}", payoutRequest);
+            for (Trade trade : tradesObservableList) {
+                if (trade.getEscrowAddress().equals(payoutRequest.getEscrowAddress())) {
+                    trade.setPayoutRequest(payoutRequest);
+                }
+            }
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
+    // 4.S: seller payout escrow to buyer and write payout details
+    public void confirmPaymentReceived() {
+
+        // 1. broadcast payout tx
+        String payoutTxHash = payoutEscrow();
+
+        // 2. confirm payout tx and create payout completed
+        PayoutCompleted payoutCompleted = new PayoutCompleted();
+        payoutCompleted.setEscrowAddress(viewTrade.getEscrowAddress());
+        payoutCompleted.setPayoutTxHash(payoutTxHash);
+
+        // 3. write payout details to trade folder
+        writePayoutCompleted(viewTrade, payoutCompleted);
+
+        // 4. post payout completed
+        // TODO
+
+        // 5. update trade
+        viewTrade.setPayoutCompleted(payoutCompleted);
+        getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
+
+        // 6. remove watch on escrow address
+        escrowWalletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+    }
+
+    private String payoutEscrow() {
+
+        String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
+        TransactionWithAmt fundingTx = tradeWalletManager.getTransactionWithAmt(fundingTxHash);
+
+        String payoutTx = null;
+        if (fundingTx != null) {
+            try {
+                String signature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTxHash);
+                payoutTx = escrowWalletManager.payoutEscrow(viewTrade, fundingTxHash, signature);
+
+            } catch (InsufficientMoneyException e) {
+                // TODO notify user
+                LOG.error("Insufficient funds to payout escrow to buyer.");
+            }
+
+        }
+        return payoutTx;
+    }
+
+    public void writePayoutCompleted(Trade trade, PayoutCompleted payoutCompleted) {
+
+        String tradePath = tradesPath + trade.getEscrowAddress();
+        String tradeCompleted = tradePath + File.separator + "tradeCompleted.json";
+        try {
+            FileWriter tradeCompletedWriter = new FileWriter(tradeCompleted);
+            tradeCompletedWriter.write(JSON.std.asString(payoutCompleted));
+            tradeCompletedWriter.flush();
+
+            LOG.debug("Created payoutCompleted: {}", payoutCompleted);
+            trade.setPayoutCompleted(payoutCompleted);
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
+
+    // 4.B: buyer confirm payout tx and write payout details
+    public void confirmPayout(PayoutCompleted payoutCompleted) {
+
+        // 1. confirm payout tx
+        Trade trade = getTrade(payoutCompleted.getEscrowAddress());
+        TransactionWithAmt tx = tradeWalletManager.getTransactionWithAmt(payoutCompleted.getPayoutTxHash());
+
+        if (trade != null && tx != null && tx.getBtcAmt().equals(trade.getBuyRequest().getBtcAmount())) {
+
+            // 2. write payout details to trade folder
+            writePayoutCompleted(trade, payoutCompleted);
+
+            // 3. update trade
+            viewTrade.setPayoutCompleted(payoutCompleted);
+            getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
+
+            // 4. remove watch on escrow address
+            escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+        }
+
+    }
+
 
 //    private void addTrade(Trade trade) {
 //
@@ -159,149 +416,17 @@ public class TradeManager extends AbstractManager {
 //        }
 //    }
 
-    private void fundEscrow(Trade trade) {
-        // TODO verify trade not yet funded ?
-        try {
-            String txHash = tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
-                    trade.getBuyRequest().getBtcAmount());
-            String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer()
-                    .getCurrencyCode(), trade.getSellOffer().getPaymentMethod()).get();
-            PaymentRequest paymentRequest = writePaymentRequest(trade, txHash, paymentDetails);
-            trade.setPaymentRequest(paymentRequest);
-            try {
-                paymentRequestService.createPaymentRequest(trade.getEscrowAddress(), paymentRequest).execute().body();
-            } catch (IOException e) {
-                LOG.error("Unable to POST payment request.");
-                // TODO retry posting payment request
+    private Trade getTrade(String escrowAddress) {
+        Trade foundTrade = null;
+
+        for (Trade trade : tradesObservableList) {
+            if (trade.getEscrowAddress().equals(escrowAddress)) {
+                foundTrade = trade;
+                break;
             }
-        } catch (InsufficientMoneyException e) {
-            LOG.error("Insufficient BTC to fund trade escrow.");
-            // TODO let user know not enough BTC in wallet
         }
-    }
 
-    public BuyRequest createBuyRequest(SellOffer sellOffer, BigDecimal buyBtcAmount,
-                                       String buyerEscrowPubKey, String buyerProfilePubKey,
-                                       String buyerPayoutAddress) {
-
-        try {
-            BuyRequest newBuyRequest = new BuyRequest(sellOffer.getSellerEscrowPubKey(),
-                    buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress);
-
-            String spk = sellOffer.getSellerEscrowPubKey();
-            BuyRequest createdBuyRequest = buyRequestService.createBuyRequest(spk, newBuyRequest).execute().body();
-            LOG.debug("Created buyRequest: {}", createdBuyRequest);
-            return createdBuyRequest;
-
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-            throw new RuntimeException(ioe);
-        }
-    }
-
-    public PaymentRequest writePaymentRequest(Trade trade, String txHash, String paymentDetails) {
-        PaymentRequest paymentRequest = new PaymentRequest();
-        paymentRequest.setEscrowAddress(trade.getEscrowAddress());
-        paymentRequest.setFundingTxHash(txHash);
-        paymentRequest.setPaymentDetails(paymentDetails);
-
-        String tradePath = tradesPath + trade.getEscrowAddress();
-        String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
-        try {
-            FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
-            paymentRequestWriter.write(JSON.std.asString(paymentRequest));
-            paymentRequestWriter.flush();
-
-            LOG.debug("Created paymentRequest: {}", paymentRequest);
-            return paymentRequest;
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-            throw new RuntimeException(ioe);
-        }
-    }
-
-    public PayoutRequest createPayoutRequest(String paymentReference) {
-
-        PayoutRequest newPayoutRequest = new PayoutRequest();
-        newPayoutRequest.setEscrowAddress(viewTrade.getEscrowAddress());
-        newPayoutRequest.setPaymentReference(paymentReference);
-
-        Transaction fundingTx = escrowWalletManager.getTransaction(viewTrade.getPaymentRequest().getFundingTxHash());
-
-        if (fundingTx != null) {
-            String payoutSignature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTx);
-
-            newPayoutRequest.setPayoutTxSignature(payoutSignature);
-
-            String tradePath = tradesPath + viewTrade.getEscrowAddress();
-            String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
-            try {
-                FileWriter payoutRequestWriter = new FileWriter(payoutRequestPath);
-                payoutRequestWriter.write(JSON.std.asString(newPayoutRequest));
-                payoutRequestWriter.flush();
-
-                PayoutRequest createdPayoutRequest =
-                        payoutRequestService.createPayoutRequest(viewTrade.getEscrowAddress(), newPayoutRequest).execute().body();
-
-                LOG.debug("Created payoutRequest: {}", createdPayoutRequest);
-                for (Trade trade : tradesObservableList) {
-                    if (trade.getEscrowAddress().equals(createdPayoutRequest.getEscrowAddress())) {
-                        trade.setPayoutRequest(createdPayoutRequest);
-                    }
-                }
-                viewTrade.setPayoutRequest(createdPayoutRequest);
-                return createdPayoutRequest;
-
-            } catch (IOException ioe) {
-                LOG.error(ioe.getMessage());
-                throw new RuntimeException(ioe);
-            }
-        } else {
-            throw new RuntimeException("Can create payout request, no funding transaction found.");
-        }
-    }
-
-    public PayoutDetails createTradeCompleted(Trade trade, String payoutTxHash) {
-        PayoutDetails newPayoutDetails = new PayoutDetails();
-        newPayoutDetails.setPayoutTxHash(payoutTxHash);
-
-        String tradePath = tradesPath + trade.getEscrowAddress();
-        String tradeCompleted = tradePath + File.separator + "tradeCompleted.json";
-        try {
-            FileWriter tradeCompletedWriter = new FileWriter(tradeCompleted);
-            tradeCompletedWriter.write(JSON.std.asString(newPayoutDetails));
-            tradeCompletedWriter.flush();
-
-            LOG.debug("Created tradeCompleted: {}", newPayoutDetails);
-            trade.setPayoutDetails(newPayoutDetails);
-            return newPayoutDetails;
-
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-            throw new RuntimeException(ioe);
-        }
-    }
-
-    public PayoutRequest readPayoutRequest(Trade trade) {
-
-        String tradePath = tradesPath + trade.getEscrowAddress();
-        String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
-        try {
-            PayoutRequest readPayoutRequest =
-                    payoutRequestService.readPayoutRequests(trade.getEscrowAddress()).execute().body();
-            LOG.debug("Read payoutRequest: {}", readPayoutRequest);
-
-            FileWriter payoutRequestWriter = new FileWriter(payoutRequestPath);
-            payoutRequestWriter.write(JSON.std.asString(readPayoutRequest));
-            payoutRequestWriter.flush();
-
-            trade.setPayoutRequest(readPayoutRequest);
-            return readPayoutRequest;
-
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-            throw new RuntimeException(ioe);
-        }
+        return foundTrade;
     }
 
     public PaymentRequest readPaymentRequest(Trade trade) {
@@ -310,7 +435,7 @@ public class TradeManager extends AbstractManager {
         String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
         try {
             PaymentRequest readPaymentRequest =
-                    paymentRequestService.readPaymentRequest(trade.getEscrowAddress()).execute().body();
+                    paymentRequestService.get(trade.getEscrowAddress()).execute().body();
             LOG.debug("Read paymentRequest: {}", readPaymentRequest);
 
             FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
@@ -326,11 +451,33 @@ public class TradeManager extends AbstractManager {
         }
     }
 
+    public PayoutRequest readPayoutRequest(Trade trade) {
+
+        String tradePath = tradesPath + trade.getEscrowAddress();
+        String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
+        try {
+            PayoutRequest readPayoutRequest =
+                    payoutRequestService.get(trade.getEscrowAddress()).execute().body();
+            LOG.debug("Read payoutRequest: {}", readPayoutRequest);
+
+            FileWriter payoutRequestWriter = new FileWriter(payoutRequestPath);
+            payoutRequestWriter.write(JSON.std.asString(readPayoutRequest));
+            payoutRequestWriter.flush();
+
+            trade.setPayoutRequest(readPayoutRequest);
+            return readPayoutRequest;
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
     public void createTrades(String profilePubKey, List<? extends SellOffer> offers) {
         for (SellOffer sellOffer : offers) {
             try {
                 if (sellOffer.getSellerProfilePubKey().equals(profilePubKey)) {
-                    List<BuyRequest> buyRequests = buyRequestService.readBuyRequests(sellOffer.getSellerEscrowPubKey()).execute().body();
+                    List<BuyRequest> buyRequests = buyRequestService.get(sellOffer.getSellerEscrowPubKey()).execute().body();
                     for (BuyRequest buyRequest : buyRequests) {
                         createTrade(sellOffer, buyRequest);
                     }
@@ -338,42 +485,6 @@ public class TradeManager extends AbstractManager {
             } catch (IOException ioe) {
                 LOG.error("Error getting buy requests for sell offer {}", sellOffer.getSellerEscrowPubKey());
             }
-        }
-    }
-
-    public Trade createTrade(SellOffer sellOffer, BuyRequest buyRequest) {
-
-        try {
-            String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
-
-            String tradePath = tradesPath + tradeEscrowAddress;
-            File tradeDir = new File(tradePath);
-
-            Trade trade = new Trade(sellOffer, buyRequest, tradeEscrowAddress);
-
-            if (!tradeDir.exists()) {
-                tradeDir.mkdirs();
-                String sellOfferPath = tradePath + File.separator + "sellOffer.json";
-                FileWriter sellOfferFileWriter = new FileWriter(sellOfferPath);
-                sellOfferFileWriter.write(JSON.std.asString(sellOffer));
-                sellOfferFileWriter.flush();
-                String buyRequestPath = tradePath + File.separator + "buyRequest.json";
-                FileWriter buyRequestFileWriter = new FileWriter(buyRequestPath);
-                buyRequestFileWriter.write(JSON.std.asString(buyRequest));
-                buyRequestFileWriter.flush();
-                LOG.debug("Created new trade: {}", trade);
-            }
-
-            if (!tradesObservableList.contains(trade)) {
-                tradesObservableList.add(trade);
-                LOG.debug("Added trade to list: {}", trade);
-            }
-
-            return trade;
-
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-            throw new RuntimeException(ioe);
         }
     }
 
@@ -391,7 +502,7 @@ public class TradeManager extends AbstractManager {
                 .map(tick -> tradesObservableList)
                 .flatMapIterable(tradeList -> tradeList)
                 .filter(trade -> trade.getStatus().equals(CREATED))
-                .map(trade -> paymentRequestService.readPaymentRequest(trade.getEscrowAddress()))
+                .map(trade -> paymentRequestService.get(trade.getEscrowAddress()))
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
                 .subscribe(c -> {
@@ -406,7 +517,7 @@ public class TradeManager extends AbstractManager {
 
     private void updateTrade(PaymentRequest paymentRequest) {
 
-        createLocalPaymentRequest(paymentRequest);
+        writePaymentRequest(paymentRequest);
         for (Trade trade : tradesObservableList) {
             if (trade.getEscrowAddress().equals(paymentRequest.getEscrowAddress())) {
                 trade.setPaymentRequest(paymentRequest);
@@ -414,7 +525,7 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-    public void createLocalPaymentRequest(PaymentRequest paymentRequest) {
+    public void writePaymentRequest(PaymentRequest paymentRequest) {
 
         String tradePath = tradesPath + paymentRequest.getEscrowAddress();
         String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
@@ -434,7 +545,7 @@ public class TradeManager extends AbstractManager {
 
     private void readTrades() {
 
-        // read stored trades
+        // get stored trades
 
         File tradesDir = new File(tradesPath);
         List<String> tradeIds;
@@ -499,61 +610,28 @@ public class TradeManager extends AbstractManager {
         return false;
     }
 
-    public void addTradeTx(TransactionWithAmt updatedTx) {
-        BigDecimal defaultTxFee = new BigDecimal(Transaction.DEFAULT_TX_FEE.toPlainString());
-        for (Trade trade : tradesObservableList) {
-            //
-            if (trade.getEscrowAddress().equals(updatedTx.getOutputAddress())
-                    && trade.getBuyRequest().getBtcAmount().add(defaultTxFee).equals(updatedTx.getBtcAmt())
-                    && updatedTx.getConfidenceType().equals("BUILDING")) {
 
-                // Seller
-                if (trade.getSellOffer().getSellerProfilePubKey()
-                        .equals(profileManager.profile().getPubKey())) {
-
-                    if (trade.getPaymentRequest() == null) {
-                        // create, publish and save payment request
-                        String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer().getCurrencyCode(), trade.getSellOffer().getPaymentMethod())
-                                .get();
-                        writePaymentRequest(trade, updatedTx.getHash(), paymentDetails);
-                    } else {
-                        // read and save payout request
-                        readPayoutRequest(trade);
-                    }
-                    // Buyer
-                } else {
-                    // read and save payment request
-                    readPaymentRequest(trade);
-                }
-            } else if (trade.getBuyRequest().getBuyerPayoutAddress().equals(updatedTx.getOutputAddress())
-                    && trade.getBuyRequest().getBtcAmount().equals(updatedTx.getBtcAmt())
-                    && trade.getPaymentRequest().getFundingTxHash().equals(updatedTx.getHash())
-                    && updatedTx.getConfidenceType().equals("BUILDING")) {
-
-                // create tradeCompleted.json
-                PayoutDetails payoutDetails = createTradeCompleted(trade, updatedTx.getHash());
-
-                // stop watching escrow address
-                escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
-            }
-        }
-    }
-
-    public void payoutEscrow() {
-
-        Transaction fundingTx = tradeWalletManager.getTransaction(viewTrade.getPaymentRequest().getFundingTxHash());
-
-        if (fundingTx != null) {
-            try {
-                String signature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTx);
-
-                Wallet.SendResult sendRequest = escrowWalletManager.payoutEscrow(viewTrade, fundingTx, signature);
-
-            } catch (InsufficientMoneyException e) {
-                // TODO notify user
-                LOG.error("Insufficient funds to payout escrow to buyer.");
-            }
-
-        }
-    }
+//    public void updateTradeWithTx(TransactionWithAmt updatedTx) {
+//        BigDecimal defaultTxFee = new BigDecimal(Transaction.DEFAULT_TX_FEE.toPlainString());
+//        for (Trade trade : tradesObservableList) {
+//            // 1. buyer confirm funding tx
+//            if (trade.getEscrowAddress().equals(updatedTx.getOutputAddress())
+//                    && trade.getBuyRequest().getBtcAmount().add(defaultTxFee).equals(updatedTx.getBtcAmt())
+//                    && updatedTx.getConfidenceType().equals("BUILDING")
+//                    && trade.getBuyRequest().getBuyerProfilePubKey().equals(profileManager.profile().getPubKey())) {
+//
+//
+//            } else if (trade.getBuyRequest().getBuyerPayoutAddress().equals(updatedTx.getOutputAddress())
+//                    && trade.getBuyRequest().getBtcAmount().equals(updatedTx.getBtcAmt())
+//                    && trade.getPaymentRequest().getFundingTxHash().equals(updatedTx.getHash())
+//                    && updatedTx.getConfidenceType().equals("BUILDING")) {
+//
+//                // post tradeCompleted.json
+//                PayoutCompleted payoutCompleted = writePayoutCompleted(trade, updatedTx.getHash());
+//
+//                // stop watching escrow address
+//                escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+//            }
+//        }
+//    }
 }

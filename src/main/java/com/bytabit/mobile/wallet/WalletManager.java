@@ -69,7 +69,7 @@ public abstract class WalletManager {
 
         kit = new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), configName + walletPurpose);
 
-        // create observable download events
+        // post observable download events
         blkDownloadEvents = Observable.create((Observable.OnSubscribe<BlockDownloadEvent>) subscriber -> {
             kit.setDownloadListener(new DownloadProgressTracker() {
                 @Override
@@ -95,7 +95,7 @@ public abstract class WalletManager {
                     kit.setDownloadListener(null)));
         }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
-        // create observable wallet running events
+        // post observable wallet running events
         txUpdatedEvents = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
             TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
 
@@ -274,13 +274,25 @@ public abstract class WalletManager {
         return watchedOutputAddresses.size() > 0 ? watchedOutputAddresses.get(0) : null;
     }
 
-    public Transaction getTransaction(String txHash) {
-        Sha256Hash hash = Sha256Hash.wrap(txHash);
-        return kit.wallet().getTransaction(hash);
+    public TransactionWithAmt getTransactionWithAmt(String txHash) {
+        Transaction tx = getTransaction(txHash);
+        TransactionUpdatedEvent txe = new TransactionUpdatedEvent(tx, kit.wallet());
+        return new TransactionWithAmt(tx,
+                txe.getAmt(), getWatchedOutputAddress(tx),
+                tx.getInput(0).getOutpoint().getHash().toString());
     }
 
-    public String getPayoutSignature(Trade trade, Transaction fundingTx) {
+    private Transaction getTransaction(String txHash) {
+        Sha256Hash hash = Sha256Hash.wrap(txHash);
+        Transaction tx = kit.wallet().getTransaction(hash);
+        if (tx == null) {
+            throw new RuntimeException("Can't find Tx with hash: " + txHash);
+        }
+        return tx;
+    }
 
+    public String getPayoutSignature(Trade trade, String fundingTxHash) {
+        Transaction fundingTx = getTransaction(fundingTxHash);
         Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
@@ -316,7 +328,7 @@ public abstract class WalletManager {
             if (outputAddress != null && outputAddress.equals(escrowAddress)
                     && txo.getValue().equals(outputAmount)) {
 
-                // create payout input and funding output with empty unlock scripts
+                // post payout input and funding output with empty unlock scripts
                 TransactionInput input = payoutTx.addInput(fundingTx.getOutput(0));
                 Script emptyUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(null, redeemScript);
                 input.setScriptSig(emptyUnlockScript);
@@ -340,7 +352,7 @@ public abstract class WalletManager {
             Sha256Hash unlockSigHash = payoutTx.hashForSignature(0, redeemScript, Transaction.SigHash.ALL, false);
             return new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false);
         } else {
-            throw new RuntimeException("Can create payout signature, no signing key found.");
+            throw new RuntimeException("Can post payout signature, no signing key found.");
         }
     }
 
@@ -351,7 +363,7 @@ public abstract class WalletManager {
         return ScriptBuilder.createRedeemScript(2, Arrays.asList(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
     }
 
-    public Wallet.SendResult payoutEscrow(Trade trade, Transaction fundingTx, String signature) throws InsufficientMoneyException {
+    public String payoutEscrow(Trade trade, String fundingTxHash, String signature) throws InsufficientMoneyException {
 
         Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
 
@@ -383,6 +395,7 @@ public abstract class WalletManager {
         }
 
         // add input to payout tx from single matching funding tx output
+        Transaction fundingTx = getTransaction(fundingTxHash);
         for (TransactionOutput txo : fundingTx.getOutputs()) {
             Address outputAddress = txo.getAddressFromP2SH(netParams);
             Coin outputAmount = payoutAmount.plus(Transaction.DEFAULT_TX_FEE);
@@ -391,7 +404,7 @@ public abstract class WalletManager {
             if (outputAddress != null && outputAddress.equals(escrowAddress)
                     && txo.getValue().equals(outputAmount)) {
 
-                // create payout input and funding output with signed unlock script
+                // post payout input and funding output with signed unlock script
                 TransactionInput input = payoutTx.addInput(fundingTx.getOutput(0));
                 Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
                 input.setScriptSig(signedUnlockScript);
@@ -402,7 +415,8 @@ public abstract class WalletManager {
         // add output to payout tx
         payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
 
-        return kit.wallet().sendCoins(SendRequest.forTx(payoutTx));
+        Wallet.SendResult sendResult = kit.wallet().sendCoins(SendRequest.forTx(payoutTx));
+        return sendResult.tx.getHash().toString();
     }
 
     public String sendCoins(SendRequest sendRequest) throws InsufficientMoneyException {

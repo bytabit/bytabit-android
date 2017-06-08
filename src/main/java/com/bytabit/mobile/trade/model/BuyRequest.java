@@ -1,4 +1,4 @@
-package com.bytabit.mobile.offer.model;
+package com.bytabit.mobile.trade.model;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;

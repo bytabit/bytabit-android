@@ -83,7 +83,7 @@ public class ProfileManager extends AbstractManager {
         arbitratorProfiles = FXCollections.observableArrayList();
 
         rx.Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> profileService.read())
+                .map(tick -> profileService.get())
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
                 .subscribe(c -> {
@@ -123,7 +123,7 @@ public class ProfileManager extends AbstractManager {
         store(PROFILE_PUBKEY, pubKey);
         profile.setPubKey(pubKey);
         try {
-            profileService.create(profile).execute();
+            profileService.post(profile).execute();
         } catch (IOException ex) {
             LOG.error(ex.getMessage());
         }
@@ -143,7 +143,7 @@ public class ProfileManager extends AbstractManager {
 
     private void updateProfile() {
         try {
-            profileService.update(profile.getPubKey(), profile).execute();
+            profileService.put(profile.getPubKey(), profile).execute();
         } catch (IOException ex) {
             LOG.error(ex.getMessage());
         }

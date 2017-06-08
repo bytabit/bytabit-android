@@ -1,6 +1,5 @@
 package com.bytabit.mobile.trade.model;
 
-import com.bytabit.mobile.offer.model.BuyRequest;
 import com.bytabit.mobile.offer.model.SellOffer;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -33,7 +32,7 @@ public class Trade {
         this.buyRequest.addListener((e) -> updateStatus());
         this.paymentRequest.addListener((e) -> updateStatus());
         this.payoutRequest.addListener((e) -> updateStatus());
-        this.payoutDetails.addListener((e) -> updateStatus());
+        this.payoutCompleted.addListener((e) -> updateStatus());
     }
 
     private final ObjectProperty<Status> status = new SimpleObjectProperty<>();
@@ -42,7 +41,7 @@ public class Trade {
     private final ObjectProperty<BuyRequest> buyRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PaymentRequest> paymentRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutRequest> payoutRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<PayoutDetails> payoutDetails = new SimpleObjectProperty<>();
+    private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
 
     public Status getStatus() {
         return status.get();
@@ -116,16 +115,16 @@ public class Trade {
         this.payoutRequest.set(payoutRequest);
     }
 
-    public PayoutDetails getPayoutDetails() {
-        return payoutDetails.get();
+    public PayoutCompleted getPayoutCompleted() {
+        return payoutCompleted.get();
     }
 
-    public ObjectProperty<PayoutDetails> payoutDetailsProperty() {
-        return payoutDetails;
+    public ObjectProperty<PayoutCompleted> payoutCompletedProperty() {
+        return payoutCompleted;
     }
 
-    public void setPayoutDetails(PayoutDetails payoutDetails) {
-        this.payoutDetails.set(payoutDetails);
+    public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
+        this.payoutCompleted.set(payoutCompleted);
     }
 
     private void updateStatus() {
@@ -133,32 +132,32 @@ public class Trade {
         // created: SellOffer + BuyRequest
         if (getSellOffer() != null && getBuyRequest() != null
                 && getPaymentRequest() == null && getPayoutRequest() == null
-                && getPayoutDetails() == null) {
+                && getPayoutCompleted() == null) {
             setStatus(CREATED);
         }
         // funded: fundEscrow + PaymentRequest
         else if (getSellOffer() != null && getBuyRequest() != null
                 && getPaymentRequest() != null && getPayoutRequest() == null
-                && getPayoutDetails() == null) {
+                && getPayoutCompleted() == null) {
             setStatus(FUNDED);
         }
         // paid: PayoutRequest + payoutEscrow
         else if (getSellOffer() != null && getBuyRequest() != null
                 && getPaymentRequest() != null && getPayoutRequest() != null
-                && getPayoutDetails() == null) {
+                && getPayoutCompleted() == null) {
             setStatus(PAID);
         }
-        // complete: payoutDetails
+        // complete: payoutCompleted
         else if (getSellOffer() != null && getBuyRequest() != null
                 && getPaymentRequest() != null && getPayoutRequest() != null
-                && getPayoutDetails() != null) {
+                && getPayoutCompleted() != null) {
             setStatus(COMPLETED);
         } else {
             throw new RuntimeException("Invalid trade status.");
         }
     }
 
-    private Role getRole(String profilePubKey) {
+    public Role getRole(String profilePubKey) {
         Role role;
 
         if (getSellOffer().getSellerProfilePubKey().equals(profilePubKey)) {

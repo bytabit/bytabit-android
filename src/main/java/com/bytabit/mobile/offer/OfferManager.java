@@ -51,7 +51,7 @@ public class OfferManager extends AbstractManager {
     public void createOffer() {
 
         try {
-            SellOffer createdOffer = sellOfferService.createOffer(newSellOffer).execute().body();
+            SellOffer createdOffer = sellOfferService.post(newSellOffer).execute().body();
             sellOffersObservableList.add(createdOffer);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
@@ -60,13 +60,13 @@ public class OfferManager extends AbstractManager {
 
     public void readOffers() {
         try {
-            List<SellOffer> offers = sellOfferService.read().execute().body();
+            List<SellOffer> offers = sellOfferService.get().execute().body();
             sellOffersObservableList.setAll(offers);
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
         Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> sellOfferService.read())
+                .map(tick -> sellOfferService.get())
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
                 .subscribe(c -> {
