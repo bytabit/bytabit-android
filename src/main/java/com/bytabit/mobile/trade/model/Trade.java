@@ -44,10 +44,16 @@ public class Trade {
     private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
 
     public Status getStatus() {
+        if (status.get() == null) {
+            updateStatus();
+        }
         return status.get();
     }
 
     public ObjectProperty<Status> statusProperty() {
+        if (status.get() == null) {
+            updateStatus();
+        }
         return status;
     }
 

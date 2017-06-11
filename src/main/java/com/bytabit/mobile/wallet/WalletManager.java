@@ -226,10 +226,18 @@ public abstract class WalletManager {
         return kit.wallet().getBalance();
     }
 
+    public BigDecimal defaultTxFee() {
+        return new BigDecimal(defaultTxFeeCoin().toPlainString());
+    }
+
+    private Coin defaultTxFeeCoin() {
+        return DEFAULT_TX_FEE;
+    }
+
     public String fundEscrow(String escrowAddress, BigDecimal amount) throws InsufficientMoneyException {
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
-                Coin.parseCoin(amount.toString()).add(DEFAULT_TX_FEE));
+                Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
         Transaction tx = kit.wallet().sendCoins(sendRequest).tx;
         return tx.getHashAsString();
     }
@@ -282,7 +290,7 @@ public abstract class WalletManager {
                 tx.getInput(0).getOutpoint().getHash().toString());
     }
 
-    private Transaction getTransaction(String txHash) {
+    public Transaction getTransaction(String txHash) {
         Sha256Hash hash = Sha256Hash.wrap(txHash);
         Transaction tx = kit.wallet().getTransaction(hash);
         if (tx == null) {
@@ -293,6 +301,10 @@ public abstract class WalletManager {
 
     public String getPayoutSignature(Trade trade, String fundingTxHash) {
         Transaction fundingTx = getTransaction(fundingTxHash);
+        return getPayoutSignature(trade, fundingTx);
+    }
+
+    public String getPayoutSignature(Trade trade, Transaction fundingTx) {
         Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
@@ -322,7 +334,7 @@ public abstract class WalletManager {
         // add input to payout tx from single matching funding tx output
         for (TransactionOutput txo : fundingTx.getOutputs()) {
             Address outputAddress = txo.getAddressFromP2SH(netParams);
-            Coin outputAmount = payoutAmount.plus(Transaction.DEFAULT_TX_FEE);
+            Coin outputAmount = payoutAmount.plus(defaultTxFeeCoin());
 
             // verify output from fundingTx exists and equals required payout amounts
             if (outputAddress != null && outputAddress.equals(escrowAddress)
@@ -398,14 +410,14 @@ public abstract class WalletManager {
         Transaction fundingTx = getTransaction(fundingTxHash);
         for (TransactionOutput txo : fundingTx.getOutputs()) {
             Address outputAddress = txo.getAddressFromP2SH(netParams);
-            Coin outputAmount = payoutAmount.plus(Transaction.DEFAULT_TX_FEE);
+            Coin outputAmount = payoutAmount.plus(defaultTxFeeCoin());
 
             // verify output from fundingTx exists and equals required payout amounts
             if (outputAddress != null && outputAddress.equals(escrowAddress)
                     && txo.getValue().equals(outputAmount)) {
 
                 // post payout input and funding output with signed unlock script
-                TransactionInput input = payoutTx.addInput(fundingTx.getOutput(0));
+                TransactionInput input = payoutTx.addInput(txo);
                 Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
                 input.setScriptSig(signedUnlockScript);
                 break;
@@ -414,9 +426,9 @@ public abstract class WalletManager {
 
         // add output to payout tx
         payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
-
-        Wallet.SendResult sendResult = kit.wallet().sendCoins(SendRequest.forTx(payoutTx));
-        return sendResult.tx.getHash().toString();
+        kit.wallet().commitTx(payoutTx);
+        kit.peerGroup().broadcastTransaction(payoutTx);
+        return payoutTx.getHash().toString();
     }
 
     public String sendCoins(SendRequest sendRequest) throws InsufficientMoneyException {
