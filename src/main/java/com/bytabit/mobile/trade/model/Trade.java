@@ -107,6 +107,7 @@ public class Trade {
 
     public void setPaymentRequest(PaymentRequest paymentRequest) {
         this.paymentRequest.set(paymentRequest);
+        updateStatus();
     }
 
     public PayoutRequest getPayoutRequest() {
@@ -119,6 +120,7 @@ public class Trade {
 
     public void setPayoutRequest(PayoutRequest payoutRequest) {
         this.payoutRequest.set(payoutRequest);
+        updateStatus();
     }
 
     public PayoutCompleted getPayoutCompleted() {
@@ -131,6 +133,7 @@ public class Trade {
 
     public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
         this.payoutCompleted.set(payoutCompleted);
+        updateStatus();
     }
 
     private void updateStatus() {

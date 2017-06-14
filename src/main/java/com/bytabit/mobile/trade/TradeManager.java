@@ -33,8 +33,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
-import static com.bytabit.mobile.trade.model.Trade.Status.FUNDED;
+import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
 public class TradeManager extends AbstractManager {
 
@@ -45,6 +44,8 @@ public class TradeManager extends AbstractManager {
     private final PaymentRequestService paymentRequestService;
 
     private final PayoutRequestService payoutRequestService;
+
+    private final PayoutCompletedService payoutCompletedService;
 
     private final ObservableList<Trade> tradesObservableList;
 
@@ -80,6 +81,12 @@ public class TradeManager extends AbstractManager {
                 .addConverterFactory(new JacksonJrConverter<>(PayoutRequest.class))
                 .build();
         payoutRequestService = payoutRequestRetrofit.create(PayoutRequestService.class);
+
+        Retrofit payoutCompletedRetrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(new JacksonJrConverter<>(PayoutCompleted.class))
+                .build();
+        payoutCompletedService = payoutCompletedRetrofit.create(PayoutCompletedService.class);
 
         tradesObservableList = FXCollections.observableArrayList();
         viewTrade = new Trade();
@@ -326,7 +333,7 @@ public class TradeManager extends AbstractManager {
         writePayoutCompleted(viewTrade, payoutCompleted);
 
         // 4. post payout completed
-        // TODO
+        payoutCompletedService.post(payoutCompleted.getEscrowAddress(), payoutCompleted);
 
         // 5. update trade
         viewTrade.setPayoutCompleted(payoutCompleted);
@@ -376,7 +383,7 @@ public class TradeManager extends AbstractManager {
 
 
     // 4.B: buyer confirm payout tx and write payout details
-    public void confirmPayout(PayoutCompleted payoutCompleted) {
+    public void receivePayoutCompleted(PayoutCompleted payoutCompleted) {
 
         // 1. confirm payout tx
         Trade trade = getTrade(payoutCompleted.getEscrowAddress());
@@ -389,7 +396,7 @@ public class TradeManager extends AbstractManager {
 
             // 3. update trade
             viewTrade.setPayoutCompleted(payoutCompleted);
-            getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
+            trade.setPayoutCompleted(payoutCompleted);
 
             // 4. remove watch on escrow address
             escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
@@ -530,6 +537,22 @@ public class TradeManager extends AbstractManager {
                         LOG.error(ioe.getMessage());
                     }
                 });
+
+        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
+                .map(tick -> tradesObservableList)
+                .flatMapIterable(tradeList -> tradeList)
+                .filter(trade -> trade.getStatus().equals(PAID))
+                .map(trade -> payoutCompletedService.get(trade.getEscrowAddress()))
+                .retry()
+                .observeOn(JavaFxScheduler.getInstance())
+                .subscribe(c -> {
+                    try {
+                        PayoutCompleted payoutCompleted = c.execute().body();
+                        receivePayoutCompleted(payoutCompleted);
+                    } catch (IOException ioe) {
+                        LOG.error(ioe.getMessage());
+                    }
+                });
     }
 
 //    private void updateTrade(PaymentRequest paymentRequest) {
@@ -599,6 +622,13 @@ public class TradeManager extends AbstractManager {
                     trade.setPayoutRequest(payoutRequest);
                 }
 
+                File payoutCompletedFile = new File(tradesPath + tradeId + File.separator + "payoutCompleted.json");
+                if (payoutCompletedFile.exists()) {
+                    FileReader payoutCompletedReader = new FileReader(payoutCompletedFile);
+                    PayoutCompleted payoutCompleted = JSON.std.beanFrom(PayoutCompleted.class, payoutCompletedReader);
+                    trade.setPayoutCompleted(payoutCompleted);
+                }
+
                 tradesObservableList.add(trade);
             } catch (IOException ioe) {
                 LOG.error(ioe.getMessage());
@@ -609,8 +639,8 @@ public class TradeManager extends AbstractManager {
 
     public boolean activeSellerEscrowPubKey(String sellerEscrowPubKey) {
         for (Trade trade : tradesObservableList) {
-            // TODO also check if in active status
-            if (trade.getSellOffer().getSellerEscrowPubKey().equals(sellerEscrowPubKey)) {
+            // TODO check if in not COMPLETED status
+            if (trade.getSellOffer().getSellerEscrowPubKey().equals(sellerEscrowPubKey) && trade.getStatus().equals(CREATED)) {
                 return true;
             }
         }
