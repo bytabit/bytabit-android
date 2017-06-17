@@ -121,9 +121,9 @@ public class TradeDetailsPresenter {
                 priceCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
                 paymentDetailsLabel.textProperty().setValue(null);
                 paymentReferenceLabel.textProperty().setValue(null);
+                tradeStatusLabel.textProperty().setValue(trade.getStatus().toString());
 
-                if (trade.getPaymentRequest() != null && trade.getPaymentRequest().getFundingTxHash() != null) {
-                    tradeStatusLabel.textProperty().setValue("FUNDED");
+                if (trade.getStatus().equals(Trade.Status.FUNDED)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
                     if (tradeRole == Trade.Role.BUYER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
@@ -134,10 +134,8 @@ public class TradeDetailsPresenter {
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
                     }
-                }
-
-                if (trade.getPayoutRequest() != null && trade.getPayoutRequest().getPaymentReference() != null) {
-                    tradeStatusLabel.textProperty().setValue("PAYMENT SENT");
+                } else if (trade.getStatus().equals(Trade.Status.PAID)) {
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
                     paymentReferenceLabel.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
                     if (tradeRole == Trade.Role.BUYER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
@@ -145,6 +143,18 @@ public class TradeDetailsPresenter {
                         paymentReferenceField.visibleProperty().setValue(false);
                     } else if (tradeRole == Trade.Role.SELLER) {
                         paymentReceivedButton.visibleProperty().setValue(true);
+                        paymentSentButton.visibleProperty().setValue(false);
+                        paymentReferenceField.visibleProperty().setValue(false);
+                    }
+                } else if (trade.getStatus().equals(Trade.Status.COMPLETED)) {
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
+                    paymentReferenceLabel.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    if (tradeRole == Trade.Role.BUYER) {
+                        paymentReceivedButton.visibleProperty().setValue(false);
+                        paymentSentButton.visibleProperty().setValue(false);
+                        paymentReferenceField.visibleProperty().setValue(false);
+                    } else if (tradeRole == Trade.Role.SELLER) {
+                        paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
                     }

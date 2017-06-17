@@ -333,7 +333,11 @@ public class TradeManager extends AbstractManager {
         writePayoutCompleted(viewTrade, payoutCompleted);
 
         // 4. post payout completed
-        payoutCompletedService.post(payoutCompleted.getEscrowAddress(), payoutCompleted);
+        try {
+            payoutCompletedService.post(payoutCompleted.getEscrowAddress(), payoutCompleted).execute().body();
+        } catch (IOException e) {
+            LOG.error("Can't post payout completed to server.");
+        }
 
         // 5. update trade
         viewTrade.setPayoutCompleted(payoutCompleted);
@@ -366,13 +370,13 @@ public class TradeManager extends AbstractManager {
     public void writePayoutCompleted(Trade trade, PayoutCompleted payoutCompleted) {
 
         String tradePath = tradesPath + trade.getEscrowAddress();
-        String tradeCompleted = tradePath + File.separator + "tradeCompleted.json";
+        String payoutCompletedPath = tradePath + File.separator + "payoutCompleted.json";
         try {
-            FileWriter tradeCompletedWriter = new FileWriter(tradeCompleted);
-            tradeCompletedWriter.write(JSON.std.asString(payoutCompleted));
-            tradeCompletedWriter.flush();
+            FileWriter payoutCompletedWriter = new FileWriter(payoutCompletedPath);
+            payoutCompletedWriter.write(JSON.std.asString(payoutCompleted));
+            payoutCompletedWriter.flush();
 
-            LOG.debug("Created payoutCompleted: {}", payoutCompleted);
+            LOG.debug("Created payoutCompleted: {}", payoutCompletedPath);
             trade.setPayoutCompleted(payoutCompleted);
 
         } catch (IOException ioe) {
@@ -380,7 +384,6 @@ public class TradeManager extends AbstractManager {
             throw new RuntimeException(ioe);
         }
     }
-
 
     // 4.B: buyer confirm payout tx and write payout details
     public void receivePayoutCompleted(PayoutCompleted payoutCompleted) {
