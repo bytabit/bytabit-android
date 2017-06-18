@@ -39,7 +39,7 @@ public class DepositPresenter {
     private Button copyButton;
 
     @Inject
-    private TradeWalletManager tradeWalletManager;
+    private WalletManager walletManager;
 
     public void initialize() {
 
@@ -53,7 +53,7 @@ public class DepositPresenter {
                 appBar.setTitleText("Deposit");
             }
 
-            Address depositAddress = tradeWalletManager.getDepositAddress();
+            Address depositAddress = walletManager.getDepositAddress();
             bitcoinAddressLabel.setText(depositAddress.toBase58());
             LOG.debug("deposit address: {}", depositAddress.toBase58());
 

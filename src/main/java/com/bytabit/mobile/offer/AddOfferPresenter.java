@@ -7,7 +7,7 @@ import com.bytabit.mobile.profile.ProfileStringConverter;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
-import com.bytabit.mobile.wallet.TradeWalletManager;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -35,7 +35,7 @@ public class AddOfferPresenter {
     ProfileManager profileManager;
 
     @Inject
-    TradeWalletManager tradeWalletManager;
+    WalletManager tradeWalletManager;
 
     @FXML
     private View addOfferView;
@@ -125,7 +125,7 @@ public class AddOfferPresenter {
 
         addOfferButton.onActionProperty().setValue(e -> {
 
-            if (tradeWalletManager.walletRunningProperty().getValue()) {
+            if (tradeWalletManager.tradeWalletRunningProperty().getValue()) {
                 offerManager.newOffer().setSellerEscrowPubKey(tradeWalletManager.getFreshBase58PubKey());
             }
             if (offerManager.newOffer().isComplete()) {

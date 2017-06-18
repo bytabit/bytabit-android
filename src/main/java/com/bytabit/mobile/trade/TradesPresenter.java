@@ -3,8 +3,7 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.EscrowWalletManager;
-import com.bytabit.mobile.wallet.TradeWalletManager;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -30,10 +29,7 @@ public class TradesPresenter {
     ProfileManager profileManager;
 
     @Inject
-    EscrowWalletManager escrowWalletManager;
-
-    @Inject
-    TradeWalletManager tradeWalletManager;
+    WalletManager walletManager;
 
     @FXML
     private View tradesView;
@@ -81,9 +77,9 @@ public class TradesPresenter {
 //                            .equals(profileManager.profile().getPubKey())) {
 //                        // TODO verify trade not yet funded
 //                        try {
-//                            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+//                            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
 //
-//                            String txHash = tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
+//                            String txHash = walletManager.fundEscrow(trade.getEscrowAddress(),
 //                                    trade.getBuyRequest().getBtcAmount());
 //
 //                            String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer()
@@ -98,7 +94,7 @@ public class TradesPresenter {
 //            }
 //        });
 
-//        escrowWalletManager.getTransactions().addListener((ListChangeListener<TransactionWithAmt>) change -> {
+//        walletManager.getTradeWalletTransactions().addListener((ListChangeListener<TransactionWithAmt>) change -> {
 //            while (change.next()) {
 //                LOG.debug("Escrow transaction changed.");
 //                for (TransactionWithAmt addedTx : change.getAddedSubList()) {

@@ -2,7 +2,7 @@ package com.bytabit.mobile.profile;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.model.Profile;
-import com.bytabit.mobile.wallet.TradeWalletManager;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -20,7 +20,7 @@ public class ProfilePresenter {
     private static Logger LOG = LoggerFactory.getLogger(ProfilePresenter.class);
 
     @Inject
-    private TradeWalletManager tradeWalletManager;
+    private WalletManager tradeWalletManager;
 
     @Inject
     private ProfileManager profileManager;
@@ -45,7 +45,7 @@ public class ProfilePresenter {
         LOG.debug("initialize profile presenter");
 
         //tradeWalletManager.startWallet();
-        tradeWalletManager.walletRunningProperty().addListener((obj, oldVal, isRunning) -> {
+        tradeWalletManager.tradeWalletRunningProperty().addListener((obj, oldVal, isRunning) -> {
             if (isRunning) {
                 LOG.debug("Wallet Running");
                 // pubkey init

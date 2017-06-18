@@ -3,7 +3,7 @@ package com.bytabit.mobile.offer;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.TradeManager;
-import com.bytabit.mobile.wallet.TradeWalletManager;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -35,7 +35,7 @@ public class OfferDetailsPresenter {
     ProfileManager profileManager;
 
     @Inject
-    TradeWalletManager tradeWalletManager;
+    WalletManager tradeWalletManager;
 
     @FXML
     private View offerDetailsView;

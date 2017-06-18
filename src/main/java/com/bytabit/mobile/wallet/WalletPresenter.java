@@ -15,13 +15,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.Locale;
 
 public class WalletPresenter {
 
     private static Logger LOG = LoggerFactory.getLogger(WalletPresenter.class);
 
     @Inject
-    private TradeWalletManager tradeWalletManager;
+    private WalletManager tradeWalletManager;
 
     @FXML
     private View walletView;
@@ -50,8 +51,7 @@ public class WalletPresenter {
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
                     String amount = String.format("%s BTC, %tc", tx.getCoinAmt().toPlainString(), tx.getDate().toDate());
-                    String details = String.format("%s (%d), Hash: %s",
-                            tx.getConfidenceType(), tx.getDepth(), tx.getHash());
+                    String details = String.format(Locale.US, "%s (%d), Hash: %s", tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());
                     setText(null);
                     setGraphic(tile);
@@ -62,7 +62,7 @@ public class WalletPresenter {
             }
         });
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
-        transactionListView.itemsProperty().bindContent(tradeWalletManager.getTransactions());
+        transactionListView.itemsProperty().bindContent(tradeWalletManager.getTradeWalletTransactions());
 
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
         depositButton.attachTo(withdrawButton, Side.LEFT);
@@ -90,7 +90,7 @@ public class WalletPresenter {
             tradeWalletManager.stopWallet();
         });
 
-        balanceAmountLabel.textProperty().bind(tradeWalletManager.balanceProperty());
+        balanceAmountLabel.textProperty().bind(tradeWalletManager.getTradeWalletBalance());
         downloadProgressBar.progressProperty().bind(tradeWalletManager.downloadProgressProperty());
 
         //tradeWalletManager.startWallet();

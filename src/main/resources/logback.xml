@@ -9,6 +9,7 @@
     </appender>
 
     <logger name="com.bytabit.mobile" level="DEBUG"/>
+    <!-- <logger name="org.bitcoinj" level="DEBUG"/> -->
 
     <root level="WARN">
         <appender-ref ref="STDOUT"/>

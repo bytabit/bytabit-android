@@ -14,13 +14,14 @@ import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.crypto.TransactionSignature;
-import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
-import org.bitcoinj.wallet.KeyChain;
-import org.bitcoinj.wallet.SendRequest;
-import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.store.BlockStore;
+import org.bitcoinj.store.BlockStoreException;
+import org.bitcoinj.store.SPVBlockStore;
+import org.bitcoinj.wallet.*;
+import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,48 +31,87 @@ import rx.schedulers.JavaFxScheduler;
 import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
-import static com.google.common.util.concurrent.Service.Listener;
 import static org.bitcoinj.core.Transaction.DEFAULT_TX_FEE;
 
-public abstract class WalletManager {
+public class WalletManager {
 
     private final static Logger LOG = LoggerFactory.getLogger(WalletManager.class);
-
     private final static NetworkParameters netParams;
 
-    final Context btcContext;
-    final WalletAppKit kit;
+    private final Context btcContext;
 
-    final Observable<BlockDownloadEvent> blkDownloadEvents;
-    final Observable<TransactionUpdatedEvent> txUpdatedEvents;
+    private final BlockStore blockStore;
+    private final BlockChain blockChain;
+    private final PeerGroup peerGroup;
 
-    final ObservableList<TransactionWithAmt> transactions;
-    final StringProperty balance;
+    private final Wallet tradeWallet;
+    private final Wallet escrowWallet;
 
+    private final StringProperty tradeWalletBalance;
+    private final BooleanProperty tradeWalletRunning;
+
+    private final Observable<BlockDownloadEvent> blkDownloadEvents;
     private final DoubleProperty downloadProgress;
-    private final BooleanProperty walletRunning;
+
+    private final Observable<TransactionUpdatedEvent> tradeTxUpdatedEvents;
+    private final ObservableList<TransactionWithAmt> tradeWalletTransactions;
 
     static {
         netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
     }
 
-    WalletManager(String configName, WalletPurpose walletPurpose) {
+    public WalletManager() {
 
-        this.transactions = FXCollections.observableArrayList();
-        this.balance = new SimpleStringProperty();
+        this.tradeWalletTransactions = FXCollections.observableArrayList();
+        this.tradeWalletBalance = new SimpleStringProperty();
         this.downloadProgress = new SimpleDoubleProperty();
-        this.walletRunning = new SimpleBooleanProperty(false);
-        this.btcContext = Context.getOrCreate(netParams);
+        this.tradeWalletRunning = new SimpleBooleanProperty(false);
+
+        btcContext = Context.getOrCreate(netParams);
         Context.propagate(btcContext);
 
-        kit = new WalletAppKit(btcContext, AppConfig.getPrivateStorage(), configName + walletPurpose);
+        tradeWallet = createOrLoadWallet(new File(AppConfig.getPrivateStorage(), "trade.wallet"));
+        escrowWallet = createOrLoadWallet(new File(AppConfig.getPrivateStorage(), "escrow.wallet"));
+
+        try {
+            File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
+            blockStore = new SPVBlockStore(netParams, blockStoreFile);
+            blockChain = new BlockChain(netParams, tradeWallet, blockStore);
+            blockChain.addWallet(tradeWallet);
+            blockChain.addWallet(escrowWallet);
+            peerGroup = new PeerGroup(netParams, blockChain);
+            peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
+            peerGroup.addWallet(tradeWallet);
+            peerGroup.addWallet(escrowWallet);
+
+            if (netParams.equals(RegTestParams.get())) {
+                //kit.setPeerNodes(new PeerAddress(netParams, "regtest.bytabit.net", 18444));
+                peerGroup.setMaxConnections(1);
+                peerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
+            }
+
+        } catch (BlockStoreException bse) {
+            LOG.error("Can't open block store.");
+            throw new RuntimeException(bse);
+        } catch (UnknownHostException uhe) {
+            LOG.error("Can't add localhost to peer group.");
+            throw new RuntimeException(uhe);
+        }
 
         // post observable download events
         blkDownloadEvents = Observable.create((Observable.OnSubscribe<BlockDownloadEvent>) subscriber -> {
-            kit.setDownloadListener(new DownloadProgressTracker() {
+            peerGroup.start();
+            peerGroup.startBlockChainDownload(new DownloadProgressTracker() {
                 @Override
                 public void onBlocksDownloaded(Peer peer, Block block, @Nullable FilteredBlock filteredBlock, int blocksLeft) {
                     super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
@@ -90,13 +130,12 @@ public abstract class WalletManager {
                     subscriber.onNext(new BlockDownloadDone());
                 }
             });
-
-            subscriber.add(Subscriptions.create(() ->
-                    kit.setDownloadListener(null)));
+            // on un-subscribe stop peer group
+            subscriber.add(Subscriptions.create(peerGroup::stop));
         }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
         // post observable wallet running events
-        txUpdatedEvents = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
+        tradeTxUpdatedEvents = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
             TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
 
                 @Override
@@ -105,101 +144,132 @@ public abstract class WalletManager {
                     subscriber.onNext(new TransactionUpdatedEvent(tx, wallet));
                 }
             };
-            kit.wallet().addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
+            tradeWallet.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
 
-            subscriber.add(Subscriptions.create(() -> kit.wallet().removeTransactionConfidenceEventListener(listener)));
+            subscriber.add(Subscriptions.create(() -> tradeWallet.removeTransactionConfidenceEventListener(listener)));
         }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
         // add TX observer when wallet is running
-        kit.addListener(new Listener() {
+//        kit.addListener(new Listener() {
+//            @Override
+//            public void running() {
+        tradeWalletRunning.setValue(true);
 
-            @Override
-            public void running() {
-                walletRunning.setValue(true);
+        // get existing tx
+        Set<TransactionWithAmt> txsWithAmt = new HashSet<>();
+        for (Transaction t : tradeWallet.getTransactions(false)) {
+            txsWithAmt.add(new TransactionWithAmt(t, t.getValue(tradeWallet),
+                    getWatchedOutputAddress(t), t.getInput(0).getOutpoint().getHash().toString()));
+        }
+        Platform.runLater(() -> {
+            tradeWalletTransactions.addAll(txsWithAmt);
+            tradeWalletBalance.setValue(tradeWallet.getBalance().toFriendlyString());
+        });
 
-                // get existing tx
-                Set<TransactionWithAmt> txsWithAmt = new HashSet<>();
-                for (Transaction t : kit.wallet().getTransactions(false)) {
-                    txsWithAmt.add(new TransactionWithAmt(t, t.getValue(kit.wallet()),
-                            getWatchedOutputAddress(t), t.getInput(0).getOutpoint().getHash().toString()));
-                }
-                Platform.runLater(() -> {
-                    transactions.addAll(txsWithAmt);
-                    balance.setValue(kit.wallet().getBalance().toFriendlyString());
+        // listen for other events
+        tradeTxUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
+                .subscribe(e -> {
+                    LOG.debug("tx updated event : {}", e);
+                    TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
+
+                    TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(),
+                            txe.getAmt(), getWatchedOutputAddress(txe.getTx()),
+                            txe.getTx().getInput(0).getOutpoint().getHash().toString());
+
+                    Platform.runLater(() -> {
+                        Integer index = tradeWalletTransactions.indexOf(txu);
+                        if (index > -1) {
+                            tradeWalletTransactions.set(index, txu);
+                        } else {
+                            tradeWalletTransactions.add(txu);
+                        }
+                        tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
+                    });
                 });
 
-                // listen for other events
-                txUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
-                        .subscribe(e -> {
-                            LOG.debug("tx updated event : {}", e);
-                            TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
+        blkDownloadEvents.observeOn(JavaFxScheduler.getInstance())
+                .subscribe(e -> {
+                    LOG.debug("block download event : {}", e);
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (e instanceof BlockDownloadDone) {
+                                BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
+                                downloadProgress.setValue(1.0);
+                            } else if (e instanceof BlockDownloadProgress) {
+                                BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
+                                downloadProgress.setValue(dpe.getPct());
+                            }
+                            tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
+                        }
+                    });
+                });
 
-                            TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(),
-                                    txe.getAmt(), getWatchedOutputAddress(txe.getTx()),
-                                    txe.getTx().getInput(0).getOutpoint().getHash().toString());
-
-                            Platform.runLater(() -> {
-                                Integer index = transactions.indexOf(txu);
-                                if (index > -1) {
-                                    transactions.set(index, txu);
-                                } else {
-                                    transactions.add(txu);
-                                }
-                                balance.setValue(getWalletBalance().toFriendlyString());
-                            });
-                        });
-
-                blkDownloadEvents.observeOn(JavaFxScheduler.getInstance())
-                        .subscribe(e -> {
-                            LOG.debug("block download event : {}", e);
-                            Platform.runLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (e instanceof BlockDownloadDone) {
-                                        BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
-                                        downloadProgress.setValue(1.0);
-                                    } else if (e instanceof BlockDownloadProgress) {
-                                        BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
-                                        downloadProgress.setValue(dpe.getPct());
-                                    }
-                                    balance.setValue(getWalletBalance().toFriendlyString());
-                                }
-                            });
-                        });
-
-            }
-        }, BytabitMobile.EXECUTOR);
+//            }
+//        }, BytabitMobile.EXECUTOR);
 
         // setup wallet app kit
-        kit.setAutoSave(true);
-        kit.setBlockingStartup(false);
-        kit.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
+//        kit.setAutoSave(true);
+//        kit.setBlockingStartup(false);
+//        kit.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
 
-        if (netParams.equals(RegTestParams.get())) {
-            //kit.setPeerNodes(new PeerAddress(netParams, "regtest.bytabit.net", 18444));
-            kit.connectToLocalHost();
-        }
+//        if (netParams.equals(RegTestParams.get())) {
+//            //kit.setPeerNodes(new PeerAddress(netParams, "regtest.bytabit.net", 18444));
+//            kit.connectToLocalHost();
+//        }
 
-        Context.propagate(btcContext);
+//        Context.propagate(btcContext);
         // start wallet app kit
-        kit.startAsync();
+//        kit.startAsync();
+    }
+
+    private Wallet createOrLoadWallet(File walletFile) {
+        Wallet wallet;
+        if (walletFile.exists()) {
+            try {
+                FileInputStream walletStream = new FileInputStream(walletFile);
+                try {
+                    Protos.Wallet proto = WalletProtobufSerializer.parseToProto(walletStream);
+                    final WalletProtobufSerializer serializer = new WalletProtobufSerializer();
+                    WalletExtension[] extArray = new WalletExtension[0];
+                    wallet = serializer.readWallet(netParams, extArray, proto);
+                } finally {
+                    walletStream.close();
+                }
+            } catch (FileNotFoundException fnfe) {
+                LOG.error("Wallet file does not exist: " + walletFile.toString());
+                throw new RuntimeException(fnfe);
+            } catch (IOException | UnreadableWalletException irw) {
+                LOG.error("Could not parse wallet file: " + walletFile.toString());
+                throw new RuntimeException(irw);
+            }
+        } else {
+            wallet = new Wallet(netParams);
+        }
+        wallet.autosaveToFile(walletFile, 10, TimeUnit.SECONDS, null);
+        return wallet;
     }
 
     public DoubleProperty downloadProgressProperty() {
         return downloadProgress;
     }
 
-    public BooleanProperty walletRunningProperty() {
-        return walletRunning;
+    public BooleanProperty tradeWalletRunningProperty() {
+        return tradeWalletRunning;
     }
 
     void stopWallet() {
         Context.propagate(btcContext);
-        kit.stopAsync();
+        tradeWallet.shutdownAutosaveAndWait();
+        escrowWallet.shutdownAutosaveAndWait();
     }
 
-    public ObservableList<TransactionWithAmt> getTransactions() {
-        return transactions;
+    public ObservableList<TransactionWithAmt> getTradeWalletTransactions() {
+        return tradeWalletTransactions;
+    }
+
+    public StringProperty getTradeWalletBalance() {
+        return tradeWalletBalance;
     }
 
     public NetworkParameters getNetParams() {
@@ -207,23 +277,23 @@ public abstract class WalletManager {
     }
 
     public Address getDepositAddress() {
-        return kit.wallet().currentReceiveAddress();
+        return tradeWallet.currentReceiveAddress();
     }
 
     public Address getFreshAuthenticationAddress() {
-        return kit.wallet().freshKey(KeyChain.KeyPurpose.AUTHENTICATION).toAddress(netParams);
+        return tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).toAddress(netParams);
     }
 
     public Address getFreshReceiveAddress() {
-        return kit.wallet().freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).toAddress(netParams);
+        return tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).toAddress(netParams);
     }
 
     public String getFreshBase58PubKey() {
-        return Base58.encode(kit.wallet().freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
+        return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
     }
 
     public Coin getWalletBalance() {
-        return kit.wallet().getBalance();
+        return tradeWallet.getBalance();
     }
 
     public BigDecimal defaultTxFee() {
@@ -238,7 +308,7 @@ public abstract class WalletManager {
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
                 Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
-        Transaction tx = kit.wallet().sendCoins(sendRequest).tx;
+        Transaction tx = tradeWallet.sendCoins(sendRequest).tx;
         return tx.getHashAsString();
     }
 
@@ -259,18 +329,18 @@ public abstract class WalletManager {
     }
 
     private ECKey getECKeyFromAddress(Address address) {
-        return kit.wallet().findKeyFromPubHash(address.getHash160());
+        return tradeWallet.findKeyFromPubHash(address.getHash160());
     }
 
     private String getWatchedOutputAddress(Transaction tx) {
         List<String> watchedOutputAddresses = new ArrayList<>();
         for (TransactionOutput output : tx.getOutputs()) {
             Address address = output.getAddressFromP2PKHScript(netParams);
-            if (address != null && kit.wallet().isAddressWatched(address)) {
+            if (address != null && tradeWallet.isAddressWatched(address)) {
                 watchedOutputAddresses.add(address.toBase58());
             } else {
                 address = output.getAddressFromP2SH(netParams);
-                if (address != null && kit.wallet().isAddressWatched(address)) {
+                if (address != null && tradeWallet.isAddressWatched(address)) {
                     watchedOutputAddresses.add(address.toBase58());
                 }
             }
@@ -284,7 +354,7 @@ public abstract class WalletManager {
 
     public TransactionWithAmt getTransactionWithAmt(String txHash) {
         Transaction tx = getTransaction(txHash);
-        TransactionUpdatedEvent txe = new TransactionUpdatedEvent(tx, kit.wallet());
+        TransactionUpdatedEvent txe = new TransactionUpdatedEvent(tx, tradeWallet);
         return new TransactionWithAmt(tx,
                 txe.getAmt(), getWatchedOutputAddress(tx),
                 tx.getInput(0).getOutpoint().getHash().toString());
@@ -292,7 +362,7 @@ public abstract class WalletManager {
 
     public Transaction getTransaction(String txHash) {
         Sha256Hash hash = Sha256Hash.wrap(txHash);
-        Transaction tx = kit.wallet().getTransaction(hash);
+        Transaction tx = tradeWallet.getTransaction(hash);
         if (tx == null) {
             throw new RuntimeException("Can't find Tx with hash: " + txHash);
         }
@@ -352,12 +422,12 @@ public abstract class WalletManager {
         payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
 
         // find signing key
-        ECKey escrowKey = kit.wallet().findKeyFromPubKey(buyerEscrowPubKey.getPubKey());
+        ECKey escrowKey = tradeWallet.findKeyFromPubKey(buyerEscrowPubKey.getPubKey());
         if (escrowKey == null) {
-            escrowKey = kit.wallet().findKeyFromPubKey(sellerEscrowPubKey.getPubKey());
+            escrowKey = tradeWallet.findKeyFromPubKey(sellerEscrowPubKey.getPubKey());
         }
         if (escrowKey == null) {
-            escrowKey = kit.wallet().findKeyFromPubKey(arbitratorProfilePubKey.getPubKey());
+            escrowKey = tradeWallet.findKeyFromPubKey(arbitratorProfilePubKey.getPubKey());
         }
         if (escrowKey != null) {
             // sign tx input
@@ -426,13 +496,33 @@ public abstract class WalletManager {
 
         // add output to payout tx
         payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
-        kit.wallet().commitTx(payoutTx);
-        kit.peerGroup().broadcastTransaction(payoutTx);
+        escrowWallet.commitTx(payoutTx);
+        peerGroup.broadcastTransaction(payoutTx);
         return payoutTx.getHash().toString();
     }
 
     public String sendCoins(SendRequest sendRequest) throws InsufficientMoneyException {
-        Transaction tx = kit.wallet().sendCoins(sendRequest).tx;
+        Transaction tx = tradeWallet.sendCoins(sendRequest).tx;
         return tx.getHashAsString();
+    }
+
+    public void addWatchedEscrowAddress(String escrowAddress) {
+        Address address = Address.fromBase58(getNetParams(), escrowAddress);
+        Context.propagate(btcContext);
+        if (escrowWallet.addWatchedAddress(address, DateTime.now().getMillis() / 1000)) {
+            LOG.debug("Added watched address: {}", address.toBase58());
+        } else {
+            LOG.warn("Failed to add watch address: {}", address.toBase58());
+        }
+    }
+
+    public void removeWatchedEscrowAddress(String escrowAddress) {
+        Address address = Address.fromBase58(getNetParams(), escrowAddress);
+        Context.propagate(btcContext);
+        if (escrowWallet.removeWatchedAddress(address)) {
+            LOG.debug("Removed watched address: {}", address.toBase58());
+        } else {
+            LOG.warn("Failed to remove watched address: {}", address.toBase58());
+        }
     }
 }

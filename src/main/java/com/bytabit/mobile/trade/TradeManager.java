@@ -5,8 +5,6 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.*;
-import com.bytabit.mobile.wallet.EscrowWalletManager;
-import com.bytabit.mobile.wallet.TradeWalletManager;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.fasterxml.jackson.jr.ob.JSON;
@@ -55,10 +53,7 @@ public class TradeManager extends AbstractManager {
     ProfileManager profileManager;
 
     @Inject
-    TradeWalletManager tradeWalletManager;
-
-    @Inject
-    EscrowWalletManager escrowWalletManager;
+    WalletManager walletManager;
 
     String tradesPath = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
@@ -110,7 +105,7 @@ public class TradeManager extends AbstractManager {
         if (!tradesObservableList.contains(trade)) {
 
             // 3. watch trade escrow address
-            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
 
             // 4. write trade
             writeTrade(trade);
@@ -140,7 +135,7 @@ public class TradeManager extends AbstractManager {
         if (!tradesObservableList.contains(trade)) {
 
             // 2. watch trade escrow address
-            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
 
             // 3. write sell offer + buy request to trade folder
             writeTrade(trade);
@@ -189,7 +184,7 @@ public class TradeManager extends AbstractManager {
         // TODO verify escrow not yet funded ?
         try {
             // 1. fund escrow
-            String txHash = tradeWalletManager.fundEscrow(trade.getEscrowAddress(),
+            String txHash = walletManager.fundEscrow(trade.getEscrowAddress(),
                     trade.getBuyRequest().getBtcAmount());
 
             // 2. create payment request
@@ -224,10 +219,10 @@ public class TradeManager extends AbstractManager {
     public void receivePaymentRequest(PaymentRequest paymentRequest) {
 
         // 1. buyer confirm funding tx
-        TransactionWithAmt tx = escrowWalletManager.getTransactionWithAmt(paymentRequest.getFundingTxHash());
+        TransactionWithAmt tx = walletManager.getTransactionWithAmt(paymentRequest.getFundingTxHash());
         Trade trade = getTrade(paymentRequest.getEscrowAddress());
 
-        if (tx != null && trade.getBuyRequest().getBtcAmount().add(tradeWalletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
+        if (tx != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
 
             // 2. write payment request to trade folder
             writePaymentRequest(paymentRequest);
@@ -267,8 +262,8 @@ public class TradeManager extends AbstractManager {
         payoutRequest.setEscrowAddress(viewTrade.getEscrowAddress());
         payoutRequest.setPaymentReference(paymentReference);
         String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
-        Transaction fundingTx = escrowWalletManager.getTransaction(fundingTxHash);
-        String payoutSignature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTx);
+        Transaction fundingTx = walletManager.getTransaction(fundingTxHash);
+        String payoutSignature = walletManager.getPayoutSignature(viewTrade, fundingTx);
         payoutRequest.setPayoutTxSignature(payoutSignature);
 
         // 2. write payout request to trade folder
@@ -344,19 +339,19 @@ public class TradeManager extends AbstractManager {
         getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
 
         // 6. remove watch on escrow address
-        escrowWalletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
     }
 
     private String payoutEscrow() {
 
         String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
-        TransactionWithAmt fundingTxWithAmt = tradeWalletManager.getTransactionWithAmt(fundingTxHash);
+        TransactionWithAmt fundingTxWithAmt = walletManager.getTransactionWithAmt(fundingTxHash);
 
         String payoutTx = null;
         if (fundingTxWithAmt != null) {
             try {
-                String signature = tradeWalletManager.getPayoutSignature(viewTrade, fundingTxHash);
-                payoutTx = escrowWalletManager.payoutEscrow(viewTrade, fundingTxHash, signature);
+                String signature = walletManager.getPayoutSignature(viewTrade, fundingTxHash);
+                payoutTx = walletManager.payoutEscrow(viewTrade, fundingTxHash, signature);
 
             } catch (InsufficientMoneyException e) {
                 // TODO notify user
@@ -390,7 +385,7 @@ public class TradeManager extends AbstractManager {
 
         // 1. confirm payout tx
         Trade trade = getTrade(payoutCompleted.getEscrowAddress());
-        TransactionWithAmt tx = tradeWalletManager.getTransactionWithAmt(payoutCompleted.getPayoutTxHash());
+        TransactionWithAmt tx = walletManager.getTransactionWithAmt(payoutCompleted.getPayoutTxHash());
 
         if (trade != null && tx != null && tx.getBtcAmt().equals(trade.getBuyRequest().getBtcAmount())) {
 
@@ -402,7 +397,7 @@ public class TradeManager extends AbstractManager {
             trade.setPayoutCompleted(payoutCompleted);
 
             // 4. remove watch on escrow address
-            escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+            walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
         }
 
     }
@@ -415,9 +410,9 @@ public class TradeManager extends AbstractManager {
 //
 //        // Add or Remove Watched Escrow Address
 //        if (status != COMPLETED) {
-//            escrowWalletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+//            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
 //        } else {
-//            escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+//            walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
 //        }
 //
 //        // Fund Escrow + Request Payment
@@ -680,7 +675,7 @@ public class TradeManager extends AbstractManager {
 //                PayoutCompleted payoutCompleted = writePayoutCompleted(trade, updatedTx.getHash());
 //
 //                // stop watching escrow address
-//                escrowWalletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+//                walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
 //            }
 //        }
 //    }
