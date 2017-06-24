@@ -280,15 +280,15 @@ public class WalletManager {
         return tradeWallet.currentReceiveAddress();
     }
 
-    public Address getFreshAuthenticationAddress() {
-        return tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).toAddress(netParams);
-    }
+//    public Address getFreshAuthenticationAddress() {
+//        return tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).toAddress(netParams);
+//    }
 
     public Address getFreshReceiveAddress() {
         return tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).toAddress(netParams);
     }
 
-    public String getFreshBase58PubKey() {
+    public String getFreshBase58AuthPubKey() {
         return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
     }
 

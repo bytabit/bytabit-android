@@ -6,6 +6,7 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -16,6 +17,7 @@ import retrofit2.Retrofit;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +25,9 @@ import java.util.concurrent.TimeUnit;
 public class ProfileManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(ProfileManager.class);
+
+    @Inject
+    private WalletManager tradeWalletManager;
 
     private String PROFILE_PUBKEY = "profile.pubkey";
     private String PROFILE_ISARBITRATOR = "profile.isArbitrator";
@@ -119,8 +124,12 @@ public class ProfileManager extends AbstractManager {
 
     // profile methods
 
-    public void createProfile(String pubKey) {
-        store(PROFILE_PUBKEY, pubKey);
+    public void createProfile() {
+        String pubKey = retrieve(PROFILE_PUBKEY).orElse(null);
+        if (pubKey == null) {
+            pubKey = tradeWalletManager.getFreshBase58AuthPubKey();
+            store(PROFILE_PUBKEY, pubKey);
+        }
         profile.setPubKey(pubKey);
         try {
             profileService.post(profile).execute();
