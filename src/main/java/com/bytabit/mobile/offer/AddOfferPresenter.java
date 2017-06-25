@@ -124,10 +124,7 @@ public class AddOfferPresenter {
         }
 
         addOfferButton.onActionProperty().setValue(e -> {
-
-            if (tradeWalletManager.tradeWalletRunningProperty().getValue()) {
-                offerManager.newOffer().setSellerEscrowPubKey(tradeWalletManager.getFreshBase58AuthPubKey());
-            }
+            offerManager.newOffer().setSellerEscrowPubKey(tradeWalletManager.getFreshBase58AuthPubKey());
             if (offerManager.newOffer().isComplete()) {
                 offerManager.createOffer();
                 MobileApplication.getInstance().switchToPreviousView();

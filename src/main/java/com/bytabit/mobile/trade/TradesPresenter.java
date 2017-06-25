@@ -110,12 +110,13 @@ public class TradesPresenter {
             if (newValue != null) {
                 tradesListView.selectedItemProperty().setValue(null);
                 Trade viewTrade = tradeManager.getViewTrade();
-                viewTrade.setEscrowAddress(newValue.getEscrowAddress());
-                viewTrade.setSellOffer(newValue.getSellOffer());
-                viewTrade.setBuyRequest(newValue.getBuyRequest());
-                viewTrade.setPaymentRequest(newValue.getPaymentRequest());
-                viewTrade.setPayoutRequest(newValue.getPayoutRequest());
-                viewTrade.setPayoutCompleted(newValue.getPayoutCompleted());
+                viewTrade.updateStatus(newValue);
+//                viewTrade.setEscrowAddress(newValue.getEscrowAddress());
+//                viewTrade.setSellOffer(newValue.getSellOffer());
+//                viewTrade.setBuyRequest(newValue.getBuyRequest());
+//                viewTrade.setPaymentRequest(newValue.getPaymentRequest());
+//                viewTrade.setPayoutRequest(newValue.getPayoutRequest());
+//                viewTrade.setPayoutCompleted(newValue.getPayoutCompleted());
                 MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
             }
         });

@@ -207,7 +207,7 @@ public class TradeManager extends AbstractManager {
             }
 
             // 5. update trade with payment request
-            trade.setPaymentRequest(paymentRequest);
+            getTrade(viewTrade.getEscrowAddress()).setPaymentRequest(paymentRequest);
 
         } catch (InsufficientMoneyException e) {
             LOG.error("Insufficient BTC to fund trade escrow.");
@@ -219,19 +219,22 @@ public class TradeManager extends AbstractManager {
     public void receivePaymentRequest(PaymentRequest paymentRequest) {
 
         // 1. buyer confirm funding tx
-        TransactionWithAmt tx = walletManager.getTransactionWithAmt(paymentRequest.getFundingTxHash());
-        Trade trade = getTrade(paymentRequest.getEscrowAddress());
+        try {
+            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(paymentRequest.getFundingTxHash());
+            Trade trade = getTrade(paymentRequest.getEscrowAddress());
 
-        if (tx != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
+            if (tx != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
 
-            // 2. write payment request to trade folder
-            writePaymentRequest(paymentRequest);
+                // 2. write payment request to trade folder
+                writePaymentRequest(paymentRequest);
 
-            // 3. update view and list trade with payment request
-            viewTrade.setPaymentRequest(paymentRequest);
-            trade.setPaymentRequest(paymentRequest);
-        } else {
-            LOG.error("Payment request funding tx btc amount doesn't match buy offer btc amount.");
+                // 3. update view and list trade with payment request
+                getTrade(viewTrade.getEscrowAddress()).setPaymentRequest(paymentRequest);
+            } else {
+                LOG.error("Payment request funding tx btc amount doesn't match buy offer btc amount.");
+            }
+        } catch (NullPointerException ex) {
+            LOG.error("NPE on receivePayoutRequest!");
         }
     }
 
@@ -262,7 +265,7 @@ public class TradeManager extends AbstractManager {
         payoutRequest.setEscrowAddress(viewTrade.getEscrowAddress());
         payoutRequest.setPaymentReference(paymentReference);
         String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
-        Transaction fundingTx = walletManager.getTransaction(fundingTxHash);
+        Transaction fundingTx = walletManager.getEscrowTransaction(fundingTxHash);
         String payoutSignature = walletManager.getPayoutSignature(viewTrade, fundingTx);
         payoutRequest.setPayoutTxSignature(payoutSignature);
 
@@ -277,7 +280,6 @@ public class TradeManager extends AbstractManager {
         }
 
         // 4. update view and list trade with payoutRequest
-        viewTrade.setPayoutRequest(payoutRequest);
         getTrade(viewTrade.getEscrowAddress()).setPayoutRequest(payoutRequest);
     }
 
@@ -291,7 +293,6 @@ public class TradeManager extends AbstractManager {
             writePayoutRequest(payoutRequest);
 
             // 2. update view and list trade with payoutRequest
-            viewTrade.setPayoutRequest(payoutRequest);
             getTrade(viewTrade.getEscrowAddress()).setPayoutRequest(payoutRequest);
         }
     }
@@ -335,7 +336,6 @@ public class TradeManager extends AbstractManager {
         }
 
         // 5. update trade
-        viewTrade.setPayoutCompleted(payoutCompleted);
         getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
 
         // 6. remove watch on escrow address
@@ -345,7 +345,7 @@ public class TradeManager extends AbstractManager {
     private String payoutEscrow() {
 
         String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
-        TransactionWithAmt fundingTxWithAmt = walletManager.getTransactionWithAmt(fundingTxHash);
+        TransactionWithAmt fundingTxWithAmt = walletManager.getEscrowTransactionWithAmt(fundingTxHash);
 
         String payoutTx = null;
         if (fundingTxWithAmt != null) {
@@ -385,7 +385,7 @@ public class TradeManager extends AbstractManager {
 
         // 1. confirm payout tx
         Trade trade = getTrade(payoutCompleted.getEscrowAddress());
-        TransactionWithAmt tx = walletManager.getTransactionWithAmt(payoutCompleted.getPayoutTxHash());
+        TransactionWithAmt tx = walletManager.getTradeTransactionWithAmt(payoutCompleted.getPayoutTxHash());
 
         if (trade != null && tx != null && tx.getBtcAmt().equals(trade.getBuyRequest().getBtcAmount())) {
 
@@ -393,8 +393,7 @@ public class TradeManager extends AbstractManager {
             writePayoutCompleted(trade, payoutCompleted);
 
             // 3. update trade
-            viewTrade.setPayoutCompleted(payoutCompleted);
-            trade.setPayoutCompleted(payoutCompleted);
+            getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
 
             // 4. remove watch on escrow address
             walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
@@ -504,7 +503,7 @@ public class TradeManager extends AbstractManager {
     public void updateTrades() {
 
         Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> tradesObservableList)
+                .map(tick -> getTradesObservableList())
                 .flatMapIterable(tradeList -> tradeList)
                 .filter(trade -> trade.getStatus().equals(CREATED))
                 .map(trade -> paymentRequestService.get(trade.getEscrowAddress()))
@@ -521,7 +520,7 @@ public class TradeManager extends AbstractManager {
                 });
 
         Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> tradesObservableList)
+                .map(tick -> getTradesObservableList())
                 .flatMapIterable(tradeList -> tradeList)
                 .filter(trade -> trade.getStatus().equals(FUNDED))
                 .map(trade -> payoutRequestService.get(trade.getEscrowAddress()))
@@ -537,7 +536,7 @@ public class TradeManager extends AbstractManager {
                 });
 
         Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> tradesObservableList)
+                .map(tick -> getTradesObservableList())
                 .flatMapIterable(tradeList -> tradeList)
                 .filter(trade -> trade.getStatus().equals(PAID))
                 .map(trade -> payoutCompletedService.get(trade.getEscrowAddress()))

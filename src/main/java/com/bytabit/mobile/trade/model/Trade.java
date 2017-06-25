@@ -27,12 +27,6 @@ public class Trade {
         setBuyRequest(buyRequest);
         setEscrowAddress(escrowAddress);
         setStatus(CREATED);
-
-        this.sellOffer.addListener((e) -> updateStatus());
-        this.buyRequest.addListener((e) -> updateStatus());
-        this.paymentRequest.addListener((e) -> updateStatus());
-        this.payoutRequest.addListener((e) -> updateStatus());
-        this.payoutCompleted.addListener((e) -> updateStatus());
     }
 
     private final ObjectProperty<Status> status = new SimpleObjectProperty<>();
@@ -44,16 +38,10 @@ public class Trade {
     private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
 
     public Status getStatus() {
-        if (status.get() == null) {
-            updateStatus();
-        }
         return status.get();
     }
 
     public ObjectProperty<Status> statusProperty() {
-        if (status.get() == null) {
-            updateStatus();
-        }
         return status;
     }
 
@@ -107,7 +95,6 @@ public class Trade {
 
     public void setPaymentRequest(PaymentRequest paymentRequest) {
         this.paymentRequest.set(paymentRequest);
-        updateStatus();
     }
 
     public PayoutRequest getPayoutRequest() {
@@ -120,7 +107,6 @@ public class Trade {
 
     public void setPayoutRequest(PayoutRequest payoutRequest) {
         this.payoutRequest.set(payoutRequest);
-        updateStatus();
     }
 
     public PayoutCompleted getPayoutCompleted() {
@@ -133,10 +119,16 @@ public class Trade {
 
     public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
         this.payoutCompleted.set(payoutCompleted);
-        updateStatus();
     }
 
-    private void updateStatus() {
+    public void updateStatus(Trade trade) {
+
+        setEscrowAddress(trade.getEscrowAddress());
+        setSellOffer(trade.getSellOffer());
+        setBuyRequest(trade.getBuyRequest());
+        setPaymentRequest(trade.getPaymentRequest());
+        setPayoutRequest(trade.getPayoutRequest());
+        setPayoutCompleted(trade.getPayoutCompleted());
 
         // created: SellOffer + BuyRequest
         if (getSellOffer() != null && getBuyRequest() != null
