@@ -106,17 +106,10 @@ public class TradesPresenter {
 
         tradesListView.itemsProperty().setValue(tradeManager.getTradesObservableList());
 
-        tradesListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue != null) {
+        tradesListView.selectedItemProperty().addListener((obs, oldValue, trade) -> {
+            if (trade != null) {
                 tradesListView.selectedItemProperty().setValue(null);
-                Trade viewTrade = tradeManager.getViewTrade();
-                viewTrade.updateStatus(newValue);
-//                viewTrade.setEscrowAddress(newValue.getEscrowAddress());
-//                viewTrade.setSellOffer(newValue.getSellOffer());
-//                viewTrade.setBuyRequest(newValue.getBuyRequest());
-//                viewTrade.setPaymentRequest(newValue.getPaymentRequest());
-//                viewTrade.setPayoutRequest(newValue.getPayoutRequest());
-//                viewTrade.setPayoutCompleted(newValue.getPayoutCompleted());
+                tradeManager.setSelectedTrade(trade);
                 MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
             }
         });

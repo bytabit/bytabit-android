@@ -19,16 +19,6 @@ public class Trade {
         BUYER, SELLER, ARBITRATOR, UNKNOWN
     }
 
-    public Trade() {
-    }
-
-    public Trade(SellOffer sellOffer, BuyRequest buyRequest, String escrowAddress) {
-        setSellOffer(sellOffer);
-        setBuyRequest(buyRequest);
-        setEscrowAddress(escrowAddress);
-        setStatus(CREATED);
-    }
-
     private final ObjectProperty<Status> status = new SimpleObjectProperty<>();
     private final StringProperty escrowAddress = new SimpleStringProperty();
     private final ObjectProperty<SellOffer> sellOffer = new SimpleObjectProperty<>();
@@ -37,16 +27,52 @@ public class Trade {
     private final ObjectProperty<PayoutRequest> payoutRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
 
+    public Trade(SellOffer sellOffer, BuyRequest buyRequest, String escrowAddress) {
+        this.sellOffer.set(sellOffer);
+        this.buyRequest.set(buyRequest);
+        this.escrowAddress.set(escrowAddress);
+        this.status.set(CREATED);
+    }
+
+    public void setPaymentRequest(PaymentRequest paymentRequest) {
+        if (getSellOffer() != null && getBuyRequest() != null
+                && paymentRequest != null && getPayoutRequest() == null
+                && getPayoutCompleted() == null) {
+            this.paymentRequest.set(paymentRequest);
+            this.status.setValue(FUNDED);
+        } else {
+            throw new RuntimeException("Invalid trade status.");
+        }
+    }
+
+    public void setPayoutRequest(PayoutRequest payoutRequest) {
+        if (getSellOffer() != null && getBuyRequest() != null
+                && getPaymentRequest() != null && payoutRequest != null
+                && getPayoutCompleted() == null) {
+            this.payoutRequest.set(payoutRequest);
+            this.status.setValue(PAID);
+        } else {
+            throw new RuntimeException("Invalid trade status.");
+        }
+    }
+
+    public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
+        if (getSellOffer() != null && getBuyRequest() != null
+                && getPaymentRequest() != null && getPayoutRequest() != null
+                && payoutCompleted != null) {
+            this.payoutCompleted.set(payoutCompleted);
+            this.status.setValue(COMPLETED);
+        } else {
+            throw new RuntimeException("Invalid trade status.");
+        }
+    }
+
     public Status getStatus() {
         return status.get();
     }
 
     public ObjectProperty<Status> statusProperty() {
         return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status.set(status);
     }
 
     public String getEscrowAddress() {
@@ -57,20 +83,12 @@ public class Trade {
         return escrowAddress;
     }
 
-    public void setEscrowAddress(String escrowAddress) {
-        this.escrowAddress.set(escrowAddress);
-    }
-
     public SellOffer getSellOffer() {
         return sellOffer.get();
     }
 
     public ObjectProperty<SellOffer> sellOfferProperty() {
         return sellOffer;
-    }
-
-    public void setSellOffer(SellOffer sellOffer) {
-        this.sellOffer.set(sellOffer);
     }
 
     public BuyRequest getBuyRequest() {
@@ -81,20 +99,12 @@ public class Trade {
         return buyRequest;
     }
 
-    public void setBuyRequest(BuyRequest buyRequest) {
-        this.buyRequest.set(buyRequest);
-    }
-
     public PaymentRequest getPaymentRequest() {
         return paymentRequest.get();
     }
 
     public ObjectProperty<PaymentRequest> paymentRequestProperty() {
         return paymentRequest;
-    }
-
-    public void setPaymentRequest(PaymentRequest paymentRequest) {
-        this.paymentRequest.set(paymentRequest);
     }
 
     public PayoutRequest getPayoutRequest() {
@@ -105,57 +115,12 @@ public class Trade {
         return payoutRequest;
     }
 
-    public void setPayoutRequest(PayoutRequest payoutRequest) {
-        this.payoutRequest.set(payoutRequest);
-    }
-
     public PayoutCompleted getPayoutCompleted() {
         return payoutCompleted.get();
     }
 
     public ObjectProperty<PayoutCompleted> payoutCompletedProperty() {
         return payoutCompleted;
-    }
-
-    public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
-        this.payoutCompleted.set(payoutCompleted);
-    }
-
-    public void updateStatus(Trade trade) {
-
-        setEscrowAddress(trade.getEscrowAddress());
-        setSellOffer(trade.getSellOffer());
-        setBuyRequest(trade.getBuyRequest());
-        setPaymentRequest(trade.getPaymentRequest());
-        setPayoutRequest(trade.getPayoutRequest());
-        setPayoutCompleted(trade.getPayoutCompleted());
-
-        // created: SellOffer + BuyRequest
-        if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() == null && getPayoutRequest() == null
-                && getPayoutCompleted() == null) {
-            setStatus(CREATED);
-        }
-        // funded: fundEscrow + PaymentRequest
-        else if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null && getPayoutRequest() == null
-                && getPayoutCompleted() == null) {
-            setStatus(FUNDED);
-        }
-        // paid: PayoutRequest + payoutEscrow
-        else if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null && getPayoutRequest() != null
-                && getPayoutCompleted() == null) {
-            setStatus(PAID);
-        }
-        // complete: payoutCompleted
-        else if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null && getPayoutRequest() != null
-                && getPayoutCompleted() != null) {
-            setStatus(COMPLETED);
-        } else {
-            throw new RuntimeException("Invalid trade status.");
-        }
     }
 
     public Role getRole(String profilePubKey) {

@@ -11,6 +11,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +85,19 @@ public class TradeDetailsPresenter {
     @FXML
     private TextField paymentReferenceField;
 
+    StringConverter<Trade.Status> statusStringConverter = new StringConverter<Trade.Status>() {
+
+        @Override
+        public String toString(Trade.Status status) {
+            return status.toString();
+        }
+
+        @Override
+        public Trade.Status fromString(String statusStr) {
+            return Trade.Status.valueOf(statusStr);
+        }
+    };
+
     public void initialize() {
 
         LOG.debug("initialize trade details presenter");
@@ -99,14 +113,14 @@ public class TradeDetailsPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Trade Details");
 
-                Trade trade = tradeManager.getViewTrade();
+                Trade trade = tradeManager.getSelectedTrade();
                 BigDecimal price = trade.getSellOffer().getPrice();
                 BigDecimal amount = trade.getBuyRequest().getBtcAmount();
                 BigDecimal paymentAmount = price.multiply(amount);
                 String profilePubKey = profileManager.profile().getPubKey();
                 Trade.Role tradeRole = trade.getRole(profilePubKey);
 
-                tradeStatusLabel.textProperty().setValue("STARTED");
+                tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
                 tradeRoleLabel.textProperty().setValue(tradeRole.toString());
                 tradeEscrowAddressLabel.textProperty().setValue(trade.getEscrowAddress());
                 sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerEscrowPubKey());

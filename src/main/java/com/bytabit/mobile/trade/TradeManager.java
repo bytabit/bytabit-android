@@ -37,6 +37,12 @@ public class TradeManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(TradeManager.class);
 
+    @Inject
+    ProfileManager profileManager;
+
+    @Inject
+    WalletManager walletManager;
+
     private final BuyRequestService buyRequestService;
 
     private final PaymentRequestService paymentRequestService;
@@ -47,15 +53,9 @@ public class TradeManager extends AbstractManager {
 
     private final ObservableList<Trade> tradesObservableList;
 
-    private final Trade viewTrade;
+    private Trade selectedTrade;
 
-    @Inject
-    ProfileManager profileManager;
-
-    @Inject
-    WalletManager walletManager;
-
-    String tradesPath = AppConfig.getPrivateStorage().getPath() + File.separator +
+    private String tradesPath = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
     public TradeManager() {
@@ -84,7 +84,6 @@ public class TradeManager extends AbstractManager {
         payoutCompletedService = payoutCompletedRetrofit.create(PayoutCompletedService.class);
 
         tradesObservableList = FXCollections.observableArrayList();
-        viewTrade = new Trade();
 
         readTrades();
         updateTrades();
@@ -110,7 +109,11 @@ public class TradeManager extends AbstractManager {
             // 4. write trade
             writeTrade(trade);
 
-            // 5. post buy request to server
+            // 5. add trade to ui list
+            tradesObservableList.add(trade);
+            LOG.debug("Added trade to list: {}", trade);
+
+            // 6. post buy request to server
             try {
                 String spk = sellOffer.getSellerEscrowPubKey();
                 BuyRequest postedBuyRequest = buyRequestService.post(spk, buyRequest).execute().body();
@@ -119,10 +122,6 @@ public class TradeManager extends AbstractManager {
                 LOG.error(ioe.getMessage());
                 throw new RuntimeException(ioe);
             }
-
-            // 6. add trade to ui list
-            tradesObservableList.add(trade);
-            LOG.debug("Added trade to list: {}", trade);
         }
     }
 
@@ -141,11 +140,28 @@ public class TradeManager extends AbstractManager {
             writeTrade(trade);
 
             // 4. fund escrow
-            fundEscrow(trade);
+            PaymentRequest paymentRequest = fundEscrow(trade);
 
-            // 5. add trade to ui list
-            tradesObservableList.add(trade);
-            LOG.debug("Added trade to list: {}", trade);
+            if (paymentRequest != null) {
+
+                // 5. update trade with payment request
+                trade.setPaymentRequest(paymentRequest);
+
+                // 6. write payment request to trade folder
+                writePaymentRequest(trade, paymentRequest);
+
+                // 7. add trade to ui list
+                tradesObservableList.add(trade);
+                LOG.debug("Added trade to list: {}", trade);
+
+                // 8. post payment request
+                try {
+                    paymentRequestService.post(trade.getEscrowAddress(), paymentRequest).execute().body();
+                } catch (IOException e) {
+                    LOG.error("Unable to POST payment request.");
+                    // TODO retry posting payment request
+                }
+            }
         }
     }
 
@@ -180,7 +196,7 @@ public class TradeManager extends AbstractManager {
     }
 
     // 2.S: seller fund escrow and post payment request
-    private void fundEscrow(Trade trade) {
+    private PaymentRequest fundEscrow(Trade trade) {
         // TODO verify escrow not yet funded ?
         try {
             // 1. fund escrow
@@ -195,23 +211,12 @@ public class TradeManager extends AbstractManager {
             paymentRequest.setFundingTxHash(txHash);
             paymentRequest.setPaymentDetails(paymentDetails);
 
-            // 3. write payment request to trade folder
-            writePaymentRequest(trade, paymentRequest);
-
-            // 4. post payment request
-            try {
-                paymentRequestService.post(trade.getEscrowAddress(), paymentRequest).execute().body();
-            } catch (IOException e) {
-                LOG.error("Unable to POST payment request.");
-                // TODO retry posting payment request
-            }
-
-            // 5. update trade with payment request
-            getTrade(viewTrade.getEscrowAddress()).setPaymentRequest(paymentRequest);
+            return paymentRequest;
 
         } catch (InsufficientMoneyException e) {
             LOG.error("Insufficient BTC to fund trade escrow.");
             // TODO let user know not enough BTC in wallet
+            return null;
         }
     }
 
@@ -219,22 +224,22 @@ public class TradeManager extends AbstractManager {
     public void receivePaymentRequest(PaymentRequest paymentRequest) {
 
         // 1. buyer confirm funding tx
-        try {
-            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(paymentRequest.getFundingTxHash());
+        TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(paymentRequest.getFundingTxHash());
+        if (tx != null) {
             Trade trade = getTrade(paymentRequest.getEscrowAddress());
 
-            if (tx != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
+            if (trade != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
 
                 // 2. write payment request to trade folder
                 writePaymentRequest(paymentRequest);
 
                 // 3. update view and list trade with payment request
-                getTrade(viewTrade.getEscrowAddress()).setPaymentRequest(paymentRequest);
+                trade.setPaymentRequest(paymentRequest);
             } else {
-                LOG.error("Payment request funding tx btc amount doesn't match buy offer btc amount.");
+                LOG.error("Trade not found for payment request or funding tx btc amount doesn't match buy offer btc amount.");
             }
-        } catch (NullPointerException ex) {
-            LOG.error("NPE on receivePayoutRequest!");
+        } else {
+            LOG.error("Tx not found for payment request.");
         }
     }
 
@@ -262,25 +267,30 @@ public class TradeManager extends AbstractManager {
 
         // 1. create payout request with buyer payout signature
         PayoutRequest payoutRequest = new PayoutRequest();
-        payoutRequest.setEscrowAddress(viewTrade.getEscrowAddress());
+        payoutRequest.setEscrowAddress(selectedTrade.getEscrowAddress());
         payoutRequest.setPaymentReference(paymentReference);
-        String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
+
+        String fundingTxHash = selectedTrade.getPaymentRequest().getFundingTxHash();
         Transaction fundingTx = walletManager.getEscrowTransaction(fundingTxHash);
-        String payoutSignature = walletManager.getPayoutSignature(viewTrade, fundingTx);
-        payoutRequest.setPayoutTxSignature(payoutSignature);
+        if (fundingTx != null) {
+            String payoutSignature = walletManager.getPayoutSignature(selectedTrade, fundingTx);
+            payoutRequest.setPayoutTxSignature(payoutSignature);
 
-        // 2. write payout request to trade folder
-        writePayoutRequest(payoutRequest);
+            // 2. write payout request to trade folder
+            writePayoutRequest(payoutRequest);
 
-        // 3. post payout request to server
-        try {
-            payoutRequestService.post(viewTrade.getEscrowAddress(), payoutRequest).execute().body();
-        } catch (IOException e) {
-            LOG.error("Can't post payout request to server.");
+            // 3. post payout request to server
+            try {
+                payoutRequestService.post(payoutRequest.getEscrowAddress(), payoutRequest).execute().body();
+            } catch (IOException e) {
+                LOG.error("Can't post payout request to server.");
+            }
+
+            // 4. update view and list trade with payoutRequest
+            selectedTrade.setPayoutRequest(payoutRequest);
+        } else {
+            LOG.error("Trade not found for payout request.");
         }
-
-        // 4. update view and list trade with payoutRequest
-        getTrade(viewTrade.getEscrowAddress()).setPayoutRequest(payoutRequest);
     }
 
     // 3.S: seller receives payout request from buyer
@@ -293,7 +303,7 @@ public class TradeManager extends AbstractManager {
             writePayoutRequest(payoutRequest);
 
             // 2. update view and list trade with payoutRequest
-            getTrade(viewTrade.getEscrowAddress()).setPayoutRequest(payoutRequest);
+            getTrade(trade.getEscrowAddress()).setPayoutRequest(payoutRequest);
         }
     }
 
@@ -318,47 +328,44 @@ public class TradeManager extends AbstractManager {
     public void confirmPaymentReceived() {
 
         // 1. sign and broadcast payout tx
-        String payoutTxHash = payoutEscrow();
+        String payoutTxHash = payoutEscrow(selectedTrade);
 
         // 2. confirm payout tx and create payout completed
         PayoutCompleted payoutCompleted = new PayoutCompleted();
-        payoutCompleted.setEscrowAddress(viewTrade.getEscrowAddress());
+        payoutCompleted.setEscrowAddress(selectedTrade.getEscrowAddress());
         payoutCompleted.setPayoutTxHash(payoutTxHash);
 
         // 3. write payout details to trade folder
-        writePayoutCompleted(viewTrade, payoutCompleted);
+        writePayoutCompleted(selectedTrade, payoutCompleted);
 
-        // 4. post payout completed
+        // 4. update trade
+        selectedTrade.setPayoutCompleted(payoutCompleted);
+
+        // 5. post payout completed
         try {
             payoutCompletedService.post(payoutCompleted.getEscrowAddress(), payoutCompleted).execute().body();
         } catch (IOException e) {
             LOG.error("Can't post payout completed to server.");
         }
 
-        // 5. update trade
-        getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
-
         // 6. remove watch on escrow address
-        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        // TODO walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
     }
 
-    private String payoutEscrow() {
+    private String payoutEscrow(Trade trade) {
 
-        String fundingTxHash = viewTrade.getPaymentRequest().getFundingTxHash();
-        TransactionWithAmt fundingTxWithAmt = walletManager.getEscrowTransactionWithAmt(fundingTxHash);
-
+        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
         String payoutTx = null;
-        if (fundingTxWithAmt != null) {
-            try {
-                String signature = walletManager.getPayoutSignature(viewTrade, fundingTxHash);
-                payoutTx = walletManager.payoutEscrow(viewTrade, fundingTxHash, signature);
+        try {
+            Transaction fundingTx = walletManager.getEscrowTransaction(fundingTxHash);
+            String signature = walletManager.getPayoutSignature(trade, fundingTx);
+            payoutTx = walletManager.payoutEscrow(trade, fundingTx, signature);
 
-            } catch (InsufficientMoneyException e) {
-                // TODO notify user
-                LOG.error("Insufficient funds to payout escrow to buyer.");
-            }
-
+        } catch (InsufficientMoneyException e) {
+            // TODO notify user
+            LOG.error("Insufficient funds to payout escrow to buyer.");
         }
+
         return payoutTx;
     }
 
@@ -385,20 +392,28 @@ public class TradeManager extends AbstractManager {
 
         // 1. confirm payout tx
         Trade trade = getTrade(payoutCompleted.getEscrowAddress());
-        TransactionWithAmt tx = walletManager.getTradeTransactionWithAmt(payoutCompleted.getPayoutTxHash());
+        if (trade != null) {
+            TransactionWithAmt tx = walletManager.getTradeTransactionWithAmt(payoutCompleted.getPayoutTxHash());
+            if (tx != null) {
+                if (tx.getBtcAmt().equals(trade.getBuyRequest().getBtcAmount())) {
 
-        if (trade != null && tx != null && tx.getBtcAmt().equals(trade.getBuyRequest().getBtcAmount())) {
+                    // 2. write payout details to trade folder
+                    writePayoutCompleted(trade, payoutCompleted);
 
-            // 2. write payout details to trade folder
-            writePayoutCompleted(trade, payoutCompleted);
+                    // 3. update trade
+                    getTrade(trade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
 
-            // 3. update trade
-            getTrade(viewTrade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
-
-            // 4. remove watch on escrow address
-            walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+                    // 4. remove watch on escrow address
+                    // TODO walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+                } else {
+                    LOG.error("Tx amount wrong for PayoutCompleted.");
+                }
+            } else {
+                LOG.error("Tx not found for PayoutCompleted.");
+            }
+        } else {
+            LOG.error("Trade not found for PayoutCompleted.");
         }
-
     }
 
 
@@ -496,10 +511,6 @@ public class TradeManager extends AbstractManager {
         return tradesObservableList;
     }
 
-    public Trade getViewTrade() {
-        return viewTrade;
-    }
-
     public void updateTrades() {
 
         Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
@@ -592,18 +603,17 @@ public class TradeManager extends AbstractManager {
             tradeIds = new ArrayList<>();
         }
         for (String tradeId : tradeIds) {
-            Trade trade = new Trade();
-            trade.setEscrowAddress(tradeId);
+
             try {
                 File sellOfferFile = new File(tradesPath + tradeId + File.separator + "sellOffer.json");
                 FileReader sellOfferReader = new FileReader(sellOfferFile);
                 SellOffer sellOffer = JSON.std.beanFrom(SellOffer.class, sellOfferReader);
-                trade.setSellOffer(sellOffer);
 
                 File buyRequestFile = new File(tradesPath + tradeId + File.separator + "buyRequest.json");
                 FileReader buyRequestReader = new FileReader(buyRequestFile);
                 BuyRequest buyRequest = JSON.std.beanFrom(BuyRequest.class, buyRequestReader);
-                trade.setBuyRequest(buyRequest);
+
+                Trade trade = new Trade(sellOffer, buyRequest, tradeId);
 
                 File paymentRequestFile = new File(tradesPath + tradeId + File.separator + "paymentRequest.json");
                 if (paymentRequestFile.exists()) {
@@ -654,8 +664,15 @@ public class TradeManager extends AbstractManager {
         return false;
     }
 
+    public Trade getSelectedTrade() {
+        return selectedTrade;
+    }
 
-//    public void updateTradeWithTx(TransactionWithAmt updatedTx) {
+    public void setSelectedTrade(Trade selectedTrade) {
+        this.selectedTrade = selectedTrade;
+    }
+
+    //    public void updateTradeWithTx(TransactionWithAmt updatedTx) {
 //        BigDecimal defaultTxFee = new BigDecimal(Transaction.DEFAULT_TX_FEE.toPlainString());
 //        for (Trade trade : tradesObservableList) {
 //            // 1. buyer confirm funding tx
