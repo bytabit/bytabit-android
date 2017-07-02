@@ -120,7 +120,8 @@ public class TradeDetailsPresenter {
                 String profilePubKey = profileManager.profile().getPubKey();
                 Trade.Role tradeRole = trade.getRole(profilePubKey);
 
-                tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
+                //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
+                tradeStatusLabel.textProperty().setValue(trade.statusProperty().toString());
                 tradeRoleLabel.textProperty().setValue(tradeRole.toString());
                 tradeEscrowAddressLabel.textProperty().setValue(trade.getEscrowAddress());
                 sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerEscrowPubKey());

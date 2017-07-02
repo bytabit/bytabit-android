@@ -1,7 +1,6 @@
 package com.bytabit.mobile.wallet;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
@@ -83,11 +82,6 @@ public class WalletPresenter {
                         System.out.println("Search")));
             }
 
-        });
-
-        BytabitMobile.getNavEvents().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
-            LOG.debug("Got quit event");
-            tradeWalletManager.stopWallet();
         });
 
         balanceAmountLabel.textProperty().bind(tradeWalletManager.getTradeWalletBalance());

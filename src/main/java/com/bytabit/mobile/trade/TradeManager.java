@@ -349,18 +349,14 @@ public class TradeManager extends AbstractManager {
         }
 
         // 6. remove watch on escrow address
-        // TODO walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
     }
 
     private String payoutEscrow(Trade trade) {
 
-        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
         String payoutTx = null;
         try {
-            Transaction fundingTx = walletManager.getEscrowTransaction(fundingTxHash);
-            String signature = walletManager.getPayoutSignature(trade, fundingTx);
-            payoutTx = walletManager.payoutEscrow(trade, fundingTx, signature);
-
+            payoutTx = walletManager.payoutEscrow(trade);
         } catch (InsufficientMoneyException e) {
             // TODO notify user
             LOG.error("Insufficient funds to payout escrow to buyer.");
@@ -404,7 +400,7 @@ public class TradeManager extends AbstractManager {
                     getTrade(trade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
 
                     // 4. remove watch on escrow address
-                    // TODO walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+                    walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
                 } else {
                     LOG.error("Tx amount wrong for PayoutCompleted.");
                 }
