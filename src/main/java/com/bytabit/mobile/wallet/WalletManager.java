@@ -6,6 +6,7 @@ import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import com.google.common.collect.ImmutableList;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -426,10 +427,14 @@ public class WalletManager {
 
     public TransactionWithAmt getEscrowTransactionWithAmt(String txHash) {
         Transaction tx = getEscrowTransaction(txHash);
-        TransactionUpdatedEvent txe = new TransactionUpdatedEvent(tx, escrowWallet);
-        return new TransactionWithAmt(tx,
-                txe.getAmt(), getWatchedOutputAddress(tx),
-                tx.getInput(0).getOutpoint().getHash().toString());
+        if (tx != null) {
+            TransactionUpdatedEvent txe = new TransactionUpdatedEvent(tx, escrowWallet);
+            return new TransactionWithAmt(tx,
+                    txe.getAmt(), getWatchedOutputAddress(tx),
+                    tx.getInput(0).getOutpoint().getHash().toString());
+        } else {
+            return null;
+        }
     }
 
     public TransactionWithAmt getTradeTransactionWithAmt(String txHash) {
@@ -499,7 +504,7 @@ public class WalletManager {
                     && txo.getValue().equals(outputAmount)) {
 
                 // post payout input and funding output with empty unlock scripts
-                TransactionInput input = payoutTx.addInput(fundingTx.getOutput(0));
+                TransactionInput input = payoutTx.addInput(txo);
                 Script emptyUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(null, redeemScript);
                 input.setScriptSig(emptyUnlockScript);
                 break;
@@ -529,7 +534,7 @@ public class WalletManager {
     private static Script redeemScript(ECKey arbitratorProfilePubKey,
                                        ECKey sellerEscrowPubKey,
                                        ECKey buyerEscrowPubKey) {
-        return ScriptBuilder.createMultiSigOutputScript(2, Arrays.asList(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
+        return ScriptBuilder.createMultiSigOutputScript(2, ImmutableList.of(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
     }
 
     public String payoutEscrow(Trade trade) throws InsufficientMoneyException {
@@ -556,17 +561,18 @@ public class WalletManager {
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
 
 
-//        List<TransactionSignature> signatures = new ArrayList<>();
+        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
+        List<TransactionSignature> signatures2 = ImmutableList.of(buyerSignature, sellerSignature);
 
+        // order signatures in lexicographical order or pubkey bytes
 //        if (ECKey.PUBKEY_COMPARATOR.compare(sellerEscrowPubKey, buyerEscrowPubKey) < 0) {
-//            signatures.add(sellerSignature);
-//            signatures.add(buyerSignature);
+//            signatures = Arrays.asList(sellerSignature, buyerSignature);
+//            signatures2 = Arrays.asList(buyerSignature, sellerSignature);
 //        } else {
-//            signatures.add(buyerSignature);
-//            signatures.add(sellerSignature);
+//            signatures = Arrays.asList(buyerSignature, sellerSignature);
+//            signatures2 = Arrays.asList(sellerSignature, buyerSignature);
 //        }
 
-        List<TransactionSignature> signatures = Arrays.asList(sellerSignature, buyerSignature);
         Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
         Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
 
@@ -590,10 +596,23 @@ public class WalletManager {
         // add output to payout tx
         payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
 
-        // TODO verify inputs are valid
-//        for (TransactionInput input : payoutTx.getInputs()) {
-//            input.verify(input.getConnectedOutput())
-//        }
+        LOG.debug("Validate inputs for payoutTx: " + payoutTx.toString());
+        for (TransactionInput input : payoutTx.getInputs()) {
+            LOG.debug("Validating input for payoutTx: " + input.toString());
+            try {
+                input.verify(input.getConnectedOutput());
+                LOG.debug("Input valid for payoutTx: " + input.toString());
+            } catch (VerificationException ve) {
+                LOG.error("Input not valid for payoutTx, " + ve.getMessage());
+                // try other ordering
+                input.setScriptSig(ScriptBuilder.createP2SHMultiSigInputScript(signatures2, redeemScript));
+                input.verify(input.getConnectedOutput());
+            } catch (NullPointerException npe) {
+                LOG.error("Null connectedOutput for payoutTx");
+            }
+        }
+
+
         escrowWallet.commitTx(payoutTx);
         TransactionBroadcast bc = peerGroup.broadcastTransaction(payoutTx);
         return payoutTx.getHash().toString();
