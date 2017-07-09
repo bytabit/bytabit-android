@@ -58,15 +58,12 @@ public class WalletManager {
     private final PeerGroup peerGroup;
     private final Wallet tradeWallet;
 
-    //    private final PeerGroup escrowPeerGroup;
     private final Wallet escrowWallet;
 
     private final StringProperty tradeWalletBalance;
 
     private final Observable<BlockDownloadEvent> blockDownloadEvents;
     private final DoubleProperty downloadProgress;
-
-//    private final Observable<BlockDownloadEvent> escrowBlkDownloadEvents;
 
     private final Observable<TransactionUpdatedEvent> tradeTxUpdatedEvents;
     private final ObservableList<TransactionWithAmt> tradeWalletTransactions;
@@ -88,11 +85,6 @@ public class WalletManager {
         tradeWallet = createOrLoadWallet(new File(AppConfig.getPrivateStorage(), "trade.wallet"));
         escrowWallet = createOrLoadWallet(new File(AppConfig.getPrivateStorage(), "escrow.wallet"));
 
-//        tradeWallet.reset();
-//        tradeWallet.setLastBlockSeenHeight(0);
-//        escrowWallet.reset();
-//        escrowWallet.setLastBlockSeenHeight(0);
-
         try {
             File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
             BlockStore blockStore = new SPVBlockStore(netParams, blockStoreFile);
@@ -103,23 +95,10 @@ public class WalletManager {
             peerGroup.addWallet(tradeWallet);
             peerGroup.addWallet(escrowWallet);
 
-//            File escrowBlockStoreFile = new File(AppConfig.getPrivateStorage(), "escrow.spvchain");
-//            BlockStore escrowBlockStore = new SPVBlockStore(netParams, escrowBlockStoreFile);
-//            BlockChain escrowBlockChain = new BlockChain(netParams, escrowWallet, escrowBlockStore);
-//            escrowPeerGroup = new PeerGroup(netParams, escrowBlockChain);
-//            escrowPeerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
-
-            // TODO do we need this to make sure we get all watched tx?
-//            escrowPeerGroup.setBloomFilteringEnabled(false);
-//            escrowPeerGroup.addWallet(escrowWallet);
-
             if (netParams.equals(RegTestParams.get())) {
-                //kit.setPeerNodes(new PeerAddress(netParams, "regtest.bytabit.net", 18444));
                 peerGroup.setMaxConnections(1);
                 peerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
 
-//                escrowPeerGroup.setMaxConnections(1);
-//                escrowPeerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
             } else {
                 peerGroup.addPeerDiscovery(new DnsDiscovery(netParams));
             }
@@ -166,31 +145,6 @@ public class WalletManager {
             subscriber.add(Subscriptions.create(peerGroup::stop));
         }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
-//        escrowBlkDownloadEvents = Observable.create((Observable.OnSubscribe<BlockDownloadEvent>) subscriber -> {
-//            escrowPeerGroup.start();
-//            escrowPeerGroup.startBlockChainDownload(new DownloadProgressTracker() {
-//                @Override
-//                public void onBlocksDownloaded(Peer peer, Block block, @Nullable FilteredBlock filteredBlock, int blocksLeft) {
-//                    super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
-//                    subscriber.onNext(new BlockDownloaded(peer, block, filteredBlock, blocksLeft));
-//                }
-//
-//                @Override
-//                protected void progress(double pct, int blocksSoFar, Date date) {
-//                    super.progress(pct, blocksSoFar, date);
-//                    subscriber.onNext(new BlockDownloadProgress(pct / 100.00, blocksSoFar, LocalDateTime.fromDateFields(date)));
-//                }
-//
-//                @Override
-//                protected void doneDownload() {
-//                    super.doneDownload();
-//                    subscriber.onNext(new BlockDownloadDone());
-//                }
-//            });
-//            // on un-subscribe stop peer group
-//            subscriber.add(Subscriptions.create(escrowPeerGroup::stop));
-//        }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
-
         // post observable wallet running events
         tradeTxUpdatedEvents = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
             TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
@@ -235,7 +189,7 @@ public class WalletManager {
         // listen for other events
         tradeTxUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
                 .subscribe(e -> {
-                    LOG.debug("trade transaction updated event : {}", e);
+                    //LOG.debug("trade transaction updated event : {}", e);
                     TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
 
                     TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(),
@@ -253,7 +207,7 @@ public class WalletManager {
 
         blockDownloadEvents.observeOn(JavaFxScheduler.getInstance())
                 .subscribe(e -> {
-                    LOG.debug("block download event : {}", e);
+                    //LOG.debug("block download event : {}", e);
                     Platform.runLater(new Runnable() {
                         @Override
                         public void run() {
@@ -271,42 +225,8 @@ public class WalletManager {
 
         escrowTxUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
                 .subscribe(e -> {
-                    LOG.debug("escrow transaction updated event : {}", e);
-//                    TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
-//
-//                    TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(),
-//                            txe.getAmt(), getWatchedOutputAddress(txe.getTx()),
-//                            txe.getTx().getInput(0).getOutpoint().getHash().toString());
-//
-//                    Platform.runLater(() -> {
-//                        Integer index = tradeWalletTransactions.indexOf(txu);
-//                        if (index > -1) {
-//                            tradeWalletTransactions.set(index, txu);
-//                        } else {
-//                            tradeWalletTransactions.add(txu);
-//                        }
-//                        tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
-//                    });
+                    // LOG.debug("escrow transaction updated event : {}", e);
                 });
-
-//        escrowBlkDownloadEvents.observeOn(JavaFxScheduler.getInstance())
-//                .subscribe(e -> {
-//                    List<Transaction> txs = new ArrayList<>(escrowWallet.getTransactions(false));
-//                    LOG.debug("escrow block download event : {}", e);
-//                    Platform.runLater(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            if (e instanceof BlockDownloadDone) {
-//                                BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
-//                                downloadProgress.setValue(1.0);
-//                            } else if (e instanceof BlockDownloadProgress) {
-//                                BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
-//                                downloadProgress.setValue(dpe.getPct());
-//                            }
-//                            tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
-//                        }
-//                    });
-//                });
     }
 
     private Wallet createOrLoadWallet(File walletFile) {
@@ -355,10 +275,6 @@ public class WalletManager {
     public Address getDepositAddress() {
         return tradeWallet.currentReceiveAddress();
     }
-
-//    public Address getFreshAuthenticationAddress() {
-//        return tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).toAddress(netParams);
-//    }
 
     public Address getFreshReceiveAddress() {
         return tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).toAddress(netParams);
@@ -567,6 +483,7 @@ public class WalletManager {
         List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
         List<TransactionSignature> signatures2 = ImmutableList.of(buyerSignature, sellerSignature);
 
+        // TODO put this back in
         // order signatures in lexicographical order or pubkey bytes
 //        if (ECKey.PUBKEY_COMPARATOR.compare(sellerEscrowPubKey, buyerEscrowPubKey) < 0) {
 //            signatures = Arrays.asList(sellerSignature, buyerSignature);
