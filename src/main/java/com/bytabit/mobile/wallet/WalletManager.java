@@ -479,19 +479,13 @@ public class WalletManager {
         Transaction payoutTx = new Transaction(netParams);
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
 
-
-        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
-        List<TransactionSignature> signatures2 = ImmutableList.of(buyerSignature, sellerSignature);
-
-        // TODO put this back in
         // order signatures in lexicographical order or pubkey bytes
-//        if (ECKey.PUBKEY_COMPARATOR.compare(sellerEscrowPubKey, buyerEscrowPubKey) < 0) {
-//            signatures = Arrays.asList(sellerSignature, buyerSignature);
-//            signatures2 = Arrays.asList(buyerSignature, sellerSignature);
-//        } else {
-//            signatures = Arrays.asList(buyerSignature, sellerSignature);
-//            signatures2 = Arrays.asList(sellerSignature, buyerSignature);
-//        }
+        List<TransactionSignature> signatures;
+        if (ECKey.PUBKEY_COMPARATOR.compare(sellerEscrowPubKey, buyerEscrowPubKey) < 0) {
+            signatures = Arrays.asList(sellerSignature, buyerSignature);
+        } else {
+            signatures = Arrays.asList(buyerSignature, sellerSignature);
+        }
 
         Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
         Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
@@ -524,14 +518,10 @@ public class WalletManager {
                 LOG.debug("Input valid for payoutTx: " + input.toString());
             } catch (VerificationException ve) {
                 LOG.error("Input not valid for payoutTx, " + ve.getMessage());
-                // try other ordering
-                input.setScriptSig(ScriptBuilder.createP2SHMultiSigInputScript(signatures2, redeemScript));
-                input.verify(input.getConnectedOutput());
             } catch (NullPointerException npe) {
                 LOG.error("Null connectedOutput for payoutTx");
             }
         }
-
 
         escrowWallet.commitTx(payoutTx);
         TransactionBroadcast bc = peerGroup.broadcastTransaction(payoutTx);
