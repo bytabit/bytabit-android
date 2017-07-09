@@ -18,6 +18,7 @@ import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.crypto.TransactionSignature;
+import org.bitcoinj.net.discovery.DnsDiscovery;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
@@ -119,6 +120,8 @@ public class WalletManager {
 
 //                escrowPeerGroup.setMaxConnections(1);
 //                escrowPeerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
+            } else {
+                peerGroup.addPeerDiscovery(new DnsDiscovery(netParams));
             }
 
         } catch (BlockStoreException bse) {

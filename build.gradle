@@ -36,12 +36,18 @@ if (project.hasProperty('configName')) {
     config = configName
 }
 
+def url = "http://"+net+".bytabit.net:8080"
+
+if (project.hasProperty('baseUrl')) {
+    url = baseUrl
+}
+
 println net
 println config
 
 processResources {
     filesMatching("*.properties") {
-        filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config]
+        filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config, BASEURL:url]
     }
 
     outputs.upToDateWhen { false }

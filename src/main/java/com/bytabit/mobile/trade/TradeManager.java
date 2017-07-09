@@ -493,8 +493,10 @@ public class TradeManager extends AbstractManager {
             try {
                 if (sellOffer.getSellerProfilePubKey().equals(profilePubKey)) {
                     List<BuyRequest> buyRequests = buyRequestService.get(sellOffer.getSellerEscrowPubKey()).execute().body();
-                    for (BuyRequest buyRequest : buyRequests) {
-                        receiveBuyRequest(sellOffer, buyRequest);
+                    if (buyRequests != null) {
+                        for (BuyRequest buyRequest : buyRequests) {
+                            receiveBuyRequest(sellOffer, buyRequest);
+                        }
                     }
                 }
             } catch (IOException ioe) {
