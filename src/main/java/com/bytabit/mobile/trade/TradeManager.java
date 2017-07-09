@@ -223,23 +223,25 @@ public class TradeManager extends AbstractManager {
     // 2.B: buyer receives payment request, confirm funding tx, write payment request
     public void receivePaymentRequest(PaymentRequest paymentRequest) {
 
-        // 1. buyer confirm funding tx
-        TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(paymentRequest.getFundingTxHash());
-        if (tx != null) {
-            Trade trade = getTrade(paymentRequest.getEscrowAddress());
+        if (paymentRequest != null) {
+            // 1. buyer confirm funding tx
+            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(paymentRequest.getFundingTxHash());
+            if (tx != null) {
+                Trade trade = getTrade(paymentRequest.getEscrowAddress());
 
-            if (trade != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
+                if (trade != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
 
-                // 2. write payment request to trade folder
-                writePaymentRequest(paymentRequest);
+                    // 2. write payment request to trade folder
+                    writePaymentRequest(paymentRequest);
 
-                // 3. update view and list trade with payment request
-                trade.setPaymentRequest(paymentRequest);
+                    // 3. update view and list trade with payment request
+                    trade.setPaymentRequest(paymentRequest);
+                } else {
+                    LOG.error("Trade not found for payment request or funding tx btc amount doesn't match buy offer btc amount.");
+                }
             } else {
-                LOG.error("Trade not found for payment request or funding tx btc amount doesn't match buy offer btc amount.");
+                LOG.error("Tx not found for payment request.");
             }
-        } else {
-            LOG.error("Tx not found for payment request.");
         }
     }
 
@@ -296,14 +298,16 @@ public class TradeManager extends AbstractManager {
     // 3.S: seller receives payout request from buyer
     public void receivePayoutRequest(PayoutRequest payoutRequest) {
 
-        Trade trade = getTrade(payoutRequest.getEscrowAddress());
+        if (payoutRequest != null) {
+            Trade trade = getTrade(payoutRequest.getEscrowAddress());
 
-        if (trade.getPayoutRequest() == null) {
-            // 1. write payout request to trade folder
-            writePayoutRequest(payoutRequest);
+            if (trade != null && trade.getPayoutRequest() == null) {
+                // 1. write payout request to trade folder
+                writePayoutRequest(payoutRequest);
 
-            // 2. update view and list trade with payoutRequest
-            getTrade(trade.getEscrowAddress()).setPayoutRequest(payoutRequest);
+                // 2. update view and list trade with payoutRequest
+                getTrade(trade.getEscrowAddress()).setPayoutRequest(payoutRequest);
+            }
         }
     }
 
