@@ -479,13 +479,7 @@ public class WalletManager {
         Transaction payoutTx = new Transaction(netParams);
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
 
-        // order signatures in lexicographical order or pubkey bytes
-        List<TransactionSignature> signatures;
-        if (ECKey.PUBKEY_COMPARATOR.compare(sellerEscrowPubKey, buyerEscrowPubKey) < 0) {
-            signatures = Arrays.asList(sellerSignature, buyerSignature);
-        } else {
-            signatures = Arrays.asList(buyerSignature, sellerSignature);
-        }
+        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
 
         Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
         Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);

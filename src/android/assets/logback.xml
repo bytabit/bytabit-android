@@ -10,7 +10,7 @@
 
     <logger name="com.bytabit.mobile" level="DEBUG"/>
 
-    <root level="DEBUG">
+    <root level="WARN">
         <appender-ref ref="logcat"/>
     </root>
 </configuration>
