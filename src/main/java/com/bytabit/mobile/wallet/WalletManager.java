@@ -7,7 +7,6 @@ import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.google.common.collect.ImmutableList;
-import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -36,10 +35,7 @@ import rx.schedulers.JavaFxScheduler;
 import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -49,6 +45,10 @@ import java.util.concurrent.TimeUnit;
 import static org.bitcoinj.core.Transaction.REFERENCE_DEFAULT_MIN_TX_FEE;
 
 public class WalletManager {
+
+    private final static String TRADE_WALLET_FILE_NAME = "trade.wallet";
+    private final static String ESCROW_WALLET_FILE_NAME = "escrow.wallet";
+    private final static String BACKUP_EXT = ".bkp";
 
     private final static Logger LOG = LoggerFactory.getLogger(WalletManager.class);
     private final static NetworkParameters netParams;
@@ -82,11 +82,18 @@ public class WalletManager {
         btcContext = Context.getOrCreate(netParams);
         Context.propagate(btcContext);
 
-        tradeWallet = createOrLoadWallet(new File(AppConfig.getPrivateStorage(), "trade.wallet"));
-        escrowWallet = createOrLoadWallet(new File(AppConfig.getPrivateStorage(), "escrow.wallet"));
+        File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
+
+        tradeWallet = createOrLoadWallet(TRADE_WALLET_FILE_NAME, blockStoreFile);
+        escrowWallet = createOrLoadWallet(ESCROW_WALLET_FILE_NAME, blockStoreFile);
+
+        // if blockstore file removed, reset wallets
+        if (!blockStoreFile.exists()) {
+            tradeWallet.reset();
+            escrowWallet.reset();
+        }
 
         try {
-            File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
             BlockStore blockStore = new SPVBlockStore(netParams, blockStoreFile);
             BlockChain blockChain = new BlockChain(netParams, Arrays.asList(tradeWallet, escrowWallet), blockStore);
             peerGroup = new PeerGroup(netParams, blockChain);
@@ -116,8 +123,18 @@ public class WalletManager {
             Context.propagate(btcContext);
             tradeWallet.shutdownAutosaveAndWait();
             escrowWallet.shutdownAutosaveAndWait();
-            LOG.debug("Shutdown and autosaved wallets.");
+            LOG.debug("Shutdown wallets autosave.");
         });
+
+//        if (Platform.isAndroid() || Platform.isIOS()) {
+//            Services.get(LifecycleService.class).get().addListener(PAUSE, () -> {
+//                LOG.debug("Mobile PAUSE");
+//            });
+//
+//            Services.get(LifecycleService.class).get().addListener(RESUME, () -> {
+//                LOG.debug("Mobile RESUME");
+//            });
+//        }
 
         // post observable download events
         blockDownloadEvents = Observable.create((Observable.OnSubscribe<BlockDownloadEvent>) subscriber -> {
@@ -181,7 +198,7 @@ public class WalletManager {
             txsWithAmt.add(new TransactionWithAmt(t, t.getValue(tradeWallet),
                     getWatchedOutputAddress(t), t.getInput(0).getOutpoint().getHash().toString()));
         }
-        Platform.runLater(() -> {
+        javafx.application.Platform.runLater(() -> {
             tradeWalletTransactions.addAll(txsWithAmt);
             tradeWalletBalance.setValue(tradeWallet.getBalance().toFriendlyString());
         });
@@ -208,19 +225,19 @@ public class WalletManager {
         blockDownloadEvents.observeOn(JavaFxScheduler.getInstance())
                 .subscribe(e -> {
                     //LOG.debug("block download event : {}", e);
-                    Platform.runLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (e instanceof BlockDownloadDone) {
-                                BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
-                                downloadProgress.setValue(1.0);
-                            } else if (e instanceof BlockDownloadProgress) {
-                                BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
-                                downloadProgress.setValue(dpe.getPct());
-                            }
-                            tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
-                        }
-                    });
+//                    Platform.runLater(new Runnable() {
+//                        @Override
+//                        public void run() {
+                    if (e instanceof BlockDownloadDone) {
+                        BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
+                        downloadProgress.setValue(1.0);
+                    } else if (e instanceof BlockDownloadProgress) {
+                        BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
+                        downloadProgress.setValue(dpe.getPct());
+                    }
+                    tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
+//                        }
+//                    });
                 });
 
         escrowTxUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
@@ -229,31 +246,126 @@ public class WalletManager {
                 });
     }
 
-    private Wallet createOrLoadWallet(File walletFile) {
+    private Wallet createOrLoadWallet(String walletFileName, File blockStoreFile) {
+
+        final File walletFile = new File(AppConfig.getPrivateStorage(), walletFileName);
+        final File walletBackupFile = new File(AppConfig.getPrivateStorage(), walletFileName + BACKUP_EXT);
+
         Wallet wallet;
         if (walletFile.exists()) {
             try {
-                FileInputStream walletStream = new FileInputStream(walletFile);
+                wallet = loadWallet(walletFile);
+            } catch (FileNotFoundException | UnreadableWalletException e) {
                 try {
-                    Protos.Wallet proto = WalletProtobufSerializer.parseToProto(walletStream);
-                    final WalletProtobufSerializer serializer = new WalletProtobufSerializer();
-                    WalletExtension[] extArray = new WalletExtension[0];
-                    wallet = serializer.readWallet(netParams, extArray, proto);
-                } finally {
-                    walletStream.close();
+                    wallet = loadWallet(walletBackupFile);
+                    // have to remove blockstore file so wallet will be reloaded
+                    if (blockStoreFile.exists()) {
+                        LOG.debug("Removed blockstore file: {}", blockStoreFile.getName());
+                        blockStoreFile.delete();
+                    }
+                } catch (FileNotFoundException | UnreadableWalletException e1) {
+                    LOG.error("Unable to load backup wallet: {}", walletBackupFile.getName());
+                    throw new RuntimeException(e1);
                 }
-            } catch (FileNotFoundException fnfe) {
-                LOG.error("Wallet file does not exist: " + walletFile.toString());
-                throw new RuntimeException(fnfe);
-            } catch (IOException | UnreadableWalletException irw) {
-                LOG.error("Could not parse wallet file: " + walletFile.toString());
-                throw new RuntimeException(irw);
             }
         } else {
+            // create new wallet
             wallet = new Wallet(netParams);
+            // save new wallet
+            saveWallet(wallet, walletFile);
+            // backup backup new wallet
+            backupWallet(wallet, walletBackupFile);
         }
+
         wallet.autosaveToFile(walletFile, 10, TimeUnit.SECONDS, null);
         return wallet;
+    }
+
+    private Wallet loadWallet(File walletFile) throws FileNotFoundException, UnreadableWalletException {
+
+        Wallet wallet;
+        FileInputStream walletInputStream = null;
+        try {
+            walletInputStream = new FileInputStream(walletFile);
+            final WalletProtobufSerializer serializer = new WalletProtobufSerializer();
+            wallet = serializer.readWallet(walletInputStream);
+            if (!wallet.getParams().equals(netParams)) {
+                LOG.error("Invalid network params in wallet file: {}", walletFile.toString());
+                throw new UnreadableWalletException("Wrong network parameters, found: " + wallet.getParams().getId() + " should be: " + netParams.getId());
+            }
+            LOG.debug("Loaded wallet file: {}", walletFile.getName());
+        } catch (FileNotFoundException e) {
+            LOG.error("Wallet file does not exist: {}", walletFile.toString());
+            throw e;
+
+        } catch (UnreadableWalletException e) {
+            LOG.error("Wallet file is unreadable: {}", walletFile.toString());
+            throw e;
+        } finally {
+            if (walletInputStream != null) {
+                try {
+                    walletInputStream.close();
+                } catch (final IOException x) {
+                    LOG.error("Unable to close wallet input stream: {}", walletFile.toString());
+                }
+            }
+        }
+
+        return wallet;
+    }
+
+    private void saveWallet(Wallet wallet, File walletFile) {
+
+        final Protos.Wallet walletProto = new WalletProtobufSerializer().walletToProto(wallet);
+
+        OutputStream walletOutputStream = null;
+        try {
+            walletOutputStream = new FileOutputStream(walletFile);
+            walletProto.writeTo(walletOutputStream);
+            walletOutputStream.flush();
+            LOG.info("Wallet saved to: {}", walletFile.getName());
+        } catch (final IOException e) {
+            LOG.error("Can't save wallet", e);
+        } finally {
+            if (walletOutputStream != null) {
+                try {
+                    walletOutputStream.close();
+                } catch (final IOException x) {
+                    LOG.error("Unable to close wallet output stream: {}", walletFile.getName());
+                }
+            }
+        }
+    }
+
+    private void backupWallet(Wallet wallet, File walletBackupFile) {
+
+        final Protos.Wallet.Builder walletBuilder = new WalletProtobufSerializer().walletToProto(wallet).toBuilder();
+
+        // strip redundant
+        walletBuilder.clearTransaction();
+        walletBuilder.clearLastSeenBlockHash();
+        walletBuilder.setLastSeenBlockHeight(-1);
+        walletBuilder.clearLastSeenBlockTimeSecs();
+        final Protos.Wallet walletProto = walletBuilder.build();
+
+        OutputStream walletOutputStream = null;
+        try {
+            walletOutputStream = new FileOutputStream(walletBackupFile);
+            walletProto.writeTo(walletOutputStream);
+            walletOutputStream.flush();
+            LOG.info("Wallet backed up to: {}", walletBackupFile.getName());
+        } catch (final IOException e) {
+            LOG.error("Can't save wallet backup", e);
+        } finally {
+            if (walletOutputStream != null) {
+                try {
+                    walletOutputStream.close();
+                } catch (final IOException x) {
+                    LOG.error("Unable to close wallet backup output stream: {}", walletBackupFile.getName());
+                }
+            }
+        }
+        LOG.debug("Backed up wallet to file: {}", walletBackupFile.getName());
     }
 
     public DoubleProperty downloadProgressProperty() {
@@ -371,7 +483,7 @@ public class WalletManager {
         Transaction tx = escrowWallet.getTransaction(hash);
         if (tx == null) {
             //throw new RuntimeException("Can't find escrow Tx with hash: " + txHash);
-            LOG.error("Can't find escrow Tx with hash: " + txHash);
+            LOG.error("Can't find escrow Tx with hash: {}", txHash);
         }
         return tx;
     }
@@ -381,7 +493,7 @@ public class WalletManager {
         Transaction tx = tradeWallet.getTransaction(hash);
         if (tx == null) {
             //throw new RuntimeException("Can't find escrow Tx with hash: " + txHash);
-            LOG.error("Can't find escrow Tx with hash: " + txHash);
+            LOG.error("Can't find escrow Tx with hash: {}", txHash);
         }
         return tx;
     }
@@ -504,14 +616,14 @@ public class WalletManager {
         // add output to payout tx
         payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
 
-        LOG.debug("Validate inputs for payoutTx: " + payoutTx.toString());
+        LOG.debug("Validate inputs for payoutTx: {}", payoutTx.toString());
         for (TransactionInput input : payoutTx.getInputs()) {
-            LOG.debug("Validating input for payoutTx: " + input.toString());
+            LOG.debug("Validating input for payoutTx: {}", input.toString());
             try {
                 input.verify(input.getConnectedOutput());
-                LOG.debug("Input valid for payoutTx: " + input.toString());
+                LOG.debug("Input valid for payoutTx: {}", input.toString());
             } catch (VerificationException ve) {
-                LOG.error("Input not valid for payoutTx, " + ve.getMessage());
+                LOG.error("Input not valid for payoutTx, {}", ve.getMessage());
             } catch (NullPointerException npe) {
                 LOG.error("Null connectedOutput for payoutTx");
             }
