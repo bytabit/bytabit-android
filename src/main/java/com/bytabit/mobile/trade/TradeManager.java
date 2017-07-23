@@ -95,7 +95,8 @@ public class TradeManager extends AbstractManager {
                                  String buyerPayoutAddress) {
 
         // 1. create buy request
-        BuyRequest buyRequest = new BuyRequest(sellOffer.getSellerEscrowPubKey(),
+        String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey);
+        BuyRequest buyRequest = new BuyRequest(tradeEscrowAddress, sellOffer.getSellerEscrowPubKey(),
                 buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress);
 
         // 2. create trade
@@ -167,6 +168,11 @@ public class TradeManager extends AbstractManager {
 
     private Trade createTrade(SellOffer sellOffer, BuyRequest buyRequest) {
         String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
+        if (!tradeEscrowAddress.equals(buyRequest.getEscrowAddress())) {
+            LOG.error("Buyer and seller computed different escrow addresses for a trade.");
+            // TODO this should never happen, but need to handle it better
+            throw new RuntimeException("Buyer and seller computed different escrow addresses for a trade.");
+        }
         return new Trade(sellOffer, buyRequest, tradeEscrowAddress);
     }
 

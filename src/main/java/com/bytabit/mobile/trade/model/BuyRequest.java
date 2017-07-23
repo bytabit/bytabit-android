@@ -12,8 +12,9 @@ public class BuyRequest {
     public BuyRequest() {
     }
 
-    public BuyRequest(String sellerEscrowPubKey, String buyerEscrowPubKey, BigDecimal btcAmount,
-                      String buyerProfilePubKey, String buyerPayoutAddress) {
+    public BuyRequest(String escrowAddress, String sellerEscrowPubKey, String buyerEscrowPubKey,
+                      BigDecimal btcAmount, String buyerProfilePubKey, String buyerPayoutAddress) {
+        setEscrowAddress(escrowAddress);
         setSellerEscrowPubKey(sellerEscrowPubKey);
         setBuyerEscrowPubKey(buyerEscrowPubKey);
         setBtcAmount(btcAmount);
@@ -21,11 +22,24 @@ public class BuyRequest {
         setBuyerPayoutAddress(buyerPayoutAddress);
     }
 
+    private final StringProperty escrowAddress = new SimpleStringProperty();
     private final StringProperty sellerEscrowPubKey = new SimpleStringProperty();
     private final StringProperty buyerEscrowPubKey = new SimpleStringProperty();
     private final ObjectProperty<BigDecimal> btcAmount = new SimpleObjectProperty<>();
     private final StringProperty buyerProfilePubKey = new SimpleStringProperty();
     private final StringProperty buyerPayoutAddress = new SimpleStringProperty();
+
+    public String getEscrowAddress() {
+        return escrowAddress.get();
+    }
+
+    public StringProperty escrowAddressProperty() {
+        return escrowAddress;
+    }
+
+    public void setEscrowAddress(String escrowAddress) {
+        this.escrowAddress.set(escrowAddress);
+    }
 
     public String getSellerEscrowPubKey() {
         return sellerEscrowPubKey.get();
@@ -90,7 +104,8 @@ public class BuyRequest {
     @Override
     public String toString() {
         final StringBuffer sb = new StringBuffer("BuyRequest{");
-        sb.append("sellerEscrowPubKey=").append(sellerEscrowPubKey);
+        sb.append("escrowAddress=").append(escrowAddress);
+        sb.append(", sellerEscrowPubKey=").append(sellerEscrowPubKey);
         sb.append(", buyerEscrowPubKey=").append(buyerEscrowPubKey);
         sb.append(", btcAmount=").append(btcAmount);
         sb.append(", buyerProfilePubKey=").append(buyerProfilePubKey);
@@ -106,6 +121,8 @@ public class BuyRequest {
 
         BuyRequest that = (BuyRequest) o;
 
+        if (escrowAddress != null ? !escrowAddress.equals(that.escrowAddress) : that.escrowAddress != null)
+            return false;
         if (sellerEscrowPubKey != null ? !sellerEscrowPubKey.equals(that.sellerEscrowPubKey) : that.sellerEscrowPubKey != null)
             return false;
         if (buyerEscrowPubKey != null ? !buyerEscrowPubKey.equals(that.buyerEscrowPubKey) : that.buyerEscrowPubKey != null)
@@ -119,7 +136,8 @@ public class BuyRequest {
 
     @Override
     public int hashCode() {
-        int result = sellerEscrowPubKey != null ? sellerEscrowPubKey.hashCode() : 0;
+        int result = escrowAddress != null ? escrowAddress.hashCode() : 0;
+        result = 31 * result + (sellerEscrowPubKey != null ? sellerEscrowPubKey.hashCode() : 0);
         result = 31 * result + (buyerEscrowPubKey != null ? buyerEscrowPubKey.hashCode() : 0);
         result = 31 * result + (btcAmount != null ? btcAmount.hashCode() : 0);
         result = 31 * result + (buyerProfilePubKey != null ? buyerProfilePubKey.hashCode() : 0);

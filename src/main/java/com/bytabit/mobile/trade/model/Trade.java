@@ -16,7 +16,7 @@ public class Trade {
     }
 
     public enum Role {
-        BUYER, SELLER, ARBITRATOR, UNKNOWN
+        BUYER, SELLER, ARBITRATOR
     }
 
     private final ObjectProperty<Status> status = new SimpleObjectProperty<>();
