@@ -12,11 +12,14 @@ import static com.bytabit.mobile.trade.model.Trade.Status.*;
 public class Trade {
 
     public enum Status {
-        CREATED, FUNDED, PAID, COMPLETED
+        CREATED, FUNDED, PAID, COMPLETED, ARBITRATING
     }
 
     public enum Role {
         BUYER, SELLER, ARBITRATOR
+    }
+
+    public Trade() {
     }
 
     private final ObjectProperty<Status> status = new SimpleObjectProperty<>();
@@ -26,6 +29,7 @@ public class Trade {
     private final ObjectProperty<PaymentRequest> paymentRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutRequest> payoutRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
+    private final ObjectProperty<ArbitrateRequest> arbitrateRequest = new SimpleObjectProperty<>();
 
     public Trade(SellOffer sellOffer, BuyRequest buyRequest, String escrowAddress) {
         this.sellOffer.set(sellOffer);
@@ -34,14 +38,35 @@ public class Trade {
         this.status.set(CREATED);
     }
 
+    public void setSellOffer(SellOffer sellOffer) {
+        if (sellOffer != null && getBuyRequest() == null
+                && getPaymentRequest() == null && getPayoutRequest() == null
+                && getPayoutCompleted() == null) {
+            this.sellOffer.setValue(sellOffer);
+            this.status.setValue(CREATED);
+        } else {
+            throw new RuntimeException("Invalid trade status.");
+        }
+    }
+
+    public void setBuyRequest(BuyRequest buyRequest) {
+        if (getSellOffer() != null && buyRequest != null
+                && getPaymentRequest() == null && getPayoutRequest() == null
+                && getPayoutCompleted() == null) {
+            this.escrowAddress.setValue(buyRequest.getEscrowAddress());
+            this.buyRequest.setValue(buyRequest);
+            this.status.setValue(CREATED);
+        } else {
+            throw new RuntimeException("Invalid trade status.");
+        }
+    }
+
     public void setPaymentRequest(PaymentRequest paymentRequest) {
         if (getSellOffer() != null && getBuyRequest() != null
                 && paymentRequest != null && getPayoutRequest() == null
                 && getPayoutCompleted() == null) {
             this.paymentRequest.set(paymentRequest);
             this.status.setValue(FUNDED);
-        } else {
-            throw new RuntimeException("Invalid trade status.");
         }
     }
 
@@ -51,8 +76,6 @@ public class Trade {
                 && getPayoutCompleted() == null) {
             this.payoutRequest.set(payoutRequest);
             this.status.setValue(PAID);
-        } else {
-            throw new RuntimeException("Invalid trade status.");
         }
     }
 
@@ -62,8 +85,14 @@ public class Trade {
                 && payoutCompleted != null) {
             this.payoutCompleted.set(payoutCompleted);
             this.status.setValue(COMPLETED);
-        } else {
-            throw new RuntimeException("Invalid trade status.");
+        } 
+    }
+
+    public void setArbitrateRequest(ArbitrateRequest arbitrateRequest) {
+        if (getSellOffer() != null && getBuyRequest() != null
+                && getPayoutCompleted() == null && arbitrateRequest != null) {
+            this.arbitrateRequest.set(arbitrateRequest);
+            this.status.setValue(ARBITRATING);
         }
     }
 
@@ -123,17 +152,29 @@ public class Trade {
         return payoutCompleted;
     }
 
-    public Role getRole(String profilePubKey) {
+    public ArbitrateRequest getArbitrateRequest() {
+        return arbitrateRequest.get();
+    }
+
+    public ObjectProperty<ArbitrateRequest> arbitrateRequestProperty() {
+        return arbitrateRequest;
+    }
+
+    public Role getRole(String profilePubKey, Boolean isArbitrator) {
         Role role;
 
-        if (getSellOffer().getSellerProfilePubKey().equals(profilePubKey)) {
-            role = SELLER;
-        } else if (getBuyRequest().getBuyerProfilePubKey().equals(profilePubKey)) {
-            role = BUYER;
+        if (!isArbitrator) {
+            if (getSellOffer().getSellerProfilePubKey().equals(profilePubKey)) {
+                role = SELLER;
+            } else if (getBuyRequest().getBuyerProfilePubKey().equals(profilePubKey)) {
+                role = BUYER;
+            } else {
+                throw new RuntimeException("Unable to determine trader role.");
+            }
         } else if (getSellOffer().getArbitratorProfilePubKey().equals(profilePubKey)) {
             role = ARBITRATOR;
         } else {
-            throw new RuntimeException("Unable to determine trade role.");
+            throw new RuntimeException("Unable to determine arbitrator role.");
         }
 
         return role;

@@ -51,6 +51,10 @@ public class TradeManager extends AbstractManager {
 
     private final PayoutCompletedService payoutCompletedService;
 
+    private final ArbitrateRequestService arbitrateRequestService;
+
+    private final TradeService tradeService;
+
     private final ObservableList<Trade> tradesObservableList;
 
     private Trade selectedTrade;
@@ -82,6 +86,18 @@ public class TradeManager extends AbstractManager {
                 .addConverterFactory(new JacksonJrConverter<>(PayoutCompleted.class))
                 .build();
         payoutCompletedService = payoutCompletedRetrofit.create(PayoutCompletedService.class);
+
+        Retrofit arbitrateRequestRetrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(new JacksonJrConverter<>(ArbitrateRequest.class))
+                .build();
+        arbitrateRequestService = arbitrateRequestRetrofit.create(ArbitrateRequestService.class);
+
+        Retrofit tradeRetrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(new JacksonJrConverter<>(Trade.class))
+                .build();
+        tradeService = tradeRetrofit.create(TradeService.class);
 
         tradesObservableList = FXCollections.observableArrayList();
 
@@ -422,6 +438,41 @@ public class TradeManager extends AbstractManager {
         }
     }
 
+    // 5.: receive ArbitrateRequest
+    public void receiveArbitrateRequest(ArbitrateRequest arbitrateRequest) {
+
+        // 1. confirm payout tx
+        Trade trade = getTrade(arbitrateRequest.getEscrowAddress());
+        if (trade != null) {
+
+            // 2. write arbitrate request to trade folder
+            writeArbitrateRequest(trade, arbitrateRequest);
+
+            // 3. update trade
+            trade.setArbitrateRequest(arbitrateRequest);
+
+        } else {
+            LOG.error("Trade not found for ArbitrateRequest.");
+        }
+    }
+
+    public void writeArbitrateRequest(Trade trade, ArbitrateRequest arbitrateRequest) {
+
+        String tradePath = tradesPath + trade.getEscrowAddress();
+        String arbitrateRequestPath = tradePath + File.separator + "arbitrateRequest.json";
+        try {
+            FileWriter arbitrateRequestWriter = new FileWriter(arbitrateRequestPath);
+            arbitrateRequestWriter.write(JSON.std.asString(arbitrateRequest));
+            arbitrateRequestWriter.flush();
+
+            LOG.debug("Created arbitrateRequest: {}", arbitrateRequestPath);
+
+        } catch (IOException ioe) {
+            LOG.error(ioe.getMessage());
+            throw new RuntimeException(ioe);
+        }
+    }
+
 
 //    private void addTrade(Trade trade) {
 //
@@ -521,10 +572,11 @@ public class TradeManager extends AbstractManager {
 
     public void updateTrades() {
 
-        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
+        Observable<Trade> trades = Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
                 .map(tick -> getTradesObservableList())
-                .flatMapIterable(tradeList -> tradeList)
-                .filter(trade -> trade.getStatus().equals(CREATED))
+                .flatMapIterable(tradeList -> tradeList).share();
+
+        trades.filter(trade -> trade.getStatus().equals(CREATED))
                 .map(trade -> paymentRequestService.get(trade.getEscrowAddress()))
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
@@ -538,10 +590,7 @@ public class TradeManager extends AbstractManager {
                     }
                 });
 
-        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> getTradesObservableList())
-                .flatMapIterable(tradeList -> tradeList)
-                .filter(trade -> trade.getStatus().equals(FUNDED))
+        trades.filter(trade -> trade.getStatus().equals(FUNDED))
                 .map(trade -> payoutRequestService.get(trade.getEscrowAddress()))
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
@@ -554,10 +603,7 @@ public class TradeManager extends AbstractManager {
                     }
                 });
 
-        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> getTradesObservableList())
-                .flatMapIterable(tradeList -> tradeList)
-                .filter(trade -> trade.getStatus().equals(PAID))
+        trades.filter(trade -> trade.getStatus().equals(PAID))
                 .map(trade -> payoutCompletedService.get(trade.getEscrowAddress()))
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
@@ -565,6 +611,36 @@ public class TradeManager extends AbstractManager {
                     try {
                         PayoutCompleted payoutCompleted = c.execute().body();
                         receivePayoutCompleted(payoutCompleted);
+                    } catch (IOException ioe) {
+                        LOG.error(ioe.getMessage());
+                    }
+                });
+
+        trades.filter(trade -> trade.getStatus().equals(FUNDED) ||
+                trade.getStatus().equals(PAID))
+                .map(trade -> arbitrateRequestService.get(
+                        trade.getSellOffer().getArbitratorProfilePubKey(),
+                        trade.getEscrowAddress()))
+                .retry()
+                .observeOn(JavaFxScheduler.getInstance())
+                .subscribe(c -> {
+                    try {
+                        ArbitrateRequest arbitrateRequest = c.execute().body();
+                        receiveArbitrateRequest(arbitrateRequest);
+                    } catch (IOException ioe) {
+                        LOG.error(ioe.getMessage());
+                    }
+                });
+
+        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
+                .map(tick -> profileManager.profile().isIsArbitrator())
+                .filter(b -> b.equals(true))
+                .map(b -> tradeService.get(profileManager.profile().getPubKey()))
+                .retry()
+                .observeOn(JavaFxScheduler.getInstance())
+                .subscribe(c -> {
+                    try {
+                        receiveArbitratorTrades(c.execute().body());
                     } catch (IOException ioe) {
                         LOG.error(ioe.getMessage());
                     }
@@ -703,4 +779,10 @@ public class TradeManager extends AbstractManager {
 //            }
 //        }
 //    }
+
+    // unhappy path
+
+    private void receiveArbitratorTrades(List<Trade> trades) {
+        tradesObservableList.setAll(trades);
+    }
 }

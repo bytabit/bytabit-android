@@ -118,7 +118,8 @@ public class TradeDetailsPresenter {
                 BigDecimal amount = trade.getBuyRequest().getBtcAmount();
                 BigDecimal paymentAmount = price.multiply(amount);
                 String profilePubKey = profileManager.profile().getPubKey();
-                Trade.Role tradeRole = trade.getRole(profilePubKey);
+                Boolean isArbitrator = profileManager.profile().isIsArbitrator();
+                Trade.Role tradeRole = trade.getRole(profilePubKey, isArbitrator);
 
                 //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
                 tradeStatusLabel.textProperty().setValue(trade.statusProperty().toString());

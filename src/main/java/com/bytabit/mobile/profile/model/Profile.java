@@ -34,7 +34,7 @@ public class Profile {
         this.pubKey.set(pubKey);
     }
 
-    public boolean isIsArbitrator() {
+    public Boolean isIsArbitrator() {
         return isArbitrator.get();
     }
 
@@ -42,7 +42,7 @@ public class Profile {
         return isArbitrator;
     }
 
-    public void setIsArbitrator(boolean isArbitrator) {
+    public void setIsArbitrator(Boolean isArbitrator) {
         this.isArbitrator.set(isArbitrator);
     }
 
