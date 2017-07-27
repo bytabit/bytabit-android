@@ -62,6 +62,9 @@ public class TradeDetailsPresenter {
     private Label paymentReferenceLabel;
 
     @FXML
+    private Label arbitrateReasonLabel;
+
+    @FXML
     private Label paymentAmountLabel;
 
     @FXML
@@ -85,6 +88,15 @@ public class TradeDetailsPresenter {
     @FXML
     private TextField paymentReferenceField;
 
+    @FXML
+    private Button arbitrateButton;
+
+    @FXML
+    private Button refundSellerButton;
+
+    @FXML
+    private Button payoutBuyerButton;
+
     StringConverter<Trade.Status> statusStringConverter = new StringConverter<Trade.Status>() {
 
         @Override
@@ -107,6 +119,9 @@ public class TradeDetailsPresenter {
             paymentReceivedButton.visibleProperty().setValue(false);
             paymentSentButton.visibleProperty().setValue(false);
             paymentReferenceField.visibleProperty().setValue(false);
+            refundSellerButton.visibleProperty().setValue(false);
+            payoutBuyerButton.visibleProperty().setValue(false);
+            arbitrateButton.visibleProperty().setValue(false);
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
@@ -137,6 +152,7 @@ public class TradeDetailsPresenter {
                 priceCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
                 paymentDetailsLabel.textProperty().setValue(null);
                 paymentReferenceLabel.textProperty().setValue(null);
+                arbitrateReasonLabel.textProperty().setValue(null);
                 tradeStatusLabel.textProperty().setValue(trade.getStatus().toString());
 
                 if (trade.getStatus().equals(Trade.Status.FUNDED)) {
@@ -149,6 +165,7 @@ public class TradeDetailsPresenter {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
+                        arbitrateButton.visibleProperty().setValue(true);
                     }
                 } else if (trade.getStatus().equals(Trade.Status.PAID)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
@@ -157,10 +174,12 @@ public class TradeDetailsPresenter {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
+                        arbitrateButton.visibleProperty().setValue(true);
                     } else if (tradeRole == Trade.Role.SELLER) {
                         paymentReceivedButton.visibleProperty().setValue(true);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
+                        arbitrateButton.visibleProperty().setValue(true);
                     }
                 } else if (trade.getStatus().equals(Trade.Status.COMPLETED)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
@@ -173,6 +192,19 @@ public class TradeDetailsPresenter {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(false);
                         paymentReferenceField.visibleProperty().setValue(false);
+                    }
+                } else if (trade.getStatus().equals(Trade.Status.ARBITRATING)) {
+                    arbitrateReasonLabel.textProperty().setValue(trade.getArbitrateRequest().getReason().toString());
+                    arbitrateReasonLabel.visibleProperty().setValue(true);
+                    //if (tradeRole == Trade.Role.BUYER && trade.getArbitrateRequest().getReason().equals(ArbitrateRequest.Reason.NO_PAYMENT)) {
+                    //paymentSentButton.visibleProperty().setValue(true);
+                    //paymentReferenceField.visibleProperty().setValue(true);
+//                    } else if (tradeRole == Trade.Role.SELLER && trade.getArbitrateRequest().getReason().equals(ArbitrateRequest.Reason.NO_BTC)) {
+//                        paymentReceivedButton.visibleProperty().setValue(true);
+//                    } else
+                    if (tradeRole == Trade.Role.ARBITRATOR) {
+                        refundSellerButton.visibleProperty().setValue(true);
+                        payoutBuyerButton.visibleProperty().setValue(true);
                     }
                 }
             }

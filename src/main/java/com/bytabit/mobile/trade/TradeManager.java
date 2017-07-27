@@ -720,6 +720,13 @@ public class TradeManager extends AbstractManager {
                     trade.setPayoutCompleted(payoutCompleted);
                 }
 
+                File arbitrateRequestFile = new File(tradesPath + tradeId + File.separator + "arbitrateRequest.json");
+                if (arbitrateRequestFile.exists()) {
+                    FileReader arbitrateRequestReader = new FileReader(arbitrateRequestFile);
+                    ArbitrateRequest arbitrateRequest = JSON.std.beanFrom(ArbitrateRequest.class, arbitrateRequestReader);
+                    trade.setArbitrateRequest(arbitrateRequest);
+                }
+
                 tradesObservableList.add(trade);
             } catch (IOException ioe) {
                 LOG.error(ioe.getMessage());

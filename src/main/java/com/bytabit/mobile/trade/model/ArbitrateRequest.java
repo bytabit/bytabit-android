@@ -7,7 +7,7 @@ import javafx.beans.property.StringProperty;
 
 public class ArbitrateRequest {
 
-    enum Reason {
+    public enum Reason {
         NO_PAYMENT, NO_BTC
     }
 

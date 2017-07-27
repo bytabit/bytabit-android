@@ -89,6 +89,7 @@ public class WalletManager {
 
         // if blockstore file removed, reset wallets
         if (!blockStoreFile.exists()) {
+            LOG.debug("No blockstore file, resetting wallets.");
             tradeWallet.reset();
             escrowWallet.reset();
         }
