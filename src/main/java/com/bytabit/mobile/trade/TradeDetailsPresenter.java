@@ -219,5 +219,20 @@ public class TradeDetailsPresenter {
             LOG.debug("paymentReceivedButton pressed");
             tradeManager.confirmPaymentReceived();
         });
+
+        arbitrateButton.setOnAction(e -> {
+            LOG.debug("arbitrateButton pressed");
+            tradeManager.requestArbitrate();
+        });
+
+        refundSellerButton.setOnAction(e -> {
+            LOG.debug("refundSellerButton pressed");
+            tradeManager.refundSeller();
+        });
+
+        payoutBuyerButton.setOnAction(e -> {
+            LOG.debug("payoutBuyerButton pressed");
+            tradeManager.payoutBuyer();
+        });
     }
 }

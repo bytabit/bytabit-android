@@ -31,6 +31,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
+import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
 public class TradeManager extends AbstractManager {
@@ -791,5 +793,30 @@ public class TradeManager extends AbstractManager {
 
     private void receiveArbitratorTrades(List<Trade> trades) {
         tradesObservableList.setAll(trades);
+    }
+
+    public void requestArbitrate() {
+        ArbitrateRequest arbitrateRequest = new ArbitrateRequest();
+        arbitrateRequest.setArbitratorProfilePubKey(selectedTrade.getSellOffer().getArbitratorProfilePubKey());
+        arbitrateRequest.setEscrowAddress(selectedTrade.getEscrowAddress());
+        if (selectedTrade.getRole(profileManager.profile().getPubKey(), false).equals(Trade.Role.SELLER)) {
+            arbitrateRequest.setReason(NO_PAYMENT);
+        } else {
+            arbitrateRequest.setReason(NO_BTC);
+        }
+        try {
+            arbitrateRequestService.post(selectedTrade.getSellOffer().getArbitratorProfilePubKey(), arbitrateRequest).execute();
+        } catch (IOException e) {
+            LOG.error("Can't post ArbitrateRequest to server.");
+        }
+        writeArbitrateRequest(selectedTrade, arbitrateRequest);
+    }
+
+    public void refundSeller() {
+
+    }
+
+    public void payoutBuyer() {
+
     }
 }
