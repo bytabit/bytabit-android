@@ -409,12 +409,12 @@ public class WalletManager {
         return REFERENCE_DEFAULT_MIN_TX_FEE;
     }
 
-    public String fundEscrow(String escrowAddress, BigDecimal amount) throws InsufficientMoneyException {
+    public Transaction fundEscrow(String escrowAddress, BigDecimal amount) throws InsufficientMoneyException {
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
                 Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
         Transaction tx = tradeWallet.sendCoins(sendRequest).tx;
-        return tx.getHashAsString();
+        return tx;
     }
 
     private static Address escrowAddress(ECKey arbitratorProfilePubKey,
@@ -500,6 +500,15 @@ public class WalletManager {
     }
 
     public String getPayoutSignature(Trade trade, Transaction fundingTx) {
+        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
+        return getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
+    }
+
+    public String getRefundSignature(Trade trade, Address sellerRefundAddress, Transaction fundingTx) {
+        return getPayoutSignature(trade, fundingTx, sellerRefundAddress);
+    }
+
+    public String getPayoutSignature(Trade trade, Transaction fundingTx, Address payoutAddress) {
         Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));

@@ -11,6 +11,7 @@ import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import org.bitcoinj.core.Address;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.Transaction;
 import org.slf4j.Logger;
@@ -224,16 +225,23 @@ public class TradeManager extends AbstractManager {
         // TODO verify escrow not yet funded ?
         try {
             // 1. fund escrow
-            String txHash = walletManager.fundEscrow(trade.getEscrowAddress(),
+            Transaction fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
                     trade.getBuyRequest().getBtcAmount());
 
-            // 2. create payment request
+            // 2. create refund tx address and signature
+
+            Address refundTxAddress = walletManager.getDepositAddress();
+            String refundTxSignature = walletManager.getRefundSignature(trade, refundTxAddress, fundingTx);
+
+            // 3. create payment request
             String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer()
                     .getCurrencyCode(), trade.getSellOffer().getPaymentMethod()).get();
             PaymentRequest paymentRequest = new PaymentRequest();
             paymentRequest.setEscrowAddress(trade.getEscrowAddress());
-            paymentRequest.setFundingTxHash(txHash);
+            paymentRequest.setFundingTxHash(fundingTx.getHashAsString());
             paymentRequest.setPaymentDetails(paymentDetails);
+            paymentRequest.setRefundAddress(refundTxAddress.toBase58());
+            paymentRequest.setRefundTxSignature(refundTxSignature);
 
             return paymentRequest;
 
