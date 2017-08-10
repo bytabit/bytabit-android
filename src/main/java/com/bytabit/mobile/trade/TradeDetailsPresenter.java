@@ -183,7 +183,12 @@ public class TradeDetailsPresenter {
                     }
                 } else if (trade.getStatus().equals(Trade.Status.COMPLETED)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
-                    paymentReferenceLabel.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    if (trade.getPayoutRequest() != null) {
+                        paymentReferenceLabel.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    }
+                    if (trade.getArbitrateRequest() != null) {
+                        arbitrateReasonLabel.textProperty().setValue(trade.getArbitrateRequest().getReason().toString());
+                    }
                     if (tradeRole == Trade.Role.BUYER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
                         paymentSentButton.visibleProperty().setValue(false);
@@ -194,6 +199,10 @@ public class TradeDetailsPresenter {
                         paymentReferenceField.visibleProperty().setValue(false);
                     }
                 } else if (trade.getStatus().equals(Trade.Status.ARBITRATING)) {
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
+                    if (trade.getPayoutRequest() != null) {
+                        paymentReferenceLabel.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    }
                     arbitrateReasonLabel.textProperty().setValue(trade.getArbitrateRequest().getReason().toString());
                     arbitrateReasonLabel.visibleProperty().setValue(true);
                     //if (tradeRole == Trade.Role.BUYER && trade.getArbitrateRequest().getReason().equals(ArbitrateRequest.Reason.NO_PAYMENT)) {

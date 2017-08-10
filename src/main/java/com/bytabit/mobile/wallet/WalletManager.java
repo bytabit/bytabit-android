@@ -3,6 +3,7 @@ package com.bytabit.mobile.wallet;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.nav.evt.QuitEvent;
+import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
@@ -31,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.BackpressureOverflow;
 import rx.Observable;
+import rx.Subscription;
 import rx.schedulers.JavaFxScheduler;
 import rx.subscriptions.Subscriptions;
 
@@ -55,7 +57,7 @@ public class WalletManager {
 
     private final Context btcContext;
 
-    private final PeerGroup peerGroup;
+    private PeerGroup peerGroup;
     private final Wallet tradeWallet;
 
     private final Wallet escrowWallet;
@@ -68,6 +70,8 @@ public class WalletManager {
     private final Observable<TransactionUpdatedEvent> tradeTxUpdatedEvents;
     private final ObservableList<TransactionWithAmt> tradeWalletTransactions;
     private final Observable<TransactionUpdatedEvent> escrowTxUpdatedEvents;
+
+    private Subscription blockDownloadSubscription;
 
     static {
         netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
@@ -94,30 +98,31 @@ public class WalletManager {
             escrowWallet.reset();
         }
 
-        try {
-            BlockStore blockStore = new SPVBlockStore(netParams, blockStoreFile);
-            BlockChain blockChain = new BlockChain(netParams, Arrays.asList(tradeWallet, escrowWallet), blockStore);
-            peerGroup = new PeerGroup(netParams, blockChain);
-            peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
-
-            peerGroup.addWallet(tradeWallet);
-            peerGroup.addWallet(escrowWallet);
-
-            if (netParams.equals(RegTestParams.get())) {
-                peerGroup.setMaxConnections(1);
-                peerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
-
-            } else {
-                peerGroup.addPeerDiscovery(new DnsDiscovery(netParams));
-            }
-
-        } catch (BlockStoreException bse) {
-            LOG.error("Can't open block store.");
-            throw new RuntimeException(bse);
-        } catch (UnknownHostException uhe) {
-            LOG.error("Can't add localhost to peer group.");
-            throw new RuntimeException(uhe);
-        }
+//        try {
+//            BlockStore blockStore = new SPVBlockStore(netParams, blockStoreFile);
+//            BlockChain blockChain = new BlockChain(netParams, Arrays.asList(tradeWallet, escrowWallet), blockStore);
+        peerGroup = createPeerGroup(blockStoreFile);
+//                    new PeerGroup(netParams, blockChain);
+//            peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
+//
+//            peerGroup.addWallet(tradeWallet);
+//            peerGroup.addWallet(escrowWallet);
+//
+//            if (netParams.equals(RegTestParams.get())) {
+//                peerGroup.setMaxConnections(1);
+//                peerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
+//
+//            } else {
+//                peerGroup.addPeerDiscovery(new DnsDiscovery(netParams));
+//            }
+//
+//        } catch (BlockStoreException bse) {
+//            LOG.error("Can't open block store.");
+//            throw new RuntimeException(bse);
+//        } catch (UnknownHostException uhe) {
+//            LOG.error("Can't add localhost to peer group.");
+//            throw new RuntimeException(uhe);
+//        }
 
         BytabitMobile.getNavEvents().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
             LOG.debug("Got quit event");
@@ -160,7 +165,9 @@ public class WalletManager {
                 }
             });
             // on un-subscribe stop peer group
-            subscriber.add(Subscriptions.create(peerGroup::stop));
+            subscriber.add(Subscriptions.create(() -> {
+                peerGroup.stop();
+            }));
         }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
         // post observable wallet running events
@@ -223,7 +230,7 @@ public class WalletManager {
                     tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
                 });
 
-        blockDownloadEvents.observeOn(JavaFxScheduler.getInstance())
+        blockDownloadSubscription = blockDownloadEvents.observeOn(JavaFxScheduler.getInstance())
                 .subscribe(e -> {
                     //LOG.debug("block download event : {}", e);
 //                    Platform.runLater(new Runnable() {
@@ -243,8 +250,59 @@ public class WalletManager {
 
         escrowTxUpdatedEvents.observeOn(JavaFxScheduler.getInstance())
                 .subscribe(e -> {
-                    // LOG.debug("escrow transaction updated event : {}", e);
+                    LOG.debug("escrow transaction updated event : {}", e);
                 });
+    }
+
+    private PeerGroup createPeerGroup(File blockStoreFile) {
+        try {
+            BlockStore blockStore = new SPVBlockStore(netParams, blockStoreFile);
+            BlockChain blockChain = new BlockChain(netParams, Arrays.asList(tradeWallet, escrowWallet), blockStore);
+            PeerGroup peerGroup = new PeerGroup(netParams, blockChain);
+            peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
+
+            peerGroup.addWallet(tradeWallet);
+            peerGroup.addWallet(escrowWallet);
+
+            if (netParams.equals(RegTestParams.get())) {
+                peerGroup.setMaxConnections(1);
+                peerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
+
+            } else {
+                peerGroup.addPeerDiscovery(new DnsDiscovery(netParams));
+            }
+
+            return peerGroup;
+
+        } catch (BlockStoreException bse) {
+            LOG.error("Can't open block store.");
+            throw new RuntimeException(bse);
+        } catch (UnknownHostException uhe) {
+            LOG.error("Can't add localhost to peer group.");
+            throw new RuntimeException(uhe);
+        }
+    }
+
+    public void resetBlockchain() {
+        blockDownloadSubscription.unsubscribe();
+        File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
+        if (blockStoreFile.delete()) {
+            peerGroup = createPeerGroup(blockStoreFile);
+            tradeWallet.reset();
+            escrowWallet.reset();
+            blockDownloadSubscription = blockDownloadEvents.observeOn(JavaFxScheduler.getInstance())
+                    .subscribe(e -> {
+                        if (e instanceof BlockDownloadDone) {
+                            BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
+                            downloadProgress.setValue(1.0);
+                        } else if (e instanceof BlockDownloadProgress) {
+                            BlockDownloadProgress dpe = BlockDownloadProgress.class.cast(e);
+                            downloadProgress.setValue(dpe.getPct());
+                        }
+                        tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
+                    });
+            PayoutCompleted payoutCompleted = new PayoutCompleted();
+        }
     }
 
     private Wallet createOrLoadWallet(String walletFileName, File blockStoreFile) {
@@ -457,6 +515,30 @@ public class WalletManager {
         return watchedOutputAddresses.size() > 0 ? watchedOutputAddresses.get(0) : null;
     }
 
+    public TransactionWithAmt getTransactionWithAmt(String txHash, String toAddress) {
+        TransactionWithAmt transactionWithAmt = null;
+        Sha256Hash hash = Sha256Hash.wrap(txHash);
+        Address addr = Address.fromBase58(netParams, toAddress);
+        Transaction tx = escrowWallet.getTransaction(hash);
+        if (tx == null) {
+            tx = tradeWallet.getTransaction(hash);
+        }
+        if (tx != null) {
+            Coin amt = Coin.ZERO;
+            for (TransactionOutput output : tx.getOutputs()) {
+                if (!addr.isP2SHAddress() && addr.equals(output.getAddressFromP2PKHScript(netParams))
+                        || addr.isP2SHAddress() && addr.equals(output.getAddressFromP2SH(netParams))) {
+                    amt = amt.add(output.getValue());
+                }
+            }
+            transactionWithAmt = new TransactionWithAmt(tx, amt, toAddress, null);
+        } else {
+            LOG.error("Can't find Tx with hash: {} to address:", txHash, toAddress);
+        }
+
+        return transactionWithAmt;
+    }
+
     public TransactionWithAmt getEscrowTransactionWithAmt(String txHash) {
         Transaction tx = getEscrowTransaction(txHash);
         if (tx != null) {
@@ -504,7 +586,7 @@ public class WalletManager {
         return getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
     }
 
-    public String getRefundSignature(Trade trade, Address sellerRefundAddress, Transaction fundingTx) {
+    public String getRefundSignature(Trade trade, Transaction fundingTx, Address sellerRefundAddress) {
         return getPayoutSignature(trade, fundingTx, sellerRefundAddress);
     }
 
@@ -514,10 +596,9 @@ public class WalletManager {
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
         ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
 
-        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
         TransactionSignature signature = getPayoutSignature(payoutAmount, fundingTx,
                 arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
-                buyerPayoutAddress);
+                payoutAddress);
 
         return Base58.encode(signature.encodeToBitcoin());
     }
@@ -644,6 +725,78 @@ public class WalletManager {
         return payoutTx.getHash().toString();
     }
 
+    public String refundEscrow(Trade trade) throws InsufficientMoneyException {
+
+        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getPaymentRequest().getRefundAddress());
+
+        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        Transaction fundingTx = getEscrowTransaction(fundingTxHash);
+
+        if (fundingTxHash != null) {
+            String signature = getRefundSignature(trade, fundingTx, sellerRefundAddress);
+            Coin refundAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
+
+            ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
+            ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
+            ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+
+            TransactionSignature arbitratorSignature = TransactionSignature
+                    .decodeFromBitcoin(Base58.decode(signature), true, true);
+
+            TransactionSignature sellerSignature = TransactionSignature
+                    .decodeFromBitcoin(Base58.decode(trade.getPaymentRequest().getRefundTxSignature()), true, true);
+
+            Transaction refundTx = new Transaction(netParams);
+            refundTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
+
+            List<TransactionSignature> signatures = ImmutableList.of(arbitratorSignature, sellerSignature);
+
+            Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+            Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+
+            // add input to payout tx from single matching funding tx output
+            for (TransactionOutput txo : fundingTx.getOutputs()) {
+                Address outputAddress = txo.getAddressFromP2SH(netParams);
+                Coin outputAmount = refundAmount.plus(defaultTxFeeCoin());
+
+                // verify output from fundingTx exists and equals required payout amounts
+                if (outputAddress != null && outputAddress.equals(escrowAddress)
+                        && txo.getValue().equals(outputAmount)) {
+
+                    // post payout input and funding output with signed unlock script
+                    TransactionInput input = refundTx.addInput(txo);
+                    Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
+                    input.setScriptSig(signedUnlockScript);
+                    break;
+                }
+            }
+
+            // add output to payout tx
+            refundTx.addOutput(refundAmount, sellerRefundAddress);
+
+            LOG.debug("Validate inputs for refundTx: {}", refundTx.toString());
+            for (TransactionInput input : refundTx.getInputs()) {
+                LOG.debug("Validating input for refundTx: {}", input.toString());
+                try {
+                    input.verify(input.getConnectedOutput());
+                    LOG.debug("Input valid for refundTx: {}", input.toString());
+                } catch (VerificationException ve) {
+                    LOG.error("Input not valid for refundTx, {}", ve.getMessage());
+                } catch (NullPointerException npe) {
+                    LOG.error("Null connectedOutput for refundTx");
+                }
+            }
+
+            escrowWallet.commitTx(refundTx);
+            TransactionBroadcast bc = peerGroup.broadcastTransaction(refundTx);
+            return refundTx.getHash().toString();
+        } else {
+            // TODO reset blockchain and reload, then retry...
+            LOG.error("No funding tx found for refund tx.");
+            throw new RuntimeException("No funding tx found for refund tx.");
+        }
+    }
+
     public String sendCoins(SendRequest sendRequest) throws InsufficientMoneyException {
         Transaction tx = tradeWallet.sendCoins(sendRequest).tx;
         return tx.getHashAsString();
@@ -652,7 +805,7 @@ public class WalletManager {
     public void addWatchedEscrowAddress(String escrowAddress) {
         Context.propagate(btcContext);
         Address address = Address.fromBase58(getNetParams(), escrowAddress);
-        if (escrowWallet.addWatchedAddress(address, (DateTime.now().getMillis() / 1000) - 600)) {
+        if (escrowWallet.addWatchedAddress(address, (DateTime.now().getMillis() / 1000))) {
             LOG.debug("Added watched address: {}", address.toBase58());
         } else {
             LOG.warn("Failed to add watch address: {}", address.toBase58());

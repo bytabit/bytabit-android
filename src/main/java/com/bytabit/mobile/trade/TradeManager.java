@@ -231,7 +231,7 @@ public class TradeManager extends AbstractManager {
             // 2. create refund tx address and signature
 
             Address refundTxAddress = walletManager.getDepositAddress();
-            String refundTxSignature = walletManager.getRefundSignature(trade, refundTxAddress, fundingTx);
+            String refundTxSignature = walletManager.getRefundSignature(trade, fundingTx, refundTxAddress);
 
             // 3. create payment request
             String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer()
@@ -262,6 +262,9 @@ public class TradeManager extends AbstractManager {
                 Trade trade = getTrade(paymentRequest.getEscrowAddress());
 
                 if (trade != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
+
+                    // 1. buyer watch seller refund address
+                    walletManager.addWatchedEscrowAddress(paymentRequest.getRefundAddress());
 
                     // 2. write payment request to trade folder
                     writePaymentRequest(paymentRequest);
@@ -370,9 +373,10 @@ public class TradeManager extends AbstractManager {
         PayoutCompleted payoutCompleted = new PayoutCompleted();
         payoutCompleted.setEscrowAddress(selectedTrade.getEscrowAddress());
         payoutCompleted.setPayoutTxHash(payoutTxHash);
+        payoutCompleted.setReason(PayoutCompleted.Reason.SELLER_BUYER_PAYOUT);
 
         // 3. write payout details to trade folder
-        writePayoutCompleted(selectedTrade, payoutCompleted);
+        writePayoutCompleted(payoutCompleted);
 
         // 4. update trade
         selectedTrade.setPayoutCompleted(payoutCompleted);
@@ -384,8 +388,9 @@ public class TradeManager extends AbstractManager {
             LOG.error("Can't post payout completed to server.");
         }
 
-        // 6. remove watch on escrow address
+        // 6. remove watch on escrow and refund addresses
         walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
     }
 
     private String payoutEscrow(Trade trade) {
@@ -401,17 +406,16 @@ public class TradeManager extends AbstractManager {
         return payoutTx;
     }
 
-    public void writePayoutCompleted(Trade trade, PayoutCompleted payoutCompleted) {
+    public void writePayoutCompleted(PayoutCompleted payoutCompleted) {
 
-        String tradePath = tradesPath + trade.getEscrowAddress();
+        String tradePath = tradesPath + payoutCompleted.getEscrowAddress();
         String payoutCompletedPath = tradePath + File.separator + "payoutCompleted.json";
         try {
             FileWriter payoutCompletedWriter = new FileWriter(payoutCompletedPath);
             payoutCompletedWriter.write(JSON.std.asString(payoutCompleted));
             payoutCompletedWriter.flush();
 
-            LOG.debug("Created payoutCompleted: {}", payoutCompletedPath);
-            trade.setPayoutCompleted(payoutCompleted);
+            LOG.debug("Wrote payoutCompleted: {}", payoutCompletedPath);
 
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
@@ -425,18 +429,26 @@ public class TradeManager extends AbstractManager {
         // 1. confirm payout tx
         Trade trade = getTrade(payoutCompleted.getEscrowAddress());
         if (trade != null) {
-            TransactionWithAmt tx = walletManager.getTradeTransactionWithAmt(payoutCompleted.getPayoutTxHash());
+            String txHash = payoutCompleted.getPayoutTxHash();
+            String toAddress = trade.getBuyRequest().getBuyerPayoutAddress();
+            // if arbitrated refund to seller, verify outputs to refund address
+            if (payoutCompleted.getReason().equals(PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND)) {
+                toAddress = trade.getPaymentRequest().getRefundAddress();
+            }
+            TransactionWithAmt tx = walletManager.getTransactionWithAmt(txHash, toAddress);
             if (tx != null) {
                 if (tx.getBtcAmt().equals(trade.getBuyRequest().getBtcAmount())) {
 
                     // 2. write payout details to trade folder
-                    writePayoutCompleted(trade, payoutCompleted);
+                    writePayoutCompleted(payoutCompleted);
 
                     // 3. update trade
                     getTrade(trade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
 
-                    // 4. remove watch on escrow address
+                    // 4. remove watch on escrow and refund addresses
                     walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+                    walletManager.removeWatchedEscrowAddress(trade.getPaymentRequest().getRefundAddress());
+
                 } else {
                     LOG.error("Tx amount wrong for PayoutCompleted.");
                 }
@@ -456,7 +468,7 @@ public class TradeManager extends AbstractManager {
         if (trade != null) {
 
             // 2. write arbitrate request to trade folder
-            writeArbitrateRequest(trade, arbitrateRequest);
+            writeArbitrateRequest(arbitrateRequest);
 
             // 3. update trade
             trade.setArbitrateRequest(arbitrateRequest);
@@ -466,41 +478,22 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-    public void writeArbitrateRequest(Trade trade, ArbitrateRequest arbitrateRequest) {
+    public void writeArbitrateRequest(ArbitrateRequest arbitrateRequest) {
 
-        String tradePath = tradesPath + trade.getEscrowAddress();
+        String tradePath = tradesPath + arbitrateRequest.getEscrowAddress();
         String arbitrateRequestPath = tradePath + File.separator + "arbitrateRequest.json";
         try {
             FileWriter arbitrateRequestWriter = new FileWriter(arbitrateRequestPath);
             arbitrateRequestWriter.write(JSON.std.asString(arbitrateRequest));
             arbitrateRequestWriter.flush();
 
-            LOG.debug("Created arbitrateRequest: {}", arbitrateRequestPath);
+            LOG.debug("Wrote arbitrateRequest: {}", arbitrateRequestPath);
 
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
             throw new RuntimeException(ioe);
         }
     }
-
-
-//    private void addTrade(Trade trade) {
-//
-//        TradeRole role = getTradeRole(trade);
-//        Trade.Status status = trade.getStatus();
-//
-//        // Add or Remove Watched Escrow Address
-//        if (status != COMPLETED) {
-//            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
-//        } else {
-//            walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
-//        }
-//
-//        // Fund Escrow + Request Payment
-//        if (status == CREATED && role == SELLER) {
-//            fundEscrow(trade);
-//        }
-//    }
 
     private Trade getTrade(String escrowAddress) {
         Trade foundTrade = null;
@@ -613,7 +606,7 @@ public class TradeManager extends AbstractManager {
                     }
                 });
 
-        trades.filter(trade -> trade.getStatus().equals(PAID))
+        trades.filter(trade -> trade.getStatus().equals(PAID) || trade.getStatus().equals(ARBITRATING))
                 .map(trade -> payoutCompletedService.get(trade.getEscrowAddress()))
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
@@ -626,8 +619,7 @@ public class TradeManager extends AbstractManager {
                     }
                 });
 
-        trades.filter(trade -> trade.getStatus().equals(FUNDED) ||
-                trade.getStatus().equals(PAID))
+        trades.filter(trade -> trade.getStatus().equals(FUNDED) || trade.getStatus().equals(PAID))
                 .map(trade -> arbitrateRequestService.get(
                         trade.getSellOffer().getArbitratorProfilePubKey(),
                         trade.getEscrowAddress()))
@@ -723,18 +715,18 @@ public class TradeManager extends AbstractManager {
                     trade.setPayoutRequest(payoutRequest);
                 }
 
-                File payoutCompletedFile = new File(tradesPath + tradeId + File.separator + "payoutCompleted.json");
-                if (payoutCompletedFile.exists()) {
-                    FileReader payoutCompletedReader = new FileReader(payoutCompletedFile);
-                    PayoutCompleted payoutCompleted = JSON.std.beanFrom(PayoutCompleted.class, payoutCompletedReader);
-                    trade.setPayoutCompleted(payoutCompleted);
-                }
-
                 File arbitrateRequestFile = new File(tradesPath + tradeId + File.separator + "arbitrateRequest.json");
                 if (arbitrateRequestFile.exists()) {
                     FileReader arbitrateRequestReader = new FileReader(arbitrateRequestFile);
                     ArbitrateRequest arbitrateRequest = JSON.std.beanFrom(ArbitrateRequest.class, arbitrateRequestReader);
                     trade.setArbitrateRequest(arbitrateRequest);
+                }
+
+                File payoutCompletedFile = new File(tradesPath + tradeId + File.separator + "payoutCompleted.json");
+                if (payoutCompletedFile.exists()) {
+                    FileReader payoutCompletedReader = new FileReader(payoutCompletedFile);
+                    PayoutCompleted payoutCompleted = JSON.std.beanFrom(PayoutCompleted.class, payoutCompletedReader);
+                    trade.setPayoutCompleted(payoutCompleted);
                 }
 
                 tradesObservableList.add(trade);
@@ -800,7 +792,28 @@ public class TradeManager extends AbstractManager {
     // unhappy path
 
     private void receiveArbitratorTrades(List<Trade> trades) {
-        tradesObservableList.setAll(trades);
+        for (Trade trade : trades) {
+            if (!tradesObservableList.contains(trade)) {
+                writeTrade(trade);
+                if (trade.getPaymentRequest() != null) {
+                    writePaymentRequest(trade.getPaymentRequest());
+                }
+                if (trade.getPayoutRequest() != null) {
+                    writePayoutRequest(trade.getPayoutRequest());
+                }
+                if (trade.getPayoutCompleted() != null) {
+                    writePayoutCompleted(trade.getPayoutCompleted());
+                }
+                if (trade.getArbitrateRequest() != null) {
+                    writeArbitrateRequest(trade.getArbitrateRequest());
+                }
+                walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+
+                walletManager.resetBlockchain();
+
+                tradesObservableList.add(trade);
+            }
+        }
     }
 
     public void requestArbitrate() {
@@ -817,11 +830,50 @@ public class TradeManager extends AbstractManager {
         } catch (IOException e) {
             LOG.error("Can't post ArbitrateRequest to server.");
         }
-        writeArbitrateRequest(selectedTrade, arbitrateRequest);
+        writeArbitrateRequest(arbitrateRequest);
     }
 
     public void refundSeller() {
 
+        // 1. sign and broadcast refund tx
+        String refundTxHash = refundEscrow(selectedTrade);
+
+        // 2. confirm refund tx and create payout completed
+        PayoutCompleted payoutCompleted = new PayoutCompleted();
+        payoutCompleted.setEscrowAddress(selectedTrade.getEscrowAddress());
+        payoutCompleted.setPayoutTxHash(refundTxHash);
+        payoutCompleted.setReason(PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND);
+
+        // 3. write payout details to trade folder
+        writePayoutCompleted(payoutCompleted);
+
+        // 4. update trade
+        selectedTrade.setPayoutCompleted(payoutCompleted);
+
+        // 5. post payout completed
+        try {
+            payoutCompletedService.post(payoutCompleted.getEscrowAddress(), payoutCompleted).execute().body();
+        } catch (IOException e) {
+            LOG.error("Can't post payout completed to server.");
+        }
+
+        // 6. remove watch on escrow and refund addresses
+        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
+
+    }
+
+    private String refundEscrow(Trade trade) {
+
+        String refundTx = null;
+        try {
+            refundTx = walletManager.refundEscrow(trade);
+        } catch (InsufficientMoneyException e) {
+            // TODO notify user
+            LOG.error("Insufficient funds to refund escrow to seller.");
+        }
+
+        return refundTx;
     }
 
     public void payoutBuyer() {

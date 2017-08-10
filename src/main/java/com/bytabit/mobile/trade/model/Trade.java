@@ -28,8 +28,8 @@ public class Trade {
     private final ObjectProperty<BuyRequest> buyRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PaymentRequest> paymentRequest = new SimpleObjectProperty<>();
     private final ObjectProperty<PayoutRequest> payoutRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
     private final ObjectProperty<ArbitrateRequest> arbitrateRequest = new SimpleObjectProperty<>();
+    private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
 
     public Trade(SellOffer sellOffer, BuyRequest buyRequest, String escrowAddress) {
         this.sellOffer.set(sellOffer);
@@ -79,20 +79,21 @@ public class Trade {
         }
     }
 
-    public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
-        if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null && getPayoutRequest() != null
-                && payoutCompleted != null) {
-            this.payoutCompleted.set(payoutCompleted);
-            this.status.setValue(COMPLETED);
-        } 
-    }
-
     public void setArbitrateRequest(ArbitrateRequest arbitrateRequest) {
         if (getSellOffer() != null && getBuyRequest() != null
+                && getPaymentRequest() != null
                 && getPayoutCompleted() == null && arbitrateRequest != null) {
             this.arbitrateRequest.set(arbitrateRequest);
             this.status.setValue(ARBITRATING);
+        }
+    }
+
+    public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
+        if (getSellOffer() != null && getBuyRequest() != null
+                && getPaymentRequest() != null && (getPayoutRequest() != null || getArbitrateRequest() != null)
+                && payoutCompleted != null) {
+            this.payoutCompleted.set(payoutCompleted);
+            this.status.setValue(COMPLETED);
         }
     }
 
