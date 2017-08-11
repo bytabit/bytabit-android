@@ -1,6 +1,6 @@
 package com.bytabit.mobile.trade;
 
-import com.bytabit.mobile.offer.AddOfferPresenter;
+import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -20,7 +20,7 @@ import java.math.BigDecimal;
 
 public class TradeDetailsPresenter {
 
-    private static Logger LOG = LoggerFactory.getLogger(AddOfferPresenter.class);
+    private static Logger LOG = LoggerFactory.getLogger(TradeDetailsPresenter.class);
 
     @Inject
     private TradeManager tradeManager;
@@ -36,18 +36,6 @@ public class TradeDetailsPresenter {
 
     @FXML
     private Label tradeRoleLabel;
-
-    @FXML
-    private Label tradeEscrowAddressLabel;
-
-    @FXML
-    private Label sellerEscrowPubKeyLabel;
-
-    @FXML
-    private Label sellerProfilePubKeyLabel;
-
-    @FXML
-    private Label arbitratorProfilePubKeyLabel;
 
     @FXML
     private Label paymentCurrencyLabel;
@@ -127,6 +115,8 @@ public class TradeDetailsPresenter {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Trade Details");
+                appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
+                        MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DEV_INFO_VIEW)));
 
                 Trade trade = tradeManager.getSelectedTrade();
                 BigDecimal price = trade.getSellOffer().getPrice();
@@ -139,10 +129,6 @@ public class TradeDetailsPresenter {
                 //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
                 tradeStatusLabel.textProperty().setValue(trade.statusProperty().toString());
                 tradeRoleLabel.textProperty().setValue(tradeRole.toString());
-                tradeEscrowAddressLabel.textProperty().setValue(trade.getEscrowAddress());
-                sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerEscrowPubKey());
-                sellerProfilePubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerProfilePubKey());
-                arbitratorProfilePubKeyLabel.textProperty().setValue(trade.getSellOffer().getArbitratorProfilePubKey());
                 paymentCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
                 paymentMethodLabel.textProperty().setValue(trade.getSellOffer().getPaymentMethod().displayName());
                 paymentAmountLabel.textProperty().setValue(paymentAmount.toPlainString());
