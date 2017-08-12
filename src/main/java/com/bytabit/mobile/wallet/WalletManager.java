@@ -673,7 +673,7 @@ public class WalletManager {
 
         Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
 
-        TransactionSignature sellerSignature = TransactionSignature
+        TransactionSignature arbitratorOrSellerSignature = TransactionSignature
                 .decodeFromBitcoin(Base58.decode(signature), true, true);
 
         TransactionSignature buyerSignature = TransactionSignature
@@ -682,7 +682,7 @@ public class WalletManager {
         Transaction payoutTx = new Transaction(netParams);
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
 
-        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
+        List<TransactionSignature> signatures = ImmutableList.of(arbitratorOrSellerSignature, buyerSignature);
 
         Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
         Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);

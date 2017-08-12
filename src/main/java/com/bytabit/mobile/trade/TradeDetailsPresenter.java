@@ -191,15 +191,16 @@ public class TradeDetailsPresenter {
                     }
                     arbitrateReasonLabel.textProperty().setValue(trade.getArbitrateRequest().getReason().toString());
                     arbitrateReasonLabel.visibleProperty().setValue(true);
-                    //if (tradeRole == Trade.Role.BUYER && trade.getArbitrateRequest().getReason().equals(ArbitrateRequest.Reason.NO_PAYMENT)) {
-                    //paymentSentButton.visibleProperty().setValue(true);
-                    //paymentReferenceField.visibleProperty().setValue(true);
-//                    } else if (tradeRole == Trade.Role.SELLER && trade.getArbitrateRequest().getReason().equals(ArbitrateRequest.Reason.NO_BTC)) {
-//                        paymentReceivedButton.visibleProperty().setValue(true);
-//                    } else
-                    if (tradeRole == Trade.Role.ARBITRATOR) {
+                    if (tradeRole == Trade.Role.BUYER && trade.getPayoutRequest() == null) {
+                        paymentSentButton.visibleProperty().setValue(true);
+                        paymentReferenceField.visibleProperty().setValue(true);
+                    } else if (tradeRole == Trade.Role.SELLER) {
+                        paymentReceivedButton.visibleProperty().setValue(true);
+                    } else if (tradeRole == Trade.Role.ARBITRATOR) {
                         refundSellerButton.visibleProperty().setValue(true);
-                        payoutBuyerButton.visibleProperty().setValue(true);
+                        if (trade.getPayoutRequest() != null) {
+                            payoutBuyerButton.visibleProperty().setValue(true);
+                        }
                     }
                 }
             }
@@ -227,7 +228,7 @@ public class TradeDetailsPresenter {
 
         payoutBuyerButton.setOnAction(e -> {
             LOG.debug("payoutBuyerButton pressed");
-            tradeManager.payoutBuyer();
+            tradeManager.arbitratorConfirmsPaymentReceived();
         });
     }
 }

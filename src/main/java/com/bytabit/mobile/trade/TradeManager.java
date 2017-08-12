@@ -876,7 +876,33 @@ public class TradeManager extends AbstractManager {
         return refundTx;
     }
 
-    public void payoutBuyer() {
+    // arbitrator payout escrow to buyer and write payout details
+    public void arbitratorConfirmsPaymentReceived() {
 
+        // 1. sign and broadcast payout tx
+        String payoutTxHash = payoutEscrow(selectedTrade);
+
+        // 2. confirm payout tx and create payout completed
+        PayoutCompleted payoutCompleted = new PayoutCompleted();
+        payoutCompleted.setEscrowAddress(selectedTrade.getEscrowAddress());
+        payoutCompleted.setPayoutTxHash(payoutTxHash);
+        payoutCompleted.setReason(PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT);
+
+        // 3. write payout details to trade folder
+        writePayoutCompleted(payoutCompleted);
+
+        // 4. update trade
+        selectedTrade.setPayoutCompleted(payoutCompleted);
+
+        // 5. post payout completed
+        try {
+            payoutCompletedService.post(payoutCompleted.getEscrowAddress(), payoutCompleted).execute().body();
+        } catch (IOException e) {
+            LOG.error("Can't post payout completed to server.");
+        }
+
+        // 6. remove watch on escrow and refund addresses
+        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
     }
 }
