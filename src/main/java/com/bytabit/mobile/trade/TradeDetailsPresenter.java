@@ -53,6 +53,9 @@ public class TradeDetailsPresenter {
     private Label arbitrateReasonLabel;
 
     @FXML
+    private Label payoutReasonLabel;
+
+    @FXML
     private Label paymentAmountLabel;
 
     @FXML
@@ -139,6 +142,7 @@ public class TradeDetailsPresenter {
                 paymentDetailsLabel.textProperty().setValue(null);
                 paymentReferenceLabel.textProperty().setValue(null);
                 arbitrateReasonLabel.textProperty().setValue(null);
+                payoutReasonLabel.textProperty().setValue(null);
                 tradeStatusLabel.textProperty().setValue(trade.getStatus().toString());
 
                 if (trade.getStatus().equals(Trade.Status.FUNDED)) {
@@ -174,6 +178,9 @@ public class TradeDetailsPresenter {
                     }
                     if (trade.getArbitrateRequest() != null) {
                         arbitrateReasonLabel.textProperty().setValue(trade.getArbitrateRequest().getReason().toString());
+                    }
+                    if (trade.getPayoutCompleted() != null) {
+                        payoutReasonLabel.textProperty().setValue(trade.getPayoutCompleted().getReason().toString());
                     }
                     if (tradeRole == Trade.Role.BUYER) {
                         paymentReceivedButton.visibleProperty().setValue(false);
