@@ -90,7 +90,7 @@ public class Trade {
 
     public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
         if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null && (getPayoutRequest() != null || getArbitrateRequest() != null)
+                && getPaymentRequest() != null
                 && payoutCompleted != null) {
             this.payoutCompleted.set(payoutCompleted);
             this.status.setValue(COMPLETED);

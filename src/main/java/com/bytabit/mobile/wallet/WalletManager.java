@@ -608,7 +608,7 @@ public class WalletManager {
                                                     ECKey arbitratorProfilePubKey,
                                                     ECKey sellerEscrowPubKey,
                                                     ECKey buyerEscrowPubKey,
-                                                    Address buyerPayoutAddress) {
+                                                    Address payoutAddress) {
 
         Transaction payoutTx = new Transaction(netParams);
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
@@ -634,7 +634,7 @@ public class WalletManager {
         }
 
         // add output to payout tx
-        payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
+        payoutTx.addOutput(payoutAmount, payoutAddress);
 
         // find signing key
         ECKey escrowKey = tradeWallet.findKeyFromPubKey(buyerEscrowPubKey.getPubKey());
@@ -649,7 +649,7 @@ public class WalletManager {
             Sha256Hash unlockSigHash = payoutTx.hashForSignature(0, redeemScript, Transaction.SigHash.ALL, false);
             return new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false);
         } else {
-            throw new RuntimeException("Can post payout signature, no signing key found.");
+            throw new RuntimeException("Can not create payout signature, no signing key found.");
         }
     }
 
@@ -659,112 +659,96 @@ public class WalletManager {
         return ScriptBuilder.createMultiSigOutputScript(2, ImmutableList.of(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
     }
 
-    public String payoutEscrow(Trade trade) throws InsufficientMoneyException {
-
-        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
-        Transaction fundingTx = getEscrowTransaction(fundingTxHash);
-        String signature = getPayoutSignature(trade, fundingTx);
-
-        Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
-
-        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
-        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
-        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+    public String payoutEscrowToBuyer(Trade trade) throws InsufficientMoneyException {
 
         Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
 
-        TransactionSignature arbitratorOrSellerSignature = TransactionSignature
+        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        Transaction fundingTx = getEscrowTransaction(fundingTxHash);
+
+        String signature = getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
+
+        TransactionSignature sellerSignature = TransactionSignature
                 .decodeFromBitcoin(Base58.decode(signature), true, true);
 
         TransactionSignature buyerSignature = TransactionSignature
                 .decodeFromBitcoin(Base58.decode(trade.getPayoutRequest().getPayoutTxSignature()), true, true);
 
-        Transaction payoutTx = new Transaction(netParams);
-        payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
+        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
 
-        List<TransactionSignature> signatures = ImmutableList.of(arbitratorOrSellerSignature, buyerSignature);
-
-        Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
-        Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
-
-        // add input to payout tx from single matching funding tx output
-        for (TransactionOutput txo : fundingTx.getOutputs()) {
-            Address outputAddress = txo.getAddressFromP2SH(netParams);
-            Coin outputAmount = payoutAmount.plus(defaultTxFeeCoin());
-
-            // verify output from fundingTx exists and equals required payout amounts
-            if (outputAddress != null && outputAddress.equals(escrowAddress)
-                    && txo.getValue().equals(outputAmount)) {
-
-                // post payout input and funding output with signed unlock script
-                TransactionInput input = payoutTx.addInput(txo);
-                Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
-                input.setScriptSig(signedUnlockScript);
-                break;
-            }
-        }
-
-        // add output to payout tx
-        payoutTx.addOutput(payoutAmount, buyerPayoutAddress);
-
-        LOG.debug("Validate inputs for payoutTx: {}", payoutTx.toString());
-        for (TransactionInput input : payoutTx.getInputs()) {
-            LOG.debug("Validating input for payoutTx: {}", input.toString());
-            try {
-                input.verify(input.getConnectedOutput());
-                LOG.debug("Input valid for payoutTx: {}", input.toString());
-            } catch (VerificationException ve) {
-                LOG.error("Input not valid for payoutTx, {}", ve.getMessage());
-            } catch (NullPointerException npe) {
-                LOG.error("Null connectedOutput for payoutTx");
-            }
-        }
-
-        escrowWallet.commitTx(payoutTx);
-        TransactionBroadcast bc = peerGroup.broadcastTransaction(payoutTx);
-        return payoutTx.getHash().toString();
+        return payoutEscrow(trade, buyerPayoutAddress, signatures);
     }
 
-    public String refundEscrow(Trade trade) throws InsufficientMoneyException {
+    public String refundEscrowToSeller(Trade trade) throws InsufficientMoneyException {
 
         Address sellerRefundAddress = Address.fromBase58(netParams, trade.getPaymentRequest().getRefundAddress());
 
         String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
         Transaction fundingTx = getEscrowTransaction(fundingTxHash);
 
-        if (fundingTxHash != null) {
-            String signature = getRefundSignature(trade, fundingTx, sellerRefundAddress);
-            Coin refundAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
+        String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
+
+        TransactionSignature arbitratorSignature = TransactionSignature
+                .decodeFromBitcoin(Base58.decode(signature), true, true);
+
+        TransactionSignature sellerSignature = TransactionSignature
+                .decodeFromBitcoin(Base58.decode(trade.getPaymentRequest().getRefundTxSignature()), true, true);
+
+        List<TransactionSignature> signatures = ImmutableList.of(arbitratorSignature, sellerSignature);
+
+        return payoutEscrow(trade, sellerRefundAddress, signatures);
+    }
+
+    public String cancelEscrowToSeller(Trade trade) throws InsufficientMoneyException {
+
+        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getPaymentRequest().getRefundAddress());
+
+        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        Transaction fundingTx = getEscrowTransaction(fundingTxHash);
+
+        String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
+
+        TransactionSignature sellerSignature = TransactionSignature
+                .decodeFromBitcoin(Base58.decode(trade.getPaymentRequest().getRefundTxSignature()), true, true);
+
+        TransactionSignature buyerSignature = TransactionSignature
+                .decodeFromBitcoin(Base58.decode(signature), true, true);
+
+        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
+
+        return payoutEscrow(trade, sellerRefundAddress, signatures);
+    }
+
+    private String payoutEscrow(Trade trade, Address payoutAddress,
+                                List<TransactionSignature> signatures) {
+
+        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        Transaction fundingTx = getEscrowTransaction(fundingTxHash);
+
+        if (fundingTx != null) {
+
+            Transaction payoutTx = new Transaction(netParams);
+            payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
+            Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
 
             ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
             ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
             ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
 
-            TransactionSignature arbitratorSignature = TransactionSignature
-                    .decodeFromBitcoin(Base58.decode(signature), true, true);
-
-            TransactionSignature sellerSignature = TransactionSignature
-                    .decodeFromBitcoin(Base58.decode(trade.getPaymentRequest().getRefundTxSignature()), true, true);
-
-            Transaction refundTx = new Transaction(netParams);
-            refundTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
-
-            List<TransactionSignature> signatures = ImmutableList.of(arbitratorSignature, sellerSignature);
-
-            Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
             Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+            Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
 
             // add input to payout tx from single matching funding tx output
             for (TransactionOutput txo : fundingTx.getOutputs()) {
                 Address outputAddress = txo.getAddressFromP2SH(netParams);
-                Coin outputAmount = refundAmount.plus(defaultTxFeeCoin());
+                Coin outputAmount = payoutAmount.plus(defaultTxFeeCoin());
 
                 // verify output from fundingTx exists and equals required payout amounts
                 if (outputAddress != null && outputAddress.equals(escrowAddress)
                         && txo.getValue().equals(outputAmount)) {
 
                     // post payout input and funding output with signed unlock script
-                    TransactionInput input = refundTx.addInput(txo);
+                    TransactionInput input = payoutTx.addInput(txo);
                     Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
                     input.setScriptSig(signedUnlockScript);
                     break;
@@ -772,28 +756,28 @@ public class WalletManager {
             }
 
             // add output to payout tx
-            refundTx.addOutput(refundAmount, sellerRefundAddress);
+            payoutTx.addOutput(payoutAmount, payoutAddress);
 
-            LOG.debug("Validate inputs for refundTx: {}", refundTx.toString());
-            for (TransactionInput input : refundTx.getInputs()) {
-                LOG.debug("Validating input for refundTx: {}", input.toString());
+            LOG.debug("Validate inputs for payoutTx: {}", payoutTx.toString());
+            for (TransactionInput input : payoutTx.getInputs()) {
+                LOG.debug("Validating input for payoutTx: {}", input.toString());
                 try {
                     input.verify(input.getConnectedOutput());
-                    LOG.debug("Input valid for refundTx: {}", input.toString());
+                    LOG.debug("Input valid for payoutTx: {}", input.toString());
                 } catch (VerificationException ve) {
-                    LOG.error("Input not valid for refundTx, {}", ve.getMessage());
+                    LOG.error("Input not valid for payoutTx, {}", ve.getMessage());
                 } catch (NullPointerException npe) {
-                    LOG.error("Null connectedOutput for refundTx");
+                    LOG.error("Null connectedOutput for payoutTx");
                 }
             }
 
-            escrowWallet.commitTx(refundTx);
-            TransactionBroadcast bc = peerGroup.broadcastTransaction(refundTx);
-            return refundTx.getHash().toString();
+            escrowWallet.commitTx(payoutTx);
+            peerGroup.broadcastTransaction(payoutTx);
+            return payoutTx.getHash().toString();
         } else {
             // TODO reset blockchain and reload, then retry...
-            LOG.error("No funding tx found for refund tx.");
-            throw new RuntimeException("No funding tx found for refund tx.");
+            LOG.error("No funding tx found for payout tx.");
+            throw new RuntimeException("No funding tx found for payout tx.");
         }
     }
 

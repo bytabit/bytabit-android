@@ -34,6 +34,8 @@ import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
+import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
+import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
 public class TradeManager extends AbstractManager {
@@ -123,7 +125,7 @@ public class TradeManager extends AbstractManager {
 
         if (!tradesObservableList.contains(trade)) {
 
-            // 3. watch trade escrow address
+            // 3. watch trade escrow address and buyerPayoutAddress (in case of arbitrated payout)
             walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
 
             // 4. write trade
@@ -155,6 +157,7 @@ public class TradeManager extends AbstractManager {
 
             // 2. watch trade escrow address
             walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+            walletManager.addWatchedEscrowAddress(trade.getBuyRequest().getBuyerPayoutAddress());
 
             // 3. write sell offer + buy request to trade folder
             writeTrade(trade);
@@ -391,13 +394,14 @@ public class TradeManager extends AbstractManager {
         // 6. remove watch on escrow and refund addresses
         walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
         walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
+        walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
 
     private String payoutEscrow(Trade trade) {
 
         String payoutTx = null;
         try {
-            payoutTx = walletManager.payoutEscrow(trade);
+            payoutTx = walletManager.payoutEscrowToBuyer(trade);
         } catch (InsufficientMoneyException e) {
             // TODO notify user
             LOG.error("Insufficient funds to payout escrow to buyer.");
@@ -432,7 +436,8 @@ public class TradeManager extends AbstractManager {
             String txHash = payoutCompleted.getPayoutTxHash();
             String toAddress = trade.getBuyRequest().getBuyerPayoutAddress();
             // if arbitrated refund to seller, verify outputs to refund address
-            if (payoutCompleted.getReason().equals(PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND)) {
+            if (payoutCompleted.getReason().equals(ARBITRATOR_SELLER_REFUND) ||
+                    payoutCompleted.getReason().equals(BUYER_SELLER_REFUND)) {
                 toAddress = trade.getPaymentRequest().getRefundAddress();
             }
             TransactionWithAmt tx = walletManager.getTransactionWithAmt(txHash, toAddress);
@@ -448,6 +453,7 @@ public class TradeManager extends AbstractManager {
                     // 4. remove watch on escrow and refund addresses
                     walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
                     walletManager.removeWatchedEscrowAddress(trade.getPaymentRequest().getRefundAddress());
+                    walletManager.removeWatchedEscrowAddress(trade.getBuyRequest().getBuyerPayoutAddress());
 
                 } else {
                     LOG.error("Tx amount wrong for PayoutCompleted.");
@@ -606,7 +612,7 @@ public class TradeManager extends AbstractManager {
                     }
                 });
 
-        trades.filter(trade -> trade.getStatus().equals(PAID) || trade.getStatus().equals(ARBITRATING))
+        trades.filter(trade -> trade.getStatus().equals(FUNDED) || trade.getStatus().equals(PAID) || trade.getStatus().equals(ARBITRATING))
                 .map(trade -> payoutCompletedService.get(trade.getEscrowAddress()))
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
@@ -833,16 +839,21 @@ public class TradeManager extends AbstractManager {
         writeArbitrateRequest(arbitrateRequest);
     }
 
-    public void refundSeller() {
+    public void refundSeller(PayoutCompleted.Reason reason) {
 
         // 1. sign and broadcast refund tx
-        String refundTxHash = refundEscrow(selectedTrade);
+        String refundTxHash;
+        if (reason.equals(ARBITRATOR_SELLER_REFUND)) {
+            refundTxHash = refundEscrow(selectedTrade);
+        } else {
+            refundTxHash = cancelEscrow(selectedTrade);
+        }
 
         // 2. confirm refund tx and create payout completed
         PayoutCompleted payoutCompleted = new PayoutCompleted();
         payoutCompleted.setEscrowAddress(selectedTrade.getEscrowAddress());
         payoutCompleted.setPayoutTxHash(refundTxHash);
-        payoutCompleted.setReason(PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND);
+        payoutCompleted.setReason(reason);
 
         // 3. write payout details to trade folder
         writePayoutCompleted(payoutCompleted);
@@ -860,17 +871,30 @@ public class TradeManager extends AbstractManager {
         // 6. remove watch on escrow and refund addresses
         walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
         walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
-
+        walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
 
     private String refundEscrow(Trade trade) {
 
         String refundTx = null;
         try {
-            refundTx = walletManager.refundEscrow(trade);
+            refundTx = walletManager.refundEscrowToSeller(trade);
         } catch (InsufficientMoneyException e) {
             // TODO notify user
             LOG.error("Insufficient funds to refund escrow to seller.");
+        }
+
+        return refundTx;
+    }
+
+    private String cancelEscrow(Trade trade) {
+
+        String refundTx = null;
+        try {
+            refundTx = walletManager.cancelEscrowToSeller(trade);
+        } catch (InsufficientMoneyException e) {
+            // TODO notify user
+            LOG.error("Insufficient funds to cancel escrow to seller.");
         }
 
         return refundTx;
@@ -904,5 +928,6 @@ public class TradeManager extends AbstractManager {
         // 6. remove watch on escrow and refund addresses
         walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
         walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
+        walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
 }

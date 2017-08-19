@@ -2,6 +2,7 @@ package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -116,13 +117,15 @@ public class TradeDetailsPresenter {
         tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             // remove unusable buttons and disable all usable buttons
+            paymentReferenceField.setDisable(true);
+            paymentReferenceField.setEditable(false);
+
             if (profileManager.profile().isIsArbitrator()) {
                 actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
                 refundSellerButton.setDisable(true);
                 payoutBuyerButton.setDisable(true);
             } else {
                 actionButtonsVBox.getChildren().remove(arbitrateButtonsFlowPane);
-                paymentReferenceField.setEditable(false);
                 paymentSentButton.setDisable(true);
                 paymentReceivedButton.setDisable(true);
                 cancelButton.setDisable(true);
@@ -162,6 +165,7 @@ public class TradeDetailsPresenter {
                 if (trade.getStatus().equals(Trade.Status.FUNDED)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
                     if (tradeRole == Trade.Role.BUYER) {
+                        paymentReferenceField.setDisable(false);
                         paymentReferenceField.setEditable(true);
                         paymentSentButton.setDisable(false);
                         cancelButton.setDisable(false);
@@ -206,7 +210,12 @@ public class TradeDetailsPresenter {
 
         paymentSentButton.setOnAction(e -> {
             LOG.debug("paymentSentButton pressed");
-            tradeManager.requestPayout(paymentReferenceField.getText());
+            if (paymentReferenceField.getText() != null && !paymentReferenceField.getText().isEmpty()) {
+                tradeManager.requestPayout(paymentReferenceField.getText());
+            } else {
+                LOG.debug("No payment reference provided, skipped requestPayout.");
+                // TODO notify user and/or don't enable paymentSentButton unless payment reference given
+            }
         });
 
         paymentReceivedButton.setOnAction(e -> {
@@ -221,12 +230,17 @@ public class TradeDetailsPresenter {
 
         refundSellerButton.setOnAction(e -> {
             LOG.debug("refundSellerButton pressed");
-            tradeManager.refundSeller();
+            tradeManager.refundSeller(PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND);
         });
 
         payoutBuyerButton.setOnAction(e -> {
             LOG.debug("payoutBuyerButton pressed");
             tradeManager.arbitratorConfirmsPaymentReceived();
+        });
+
+        cancelButton.setOnAction(e -> {
+            LOG.debug("cancelButton pressed");
+            tradeManager.refundSeller(PayoutCompleted.Reason.BUYER_SELLER_REFUND);
         });
     }
 }

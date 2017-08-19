@@ -7,7 +7,7 @@ import javafx.beans.property.StringProperty;
 public class PayoutCompleted {
 
     public enum Reason {
-        SELLER_BUYER_PAYOUT, ARBITRATOR_SELLER_REFUND, ARBITRATOR_BUYER_PAYOUT
+        SELLER_BUYER_PAYOUT, ARBITRATOR_SELLER_REFUND, ARBITRATOR_BUYER_PAYOUT, BUYER_SELLER_REFUND
     }
 
     public PayoutCompleted() {
