@@ -78,8 +78,10 @@ public class WalletPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
                         MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
                 appBar.setTitleText("Wallet");
-                appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
-                        System.out.println("Search")));
+                appBar.getActionItems().add(MaterialDesignIcon.RESTORE.button(e ->
+                        MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
+                appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
+                        MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
             }
 
         });

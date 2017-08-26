@@ -13,6 +13,7 @@ import com.bytabit.mobile.trade.TradeDetailsView;
 import com.bytabit.mobile.trade.TradeDevInfoView;
 import com.bytabit.mobile.trade.TradesView;
 import com.bytabit.mobile.wallet.DepositView;
+import com.bytabit.mobile.wallet.WalletBackupView;
 import com.bytabit.mobile.wallet.WalletView;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.layout.layer.SidePopupView;
@@ -34,6 +35,7 @@ public class BytabitMobile extends MobileApplication {
     private static Logger LOG = LoggerFactory.getLogger(BytabitMobile.class);
 
     final public static String WALLET_VIEW = "Wallet";
+    final public static String WALLET_BACKUP_VIEW = "WalletBackup";
     final public static String DEPOSIT_VIEW = "Deposit";
 
     final public static String OFFER_VIEW = HOME_VIEW;
@@ -68,6 +70,7 @@ public class BytabitMobile extends MobileApplication {
         addViewFactory(TRADE_DEV_INFO_VIEW, () -> (View) new TradeDevInfoView().getView());
 
         addViewFactory(WALLET_VIEW, () -> (View) new WalletView().getView());
+        addViewFactory(WALLET_BACKUP_VIEW, () -> (View) new WalletBackupView().getView());
         addViewFactory(DEPOSIT_VIEW, () -> (View) new DepositView().getView());
 
         addViewFactory(PAYMENT_VIEW, () -> (View) new PaymentsView().getView());

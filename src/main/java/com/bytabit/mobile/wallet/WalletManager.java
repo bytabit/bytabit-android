@@ -7,6 +7,7 @@ import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -339,6 +340,52 @@ public class WalletManager {
         wallet.autosaveToFile(walletFile, 10, TimeUnit.SECONDS, null);
         return wallet;
     }
+
+//    private Wallet createOrLoadMultiSigWallet(String walletFileName, File blockStoreFile) {
+//
+//        final File walletFile = new File(AppConfig.getPrivateStorage(), walletFileName);
+//        final File walletBackupFile = new File(AppConfig.getPrivateStorage(), walletFileName + BACKUP_EXT);
+//
+//        Wallet wallet;
+//        if (walletFile.exists()) {
+//            try {
+//                wallet = loadWallet(walletFile);
+//            } catch (FileNotFoundException | UnreadableWalletException e) {
+//                try {
+//                    wallet = loadWallet(walletBackupFile);
+//                    // have to remove blockstore file so wallet will be reloaded
+//                    if (blockStoreFile.exists()) {
+//                        LOG.debug("Removed blockstore file: {}", blockStoreFile.getName());
+//                        blockStoreFile.delete();
+//                    }
+//                } catch (FileNotFoundException | UnreadableWalletException e1) {
+//                    LOG.error("Unable to load backup wallet: {}", walletBackupFile.getName());
+//                    throw new RuntimeException(e1);
+//                }
+//            }
+//        } else {
+//            // create new wallet
+//            // wallet = new Wallet(netParams);
+//            // save new wallet
+//            // saveWallet(wallet, walletFile);
+//            // backup backup new wallet
+//            // backupWallet(wallet, walletBackupFile);
+//            wallet.getWatchingKey()
+//            DeterministicKey followingKey1 =
+//                    DeterministicKey.deserializeB58("tpubSuppliedByThirdParty1", params);
+//            DeterministicKey followingKey2 =
+//                    DeterministicKey.deserializeB58("tpubSuppliedByThirdParty2", params);
+//
+//            MarriedKeyChain chain = MarriedKeyChain.builder()
+//                    .random(new SecureRandom())
+//                    .followingKeys(followingKey1, followingKey2)
+//                    .threshold(2).build();
+//            wallet.addAndActivateHDChain(chain);
+//        }
+//
+//        wallet.autosaveToFile(walletFile, 10, TimeUnit.SECONDS, null);
+//        return wallet;
+//    }
 
     private Wallet loadWallet(File walletFile) throws FileNotFoundException, UnreadableWalletException {
 
@@ -804,5 +851,17 @@ public class WalletManager {
         } else {
             LOG.warn("Failed to remove watched address: {}", address.toBase58());
         }
+    }
+
+    public String getSeedWords() {
+        return Joiner.on(" ").join(tradeWallet.getKeyChainSeed().getMnemonicCode());
+    }
+
+    public String getXprvKey() {
+        return tradeWallet.getWatchingKey().serializePrivB58(netParams);
+    }
+
+    public String getXpubKey() {
+        return tradeWallet.getWatchingKey().serializePubB58(netParams);
     }
 }
