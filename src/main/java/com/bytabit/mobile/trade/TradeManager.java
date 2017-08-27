@@ -64,7 +64,7 @@ public class TradeManager extends AbstractManager {
 
     private Trade selectedTrade;
 
-    private String tradesPath = AppConfig.getPrivateStorage().getPath() + File.separator +
+    public final static String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
     public TradeManager() {
@@ -126,7 +126,7 @@ public class TradeManager extends AbstractManager {
         if (!tradesObservableList.contains(trade)) {
 
             // 3. watch trade escrow address and buyerPayoutAddress (in case of arbitrated payout)
-            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+            walletManager.createEscrowWallet(trade.getEscrowAddress());
 
             // 4. write trade
             writeTrade(trade);
@@ -156,8 +156,8 @@ public class TradeManager extends AbstractManager {
         if (!tradesObservableList.contains(trade)) {
 
             // 2. watch trade escrow address
-            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
-            walletManager.addWatchedEscrowAddress(trade.getBuyRequest().getBuyerPayoutAddress());
+            walletManager.createEscrowWallet(trade.getEscrowAddress());
+            //walletManager.createEscrowWallet(trade.getBuyRequest().getBuyerPayoutAddress());
 
             // 3. write sell offer + buy request to trade folder
             writeTrade(trade);
@@ -201,16 +201,20 @@ public class TradeManager extends AbstractManager {
     private void writeTrade(Trade trade) {
 
         try {
-            String tradePath = tradesPath + trade.getEscrowAddress();
+            String tradePath = TRADES_PATH + trade.getEscrowAddress();
             File tradeDir = new File(tradePath);
+            String sellOfferPath = tradePath + File.separator + "sellOffer.json";
+            String buyRequestPath = tradePath + File.separator + "buyRequest.json";
+            File sellOfferFile = new File(sellOfferPath);
+            File buyRequestFile = new File(buyRequestPath);
 
             if (!tradeDir.exists()) {
                 tradeDir.mkdirs();
-                String sellOfferPath = tradePath + File.separator + "sellOffer.json";
+            }
+            if (!sellOfferFile.exists() && !buyRequestFile.exists()) {
                 FileWriter sellOfferFileWriter = new FileWriter(sellOfferPath);
                 sellOfferFileWriter.write(JSON.std.asString(trade.getSellOffer()));
                 sellOfferFileWriter.flush();
-                String buyRequestPath = tradePath + File.separator + "buyRequest.json";
                 FileWriter buyRequestFileWriter = new FileWriter(buyRequestPath);
                 buyRequestFileWriter.write(JSON.std.asString(trade.getBuyRequest()));
                 buyRequestFileWriter.flush();
@@ -260,14 +264,14 @@ public class TradeManager extends AbstractManager {
 
         if (paymentRequest != null) {
             // 1. buyer confirm funding tx
-            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(paymentRequest.getFundingTxHash());
+            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(paymentRequest.getEscrowAddress(), paymentRequest.getFundingTxHash());
             if (tx != null) {
                 Trade trade = getTrade(paymentRequest.getEscrowAddress());
 
                 if (trade != null && trade.getBuyRequest().getBtcAmount().add(walletManager.defaultTxFee()).equals(tx.getBtcAmt())) {
 
                     // 1. buyer watch seller refund address
-                    walletManager.addWatchedEscrowAddress(paymentRequest.getRefundAddress());
+                    //walletManager.createEscrowWallet(paymentRequest.getRefundAddress());
 
                     // 2. write payment request to trade folder
                     writePaymentRequest(paymentRequest);
@@ -285,7 +289,7 @@ public class TradeManager extends AbstractManager {
 
     private PaymentRequest writePaymentRequest(Trade trade, PaymentRequest paymentRequest) {
 
-        String tradePath = tradesPath + trade.getEscrowAddress();
+        String tradePath = TRADES_PATH + trade.getEscrowAddress();
         String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
         try {
             FileWriter paymentRequestWriter = new FileWriter(paymentRequestPath);
@@ -311,7 +315,7 @@ public class TradeManager extends AbstractManager {
         payoutRequest.setPaymentReference(paymentReference);
 
         String fundingTxHash = selectedTrade.getPaymentRequest().getFundingTxHash();
-        Transaction fundingTx = walletManager.getEscrowTransaction(fundingTxHash);
+        Transaction fundingTx = walletManager.getEscrowTransaction(selectedTrade.getEscrowAddress(), fundingTxHash);
         if (fundingTx != null) {
             String payoutSignature = walletManager.getPayoutSignature(selectedTrade, fundingTx);
             payoutRequest.setPayoutTxSignature(payoutSignature);
@@ -350,7 +354,7 @@ public class TradeManager extends AbstractManager {
     }
 
     private void writePayoutRequest(PayoutRequest payoutRequest) {
-        String tradePath = tradesPath + payoutRequest.getEscrowAddress();
+        String tradePath = TRADES_PATH + payoutRequest.getEscrowAddress();
         String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
         try {
             FileWriter payoutRequestWriter = new FileWriter(payoutRequestPath);
@@ -392,9 +396,9 @@ public class TradeManager extends AbstractManager {
         }
 
         // 6. remove watch on escrow and refund addresses
-        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
-        walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
-        walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
+        //walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        //walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
+        //walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
 
     private String payoutEscrow(Trade trade) {
@@ -412,7 +416,7 @@ public class TradeManager extends AbstractManager {
 
     public void writePayoutCompleted(PayoutCompleted payoutCompleted) {
 
-        String tradePath = tradesPath + payoutCompleted.getEscrowAddress();
+        String tradePath = TRADES_PATH + payoutCompleted.getEscrowAddress();
         String payoutCompletedPath = tradePath + File.separator + "payoutCompleted.json";
         try {
             FileWriter payoutCompletedWriter = new FileWriter(payoutCompletedPath);
@@ -440,21 +444,24 @@ public class TradeManager extends AbstractManager {
                     payoutCompleted.getReason().equals(BUYER_SELLER_REFUND)) {
                 toAddress = trade.getPaymentRequest().getRefundAddress();
             }
-            TransactionWithAmt tx = walletManager.getTransactionWithAmt(txHash, toAddress);
+            TransactionWithAmt tx = walletManager.getTransactionWithAmt(trade.getEscrowAddress(), txHash, toAddress);
             if (tx != null) {
                 if (tx.getBtcAmt().equals(trade.getBuyRequest().getBtcAmount())) {
+                    if (tx.getDepth() > 0) {
 
-                    // 2. write payout details to trade folder
-                    writePayoutCompleted(payoutCompleted);
+                        // 2. write payout details to trade folder
+                        writePayoutCompleted(payoutCompleted);
 
-                    // 3. update trade
-                    getTrade(trade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
+                        // 3. update trade
+                        getTrade(trade.getEscrowAddress()).setPayoutCompleted(payoutCompleted);
 
-                    // 4. remove watch on escrow and refund addresses
-                    walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
-                    walletManager.removeWatchedEscrowAddress(trade.getPaymentRequest().getRefundAddress());
-                    walletManager.removeWatchedEscrowAddress(trade.getBuyRequest().getBuyerPayoutAddress());
-
+                        // 4. remove watch on escrow and refund addresses
+                        walletManager.removeWatchedEscrowAddress(trade.getEscrowAddress());
+                        //walletManager.removeWatchedEscrowAddress(trade.getPaymentRequest().getRefundAddress());
+                        //walletManager.removeWatchedEscrowAddress(trade.getBuyRequest().getBuyerPayoutAddress());
+                    } else {
+                        LOG.info("PayoutCompleted Tx depth not yet greater than 1.");
+                    }
                 } else {
                     LOG.error("Tx amount wrong for PayoutCompleted.");
                 }
@@ -486,7 +493,7 @@ public class TradeManager extends AbstractManager {
 
     public void writeArbitrateRequest(ArbitrateRequest arbitrateRequest) {
 
-        String tradePath = tradesPath + arbitrateRequest.getEscrowAddress();
+        String tradePath = TRADES_PATH + arbitrateRequest.getEscrowAddress();
         String arbitrateRequestPath = tradePath + File.separator + "arbitrateRequest.json";
         try {
             FileWriter arbitrateRequestWriter = new FileWriter(arbitrateRequestPath);
@@ -516,7 +523,7 @@ public class TradeManager extends AbstractManager {
 
     public PaymentRequest readPaymentRequest(Trade trade) {
 
-        String tradePath = tradesPath + trade.getEscrowAddress();
+        String tradePath = TRADES_PATH + trade.getEscrowAddress();
         String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
         try {
             PaymentRequest readPaymentRequest =
@@ -538,7 +545,7 @@ public class TradeManager extends AbstractManager {
 
     public PayoutRequest readPayoutRequest(Trade trade) {
 
-        String tradePath = tradesPath + trade.getEscrowAddress();
+        String tradePath = TRADES_PATH + trade.getEscrowAddress();
         String payoutRequestPath = tradePath + File.separator + "payoutRequest.json";
         try {
             PayoutRequest readPayoutRequest =
@@ -667,7 +674,7 @@ public class TradeManager extends AbstractManager {
 
     public void writePaymentRequest(PaymentRequest paymentRequest) {
 
-        String tradePath = tradesPath + paymentRequest.getEscrowAddress();
+        String tradePath = TRADES_PATH + paymentRequest.getEscrowAddress();
         String paymentRequestPath = tradePath + File.separator + "paymentRequest.json";
 
         try {
@@ -687,7 +694,7 @@ public class TradeManager extends AbstractManager {
 
         // get stored trades
 
-        File tradesDir = new File(tradesPath);
+        File tradesDir = new File(TRADES_PATH);
         List<String> tradeIds;
         if (tradesDir.list() != null) {
             tradeIds = Arrays.asList(tradesDir.list());
@@ -697,38 +704,38 @@ public class TradeManager extends AbstractManager {
         for (String tradeId : tradeIds) {
 
             try {
-                File sellOfferFile = new File(tradesPath + tradeId + File.separator + "sellOffer.json");
+                File sellOfferFile = new File(TRADES_PATH + tradeId + File.separator + "sellOffer.json");
                 FileReader sellOfferReader = new FileReader(sellOfferFile);
                 SellOffer sellOffer = JSON.std.beanFrom(SellOffer.class, sellOfferReader);
 
-                File buyRequestFile = new File(tradesPath + tradeId + File.separator + "buyRequest.json");
+                File buyRequestFile = new File(TRADES_PATH + tradeId + File.separator + "buyRequest.json");
                 FileReader buyRequestReader = new FileReader(buyRequestFile);
                 BuyRequest buyRequest = JSON.std.beanFrom(BuyRequest.class, buyRequestReader);
 
                 Trade trade = new Trade(sellOffer, buyRequest, tradeId);
 
-                File paymentRequestFile = new File(tradesPath + tradeId + File.separator + "paymentRequest.json");
+                File paymentRequestFile = new File(TRADES_PATH + tradeId + File.separator + "paymentRequest.json");
                 if (paymentRequestFile.exists()) {
                     FileReader paymentRequestReader = new FileReader(paymentRequestFile);
                     PaymentRequest paymentRequest = JSON.std.beanFrom(PaymentRequest.class, paymentRequestReader);
                     trade.setPaymentRequest(paymentRequest);
                 }
 
-                File payoutRequestFile = new File(tradesPath + tradeId + File.separator + "payoutRequest.json");
+                File payoutRequestFile = new File(TRADES_PATH + tradeId + File.separator + "payoutRequest.json");
                 if (payoutRequestFile.exists()) {
                     FileReader payoutRequestReader = new FileReader(payoutRequestFile);
                     PayoutRequest payoutRequest = JSON.std.beanFrom(PayoutRequest.class, payoutRequestReader);
                     trade.setPayoutRequest(payoutRequest);
                 }
 
-                File arbitrateRequestFile = new File(tradesPath + tradeId + File.separator + "arbitrateRequest.json");
+                File arbitrateRequestFile = new File(TRADES_PATH + tradeId + File.separator + "arbitrateRequest.json");
                 if (arbitrateRequestFile.exists()) {
                     FileReader arbitrateRequestReader = new FileReader(arbitrateRequestFile);
                     ArbitrateRequest arbitrateRequest = JSON.std.beanFrom(ArbitrateRequest.class, arbitrateRequestReader);
                     trade.setArbitrateRequest(arbitrateRequest);
                 }
 
-                File payoutCompletedFile = new File(tradesPath + tradeId + File.separator + "payoutCompleted.json");
+                File payoutCompletedFile = new File(TRADES_PATH + tradeId + File.separator + "payoutCompleted.json");
                 if (payoutCompletedFile.exists()) {
                     FileReader payoutCompletedReader = new FileReader(payoutCompletedFile);
                     PayoutCompleted payoutCompleted = JSON.std.beanFrom(PayoutCompleted.class, payoutCompletedReader);
@@ -813,7 +820,7 @@ public class TradeManager extends AbstractManager {
                 if (trade.getArbitrateRequest() != null) {
                     writeArbitrateRequest(trade.getArbitrateRequest());
                 }
-                walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+                walletManager.createEscrowWallet(trade.getEscrowAddress());
 
                 walletManager.resetBlockchain();
 
@@ -869,9 +876,9 @@ public class TradeManager extends AbstractManager {
         }
 
         // 6. remove watch on escrow and refund addresses
-        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
-        walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
-        walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
+        //walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        //walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
+        //walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
 
     private String refundEscrow(Trade trade) {
@@ -926,8 +933,8 @@ public class TradeManager extends AbstractManager {
         }
 
         // 6. remove watch on escrow and refund addresses
-        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
-        walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
-        walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
+        //walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        //walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
+        //walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
 }

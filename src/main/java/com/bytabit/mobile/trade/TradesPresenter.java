@@ -77,7 +77,7 @@ public class TradesPresenter {
 //                            .equals(profileManager.profile().getPubKey())) {
 //                        // TODO verify trade not yet funded
 //                        try {
-//                            walletManager.addWatchedEscrowAddress(trade.getEscrowAddress());
+//                            walletManager.createEscrowWallet(trade.getEscrowAddress());
 //
 //                            String txHash = walletManager.fundEscrow(trade.getEscrowAddress(),
 //                                    trade.getBuyRequest().getBtcAmount());
