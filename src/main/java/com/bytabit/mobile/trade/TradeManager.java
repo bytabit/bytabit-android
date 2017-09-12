@@ -396,7 +396,7 @@ public class TradeManager extends AbstractManager {
         }
 
         // 6. remove watch on escrow and refund addresses
-        //walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
         //walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
         //walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
@@ -876,7 +876,7 @@ public class TradeManager extends AbstractManager {
         }
 
         // 6. remove watch on escrow and refund addresses
-        //walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
         //walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
         //walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }
@@ -933,7 +933,7 @@ public class TradeManager extends AbstractManager {
         }
 
         // 6. remove watch on escrow and refund addresses
-        //walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
+        walletManager.removeWatchedEscrowAddress(payoutCompleted.getEscrowAddress());
         //walletManager.removeWatchedEscrowAddress(selectedTrade.getPaymentRequest().getRefundAddress());
         //walletManager.removeWatchedEscrowAddress(selectedTrade.getBuyRequest().getBuyerPayoutAddress());
     }

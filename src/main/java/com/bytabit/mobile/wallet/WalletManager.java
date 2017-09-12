@@ -924,16 +924,21 @@ public class WalletManager {
             escrowTxUpdatedEvents.get(escrowAddress).unsubscribeOn(JavaFxScheduler.getInstance());
             blockChain.removeWallet(escrowWallets.get(escrowAddress));
             peerGroup.removeWallet(escrowWallets.get(escrowAddress));
+            escrowWallets.get(escrowAddress).shutdownAutosaveAndWait();
 
-            // rename wallet files
+            // rename wallet file
             final File escrowWalletFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME);
-            final File escrowWalletBackupFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + BACKUP_EXT);
-
             final File escrowWalletSavFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + SAVE_EXT);
-            final File escrowWalletBackupSavFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + BACKUP_EXT + SAVE_EXT);
 
-            escrowWalletFile.renameTo(escrowWalletSavFile);
-            escrowWalletBackupFile.renameTo(escrowWalletBackupSavFile);
+            if (escrowWalletFile.renameTo(escrowWalletSavFile)) {
+                if (escrowWalletFile.delete()) {
+                    LOG.debug("Deleted {}", escrowWalletFile);
+                } else {
+                    LOG.error("Failed to delete {}", escrowWalletFile);
+                }
+            } else {
+                LOG.error("Failed to rename {} to {}", escrowWalletFile, escrowWalletSavFile);
+            }
 
             LOG.debug("Removed watched escrow address: {}", address.toBase58());
         } else {
