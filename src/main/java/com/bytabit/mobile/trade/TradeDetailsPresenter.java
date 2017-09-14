@@ -212,6 +212,7 @@ public class TradeDetailsPresenter {
             LOG.debug("paymentSentButton pressed");
             if (paymentReferenceField.getText() != null && !paymentReferenceField.getText().isEmpty()) {
                 tradeManager.requestPayout(paymentReferenceField.getText());
+                MobileApplication.getInstance().switchToPreviousView();
             } else {
                 LOG.debug("No payment reference provided, skipped requestPayout.");
                 // TODO notify user and/or don't enable paymentSentButton unless payment reference given
@@ -221,26 +222,31 @@ public class TradeDetailsPresenter {
         paymentReceivedButton.setOnAction(e -> {
             LOG.debug("paymentReceivedButton pressed");
             tradeManager.confirmPaymentReceived();
+            MobileApplication.getInstance().switchToPreviousView();
         });
 
         arbitrateButton.setOnAction(e -> {
             LOG.debug("arbitrateButton pressed");
             tradeManager.requestArbitrate();
+            MobileApplication.getInstance().switchToPreviousView();
         });
 
         refundSellerButton.setOnAction(e -> {
             LOG.debug("refundSellerButton pressed");
             tradeManager.refundSeller(PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND);
+            MobileApplication.getInstance().switchToPreviousView();
         });
 
         payoutBuyerButton.setOnAction(e -> {
             LOG.debug("payoutBuyerButton pressed");
             tradeManager.arbitratorConfirmsPaymentReceived();
+            MobileApplication.getInstance().switchToPreviousView();
         });
 
         cancelButton.setOnAction(e -> {
             LOG.debug("cancelButton pressed");
             tradeManager.refundSeller(PayoutCompleted.Reason.BUYER_SELLER_REFUND);
+            MobileApplication.getInstance().switchToPreviousView();
         });
     }
 }

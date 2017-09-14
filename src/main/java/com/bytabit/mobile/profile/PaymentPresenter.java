@@ -100,6 +100,7 @@ public class PaymentPresenter {
 
         addPaymentDetailButton.onActionProperty().setValue(e -> {
             profileManager.addPaymentDetails();
+            MobileApplication.getInstance().switchToPreviousView();
         });
     }
 }

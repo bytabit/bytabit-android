@@ -931,7 +931,7 @@ public class WalletManager {
             final File escrowWalletSavFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + SAVE_EXT);
 
             if (escrowWalletFile.renameTo(escrowWalletSavFile)) {
-                if (escrowWalletFile.delete()) {
+                if (escrowWalletFile.exists() && escrowWalletFile.delete()) {
                     LOG.debug("Deleted {}", escrowWalletFile);
                 } else {
                     LOG.error("Failed to delete {}", escrowWalletFile);

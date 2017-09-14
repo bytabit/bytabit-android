@@ -164,6 +164,8 @@ public class OfferDetailsPresenter {
             tradeManager.createBuyRequest(viewOffer,
                     offerManager.getBuyBtcAmount().get(), buyerEscrowPubKey,
                     buyerProfilePubKey, buyerPayoutAddress);
+
+            MobileApplication.getInstance().switchToPreviousView();
         });
     }
 }
