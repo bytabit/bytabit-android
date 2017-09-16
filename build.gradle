@@ -8,7 +8,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath 'org.javafxports:jfxmobile-plugin:1.3.5'
+        classpath 'org.javafxports:jfxmobile-plugin:1.3.8'
         classpath 'com.palantir:gradle-gitsemver:0.6.0'
     }
 }
@@ -54,7 +54,7 @@ processResources {
 }
 
 dependencies {
-    compile 'com.gluonhq:charm:4.3.0'
+    compile 'com.gluonhq:charm:4.3.7'
     compile 'com.airhacks:afterburner.mfx:1.6.3'
     compile "org.bitcoinj:bitcoinj-core:0.14.4"
     compile "com.madgag.spongycastle:prov:1.51.0.0"
@@ -74,9 +74,9 @@ dependencies {
         exclude group: 'com.google.android', module: 'android'
     }
 
-    desktopRuntime "com.gluonhq:charm-desktop:3.0.0"
-    androidRuntime "com.gluonhq:charm-android:3.0.0"
-    iosRuntime "com.gluonhq:charm-ios:3.0.0"
+    //desktopRuntime 'com.gluonhq:charm-down-core-desktop:3.2.0'
+    androidRuntime 'com.gluonhq:charm-down-core-android:3.2.0'
+    iosRuntime 'com.gluonhq:charm-down-core-ios:3.2.0'
 
     testCompile 'junit:junit:4.12'
 }
