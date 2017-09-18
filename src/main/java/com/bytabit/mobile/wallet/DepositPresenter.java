@@ -1,6 +1,8 @@
 package com.bytabit.mobile.wallet;
 
 import com.gluonhq.charm.down.Platform;
+import com.gluonhq.charm.down.Services;
+import com.gluonhq.charm.down.plugins.ShareService;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -66,23 +68,30 @@ public class DepositPresenter {
                 ByteArrayOutputStream outputStream = qrCode.stream();
                 Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
                 qrCodeImageView.setImage(img);
-                copyButton.visibleProperty().setValue(true);
-                copyButton.setOnAction((event) -> copyAddress(depositAddress));
+            } else {
+                copyButton.setText("Share");
             }
+            copyButton.visibleProperty().setValue(true);
+            copyButton.setOnAction((event) -> copyAddress(depositAddress));
         });
     }
 
     // TODO FT-147 make sure copy and paste works on Android and iOS
     private void copyAddress(Address address) {
         String addressStr = address.toString();
-        Clipboard clipboard = Clipboard.getSystemClipboard();
-        ClipboardContent content = new ClipboardContent();
-        content.putString(addressStr);
-        content.putHtml("<a href=" + depositAddressUri(address) + ">" + addressStr + "</a>");
-        clipboard.setContent(content);
+        if (Platform.isDesktop()) {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString(addressStr);
+            content.putHtml("<a href=" + depositAddressUri(address) + ">" + addressStr + "</a>");
+            clipboard.setContent(content);
+        } else {
+            ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new RuntimeException("ShareService not available."));
+            shareService.share(addressStr);
 //            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 //            ClipData clip = ClipData.newPlainText("label", addressStr);
 //            clipboard.setPrimaryClip(clip);
+        }
     }
 
     private String depositAddressUri(Address a) {
