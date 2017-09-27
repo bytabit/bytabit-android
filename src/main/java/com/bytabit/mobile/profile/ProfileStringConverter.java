@@ -7,7 +7,7 @@ public class ProfileStringConverter extends StringConverter<Profile> {
 
     @Override
     public String toString(Profile profile) {
-        return profile.getName();
+        return profile.getUserName();
     }
 
     @Override

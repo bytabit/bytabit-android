@@ -392,11 +392,11 @@ public class WalletManager {
 //                    wallet = loadWallet(walletBackupFile);
 //                    // have to remove blockstore file so wallet will be reloaded
 //                    if (blockStoreFile.exists()) {
-//                        LOG.debug("Removed blockstore file: {}", blockStoreFile.getName());
+//                        LOG.debug("Removed blockstore file: {}", blockStoreFile.getUserName());
 //                        blockStoreFile.delete();
 //                    }
 //                } catch (FileNotFoundException | UnreadableWalletException e1) {
-//                    LOG.error("Unable to load backup wallet: {}", walletBackupFile.getName());
+//                    LOG.error("Unable to load backup wallet: {}", walletBackupFile.getUserName());
 //                    throw new RuntimeException(e1);
 //                }
 //            }

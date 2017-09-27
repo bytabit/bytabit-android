@@ -40,19 +40,6 @@ public class ProfilePresenter {
 
         LOG.debug("initialize profile presenter");
 
-        //tradeWalletManager.startWallet();
-//        tradeWalletManager.tradeWalletRunningProperty().addListener((obj, oldVal, isRunning) -> {
-//            if (isRunning) {
-//                LOG.debug("Wallet Running");
-//                // pubkey init
-//                if (profileManager.profile().getPubKey() == null) {
-//                    String profilePubKey = tradeWalletManager.getFreshBase58AuthPubKey();
-//                    profileManager.createProfile(profilePubKey);
-//                    LOG.debug("Profile PubKey Initialized");
-//                }
-//            }
-//        });
-
         if (profileManager.profile().getPubKey() == null) {
             profileManager.createProfile();
         }
@@ -69,7 +56,7 @@ public class ProfilePresenter {
         Profile profile = profileManager.profile();
         pubKeyTextField.textProperty().bind(profile.pubKeyProperty());
         arbitratorCheckbox.selectedProperty().bindBidirectional(profile.isArbitratorProperty());
-        nameTextField.textProperty().bindBidirectional(profile.nameProperty());
+        nameTextField.textProperty().bindBidirectional(profile.userNameProperty());
         phoneNumTextField.textProperty().bindBidirectional(profile.phoneNumProperty());
 
         //profileManager.readProfiles();

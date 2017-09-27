@@ -65,7 +65,7 @@ public class ProfileManager extends AbstractManager {
             updateProfile();
         });
 
-        profile.nameProperty().addListener((obj, oldVal, newVal) -> {
+        profile.userNameProperty().addListener((obj, oldVal, newVal) -> {
             store(PROFILE_NAME, newVal);
             updateProfile();
         });

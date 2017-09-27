@@ -10,16 +10,16 @@ public class Profile {
     public Profile() {
     }
 
-    public Profile(String pubkey, Boolean isArbitrator, String name, String phoneNum) {
+    public Profile(String pubkey, Boolean isArbitrator, String userName, String phoneNum) {
         setPubKey(pubkey);
         setIsArbitrator(isArbitrator);
-        setName(name);
+        setUserName(userName);
         setPhoneNum(phoneNum);
     }
 
     private final StringProperty pubKey = new SimpleStringProperty();
     private final BooleanProperty isArbitrator = new SimpleBooleanProperty();
-    private final StringProperty name = new SimpleStringProperty();
+    private final StringProperty userName = new SimpleStringProperty();
     private final StringProperty phoneNum = new SimpleStringProperty();
 
     public String getPubKey() {
@@ -46,16 +46,16 @@ public class Profile {
         this.isArbitrator.set(isArbitrator);
     }
 
-    public String getName() {
-        return name.get();
+    public String getUserName() {
+        return userName.get();
     }
 
-    public StringProperty nameProperty() {
-        return name;
+    public StringProperty userNameProperty() {
+        return userName;
     }
 
-    public void setName(String name) {
-        this.name.set(name);
+    public void setUserName(String userName) {
+        this.userName.set(userName);
     }
 
     public String getPhoneNum() {
@@ -75,7 +75,7 @@ public class Profile {
         final StringBuffer sb = new StringBuffer("Profile{");
         sb.append("pubKey=").append(pubKey);
         sb.append(", isArbitrator=").append(isArbitrator);
-        sb.append(", name=").append(name);
+        sb.append(", userName=").append(userName);
         sb.append(", phoneNum=").append(phoneNum);
         sb.append('}');
         return sb.toString();
