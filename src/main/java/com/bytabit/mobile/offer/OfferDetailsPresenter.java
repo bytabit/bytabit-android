@@ -91,9 +91,6 @@ public class OfferDetailsPresenter {
     @FXML
     private TextField buyBtcAmtTextField;
 
-    @FXML
-    private Label btcPriceCurrencyLabel;
-
     public void initialize() {
 
         LOG.debug("initialize offer details presenter");
@@ -107,24 +104,23 @@ public class OfferDetailsPresenter {
             }
         });
 
-        SellOffer viewOffer = offerManager.getViewSellOffer();
-        sellerEscrowPubKeyLabel.textProperty().bind(viewOffer.sellerEscrowPubKeyProperty());
-        sellerProfilePubKeyLabel.textProperty().bind(viewOffer.sellerProfilePubKeyProperty());
-        arbitratorProfilePubKeyLabel.textProperty().bind(viewOffer.arbitratorProfilePubKeyProperty());
-        minTradeAmtLabel.textProperty().bind(Bindings.createStringBinding(() -> viewOffer.minAmountProperty().get().toString(),
-                viewOffer.minAmountProperty()));
-        maxTradeAmtLabel.textProperty().bind(Bindings.createStringBinding(() -> viewOffer.maxAmountProperty().get().toString(),
-                viewOffer.maxAmountProperty()));
-        priceLabel.textProperty().bind(Bindings.createStringBinding(() -> viewOffer.priceProperty().get().toString(),
-                viewOffer.priceProperty()));
+        sellerEscrowPubKeyLabel.textProperty().bind(offerManager.getSellerEscrowPubKeyProperty());
+        sellerProfilePubKeyLabel.textProperty().bind(offerManager.getSellerProfilePubKeyProperty());
+        arbitratorProfilePubKeyLabel.textProperty().bind(offerManager.getArbitratorProfilePubKeyProperty());
+        minTradeAmtLabel.textProperty().bind(Bindings.createStringBinding(() -> offerManager.getMinAmountProperty().get().toString(),
+                offerManager.getMinAmountProperty()));
+        maxTradeAmtLabel.textProperty().bind(Bindings.createStringBinding(() -> offerManager.getMaxAmountProperty().get().toString(),
+                offerManager.getMaxAmountProperty()));
+        priceLabel.textProperty().bind(Bindings.createStringBinding(() -> offerManager.getPriceProperty().get().toString(),
+                offerManager.getPriceProperty()));
 
-        StringBinding currencyCodeBinding = Bindings.createStringBinding(() -> viewOffer.currencyCodeProperty().get().toString(),
-                viewOffer.minAmountProperty(), viewOffer.currencyCodeProperty());
+        StringBinding currencyCodeBinding = Bindings.createStringBinding(() -> offerManager.getCurrencyCodeProperty().get().toString(),
+                offerManager.getMinAmountProperty(), offerManager.getCurrencyCodeProperty());
 
         currencyLabel.textProperty().bind(currencyCodeBinding);
         paymentMethodLabel.textProperty().bind(Bindings.createStringBinding(() ->
-                        viewOffer.paymentMethodProperty().get().displayName(),
-                viewOffer.paymentMethodProperty()));
+                        offerManager.getPaymentMethodProperty().get().displayName(),
+                offerManager.getPaymentMethodProperty()));
 
         minTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
         minTradeAmtCurrencyLabel.textProperty().bind(currencyCodeBinding);
@@ -133,8 +129,8 @@ public class OfferDetailsPresenter {
         currencyAmtLabel.textProperty().bind(currencyCodeBinding);
 
         removeOfferButton.visibleProperty().bind(Bindings.createBooleanBinding(() ->
-                        profileManager.profile().getPubKey().equals(viewOffer.getSellerProfilePubKey()),
-                viewOffer.sellerProfilePubKeyProperty()));
+                        profileManager.getPubKeyProperty().getValue().equals(offerManager.getSellerProfilePubKeyProperty().getValue()),
+                offerManager.getSellerProfilePubKeyProperty()));
 
         removeOfferButton.setOnAction(e -> {
             offerManager.deleteOffer();
@@ -142,28 +138,35 @@ public class OfferDetailsPresenter {
         });
 
         buyGridPane.visibleProperty().bind(Bindings.createBooleanBinding(() ->
-                        !profileManager.profile().getPubKey().equals(viewOffer.getSellerProfilePubKey()),
-                viewOffer.sellerProfilePubKeyProperty()));
+                        !profileManager.getPubKeyProperty().getValue().equals(offerManager.getSellerProfilePubKeyProperty().getValue()),
+                offerManager.getSellerProfilePubKeyProperty()));
 
         buyBtcAmtTextField.textProperty().bind(Bindings.createStringBinding(() -> {
             String curAmtStr = buyCurrencyAmtTextField.textProperty().getValue();
             if (curAmtStr != null && curAmtStr.length() > 0) {
-                BigDecimal buyBtcAmt = new BigDecimal(curAmtStr).divide(viewOffer.priceProperty().get(), 8, BigDecimal.ROUND_HALF_UP);
-                offerManager.getBuyBtcAmount().set(buyBtcAmt);
+                BigDecimal buyBtcAmt = new BigDecimal(curAmtStr).divide(offerManager.getPriceProperty().getValue(), 8, BigDecimal.ROUND_HALF_UP);
+                offerManager.getBuyBtcAmountProperty().set(buyBtcAmt);
                 return buyBtcAmt.toString();
             } else {
                 return null;
             }
-        }, viewOffer.priceProperty(), buyCurrencyAmtTextField.textProperty()));
+        }, offerManager.getPriceProperty(), buyCurrencyAmtTextField.textProperty()));
 
         buyBtcButton.setOnAction(e -> {
             String buyerEscrowPubKey = tradeWalletManager.getFreshBase58AuthPubKey();
-            String buyerProfilePubKey = profileManager.profile().getPubKey();
+            String buyerProfilePubKey = profileManager.getPubKeyProperty().get();
             String buyerPayoutAddress = tradeWalletManager.getDepositAddress().toBase58();
 
-            tradeManager.createBuyRequest(viewOffer,
-                    offerManager.getBuyBtcAmount().get(), buyerEscrowPubKey,
-                    buyerProfilePubKey, buyerPayoutAddress);
+            SellOffer selectedSellOffer = offerManager.getSelectedSellOfferProperty().get();
+            BigDecimal buyBtcAmount = offerManager.getBuyBtcAmountProperty().get();
+
+            // TODO better input validation
+            if (buyerEscrowPubKey != null && buyerProfilePubKey != null &&
+                    buyBtcAmount != null && selectedSellOffer != null) {
+
+                tradeManager.buyerCreateTrade(selectedSellOffer, buyBtcAmount, buyerEscrowPubKey,
+                        buyerProfilePubKey, buyerPayoutAddress);
+            }
 
             MobileApplication.getInstance().switchToPreviousView();
         });

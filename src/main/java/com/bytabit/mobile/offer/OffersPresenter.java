@@ -12,7 +12,6 @@ import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 
 import javax.inject.Inject;
@@ -39,7 +38,7 @@ public class OffersPresenter {
     public void initialize() {
 
         // make sure profile initialized, do this here because this is HOME view
-        if (profileManager.profile().getPubKey() == null) {
+        if (profileManager.getPubKeyProperty() == null) {
             MobileApplication.getInstance().switchView(BytabitMobile.PROFILE_VIEW);
         }
 
@@ -81,31 +80,26 @@ public class OffersPresenter {
 
         //offersListView.itemsProperty().addAll(offerManager.get());
         offersListView.itemsProperty().setValue(offerManager.getSellOffersObservableList());
-        offersListView.selectedItemProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue != null) {
-                SellOffer viewOffer = offerManager.getViewSellOffer();
-                String sellerEscrowPubKey = newValue.getSellerEscrowPubKey();
+        offersListView.selectedItemProperty().addListener((obs, oldValue, selectedSellOffer) -> {
+            if (selectedSellOffer != null) {
+                String sellerEscrowPubKey = selectedSellOffer.getSellerEscrowPubKey();
                 offersListView.selectedItemProperty().setValue(null);
+
                 if (tradeManager.activeSellerEscrowPubKey(sellerEscrowPubKey)) {
-                    // TODO go to active trade view for this sell offer
+                    // TODO go to active trade details view for this sell offer
                     MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
                 } else {
-                    viewOffer.setSellerEscrowPubKey(sellerEscrowPubKey);
-                    viewOffer.setSellerProfilePubKey(newValue.getSellerProfilePubKey());
-                    viewOffer.setArbitratorProfilePubKey(newValue.getArbitratorProfilePubKey());
-                    viewOffer.setCurrencyCode(newValue.getCurrencyCode());
-                    viewOffer.setPaymentMethod(newValue.getPaymentMethod());
-                    viewOffer.setMinAmount(newValue.getMinAmount());
-                    viewOffer.setMaxAmount(newValue.getMaxAmount());
-                    viewOffer.setPrice(newValue.getPrice());
+                    offerManager.getSelectedSellOfferProperty().setValue(selectedSellOffer);
+                    offerManager.getSellerEscrowPubKeyProperty().setValue(sellerEscrowPubKey);
+                    offerManager.getSellerProfilePubKeyProperty().setValue(selectedSellOffer.getSellerProfilePubKey());
+                    offerManager.getArbitratorProfilePubKeyProperty().setValue(selectedSellOffer.getArbitratorProfilePubKey());
+                    offerManager.getCurrencyCodeProperty().setValue(selectedSellOffer.getCurrencyCode());
+                    offerManager.getPaymentMethodProperty().setValue(selectedSellOffer.getPaymentMethod());
+                    offerManager.getMinAmountProperty().setValue(selectedSellOffer.getMinAmount());
+                    offerManager.getMaxAmountProperty().setValue(selectedSellOffer.getMaxAmount());
+                    offerManager.getPriceProperty().setValue(selectedSellOffer.getPrice());
                     MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
                 }
-            }
-        });
-
-        offerManager.getSellOffersObservableList().addListener((ListChangeListener<SellOffer>) change -> {
-            while (change.next()) {
-                tradeManager.createTrades(profileManager.profile().getPubKey(), change.getAddedSubList());
             }
         });
 

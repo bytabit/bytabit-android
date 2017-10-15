@@ -44,9 +44,9 @@ public class TradesPresenter {
                 super.updateItem(t, empty);
                 if (t != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC @ %s %s per BTC", t.getBuyRequest().getBtcAmount(), t.getSellOffer().getPrice(), t.getSellOffer().getCurrencyCode());
-                    String details = String.format("for %s %s via %s", t.getBuyRequest().getBtcAmount().multiply(t.getSellOffer().getPrice()),
-                            t.getSellOffer().getCurrencyCode(), t.getSellOffer().getPaymentMethod().displayName());
+                    String amount = String.format("%s BTC @ %s %s per BTC", t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
+                    String details = String.format("for %s %s via %s", t.getBtcAmount().multiply(t.getPrice()),
+                            t.getCurrencyCode(), t.getPaymentMethod().displayName());
                     tile.textProperty().addAll(amount, details, t.getEscrowAddress());
                     setText(null);
                     setGraphic(tile);
@@ -73,7 +73,7 @@ public class TradesPresenter {
 //        tradeManager.getTradesObservableList().addListener((ListChangeListener<Trade>) change -> {
 //            while (change.next()) {
 //                for (Trade trade : change.getAddedSubList()) {
-//                    if (trade.getSellOffer().getSellerProfilePubKey()
+//                    if (trade.createSellOffer().getSellerProfilePubKeyProperty()
 //                            .equals(profileManager.profile().getPubKey())) {
 //                        // TODO verify trade not yet funded
 //                        try {
@@ -82,8 +82,8 @@ public class TradesPresenter {
 //                            String txHash = walletManager.fundEscrow(trade.getEscrowAddress(),
 //                                    trade.getBuyRequest().getBtcAmount());
 //
-//                            String paymentDetails = profileManager.retrievePaymentDetails(trade.getSellOffer()
-//                                    .getCurrencyCode(), trade.getSellOffer().getPaymentMethod()).get();
+//                            String paymentDetails = profileManager.retrievePaymentDetails(trade.createSellOffer()
+//                                    .getCurrencyCodeProperty(), trade.createSellOffer().getPaymentMethodProperty()).get();
 //                            PaymentRequest paymentRequest = tradeManager.writePaymentRequest(trade, txHash, paymentDetails);
 //
 //                        } catch (InsufficientMoneyException e) {

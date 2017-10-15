@@ -29,7 +29,7 @@
                    <Label focusTraversable="false" text="Phone Number"
                           GridPane.rowIndex="3"/>
                   <TextField fx:id="pubKeyTextField" disable="true" focusTraversable="false" maxHeight="-Infinity" GridPane.columnIndex="1" />
-                   <TextField fx:id="nameTextField" maxHeight="-Infinity"
+                   <TextField fx:id="userNameTextField" maxHeight="-Infinity"
                               GridPane.columnIndex="1" GridPane.rowIndex="2"/>
                    <TextField fx:id="phoneNumTextField" maxHeight="-Infinity"
                               GridPane.columnIndex="1" GridPane.rowIndex="3"/>

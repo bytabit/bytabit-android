@@ -9,7 +9,6 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.util.StringConverter;
 import org.slf4j.Logger;
@@ -32,9 +31,6 @@ public class PaymentPresenter {
 
     @FXML
     private ChoiceBox<PaymentMethod> paymentMethodChoiceBox;
-
-    @FXML
-    private Label paymentDetailsLabel;
 
     @FXML
     private TextField paymentDetailsTextField;
@@ -94,9 +90,9 @@ public class PaymentPresenter {
             }
         });
 
-        profileManager.newPaymentDetails().currencyCodeProperty().bind(currencyChoiceBox.valueProperty());
-        profileManager.newPaymentDetails().paymentMethodProperty().bind(paymentMethodChoiceBox.valueProperty());
-        profileManager.newPaymentDetails().paymentDetailsProperty().bind(paymentDetailsTextField.textProperty());
+        profileManager.getCurrencyCodeProperty().bind(currencyChoiceBox.valueProperty());
+        profileManager.getPaymentMethodProperty().bind(paymentMethodChoiceBox.valueProperty());
+        profileManager.getPaymentDetailsProperty().bind(paymentDetailsTextField.textProperty());
 
         addPaymentDetailButton.onActionProperty().setValue(e -> {
             profileManager.addPaymentDetails();

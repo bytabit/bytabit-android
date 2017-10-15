@@ -2,7 +2,6 @@ package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.ProfileManager;
-import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -120,7 +119,7 @@ public class TradeDetailsPresenter {
             paymentReferenceField.setDisable(true);
             paymentReferenceField.setEditable(false);
 
-            if (profileManager.profile().isIsArbitrator()) {
+            if (profileManager.getIsArbitratorProperty().getValue()) {
                 actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
                 refundSellerButton.setDisable(true);
                 payoutBuyerButton.setDisable(true);
@@ -139,23 +138,23 @@ public class TradeDetailsPresenter {
                 appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
                         MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DEV_INFO_VIEW)));
 
-                Trade trade = tradeManager.getSelectedTrade();
-                BigDecimal price = trade.getSellOffer().getPrice();
-                BigDecimal amount = trade.getBuyRequest().getBtcAmount();
+                Trade trade = tradeManager.getSelectedTradeProperty().getValue();
+                BigDecimal price = trade.getPrice();
+                BigDecimal amount = trade.getBtcAmount();
                 BigDecimal paymentAmount = price.multiply(amount);
-                String profilePubKey = profileManager.profile().getPubKey();
-                Boolean isArbitrator = profileManager.profile().isIsArbitrator();
+                String profilePubKey = profileManager.getPubKeyProperty().getValue();
+                Boolean isArbitrator = profileManager.getIsArbitratorProperty().getValue();
                 Trade.Role tradeRole = trade.getRole(profilePubKey, isArbitrator);
 
                 //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
-                tradeStatusLabel.textProperty().setValue(trade.statusProperty().toString());
+                tradeStatusLabel.textProperty().setValue(trade.getStatus().toString());
                 tradeRoleLabel.textProperty().setValue(tradeRole.toString());
-                paymentMethodLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString() + " via " + trade.getSellOffer().getPaymentMethod().displayName());
+                paymentMethodLabel.textProperty().setValue(trade.getCurrencyCode().toString() + " via " + trade.getPaymentMethod().displayName());
                 paymentAmountLabel.textProperty().setValue(paymentAmount.toPlainString());
-                paymentAmountCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
+                paymentAmountCurrencyLabel.textProperty().setValue(trade.getCurrencyCode().toString());
                 purchasedAmountLabel.textProperty().setValue(amount.toPlainString());
                 priceLabel.textProperty().setValue(price.toPlainString());
-                priceCurrencyLabel.textProperty().setValue(trade.getSellOffer().getCurrencyCode().toString());
+                priceCurrencyLabel.textProperty().setValue(trade.getCurrencyCode().toString());
                 paymentDetailsLabel.textProperty().setValue(null);
                 paymentReferenceField.textProperty().setValue(null);
                 arbitrateReasonLabel.textProperty().setValue(null);
@@ -163,7 +162,7 @@ public class TradeDetailsPresenter {
                 tradeStatusLabel.textProperty().setValue(trade.getStatus().toString());
 
                 if (trade.getStatus().equals(Trade.Status.FUNDED)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
                     if (tradeRole == Trade.Role.BUYER) {
                         paymentReferenceField.setDisable(false);
                         paymentReferenceField.setEditable(true);
@@ -173,8 +172,8 @@ public class TradeDetailsPresenter {
                         arbitrateButton.setDisable(false);
                     }
                 } else if (trade.getStatus().equals(Trade.Status.PAID)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
-                    paymentReferenceField.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+                    paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
                     arbitrateButton.setDisable(false);
                     if (tradeRole == Trade.Role.BUYER) {
                         paymentReceivedButton.setDisable(true);
@@ -182,25 +181,25 @@ public class TradeDetailsPresenter {
                         paymentReceivedButton.setDisable(false);
                     }
                 } else if (trade.getStatus().equals(Trade.Status.COMPLETED)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
-                    if (trade.getPayoutRequest() != null) {
-                        paymentReferenceField.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+                    if (trade.hasPayoutRequest()) {
+                        paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
                     }
-                    if (trade.getArbitrateRequest() != null) {
-                        arbitrateReasonLabel.textProperty().setValue(trade.getArbitrateRequest().getReason().toString());
+                    if (trade.hasArbitrateRequest()) {
+                        arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
                     }
-                    if (trade.getPayoutCompleted() != null) {
-                        payoutReasonLabel.textProperty().setValue(trade.getPayoutCompleted().getReason().toString());
+                    if (trade.hasPayoutCompleted()) {
+                        payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
                     }
                 } else if (trade.getStatus().equals(Trade.Status.ARBITRATING)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentRequest().getPaymentDetails());
-                    if (trade.getPayoutRequest() != null) {
-                        paymentReferenceField.textProperty().setValue(trade.getPayoutRequest().getPaymentReference());
+                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+                    if (trade.hasPayoutRequest()) {
+                        paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
                     }
-                    arbitrateReasonLabel.textProperty().setValue(trade.getArbitrateRequest().getReason().toString());
+                    arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
                     if (tradeRole == Trade.Role.ARBITRATOR) {
                         refundSellerButton.setDisable(false);
-                        if (trade.getPayoutRequest() != null) {
+                        if (trade.hasPayoutRequest()) {
                             payoutBuyerButton.setDisable(false);
                         }
                     }
@@ -211,17 +210,17 @@ public class TradeDetailsPresenter {
         paymentSentButton.setOnAction(e -> {
             LOG.debug("paymentSentButton pressed");
             if (paymentReferenceField.getText() != null && !paymentReferenceField.getText().isEmpty()) {
-                tradeManager.requestPayout(paymentReferenceField.getText());
+                tradeManager.buyerSendPayment(paymentReferenceField.getText());
                 MobileApplication.getInstance().switchToPreviousView();
             } else {
-                LOG.debug("No payment reference provided, skipped requestPayout.");
+                LOG.debug("No payment reference provided, skipped buyerSendPayment.");
                 // TODO notify user and/or don't enable paymentSentButton unless payment reference given
             }
         });
 
         paymentReceivedButton.setOnAction(e -> {
             LOG.debug("paymentReceivedButton pressed");
-            tradeManager.confirmPaymentReceived();
+            tradeManager.sellerConfirmPaymentReceived();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
@@ -233,19 +232,19 @@ public class TradeDetailsPresenter {
 
         refundSellerButton.setOnAction(e -> {
             LOG.debug("refundSellerButton pressed");
-            tradeManager.refundSeller(PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND);
+            tradeManager.arbitratorRefundSeller();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
         payoutBuyerButton.setOnAction(e -> {
             LOG.debug("payoutBuyerButton pressed");
-            tradeManager.arbitratorConfirmsPaymentReceived();
+            tradeManager.arbitratorPayoutBuyer();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
         cancelButton.setOnAction(e -> {
             LOG.debug("cancelButton pressed");
-            tradeManager.refundSeller(PayoutCompleted.Reason.BUYER_SELLER_REFUND);
+            tradeManager.buyerCancel();
             MobileApplication.getInstance().switchToPreviousView();
         });
     }

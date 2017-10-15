@@ -78,14 +78,14 @@ public class AddOfferPresenter {
 
         StringConverter<BigDecimal> converter = new StringBigDecimalConverter();
 
-        minTradeAmtTextField.textProperty().bindBidirectional(offerManager.newOffer().minAmountProperty(), converter);
-        maxTradeAmtTextField.textProperty().bindBidirectional(offerManager.newOffer().maxAmountProperty(), converter);
-        btcPriceTextField.textProperty().bindBidirectional(offerManager.newOffer().priceProperty(), converter);
+        minTradeAmtTextField.textProperty().bindBidirectional(offerManager.getMinAmountProperty(), converter);
+        maxTradeAmtTextField.textProperty().bindBidirectional(offerManager.getMaxAmountProperty(), converter);
+        btcPriceTextField.textProperty().bindBidirectional(offerManager.getPriceProperty(), converter);
 
         arbitratorChoiceBox.setConverter(new ProfileStringConverter());
         arbitratorChoiceBox.itemsProperty().setValue(profileManager.getArbitratorProfiles());
         arbitratorChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, arbitrator) -> {
-            offerManager.newOffer().arbitratorProfilePubKeyProperty().setValue(arbitrator.getPubKey());
+            offerManager.getArbitratorProfilePubKeyProperty().setValue(arbitrator.getPubKey());
         });
         addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
@@ -107,7 +107,7 @@ public class AddOfferPresenter {
                 minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
                 maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
                 btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
-                offerManager.newOffer().setCurrencyCode(currencyCode);
+                offerManager.getCurrencyCodeProperty().setValue(currencyCode);
             }
         });
 
@@ -116,19 +116,17 @@ public class AddOfferPresenter {
 
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
         paymentMethodChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, paymentMethod) -> {
-            offerManager.newOffer().setPaymentMethod(paymentMethod);
+            offerManager.getPaymentMethodProperty().setValue(paymentMethod);
         });
 
-        if (profileManager.profile().getPubKey() != null) {
-            offerManager.newOffer().setSellerProfilePubKey(profileManager.profile().getPubKey());
+        if (profileManager.getPubKeyProperty().getValue() != null) {
+            offerManager.getSellerProfilePubKeyProperty().setValue(profileManager.getPubKeyProperty().getValue());
         }
 
         addOfferButton.onActionProperty().setValue(e -> {
-            offerManager.newOffer().setSellerEscrowPubKey(tradeWalletManager.getFreshBase58AuthPubKey());
-            if (offerManager.newOffer().isComplete()) {
-                offerManager.createOffer();
-                MobileApplication.getInstance().switchToPreviousView();
-            }
+            offerManager.getSellerEscrowPubKeyProperty().setValue(tradeWalletManager.getFreshBase58AuthPubKey());
+            offerManager.createOffer();
+            MobileApplication.getInstance().switchToPreviousView();
         });
     }
 }

@@ -9,14 +9,10 @@ import java.util.List;
 public interface ProfileService {
 
     @Headers("Content-Type:application/json")
-    @POST("/profiles")
-    Call<Profile> post(@Body Profile profile);
+    @PUT("/profiles/{pubKey}")
+    Call<Profile> put(@Path("pubKey") String pubkey, @Body Profile profile);
 
     @Headers("Content-Type:application/json")
     @GET("/profiles")
     Call<List<Profile>> get();
-
-    @Headers("Content-Type:application/json")
-    @PUT("/profiles/{pubkey}")
-    Call<Profile> put(@Path("pubkey") String pubkey, @Body Profile profile);
 }

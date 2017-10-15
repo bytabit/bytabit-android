@@ -3,11 +3,16 @@ package com.bytabit.mobile.offer;
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.profile.model.CurrencyCode;
+import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
@@ -20,6 +25,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+@Getter
 public class OfferManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
@@ -28,11 +34,19 @@ public class OfferManager extends AbstractManager {
 
     private final ObservableList<SellOffer> sellOffersObservableList;
 
-    private final SellOffer newSellOffer;
+    private final StringProperty sellerEscrowPubKeyProperty;
+    private final StringProperty sellerProfilePubKeyProperty;
+    private final StringProperty arbitratorProfilePubKeyProperty;
 
-    private final SellOffer viewSellOffer;
+    private final ObjectProperty<CurrencyCode> currencyCodeProperty;
+    private final ObjectProperty<PaymentMethod> paymentMethodProperty;
+    private final ObjectProperty<BigDecimal> minAmountProperty;
+    private final ObjectProperty<BigDecimal> maxAmountProperty;
+    private final ObjectProperty<BigDecimal> priceProperty;
 
-    private final ObjectProperty<BigDecimal> buyBtcAmount;
+    private final ObjectProperty<BigDecimal> buyBtcAmountProperty;
+
+    private final ObjectProperty<SellOffer> selectedSellOfferProperty;
 
     public OfferManager() {
         Retrofit sellOfferRetrofit = new Retrofit.Builder()
@@ -43,22 +57,47 @@ public class OfferManager extends AbstractManager {
         sellOfferService = sellOfferRetrofit.create(SellOfferService.class);
 
         sellOffersObservableList = FXCollections.observableArrayList();
-        newSellOffer = new SellOffer();
-        viewSellOffer = new SellOffer();
-        buyBtcAmount = new SimpleObjectProperty<>();
+
+        sellerEscrowPubKeyProperty = new SimpleStringProperty();
+        sellerProfilePubKeyProperty = new SimpleStringProperty();
+        arbitratorProfilePubKeyProperty = new SimpleStringProperty();
+
+        currencyCodeProperty = new SimpleObjectProperty<>();
+        paymentMethodProperty = new SimpleObjectProperty<>();
+        minAmountProperty = new SimpleObjectProperty<>();
+        maxAmountProperty = new SimpleObjectProperty<>();
+        priceProperty = new SimpleObjectProperty<>();
+
+        buyBtcAmountProperty = new SimpleObjectProperty<>();
+
+        selectedSellOfferProperty = new SimpleObjectProperty<>();
     }
 
-    public void createOffer() {
+    void createOffer() {
 
         try {
-            SellOffer createdOffer = sellOfferService.post(newSellOffer).execute().body();
-            sellOffersObservableList.add(createdOffer);
+            SellOffer newSellOffer = SellOffer.builder()
+                    .sellerEscrowPubKey(sellerEscrowPubKeyProperty.getValue())
+                    .sellerProfilePubKey(sellerProfilePubKeyProperty.getValue())
+                    .arbitratorProfilePubKey(arbitratorProfilePubKeyProperty.getValue())
+                    .currencyCode(currencyCodeProperty.getValue())
+                    .paymentMethod(paymentMethodProperty.getValue())
+                    .minAmount(minAmountProperty.getValue())
+                    .maxAmount(maxAmountProperty.getValue())
+                    .price(priceProperty.getValue())
+                    .build();
+            if (newSellOffer.isComplete()) {
+                SellOffer createdOffer = sellOfferService.put(newSellOffer.getSellerEscrowPubKey(), newSellOffer).execute().body();
+                sellOffersObservableList.add(createdOffer);
+            } else {
+                LOG.error("Sell offer is incomplete.");
+            }
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
     }
 
-    public void readOffers() {
+    void readOffers() {
         try {
             List<SellOffer> offers = sellOfferService.get().execute().body();
             sellOffersObservableList.setAll(offers);
@@ -79,33 +118,17 @@ public class OfferManager extends AbstractManager {
                 });
     }
 
-    public void deleteOffer() {
+    void deleteOffer() {
 
         try {
-            sellOfferService.delete(viewSellOffer.getSellerEscrowPubKey()).execute().body();
+            sellOfferService.delete(sellerEscrowPubKeyProperty.getValue()).execute();
             for (SellOffer so : sellOffersObservableList) {
-                if (so.getSellerEscrowPubKey().equals(viewSellOffer.getSellerEscrowPubKey())) {
+                if (so.getSellerEscrowPubKey().equals(sellerEscrowPubKeyProperty.getValue())) {
                     sellOffersObservableList.remove(so);
                 }
             }
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
-    }
-
-    public ObservableList<SellOffer> getSellOffersObservableList() {
-        return sellOffersObservableList;
-    }
-
-    public SellOffer newOffer() {
-        return newSellOffer;
-    }
-
-    public SellOffer getViewSellOffer() {
-        return viewSellOffer;
-    }
-
-    public ObjectProperty<BigDecimal> getBuyBtcAmount() {
-        return buyBtcAmount;
     }
 }

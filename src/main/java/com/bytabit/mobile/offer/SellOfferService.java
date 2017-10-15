@@ -9,14 +9,14 @@ import java.util.List;
 public interface SellOfferService {
 
     @Headers("Content-Type:application/json")
-    @POST("/offers")
-    Call<SellOffer> post(@Body SellOffer sellOffer);
+    @PUT("/offers/{sellerEscrowPubKey}")
+    Call<SellOffer> put(@Path("sellerEscrowPubKey") String sellerEscrowPubKey, @Body SellOffer sellOffer);
 
     @Headers("Content-Type:application/json")
     @GET("/offers")
     Call<List<SellOffer>> get();
 
     @Headers("Content-Type:application/json")
-    @DELETE("/offers/{sellerEscrowPubkey}")
-    Call<Void> delete(@Path("sellerEscrowPubkey") String sellerEscrowPubkey);
+    @DELETE("/offers/{sellerEscrowPubKey}")
+    Call<Void> delete(@Path("sellerEscrowPubKey") String sellerEscrowPubKey);
 }

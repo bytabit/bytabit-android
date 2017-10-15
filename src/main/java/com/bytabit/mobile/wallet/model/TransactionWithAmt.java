@@ -1,13 +1,20 @@
 package com.bytabit.mobile.wallet.model;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.ToString;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 
+@Getter
+@ToString
 public class TransactionWithAmt {
 
+    @Builder
     public TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress, String inputTxHash) {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
@@ -28,69 +35,8 @@ public class TransactionWithAmt {
     private String outputAddress;
     private String inputTxHash;
 
-    public String getHash() {
-        return hash;
-    }
-
-    public String getConfidenceType() {
-        return confidenceType;
-    }
-
-    public Integer getDepth() {
-        return depth;
-    }
-
-    public LocalDateTime getDate() {
-        return date;
-    }
-
-    public String getMemo() {
-        return memo;
-    }
-
-    public Coin getCoinAmt() {
-        return coinAmt;
-    }
-
     public BigDecimal getBtcAmt() {
-        return new BigDecimal(coinAmt.toPlainString()).setScale(8);
+        return new BigDecimal(coinAmt.toPlainString()).setScale(8, MathContext.DECIMAL64.getRoundingMode());
     }
 
-    public String getOutputAddress() {
-        return outputAddress;
-    }
-
-    public String getInputTxHash() {
-        return inputTxHash;
-    }
-
-    @Override
-    public String toString() {
-        final StringBuffer sb = new StringBuffer("TransactionWithAmt{");
-        sb.append("hash='").append(hash).append('\'');
-        sb.append(", confidenceType='").append(confidenceType).append('\'');
-        sb.append(", depth=").append(depth);
-        sb.append(", date=").append(date);
-        sb.append(", memo='").append(memo).append('\'');
-        sb.append(", coinAmt=").append(coinAmt);
-        sb.append(", outputAddress='").append(outputAddress).append('\'');
-        sb.append(", inputTxHash='").append(inputTxHash).append('\'');
-        sb.append('}');
-        return sb.toString();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        TransactionWithAmt that = (TransactionWithAmt) o;
-
-        return hash != null ? hash.equals(that.hash) : that.hash == null;
-    }
-
-    @Override
-    public int hashCode() {
-        return hash != null ? hash.hashCode() : 0;
-    }
 }

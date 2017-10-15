@@ -3,7 +3,6 @@ package com.bytabit.mobile.wallet;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.nav.evt.QuitEvent;
-import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
@@ -336,7 +335,6 @@ public class WalletManager {
                         }
                         tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
                     });
-            PayoutCompleted payoutCompleted = new PayoutCompleted();
         }
     }
 
@@ -626,7 +624,7 @@ public class WalletManager {
     public TransactionWithAmt getEscrowTransactionWithAmt(String escrowAddress, String txHash) {
         Transaction tx = getEscrowTransaction(escrowAddress, txHash);
         if (tx != null) {
-            TransactionUpdatedEvent txe = new TransactionUpdatedEvent(tx, escrowWallets.get(escrowAddress));
+            TransactionUpdatedEvent txe = TransactionUpdatedEvent.builder().tx(tx).wallet(escrowWallets.get(escrowAddress)).build();
             return new TransactionWithAmt(tx,
                     txe.getAmt(), getWatchedOutputAddress(tx),
                     tx.getInput(0).getOutpoint().getHash().toString());
@@ -666,7 +664,7 @@ public class WalletManager {
     }
 
     public String getPayoutSignature(Trade trade, Transaction fundingTx) {
-        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
+        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
         return getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
     }
 
@@ -675,10 +673,10 @@ public class WalletManager {
     }
 
     public String getPayoutSignature(Trade trade, Transaction fundingTx, Address payoutAddress) {
-        Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
-        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
-        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
-        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+        Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
+        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
+        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
+        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
 
         TransactionSignature signature = getPayoutSignature(payoutAmount, fundingTx,
                 arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
@@ -745,9 +743,9 @@ public class WalletManager {
 
     public String payoutEscrowToBuyer(Trade trade) throws InsufficientMoneyException {
 
-        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyRequest().getBuyerPayoutAddress());
+        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
 
-        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        String fundingTxHash = trade.getFundingTxHash();
         Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
 
         String signature = getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
@@ -756,7 +754,7 @@ public class WalletManager {
                 .decodeFromBitcoin(Base58.decode(signature), true, true);
 
         TransactionSignature buyerSignature = TransactionSignature
-                .decodeFromBitcoin(Base58.decode(trade.getPayoutRequest().getPayoutTxSignature()), true, true);
+                .decodeFromBitcoin(Base58.decode(trade.getPayoutTxSignature()), true, true);
 
         List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
 
@@ -765,9 +763,9 @@ public class WalletManager {
 
     public String refundEscrowToSeller(Trade trade) throws InsufficientMoneyException {
 
-        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getPaymentRequest().getRefundAddress());
+        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
 
-        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        String fundingTxHash = trade.getFundingTxHash();
         Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
 
         String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
@@ -776,7 +774,7 @@ public class WalletManager {
                 .decodeFromBitcoin(Base58.decode(signature), true, true);
 
         TransactionSignature sellerSignature = TransactionSignature
-                .decodeFromBitcoin(Base58.decode(trade.getPaymentRequest().getRefundTxSignature()), true, true);
+                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true);
 
         List<TransactionSignature> signatures = ImmutableList.of(arbitratorSignature, sellerSignature);
 
@@ -785,15 +783,15 @@ public class WalletManager {
 
     public String cancelEscrowToSeller(Trade trade) throws InsufficientMoneyException {
 
-        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getPaymentRequest().getRefundAddress());
+        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
 
-        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        String fundingTxHash = trade.getFundingTxHash();
         Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
 
         String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
 
         TransactionSignature sellerSignature = TransactionSignature
-                .decodeFromBitcoin(Base58.decode(trade.getPaymentRequest().getRefundTxSignature()), true, true);
+                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true);
 
         TransactionSignature buyerSignature = TransactionSignature
                 .decodeFromBitcoin(Base58.decode(signature), true, true);
@@ -806,18 +804,18 @@ public class WalletManager {
     private String payoutEscrow(Trade trade, Address payoutAddress,
                                 List<TransactionSignature> signatures) {
 
-        String fundingTxHash = trade.getPaymentRequest().getFundingTxHash();
+        String fundingTxHash = trade.getFundingTxHash();
         Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
 
         if (fundingTx != null) {
 
             Transaction payoutTx = new Transaction(netParams);
             payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
-            Coin payoutAmount = Coin.parseCoin(trade.getBuyRequest().getBtcAmount().toPlainString());
+            Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
 
-            ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getArbitratorProfilePubKey()));
-            ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellOffer().getSellerEscrowPubKey()));
-            ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyRequest().getBuyerEscrowPubKey()));
+            ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
+            ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
+            ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
 
             Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
             Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);

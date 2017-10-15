@@ -1,14 +1,19 @@
 package com.bytabit.mobile.trade.model;
 
 import com.bytabit.mobile.offer.model.SellOffer;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
+import com.bytabit.mobile.profile.model.CurrencyCode;
+import com.bytabit.mobile.profile.model.PaymentMethod;
+import lombok.*;
+
+import java.math.BigDecimal;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
+@NoArgsConstructor
+@EqualsAndHashCode(of = "escrowAddress")
+@Getter
+@Setter(AccessLevel.PACKAGE)
 public class Trade {
 
     public enum Status {
@@ -19,180 +24,182 @@ public class Trade {
         BUYER, SELLER, ARBITRATOR
     }
 
-    public Trade() {
-    }
+    private String escrowAddress;
 
-    private final ObjectProperty<Status> status = new SimpleObjectProperty<>();
-    private final StringProperty escrowAddress = new SimpleStringProperty();
-    private final ObjectProperty<SellOffer> sellOffer = new SimpleObjectProperty<>();
-    private final ObjectProperty<BuyRequest> buyRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<PaymentRequest> paymentRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<PayoutRequest> payoutRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<ArbitrateRequest> arbitrateRequest = new SimpleObjectProperty<>();
-    private final ObjectProperty<PayoutCompleted> payoutCompleted = new SimpleObjectProperty<>();
+    // Sell Offer
+    private String sellerEscrowPubKey;
+    private String sellerProfilePubKey;
+    private String arbitratorProfilePubKey;
+    private CurrencyCode currencyCode;
+    private PaymentMethod paymentMethod;
+    private BigDecimal minAmount;
+    private BigDecimal maxAmount;
+    private BigDecimal price;
 
-    public Trade(SellOffer sellOffer, BuyRequest buyRequest, String escrowAddress) {
-        this.sellOffer.set(sellOffer);
-        this.buyRequest.set(buyRequest);
-        this.escrowAddress.set(escrowAddress);
-        this.status.set(CREATED);
-    }
+    // Buy Request
+    private String buyerEscrowPubKey;
+    private BigDecimal btcAmount;
+    private String buyerProfilePubKey;
+    private String buyerPayoutAddress;
 
-    public void setSellOffer(SellOffer sellOffer) {
-        if (sellOffer != null && getBuyRequest() == null
-                && getPaymentRequest() == null && getPayoutRequest() == null
-                && getPayoutCompleted() == null) {
-            this.sellOffer.setValue(sellOffer);
-            this.status.setValue(CREATED);
-        } else {
-            throw new RuntimeException("Invalid trade status.");
-        }
-    }
+    // Payment Request
+    private String fundingTxHash;
+    private String paymentDetails;
+    private String refundAddress;
+    private String refundTxSignature;
 
-    public void setBuyRequest(BuyRequest buyRequest) {
-        if (getSellOffer() != null && buyRequest != null
-                && getPaymentRequest() == null && getPayoutRequest() == null
-                && getPayoutCompleted() == null) {
-            this.escrowAddress.setValue(buyRequest.getEscrowAddress());
-            this.buyRequest.setValue(buyRequest);
-            this.status.setValue(CREATED);
-        } else {
-            throw new RuntimeException("Invalid trade status.");
-        }
-    }
+    // Payout Request
+    private String paymentReference;
+    private String payoutTxSignature;
 
-    public void setPaymentRequest(PaymentRequest paymentRequest) {
-        if (getSellOffer() != null && getBuyRequest() != null
-                && paymentRequest != null && getPayoutRequest() == null
-                && getPayoutCompleted() == null) {
-            this.paymentRequest.set(paymentRequest);
-            this.status.setValue(FUNDED);
-        }
-    }
+    // Arbitrate Request
+    private ArbitrateRequest.Reason arbitrationReason;
 
-    public void setPayoutRequest(PayoutRequest payoutRequest) {
-        if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null && payoutRequest != null
-                && getPayoutCompleted() == null) {
-            this.payoutRequest.set(payoutRequest);
-            this.status.setValue(PAID);
-        }
-    }
+    // Payout Completed
+    private String payoutTxHash;
+    private PayoutCompleted.Reason payoutReason;
 
-    public void setArbitrateRequest(ArbitrateRequest arbitrateRequest) {
-        if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null
-                && getPayoutCompleted() == null && arbitrateRequest != null) {
-            this.arbitrateRequest.set(arbitrateRequest);
-            this.status.setValue(ARBITRATING);
-        }
-    }
+    @Builder
+    public Trade(String escrowAddress, SellOffer sellOffer, BuyRequest buyRequest,
+                 PaymentRequest paymentRequest, PayoutRequest payoutRequest,
+                 ArbitrateRequest arbitrateRequest, PayoutCompleted payoutCompleted) {
 
-    public void setPayoutCompleted(PayoutCompleted payoutCompleted) {
-        if (getSellOffer() != null && getBuyRequest() != null
-                && getPaymentRequest() != null
-                && payoutCompleted != null) {
-            this.payoutCompleted.set(payoutCompleted);
-            this.status.setValue(COMPLETED);
-        }
+        this.escrowAddress = escrowAddress;
+        setSellOffer(sellOffer);
+        setBuyRequest(buyRequest);
+        setPaymentRequest(paymentRequest);
+        setPayoutRequest(payoutRequest);
+        setArbitrateRequest(arbitrateRequest);
+        setPayoutCompleted(payoutCompleted);
     }
 
     public Status getStatus() {
-        return status.get();
-    }
-
-    public ObjectProperty<Status> statusProperty() {
+        Status status = null;
+        if (escrowAddress != null && hasSellOffer() && hasBuyRequest()) {
+            status = CREATED;
+        }
+        if (status == CREATED && hasPaymentRequest()) {
+            status = FUNDED;
+        }
+        if (status == FUNDED && hasPayoutRequest()) {
+            status = PAID;
+        }
+        if (hasArbitrateRequest()) {
+            status = ARBITRATING;
+        }
+        if (hasPayoutCompleted()) {
+            status = COMPLETED;
+        }
         return status;
     }
 
-    public String getEscrowAddress() {
-        return escrowAddress.get();
+    private void setSellOffer(SellOffer sellOffer) {
+        if (sellOffer != null) {
+            this.sellerEscrowPubKey = sellOffer.getSellerEscrowPubKey();
+            this.sellerProfilePubKey = sellOffer.getSellerProfilePubKey();
+            this.arbitratorProfilePubKey = sellOffer.getArbitratorProfilePubKey();
+            this.currencyCode = sellOffer.getCurrencyCode();
+            this.paymentMethod = sellOffer.getPaymentMethod();
+            this.minAmount = sellOffer.getMinAmount();
+            this.maxAmount = sellOffer.getMaxAmount();
+            this.price = sellOffer.getPrice();
+        }
     }
 
-    public StringProperty escrowAddressProperty() {
-        return escrowAddress;
+    public boolean hasSellOffer() {
+        return sellerEscrowPubKey != null &&
+                sellerProfilePubKey != null &&
+                arbitratorProfilePubKey != null &&
+                currencyCode != null &&
+                paymentMethod != null &&
+                minAmount != null &&
+                maxAmount != null &&
+                price != null;
     }
 
-    public SellOffer getSellOffer() {
-        return sellOffer.get();
+    private void setBuyRequest(BuyRequest buyRequest) {
+        if (buyRequest != null) {
+            this.buyerEscrowPubKey = buyRequest.getBuyerEscrowPubKey();
+            this.btcAmount = buyRequest.getBtcAmount();
+            this.buyerProfilePubKey = buyRequest.getBuyerProfilePubKey();
+            this.buyerPayoutAddress = buyRequest.getBuyerPayoutAddress();
+        }
     }
 
-    public ObjectProperty<SellOffer> sellOfferProperty() {
-        return sellOffer;
+    public boolean hasBuyRequest() {
+        return buyerEscrowPubKey != null &&
+                btcAmount != null &&
+                buyerProfilePubKey != null &&
+                buyerPayoutAddress != null;
     }
 
-    public BuyRequest getBuyRequest() {
-        return buyRequest.get();
+    private void setPaymentRequest(PaymentRequest paymentRequest) {
+        if (paymentRequest != null) {
+            this.fundingTxHash = paymentRequest.getFundingTxHash();
+            this.paymentDetails = paymentRequest.getPaymentDetails();
+            this.refundAddress = paymentRequest.getRefundAddress();
+            this.refundTxSignature = paymentRequest.getRefundTxSignature();
+        }
     }
 
-    public ObjectProperty<BuyRequest> buyRequestProperty() {
-        return buyRequest;
+    public boolean hasPaymentRequest() {
+        return fundingTxHash != null &&
+                paymentDetails != null &&
+                refundAddress != null &&
+                refundTxSignature != null;
     }
 
-    public PaymentRequest getPaymentRequest() {
-        return paymentRequest.get();
+    private void setPayoutRequest(PayoutRequest payoutRequest) {
+        if (payoutRequest != null) {
+            this.paymentReference = payoutRequest.getPaymentReference();
+            this.payoutTxSignature = payoutRequest.getPayoutTxSignature();
+        }
     }
 
-    public ObjectProperty<PaymentRequest> paymentRequestProperty() {
-        return paymentRequest;
+    public boolean hasPayoutRequest() {
+        return paymentReference != null &&
+                payoutTxSignature != null;
     }
 
-    public PayoutRequest getPayoutRequest() {
-        return payoutRequest.get();
+    private void setArbitrateRequest(ArbitrateRequest arbitrateRequest) {
+        if (arbitrateRequest != null) {
+            this.arbitrationReason = arbitrateRequest.getReason();
+        }
     }
 
-    public ObjectProperty<PayoutRequest> payoutRequestProperty() {
-        return payoutRequest;
+    public boolean hasArbitrateRequest() {
+        return arbitrationReason != null;
     }
 
-    public PayoutCompleted getPayoutCompleted() {
-        return payoutCompleted.get();
+    private void setPayoutCompleted(PayoutCompleted payoutCompleted) {
+        if (payoutCompleted != null) {
+            this.payoutTxHash = payoutCompleted.getPayoutTxHash();
+            this.payoutReason = payoutCompleted.getReason();
+        }
     }
 
-    public ObjectProperty<PayoutCompleted> payoutCompletedProperty() {
-        return payoutCompleted;
-    }
-
-    public ArbitrateRequest getArbitrateRequest() {
-        return arbitrateRequest.get();
-    }
-
-    public ObjectProperty<ArbitrateRequest> arbitrateRequestProperty() {
-        return arbitrateRequest;
+    public boolean hasPayoutCompleted() {
+        return payoutTxHash != null &&
+                payoutReason != null;
     }
 
     public Role getRole(String profilePubKey, Boolean isArbitrator) {
         Role role;
 
         if (!isArbitrator) {
-            if (getSellOffer().getSellerProfilePubKey().equals(profilePubKey)) {
+            if (getSellerProfilePubKey().equals(profilePubKey)) {
                 role = SELLER;
-            } else if (getBuyRequest().getBuyerProfilePubKey().equals(profilePubKey)) {
+            } else if (getBuyerProfilePubKey().equals(profilePubKey)) {
                 role = BUYER;
             } else {
                 throw new RuntimeException("Unable to determine trader role.");
             }
-        } else if (getSellOffer().getArbitratorProfilePubKey().equals(profilePubKey)) {
+        } else if (getArbitratorProfilePubKey().equals(profilePubKey)) {
             role = ARBITRATOR;
         } else {
             throw new RuntimeException("Unable to determine arbitrator role.");
         }
 
         return role;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        Trade trade = (Trade) o;
-
-        return escrowAddress != null ? escrowAddress.get().equals(trade.escrowAddress.get()) : trade.escrowAddress == null;
-    }
-
-    @Override
-    public int hashCode() {
-        return escrowAddress != null ? escrowAddress.hashCode() : 0;
     }
 }

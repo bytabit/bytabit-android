@@ -45,12 +45,12 @@ public class TradeDevInfoPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Trade Debug Info");
 
-                Trade trade = tradeManager.getSelectedTrade();
+                Trade trade = tradeManager.getSelectedTradeProperty().getValue();
 
                 tradeEscrowAddressLabel.textProperty().setValue(trade.getEscrowAddress());
-                sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerEscrowPubKey());
-                sellerProfilePubKeyLabel.textProperty().setValue(trade.getSellOffer().getSellerProfilePubKey());
-                arbitratorProfilePubKeyLabel.textProperty().setValue(trade.getSellOffer().getArbitratorProfilePubKey());
+                sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellerEscrowPubKey());
+                sellerProfilePubKeyLabel.textProperty().setValue(trade.getSellerProfilePubKey());
+                arbitratorProfilePubKeyLabel.textProperty().setValue(trade.getArbitratorProfilePubKey());
             }
         });
     }

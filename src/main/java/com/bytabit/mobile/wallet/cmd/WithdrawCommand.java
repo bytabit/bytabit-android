@@ -1,11 +1,7 @@
 package com.bytabit.mobile.wallet.cmd;
 
-public class WithdrawCommand implements WalletCommand {
+import lombok.ToString;
 
-    @Override
-    public String toString() {
-        final StringBuffer sb = new StringBuffer("WithdrawCommand{");
-        sb.append('}');
-        return sb.toString();
-    }
+@ToString
+public class WithdrawCommand implements WalletCommand {
 }
