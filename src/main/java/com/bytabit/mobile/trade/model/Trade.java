@@ -93,6 +93,30 @@ public class Trade {
         return status;
     }
 
+    private boolean hasSellOffer() {
+        return sellerEscrowPubKey != null &&
+                sellerProfilePubKey != null &&
+                arbitratorProfilePubKey != null &&
+                currencyCode != null &&
+                paymentMethod != null &&
+                minAmount != null &&
+                maxAmount != null &&
+                price != null;
+    }
+
+    public SellOffer getSellOffer() {
+        return SellOffer.builder()
+                .sellerEscrowPubKey(this.sellerEscrowPubKey)
+                .sellerProfilePubKey(this.sellerProfilePubKey)
+                .arbitratorProfilePubKey(this.arbitratorProfilePubKey)
+                .currencyCode(this.currencyCode)
+                .paymentMethod(this.paymentMethod)
+                .minAmount(this.minAmount)
+                .maxAmount(this.maxAmount)
+                .price(this.price)
+                .build();
+    }
+
     private void setSellOffer(SellOffer sellOffer) {
         if (sellOffer != null) {
             this.sellerEscrowPubKey = sellOffer.getSellerEscrowPubKey();
@@ -106,15 +130,20 @@ public class Trade {
         }
     }
 
-    public boolean hasSellOffer() {
-        return sellerEscrowPubKey != null &&
-                sellerProfilePubKey != null &&
-                arbitratorProfilePubKey != null &&
-                currencyCode != null &&
-                paymentMethod != null &&
-                minAmount != null &&
-                maxAmount != null &&
-                price != null;
+    private boolean hasBuyRequest() {
+        return buyerEscrowPubKey != null &&
+                btcAmount != null &&
+                buyerProfilePubKey != null &&
+                buyerPayoutAddress != null;
+    }
+
+    public BuyRequest getBuyRequest() {
+        return BuyRequest.builder()
+                .buyerEscrowPubKey(this.buyerEscrowPubKey)
+                .btcAmount(this.btcAmount)
+                .buyerProfilePubKey(this.buyerProfilePubKey)
+                .buyerPayoutAddress(this.buyerPayoutAddress)
+                .build();
     }
 
     private void setBuyRequest(BuyRequest buyRequest) {
@@ -126,11 +155,20 @@ public class Trade {
         }
     }
 
-    public boolean hasBuyRequest() {
-        return buyerEscrowPubKey != null &&
-                btcAmount != null &&
-                buyerProfilePubKey != null &&
-                buyerPayoutAddress != null;
+    public boolean hasPaymentRequest() {
+        return fundingTxHash != null &&
+                paymentDetails != null &&
+                refundAddress != null &&
+                refundTxSignature != null;
+    }
+
+    public PaymentRequest getPaymentRequest() {
+        return PaymentRequest.builder()
+                .fundingTxHash(this.fundingTxHash)
+                .paymentDetails(this.paymentDetails)
+                .refundAddress(this.refundAddress)
+                .refundTxSignature(this.refundTxSignature)
+                .build();
     }
 
     private void setPaymentRequest(PaymentRequest paymentRequest) {
@@ -142,11 +180,17 @@ public class Trade {
         }
     }
 
-    public boolean hasPaymentRequest() {
-        return fundingTxHash != null &&
-                paymentDetails != null &&
-                refundAddress != null &&
-                refundTxSignature != null;
+
+    public boolean hasPayoutRequest() {
+        return paymentReference != null &&
+                payoutTxSignature != null;
+    }
+
+    public PayoutRequest getPayoutRequest() {
+        return PayoutRequest.builder()
+                .paymentReference(this.paymentReference)
+                .payoutTxSignature(this.payoutTxSignature)
+                .build();
     }
 
     private void setPayoutRequest(PayoutRequest payoutRequest) {
@@ -156,9 +200,15 @@ public class Trade {
         }
     }
 
-    public boolean hasPayoutRequest() {
-        return paymentReference != null &&
-                payoutTxSignature != null;
+
+    public boolean hasArbitrateRequest() {
+        return arbitrationReason != null;
+    }
+
+    public ArbitrateRequest getArbitrateRequest() {
+        return ArbitrateRequest.builder()
+                .reason(this.arbitrationReason)
+                .build();
     }
 
     private void setArbitrateRequest(ArbitrateRequest arbitrateRequest) {
@@ -167,8 +217,16 @@ public class Trade {
         }
     }
 
-    public boolean hasArbitrateRequest() {
-        return arbitrationReason != null;
+    public boolean hasPayoutCompleted() {
+        return payoutTxHash != null &&
+                payoutReason != null;
+    }
+
+    public PayoutCompleted getPayoutCompleted() {
+        return PayoutCompleted.builder()
+                .payoutTxHash(this.payoutTxHash)
+                .reason(this.payoutReason)
+                .build();
     }
 
     private void setPayoutCompleted(PayoutCompleted payoutCompleted) {
@@ -176,11 +234,6 @@ public class Trade {
             this.payoutTxHash = payoutCompleted.getPayoutTxHash();
             this.payoutReason = payoutCompleted.getReason();
         }
-    }
-
-    public boolean hasPayoutCompleted() {
-        return payoutTxHash != null &&
-                payoutReason != null;
     }
 
     public Role getRole(String profilePubKey, Boolean isArbitrator) {

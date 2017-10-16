@@ -40,7 +40,14 @@ public class SellerProtocol extends TradeProtocol {
 
             // 4. put payment request
             try {
-                fundedTrade = tradeService.put(createdTrade.getEscrowAddress(), paymentRequest).execute().body();
+                fundedTrade = Trade.builder()
+                        .escrowAddress(createdTrade.getEscrowAddress())
+                        .sellOffer(createdTrade.getSellOffer())
+                        .buyRequest(createdTrade.getBuyRequest())
+                        .paymentRequest(paymentRequest)
+                        .build();
+
+                tradeService.put(fundedTrade.getEscrowAddress(), fundedTrade).execute();
 
             } catch (IOException e) {
                 log.error("Unable to PUT funded trade.", e);
@@ -110,7 +117,17 @@ public class SellerProtocol extends TradeProtocol {
 
                 // 5. post payout completed
                 try {
-                    completedTrade = tradeService.put(paidTrade.getEscrowAddress(), payoutCompleted).execute().body();
+
+                    completedTrade = Trade.builder()
+                            .escrowAddress(paidTrade.getEscrowAddress())
+                            .sellOffer(paidTrade.getSellOffer())
+                            .buyRequest(paidTrade.getBuyRequest())
+                            .paymentRequest(paidTrade.getPaymentRequest())
+                            .payoutRequest(paidTrade.getPayoutRequest())
+                            .payoutCompleted(payoutCompleted)
+                            .build();
+
+                    tradeService.put(completedTrade.getEscrowAddress(), completedTrade).execute();
 
                 } catch (IOException e) {
                     log.error("Can't post payout completed to server.");

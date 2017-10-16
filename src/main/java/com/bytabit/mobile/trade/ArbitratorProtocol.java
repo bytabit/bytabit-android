@@ -79,7 +79,7 @@ public class ArbitratorProtocol extends TradeProtocol {
         }
     }
 
-    private void completeTrade(Trade currentTrade, String payoutTxHash, PayoutCompleted.Reason reason) {
+    private void completeTrade(Trade arbitratingTrade, String payoutTxHash, PayoutCompleted.Reason reason) {
 
         if (payoutTxHash != null) {
 
@@ -90,7 +90,17 @@ public class ArbitratorProtocol extends TradeProtocol {
                     .build();
 
             try {
-                tradeService.put(currentTrade.getEscrowAddress(), payoutCompleted).execute();
+
+                Trade completedTrade = Trade.builder()
+                        .escrowAddress(arbitratingTrade.getEscrowAddress())
+                        .sellOffer(arbitratingTrade.getSellOffer())
+                        .buyRequest(arbitratingTrade.getBuyRequest())
+                        .paymentRequest(arbitratingTrade.getPaymentRequest())
+                        .payoutRequest(arbitratingTrade.getPayoutRequest())
+                        .payoutCompleted(payoutCompleted)
+                        .build();
+
+                tradeService.put(completedTrade.getEscrowAddress(), completedTrade).execute();
 
             } catch (IOException e) {
                 log.error("Unable to put completed arbitrated trade.", e);

@@ -53,9 +53,9 @@ public class BuyerProtocol extends TradeProtocol {
 
         // post buy request to server
         try {
-            String spk = sellOffer.getSellerEscrowPubKey();
-            Trade newTrade = tradeService.put(spk, buyRequest).execute().body();
-            log.debug("Put buyRequest to create new trade: {}", newTrade);
+
+            tradeService.put(createdTrade.getEscrowAddress(), createdTrade).execute();
+            log.debug("Put buyRequest to create new trade: {}", createdTrade);
         } catch (IOException ioe) {
             log.error(ioe.getMessage());
             throw new RuntimeException(ioe);
@@ -109,7 +109,15 @@ public class BuyerProtocol extends TradeProtocol {
 
                 // 3. post payout request to server
                 try {
-                    tradeService.put(fundedTrade.getEscrowAddress(), payoutRequest).execute().body();
+                    Trade paidTrade = Trade.builder()
+                            .escrowAddress(fundedTrade.getEscrowAddress())
+                            .sellOffer(fundedTrade.getSellOffer())
+                            .buyRequest(fundedTrade.getBuyRequest())
+                            .paymentRequest(fundedTrade.getPaymentRequest())
+                            .payoutRequest(payoutRequest)
+                            .build();
+
+                    tradeService.put(paidTrade.getEscrowAddress(), paidTrade).execute();
 
                 } catch (IOException e) {
                     log.error("Can't put paid trade to server.");
@@ -120,13 +128,13 @@ public class BuyerProtocol extends TradeProtocol {
         }
     }
 
-    public void cancelTrade(Trade trade) {
+    public void cancelTrade(Trade fundedTrade) {
 
-        if (trade.getStatus().equals(FUNDED)) {
+        if (fundedTrade.getStatus().equals(FUNDED)) {
 
             // 1. sign and broadcast refund tx
             try {
-                String refundTxHash = walletManager.cancelEscrowToSeller(trade);
+                String refundTxHash = walletManager.cancelEscrowToSeller(fundedTrade);
 
                 // 2. confirm refund tx and create payout completed
                 PayoutCompleted payoutCompleted = PayoutCompleted.builder()
@@ -135,7 +143,15 @@ public class BuyerProtocol extends TradeProtocol {
                         .build();
 
                 try {
-                    tradeService.put(trade.getEscrowAddress(), payoutCompleted).execute();
+                    Trade canceledTrade = Trade.builder()
+                            .escrowAddress(fundedTrade.getEscrowAddress())
+                            .sellOffer(fundedTrade.getSellOffer())
+                            .buyRequest(fundedTrade.getBuyRequest())
+                            .paymentRequest(fundedTrade.getPaymentRequest())
+                            .payoutCompleted(payoutCompleted)
+                            .build();
+
+                    tradeService.put(canceledTrade.getEscrowAddress(), canceledTrade).execute();
 
                 } catch (IOException e) {
                     log.error("Can't post payout completed to server.", e);
