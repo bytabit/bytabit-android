@@ -47,6 +47,16 @@ public class ArbitratorProtocol extends TradeProtocol {
         }
     }
 
+    @Override
+    public Trade handleCompleted(Trade currentTrade, Trade completedTrade) {
+        if (completedTrade.getPayoutReason().equals(ARBITRATOR_BUYER_PAYOUT) ||
+                completedTrade.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND)) {
+            return super.handleCompleted(currentTrade, completedTrade);
+        } else {
+            return completedTrade;
+        }
+    }
+
     public void refundSeller(Trade currentTrade) {
 
         if (currentTrade.getStatus().equals(ARBITRATING)) {

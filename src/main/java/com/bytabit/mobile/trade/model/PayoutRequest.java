@@ -1,11 +1,9 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
 @Getter
 @ToString

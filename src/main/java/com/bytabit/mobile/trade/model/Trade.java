@@ -3,6 +3,8 @@ package com.bytabit.mobile.trade.model;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -14,6 +16,7 @@ import static com.bytabit.mobile.trade.model.Trade.Status.*;
 @EqualsAndHashCode(of = "escrowAddress")
 @Getter
 @Setter(AccessLevel.PACKAGE)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Trade {
 
     public enum Status {
@@ -60,9 +63,9 @@ public class Trade {
     private PayoutCompleted.Reason payoutReason;
 
     @Builder
-    public Trade(String escrowAddress, SellOffer sellOffer, BuyRequest buyRequest,
-                 PaymentRequest paymentRequest, PayoutRequest payoutRequest,
-                 ArbitrateRequest arbitrateRequest, PayoutCompleted payoutCompleted) {
+    Trade(String escrowAddress, SellOffer sellOffer, BuyRequest buyRequest,
+          PaymentRequest paymentRequest, PayoutRequest payoutRequest,
+          ArbitrateRequest arbitrateRequest, PayoutCompleted payoutCompleted) {
 
         this.escrowAddress = escrowAddress;
         setSellOffer(sellOffer);
@@ -73,6 +76,7 @@ public class Trade {
         setPayoutCompleted(payoutCompleted);
     }
 
+    @JsonIgnore
     public Status getStatus() {
         Status status = null;
         if (escrowAddress != null && hasSellOffer() && hasBuyRequest()) {
@@ -104,6 +108,7 @@ public class Trade {
                 price != null;
     }
 
+    @JsonIgnore
     public SellOffer getSellOffer() {
         return SellOffer.builder()
                 .sellerEscrowPubKey(this.sellerEscrowPubKey)
@@ -137,6 +142,7 @@ public class Trade {
                 buyerPayoutAddress != null;
     }
 
+    @JsonIgnore
     public BuyRequest getBuyRequest() {
         return BuyRequest.builder()
                 .buyerEscrowPubKey(this.buyerEscrowPubKey)
@@ -155,6 +161,7 @@ public class Trade {
         }
     }
 
+    @JsonIgnore
     public boolean hasPaymentRequest() {
         return fundingTxHash != null &&
                 paymentDetails != null &&
@@ -162,6 +169,7 @@ public class Trade {
                 refundTxSignature != null;
     }
 
+    @JsonIgnore
     public PaymentRequest getPaymentRequest() {
         return PaymentRequest.builder()
                 .fundingTxHash(this.fundingTxHash)
@@ -180,12 +188,13 @@ public class Trade {
         }
     }
 
-
+    @JsonIgnore
     public boolean hasPayoutRequest() {
         return paymentReference != null &&
                 payoutTxSignature != null;
     }
 
+    @JsonIgnore
     public PayoutRequest getPayoutRequest() {
         return PayoutRequest.builder()
                 .paymentReference(this.paymentReference)
@@ -200,11 +209,12 @@ public class Trade {
         }
     }
 
-
+    @JsonIgnore
     public boolean hasArbitrateRequest() {
         return arbitrationReason != null;
     }
 
+    @JsonIgnore
     public ArbitrateRequest getArbitrateRequest() {
         return ArbitrateRequest.builder()
                 .reason(this.arbitrationReason)
@@ -217,11 +227,13 @@ public class Trade {
         }
     }
 
+    @JsonIgnore
     public boolean hasPayoutCompleted() {
         return payoutTxHash != null &&
                 payoutReason != null;
     }
 
+    @JsonIgnore
     public PayoutCompleted getPayoutCompleted() {
         return PayoutCompleted.builder()
                 .payoutTxHash(this.payoutTxHash)
@@ -236,6 +248,7 @@ public class Trade {
         }
     }
 
+    @JsonIgnore
     public Role getRole(String profilePubKey, Boolean isArbitrator) {
         Role role;
 

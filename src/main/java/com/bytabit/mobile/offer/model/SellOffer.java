@@ -2,6 +2,7 @@ package com.bytabit.mobile.offer.model;
 
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
 @EqualsAndHashCode
 @Getter
 @Setter(AccessLevel.PACKAGE)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class SellOffer {
 
     private String sellerEscrowPubKey;

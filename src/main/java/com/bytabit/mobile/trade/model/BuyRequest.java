@@ -1,13 +1,11 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 import java.math.BigDecimal;
 
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
 @Getter
 @ToString

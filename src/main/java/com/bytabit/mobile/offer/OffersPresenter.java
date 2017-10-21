@@ -102,8 +102,6 @@ public class OffersPresenter {
                 }
             }
         });
-
-        offerManager.readOffers();
     }
 
 }

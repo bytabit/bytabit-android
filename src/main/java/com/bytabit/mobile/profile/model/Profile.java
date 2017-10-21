@@ -1,5 +1,6 @@
 package com.bytabit.mobile.profile.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 @NoArgsConstructor
@@ -8,6 +9,7 @@ import lombok.*;
 @EqualsAndHashCode
 @Getter
 @Setter(AccessLevel.PACKAGE)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Profile {
 
     private String pubKey;

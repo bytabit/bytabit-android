@@ -883,6 +883,7 @@ public class WalletManager {
             final File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
 
             Wallet escrowWallet = createOrLoadWallet(escrowWalletFile, escrowWalletBackupFile, blockStoreFile);
+            escrowWallet.addWatchedAddress(address, (DateTime.now().getMillis() / 1000));
             escrowWallets.put(escrowAddress, escrowWallet);
 
             Observable<TransactionUpdatedEvent> escrowWalletTxObservable = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
@@ -908,11 +909,11 @@ public class WalletManager {
             blockChain.addWallet(escrowWallet);
             peerGroup.addWallet(escrowWallet);
         }
-        if (escrowWallets.get(escrowAddress).addWatchedAddress(address, (DateTime.now().getMillis() / 1000))) {
-            LOG.debug("Added watched address: {}", address.toBase58());
-        } else {
-            LOG.warn("Failed to add watch address: {}", address.toBase58());
-        }
+//        if (escrowWallets.get(escrowAddress).addWatchedAddress(address, (DateTime.now().getMillis() / 1000))) {
+//            LOG.debug("Added watched address: {}", address.toBase58());
+//        } else {
+//            LOG.warn("Failed to add watch address: {}", address.toBase58());
+//        }
     }
 
     public void removeWatchedEscrowAddress(String escrowAddress) {

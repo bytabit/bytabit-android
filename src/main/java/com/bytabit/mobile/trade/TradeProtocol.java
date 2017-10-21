@@ -1,19 +1,21 @@
 package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.config.AppConfig;
+import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
+import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
 
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
+import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.FUNDED;
 import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
@@ -24,14 +26,22 @@ public abstract class TradeProtocol {
     @Inject
     protected WalletManager walletManager;
 
+    @Inject
+    protected ProfileManager profileManager;
+
     protected final TradeService tradeService;
 
+    protected final ObjectMapper objectMapper;
+
     protected TradeProtocol(Logger log) {
+
+        objectMapper = new ObjectMapper();
+
         this.log = log;
 
         Retrofit tradeRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(new JacksonJrConverter<>(Trade.class))
+                .addConverterFactory(JacksonConverterFactory.create(objectMapper))
                 .build();
         tradeService = tradeRetrofit.create(TradeService.class);
     }
@@ -66,10 +76,20 @@ public abstract class TradeProtocol {
             toAddress = completedTrade.getRefundAddress();
         }
 
+        Boolean zeroConfOK = false;
+        PayoutCompleted.Reason payoutReason = completedTrade.getPayoutReason();
+        Trade.Role tradeRole = completedTrade.getRole(profileManager.getPubKeyProperty().getValue(), profileManager.getIsArbitratorProperty().getValue());
+        if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
+                (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
+                tradeRole.equals(Trade.Role.ARBITRATOR)) {
+
+            zeroConfOK = true;
+        }
+
         TransactionWithAmt tx = walletManager.getTransactionWithAmt(completedTrade.getEscrowAddress(), txHash, toAddress);
         if (tx != null) {
-            if (tx.getBtcAmt().equals(completedTrade.getBtcAmount())) {
-                if (tx.getDepth() > 0) {
+            if (tx.getBtcAmt().compareTo(completedTrade.getBtcAmount()) == 0) {
+                if (zeroConfOK || tx.getDepth() > 0) {
 
                     verifiedCompletedTrade = completedTrade;
 
@@ -99,8 +119,17 @@ public abstract class TradeProtocol {
                     .reason(reason)
                     .build();
 
+            Trade arbitratingTrade = Trade.builder()
+                    .escrowAddress(currentTrade.getEscrowAddress())
+                    .sellOffer(currentTrade.getSellOffer())
+                    .buyRequest(currentTrade.getBuyRequest())
+                    .paymentRequest(currentTrade.getPaymentRequest())
+                    .payoutRequest(currentTrade.getPayoutRequest())
+                    .arbitrateRequest(arbitrateRequest)
+                    .build();
+
             try {
-                tradeService.put(currentTrade.getEscrowAddress(), arbitrateRequest).execute();
+                tradeService.put(currentTrade.getEscrowAddress(), arbitratingTrade).execute();
             } catch (IOException e) {
                 log.error("Can't post ArbitrateRequest to server.");
             }

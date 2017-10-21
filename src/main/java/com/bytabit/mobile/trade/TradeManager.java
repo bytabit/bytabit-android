@@ -5,8 +5,7 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
-import com.fasterxml.jackson.jr.ob.JSON;
-import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
@@ -14,6 +13,7 @@ import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 import rx.Observable;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
@@ -46,6 +46,8 @@ public class TradeManager extends AbstractManager {
     @Inject
     private ProfileManager profileManager;
 
+    private final ObjectMapper objectMapper;
+
     private final TradeService tradeService;
 
     private final ObservableList<Trade> tradesObservableList;
@@ -57,9 +59,11 @@ public class TradeManager extends AbstractManager {
 
     public TradeManager() {
 
+        objectMapper = new ObjectMapper();
+
         Retrofit tradeRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(new JacksonJrConverter<>(Trade.class))
+                .addConverterFactory(JacksonConverterFactory.create(objectMapper))
                 .build();
         tradeService = tradeRetrofit.create(TradeService.class);
 
@@ -155,7 +159,7 @@ public class TradeManager extends AbstractManager {
                 try {
                     File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "trade.json");
                     FileReader tradeReader = new FileReader(tradeFile);
-                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
+                    Trade trade = objectMapper.readValue(tradeReader, Trade.class);
 
                     tradesObservableList.add(trade);
                 } catch (IOException ioe) {
@@ -174,10 +178,11 @@ public class TradeManager extends AbstractManager {
                 .retry()
                 .observeOn(JavaFxScheduler.getInstance())
                 .subscribe(c -> {
-                    LOG.debug(c.toString());
                     try {
                         List<Trade> trades = c.execute().body();
-                        receiveTrades(trades);
+                        if (trades != null) {
+                            receiveTrades(trades);
+                        }
                     } catch (IOException ioe) {
                         LOG.error(ioe.getMessage());
                     }
@@ -188,8 +193,8 @@ public class TradeManager extends AbstractManager {
         for (Trade trade : trades) {
             Trade updatedTrade = handleTrade(trade);
             if (updatedTrade != null) {
-                writeUpdatedTrade(trade);
-                updateTradesList(trade);
+                writeUpdatedTrade(updatedTrade);
+                updateTradesList(updatedTrade);
             }
         }
     }
@@ -262,8 +267,12 @@ public class TradeManager extends AbstractManager {
         String tradePath = TRADES_PATH + updatedTrade.getEscrowAddress() + File.separator + "trade.json";
 
         try {
+            File dir = new File(TRADES_PATH + updatedTrade.getEscrowAddress());
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
             FileWriter tradeWriter = new FileWriter(tradePath);
-            tradeWriter.write(JSON.std.asString(updatedTrade));
+            tradeWriter.write(objectMapper.writeValueAsString(updatedTrade));
             tradeWriter.flush();
 
             LOG.debug("Created local trade: {}", updatedTrade);
@@ -276,6 +285,10 @@ public class TradeManager extends AbstractManager {
 
     private void updateTradesList(Trade updatedTrade) {
         int index = tradesObservableList.indexOf(updatedTrade);
-        tradesObservableList.set(index, updatedTrade);
+        if (index < 0) {
+            tradesObservableList.add(updatedTrade);
+        } else {
+            tradesObservableList.set(index, updatedTrade);
+        }
     }
 }

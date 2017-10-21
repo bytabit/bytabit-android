@@ -1,6 +1,7 @@
 package com.bytabit.mobile.wallet.model;
 
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 import org.bitcoinj.core.Coin;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 
 @Getter
+@EqualsAndHashCode(of = "hash")
 @ToString
 public class TransactionWithAmt {
 
