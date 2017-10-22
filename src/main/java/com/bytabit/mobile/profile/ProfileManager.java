@@ -7,7 +7,7 @@ import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.WalletManager;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -16,7 +16,6 @@ import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
 
@@ -60,7 +59,7 @@ public class ProfileManager extends AbstractManager {
     public ProfileManager() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(JacksonConverterFactory.create(new ObjectMapper()))
+                .addConverterFactory(new JacksonJrConverter<>(Profile.class))
                 .build();
 
         profileService = retrofit.create(ProfileService.class);

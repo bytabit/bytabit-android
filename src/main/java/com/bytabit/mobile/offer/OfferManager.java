@@ -5,7 +5,7 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -16,7 +16,6 @@ import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 import rx.Observable;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
@@ -52,7 +51,7 @@ public class OfferManager extends AbstractManager {
     public OfferManager() {
         Retrofit sellOfferRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(JacksonConverterFactory.create(new ObjectMapper()))
+                .addConverterFactory(new JacksonJrConverter<>(SellOffer.class))
                 .build();
 
         sellOfferService = sellOfferRetrofit.create(SellOfferService.class);

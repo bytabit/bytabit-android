@@ -1,5 +1,5 @@
 <configuration>
-    <appender userName="logcat" class="ch.qos.logback.classic.android.LogcatAppender">
+    <appender name="logcat" class="ch.qos.logback.classic.android.LogcatAppender">
         <tagEncoder>
             <pattern>%logger{12}</pattern>
         </tagEncoder>
@@ -8,7 +8,7 @@
         </encoder>
     </appender>
 
-    <logger userName="com.bytabit.mobile" level="DEBUG"/>
+    <logger name="com.bytabit.mobile" level="DEBUG"/>
 
     <root level="WARN">
         <appender-ref ref="logcat"/>

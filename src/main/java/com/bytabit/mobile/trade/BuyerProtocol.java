@@ -74,7 +74,7 @@ public class BuyerProtocol extends TradeProtocol {
     public Trade handleFunded(Trade createdTrade, Trade fundedTrade) {
 
         Trade verifiedFundedTrade = null;
-        if (createdTrade.getStatus().equals(CREATED)) {
+        if (createdTrade.status().equals(CREATED)) {
             TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
 
             if (tx != null) {
@@ -94,7 +94,7 @@ public class BuyerProtocol extends TradeProtocol {
     // 3.B: buyer sends payment to seller and post payout request
     public void sendPayment(Trade fundedTrade, String paymentReference) {
 
-        if (fundedTrade.getStatus().equals(FUNDED)) {
+        if (fundedTrade.status().equals(FUNDED)) {
 
             // 1. create payout request with buyer payout signature
             Transaction fundingTx = walletManager.getEscrowTransaction(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
@@ -110,9 +110,9 @@ public class BuyerProtocol extends TradeProtocol {
                 try {
                     Trade paidTrade = Trade.builder()
                             .escrowAddress(fundedTrade.getEscrowAddress())
-                            .sellOffer(fundedTrade.getSellOffer())
-                            .buyRequest(fundedTrade.getBuyRequest())
-                            .paymentRequest(fundedTrade.getPaymentRequest())
+                            .sellOffer(fundedTrade.sellOffer())
+                            .buyRequest(fundedTrade.buyRequest())
+                            .paymentRequest(fundedTrade.paymentRequest())
                             .payoutRequest(payoutRequest)
                             .build();
 
@@ -129,7 +129,7 @@ public class BuyerProtocol extends TradeProtocol {
 
     public void cancelTrade(Trade fundedTrade) {
 
-        if (fundedTrade.getStatus().equals(FUNDED)) {
+        if (fundedTrade.status().equals(FUNDED)) {
 
             // 1. sign and broadcast refund tx
             try {
@@ -144,9 +144,9 @@ public class BuyerProtocol extends TradeProtocol {
                 try {
                     Trade canceledTrade = Trade.builder()
                             .escrowAddress(fundedTrade.getEscrowAddress())
-                            .sellOffer(fundedTrade.getSellOffer())
-                            .buyRequest(fundedTrade.getBuyRequest())
-                            .paymentRequest(fundedTrade.getPaymentRequest())
+                            .sellOffer(fundedTrade.sellOffer())
+                            .buyRequest(fundedTrade.buyRequest())
+                            .paymentRequest(fundedTrade.paymentRequest())
                             .payoutCompleted(payoutCompleted)
                             .build();
 

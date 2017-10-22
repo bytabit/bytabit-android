@@ -42,8 +42,8 @@ public class SellerProtocol extends TradeProtocol {
             try {
                 fundedTrade = Trade.builder()
                         .escrowAddress(createdTrade.getEscrowAddress())
-                        .sellOffer(createdTrade.getSellOffer())
-                        .buyRequest(createdTrade.getBuyRequest())
+                        .sellOffer(createdTrade.sellOffer())
+                        .buyRequest(createdTrade.buyRequest())
                         .paymentRequest(paymentRequest)
                         .build();
 
@@ -103,7 +103,7 @@ public class SellerProtocol extends TradeProtocol {
 
         Trade completedTrade = null;
 
-        if (paidTrade.getStatus().equals(PAID)) {
+        if (paidTrade.status().equals(PAID)) {
 
             // 1. sign and broadcast payout tx
             try {
@@ -120,10 +120,10 @@ public class SellerProtocol extends TradeProtocol {
 
                     completedTrade = Trade.builder()
                             .escrowAddress(paidTrade.getEscrowAddress())
-                            .sellOffer(paidTrade.getSellOffer())
-                            .buyRequest(paidTrade.getBuyRequest())
-                            .paymentRequest(paidTrade.getPaymentRequest())
-                            .payoutRequest(paidTrade.getPayoutRequest())
+                            .sellOffer(paidTrade.sellOffer())
+                            .buyRequest(paidTrade.buyRequest())
+                            .paymentRequest(paidTrade.paymentRequest())
+                            .payoutRequest(paidTrade.payoutRequest())
                             .payoutCompleted(payoutCompleted)
                             .build();
 

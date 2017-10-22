@@ -122,7 +122,7 @@ public class WalletManager {
 //            BlockStore blockStore = new SPVBlockStore(netParams, blockStoreFile);
 //            BlockChain blockChain = new BlockChain(netParams, Arrays.asList(tradeWallet, escrowWallets), blockStore);
         peerGroup = createPeerGroup(blockStoreFile);
-        peerGroup.setFastCatchupTimeSecs(tradeWallet.getEarliestKeyCreationTime());
+        peerGroup.setFastCatchupTimeSecs(Long.min(tradeWallet.getEarliestKeyCreationTime(), System.currentTimeMillis() / 1000L));
 //                    new PeerGroup(netParams, blockChain);
 //            peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
 //

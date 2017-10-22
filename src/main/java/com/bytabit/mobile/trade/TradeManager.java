@@ -5,7 +5,8 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.jr.ob.JSON;
+import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
@@ -13,7 +14,6 @@ import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 import rx.Observable;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
@@ -46,8 +46,6 @@ public class TradeManager extends AbstractManager {
     @Inject
     private ProfileManager profileManager;
 
-    private final ObjectMapper objectMapper;
-
     private final TradeService tradeService;
 
     private final ObservableList<Trade> tradesObservableList;
@@ -59,11 +57,9 @@ public class TradeManager extends AbstractManager {
 
     public TradeManager() {
 
-        objectMapper = new ObjectMapper();
-
         Retrofit tradeRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(JacksonConverterFactory.create(objectMapper))
+                .addConverterFactory(new JacksonJrConverter<>(Trade.class))
                 .build();
         tradeService = tradeRetrofit.create(TradeService.class);
 
@@ -104,7 +100,7 @@ public class TradeManager extends AbstractManager {
         String profilePubKey = profileManager.getPubKeyProperty().getValue();
         Boolean profileIsArbitrator = profileManager.getIsArbitratorProperty().getValue();
 
-        Trade.Role role = trade.getRole(profilePubKey, profileIsArbitrator);
+        Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
         if (role.equals(SELLER)) {
             sellerProtocol.requestArbitrate(trade);
         } else if (role.equals(BUYER)) {
@@ -129,7 +125,7 @@ public class TradeManager extends AbstractManager {
 
     public boolean activeSellerEscrowPubKey(String sellerEscrowPubKey) {
         for (Trade trade : tradesObservableList) {
-            if (trade.getSellerEscrowPubKey().equals(sellerEscrowPubKey) && trade.getStatus().equals(CREATED)) {
+            if (trade.getSellerEscrowPubKey().equals(sellerEscrowPubKey) && trade.status().equals(CREATED)) {
                 return true;
             }
         }
@@ -138,7 +134,7 @@ public class TradeManager extends AbstractManager {
 
     public boolean activeBuyerEscrowPubKey(String buyerEscrowPubKey) {
         for (Trade trade : tradesObservableList) {
-            if (trade.getBuyerEscrowPubKey().equals(buyerEscrowPubKey) && trade.getStatus().equals(CREATED)) {
+            if (trade.getBuyerEscrowPubKey().equals(buyerEscrowPubKey) && trade.status().equals(CREATED)) {
                 return true;
             }
         }
@@ -159,7 +155,7 @@ public class TradeManager extends AbstractManager {
                 try {
                     File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "trade.json");
                     FileReader tradeReader = new FileReader(tradeFile);
-                    Trade trade = objectMapper.readValue(tradeReader, Trade.class);
+                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
 
                     tradesObservableList.add(trade);
                 } catch (IOException ioe) {
@@ -204,12 +200,12 @@ public class TradeManager extends AbstractManager {
         Trade currentTrade = getTrade(trade.getEscrowAddress());
         Trade updatedTrade = null;
 
-        if (currentTrade == null || !currentTrade.getStatus().equals(trade.getStatus())) {
+        if (currentTrade == null || !currentTrade.status().equals(trade.status())) {
 
             String profilePubKey = profileManager.getPubKeyProperty().getValue();
             Boolean profileIsArbitrator = profileManager.getIsArbitratorProperty().getValue();
 
-            Trade.Role role = trade.getRole(profilePubKey, profileIsArbitrator);
+            Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
             TradeProtocol tradeProtocol;
 
             if (role.equals(SELLER)) {
@@ -222,7 +218,7 @@ public class TradeManager extends AbstractManager {
                 throw new RuntimeException("Unable to determine trade protocol.");
             }
 
-            switch (trade.getStatus()) {
+            switch (trade.status()) {
 
                 case CREATED:
                     updatedTrade = currentTrade == null ? tradeProtocol.handleCreated(trade) : null;
@@ -272,7 +268,7 @@ public class TradeManager extends AbstractManager {
                 dir.mkdirs();
             }
             FileWriter tradeWriter = new FileWriter(tradePath);
-            tradeWriter.write(objectMapper.writeValueAsString(updatedTrade));
+            tradeWriter.write(JSON.std.asString(updatedTrade));
             tradeWriter.flush();
 
             LOG.debug("Created local trade: {}", updatedTrade);

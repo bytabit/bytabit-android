@@ -3,8 +3,6 @@ package com.bytabit.mobile.trade.model;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -14,9 +12,6 @@ import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
 @NoArgsConstructor
 @EqualsAndHashCode(of = "escrowAddress")
-@Getter
-@Setter(AccessLevel.PACKAGE)
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class Trade {
 
     public enum Status {
@@ -27,39 +22,83 @@ public class Trade {
         BUYER, SELLER, ARBITRATOR
     }
 
+    @Getter
+    @Setter
     private String escrowAddress;
 
     // Sell Offer
+    @Getter
+    @Setter
     private String sellerEscrowPubKey;
+    @Getter
+    @Setter
     private String sellerProfilePubKey;
+    @Getter
+    @Setter
     private String arbitratorProfilePubKey;
+    @Getter
+    @Setter
     private CurrencyCode currencyCode;
+    @Getter
+    @Setter
     private PaymentMethod paymentMethod;
+    @Getter
+    @Setter
     private BigDecimal minAmount;
+    @Getter
+    @Setter
     private BigDecimal maxAmount;
+    @Getter
+    @Setter
     private BigDecimal price;
 
     // Buy Request
+    @Getter
+    @Setter
     private String buyerEscrowPubKey;
+    @Getter
+    @Setter
     private BigDecimal btcAmount;
+    @Getter
+    @Setter
     private String buyerProfilePubKey;
+    @Getter
+    @Setter
     private String buyerPayoutAddress;
 
     // Payment Request
+    @Getter
+    @Setter
     private String fundingTxHash;
+    @Getter
+    @Setter
     private String paymentDetails;
+    @Getter
+    @Setter
     private String refundAddress;
+    @Getter
+    @Setter
     private String refundTxSignature;
 
     // Payout Request
+    @Getter
+    @Setter
     private String paymentReference;
+    @Getter
+    @Setter
     private String payoutTxSignature;
 
     // Arbitrate Request
+    @Getter
+    @Setter
     private ArbitrateRequest.Reason arbitrationReason;
 
     // Payout Completed
+    @Getter
+    @Setter
     private String payoutTxHash;
+    @Getter
+    @Setter
     private PayoutCompleted.Reason payoutReason;
 
     @Builder
@@ -68,16 +107,15 @@ public class Trade {
           ArbitrateRequest arbitrateRequest, PayoutCompleted payoutCompleted) {
 
         this.escrowAddress = escrowAddress;
-        setSellOffer(sellOffer);
-        setBuyRequest(buyRequest);
-        setPaymentRequest(paymentRequest);
-        setPayoutRequest(payoutRequest);
-        setArbitrateRequest(arbitrateRequest);
-        setPayoutCompleted(payoutCompleted);
+        sellOffer(sellOffer);
+        buyRequest(buyRequest);
+        paymentRequest(paymentRequest);
+        payoutRequest(payoutRequest);
+        arbitrateRequest(arbitrateRequest);
+        payoutCompleted(payoutCompleted);
     }
 
-    @JsonIgnore
-    public Status getStatus() {
+    public Status status() {
         Status status = null;
         if (escrowAddress != null && hasSellOffer() && hasBuyRequest()) {
             status = CREATED;
@@ -108,8 +146,7 @@ public class Trade {
                 price != null;
     }
 
-    @JsonIgnore
-    public SellOffer getSellOffer() {
+    public SellOffer sellOffer() {
         return SellOffer.builder()
                 .sellerEscrowPubKey(this.sellerEscrowPubKey)
                 .sellerProfilePubKey(this.sellerProfilePubKey)
@@ -122,7 +159,7 @@ public class Trade {
                 .build();
     }
 
-    private void setSellOffer(SellOffer sellOffer) {
+    private void sellOffer(SellOffer sellOffer) {
         if (sellOffer != null) {
             this.sellerEscrowPubKey = sellOffer.getSellerEscrowPubKey();
             this.sellerProfilePubKey = sellOffer.getSellerProfilePubKey();
@@ -142,8 +179,7 @@ public class Trade {
                 buyerPayoutAddress != null;
     }
 
-    @JsonIgnore
-    public BuyRequest getBuyRequest() {
+    public BuyRequest buyRequest() {
         return BuyRequest.builder()
                 .buyerEscrowPubKey(this.buyerEscrowPubKey)
                 .btcAmount(this.btcAmount)
@@ -152,7 +188,7 @@ public class Trade {
                 .build();
     }
 
-    private void setBuyRequest(BuyRequest buyRequest) {
+    private void buyRequest(BuyRequest buyRequest) {
         if (buyRequest != null) {
             this.buyerEscrowPubKey = buyRequest.getBuyerEscrowPubKey();
             this.btcAmount = buyRequest.getBtcAmount();
@@ -161,16 +197,14 @@ public class Trade {
         }
     }
 
-    @JsonIgnore
-    public boolean hasPaymentRequest() {
+    private boolean hasPaymentRequest() {
         return fundingTxHash != null &&
                 paymentDetails != null &&
                 refundAddress != null &&
                 refundTxSignature != null;
     }
 
-    @JsonIgnore
-    public PaymentRequest getPaymentRequest() {
+    public PaymentRequest paymentRequest() {
         return PaymentRequest.builder()
                 .fundingTxHash(this.fundingTxHash)
                 .paymentDetails(this.paymentDetails)
@@ -179,7 +213,7 @@ public class Trade {
                 .build();
     }
 
-    private void setPaymentRequest(PaymentRequest paymentRequest) {
+    private void paymentRequest(PaymentRequest paymentRequest) {
         if (paymentRequest != null) {
             this.fundingTxHash = paymentRequest.getFundingTxHash();
             this.paymentDetails = paymentRequest.getPaymentDetails();
@@ -188,68 +222,61 @@ public class Trade {
         }
     }
 
-    @JsonIgnore
     public boolean hasPayoutRequest() {
         return paymentReference != null &&
                 payoutTxSignature != null;
     }
 
-    @JsonIgnore
-    public PayoutRequest getPayoutRequest() {
+    public PayoutRequest payoutRequest() {
         return PayoutRequest.builder()
                 .paymentReference(this.paymentReference)
                 .payoutTxSignature(this.payoutTxSignature)
                 .build();
     }
 
-    private void setPayoutRequest(PayoutRequest payoutRequest) {
+    private void payoutRequest(PayoutRequest payoutRequest) {
         if (payoutRequest != null) {
             this.paymentReference = payoutRequest.getPaymentReference();
             this.payoutTxSignature = payoutRequest.getPayoutTxSignature();
         }
     }
 
-    @JsonIgnore
     public boolean hasArbitrateRequest() {
         return arbitrationReason != null;
     }
 
-    @JsonIgnore
-    public ArbitrateRequest getArbitrateRequest() {
-        return ArbitrateRequest.builder()
-                .reason(this.arbitrationReason)
-                .build();
-    }
+//    public ArbitrateRequest arbitrateRequest() {
+//        return ArbitrateRequest.builder()
+//                .reason(this.arbitrationReason)
+//                .build();
+//    }
 
-    private void setArbitrateRequest(ArbitrateRequest arbitrateRequest) {
+    private void arbitrateRequest(ArbitrateRequest arbitrateRequest) {
         if (arbitrateRequest != null) {
             this.arbitrationReason = arbitrateRequest.getReason();
         }
     }
 
-    @JsonIgnore
     public boolean hasPayoutCompleted() {
         return payoutTxHash != null &&
                 payoutReason != null;
     }
 
-    @JsonIgnore
-    public PayoutCompleted getPayoutCompleted() {
-        return PayoutCompleted.builder()
-                .payoutTxHash(this.payoutTxHash)
-                .reason(this.payoutReason)
-                .build();
-    }
+//    public PayoutCompleted payoutCompleted() {
+//        return PayoutCompleted.builder()
+//                .payoutTxHash(this.payoutTxHash)
+//                .reason(this.payoutReason)
+//                .build();
+//    }
 
-    private void setPayoutCompleted(PayoutCompleted payoutCompleted) {
+    private void payoutCompleted(PayoutCompleted payoutCompleted) {
         if (payoutCompleted != null) {
             this.payoutTxHash = payoutCompleted.getPayoutTxHash();
             this.payoutReason = payoutCompleted.getReason();
         }
     }
 
-    @JsonIgnore
-    public Role getRole(String profilePubKey, Boolean isArbitrator) {
+    public Role role(String profilePubKey, Boolean isArbitrator) {
         Role role;
 
         if (!isArbitrator) {

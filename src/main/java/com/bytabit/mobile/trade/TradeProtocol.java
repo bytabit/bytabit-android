@@ -7,10 +7,9 @@ import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -31,17 +30,13 @@ public abstract class TradeProtocol {
 
     protected final TradeService tradeService;
 
-    protected final ObjectMapper objectMapper;
-
     protected TradeProtocol(Logger log) {
-
-        objectMapper = new ObjectMapper();
 
         this.log = log;
 
         Retrofit tradeRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addConverterFactory(JacksonConverterFactory.create(objectMapper))
+                .addConverterFactory(new JacksonJrConverter<>(Trade.class))
                 .build();
         tradeService = tradeRetrofit.create(TradeService.class);
     }
@@ -55,7 +50,7 @@ public abstract class TradeProtocol {
     public Trade handlePaid(Trade fundedTrade, Trade paidTrade) {
 
         // TODO handle unexpected status
-        if (fundedTrade.getStatus().equals(FUNDED)) {
+        if (fundedTrade.status().equals(FUNDED)) {
             return paidTrade;
         } else {
             return null;
@@ -78,7 +73,7 @@ public abstract class TradeProtocol {
 
         Boolean zeroConfOK = false;
         PayoutCompleted.Reason payoutReason = completedTrade.getPayoutReason();
-        Trade.Role tradeRole = completedTrade.getRole(profileManager.getPubKeyProperty().getValue(), profileManager.getIsArbitratorProperty().getValue());
+        Trade.Role tradeRole = completedTrade.role(profileManager.getPubKeyProperty().getValue(), profileManager.getIsArbitratorProperty().getValue());
         if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
                 (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
                 tradeRole.equals(Trade.Role.ARBITRATOR)) {
@@ -95,8 +90,8 @@ public abstract class TradeProtocol {
 
                     // remove watch on escrow and refund addresses
                     walletManager.removeWatchedEscrowAddress(completedTrade.getEscrowAddress());
-                    //walletManager.removeWatchedEscrowAddress(trade.getPaymentRequest().getRefundAddress());
-                    //walletManager.removeWatchedEscrowAddress(trade.getBuyRequest().getBuyerPayoutAddress());
+                    //walletManager.removeWatchedEscrowAddress(trade.paymentRequest().getRefundAddress());
+                    //walletManager.removeWatchedEscrowAddress(trade.buyRequest().getBuyerPayoutAddress());
 
                 } else {
                     log.info("PayoutCompleted Tx depth not yet greater than 1.");
@@ -113,7 +108,7 @@ public abstract class TradeProtocol {
 
     protected void requestArbitrate(Trade currentTrade, ArbitrateRequest.Reason reason) {
 
-        if (currentTrade.getStatus().equals(FUNDED) || currentTrade.getStatus().equals(PAID)) {
+        if (currentTrade.status().equals(FUNDED) || currentTrade.status().equals(PAID)) {
 
             ArbitrateRequest arbitrateRequest = ArbitrateRequest.builder()
                     .reason(reason)
@@ -121,10 +116,10 @@ public abstract class TradeProtocol {
 
             Trade arbitratingTrade = Trade.builder()
                     .escrowAddress(currentTrade.getEscrowAddress())
-                    .sellOffer(currentTrade.getSellOffer())
-                    .buyRequest(currentTrade.getBuyRequest())
-                    .paymentRequest(currentTrade.getPaymentRequest())
-                    .payoutRequest(currentTrade.getPayoutRequest())
+                    .sellOffer(currentTrade.sellOffer())
+                    .buyRequest(currentTrade.buyRequest())
+                    .paymentRequest(currentTrade.paymentRequest())
+                    .payoutRequest(currentTrade.payoutRequest())
                     .arbitrateRequest(arbitrateRequest)
                     .build();
 
@@ -139,7 +134,7 @@ public abstract class TradeProtocol {
     public Trade handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
 
         // TODO handle unexpected status
-        if (currentTrade.getStatus().equals(FUNDED) || currentTrade.getStatus().equals(PAID)) {
+        if (currentTrade.status().equals(FUNDED) || currentTrade.status().equals(PAID)) {
             return arbitratingTrade;
         } else {
             return null;

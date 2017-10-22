@@ -59,7 +59,7 @@ public class ArbitratorProtocol extends TradeProtocol {
 
     public void refundSeller(Trade currentTrade) {
 
-        if (currentTrade.getStatus().equals(ARBITRATING)) {
+        if (currentTrade.status().equals(ARBITRATING)) {
 
             String payoutTxHash = null;
             try {
@@ -75,7 +75,7 @@ public class ArbitratorProtocol extends TradeProtocol {
 
     public void payoutBuyer(Trade currentTrade) {
 
-        if (currentTrade.getStatus().equals(ARBITRATING)) {
+        if (currentTrade.status().equals(ARBITRATING)) {
 
             String payoutTxHash = null;
             try {
@@ -103,10 +103,10 @@ public class ArbitratorProtocol extends TradeProtocol {
 
                 Trade completedTrade = Trade.builder()
                         .escrowAddress(arbitratingTrade.getEscrowAddress())
-                        .sellOffer(arbitratingTrade.getSellOffer())
-                        .buyRequest(arbitratingTrade.getBuyRequest())
-                        .paymentRequest(arbitratingTrade.getPaymentRequest())
-                        .payoutRequest(arbitratingTrade.getPayoutRequest())
+                        .sellOffer(arbitratingTrade.sellOffer())
+                        .buyRequest(arbitratingTrade.buyRequest())
+                        .paymentRequest(arbitratingTrade.paymentRequest())
+                        .payoutRequest(arbitratingTrade.payoutRequest())
                         .payoutCompleted(payoutCompleted)
                         .build();
 

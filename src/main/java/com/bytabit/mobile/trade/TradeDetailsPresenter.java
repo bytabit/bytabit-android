@@ -144,10 +144,10 @@ public class TradeDetailsPresenter {
                 BigDecimal paymentAmount = price.multiply(amount);
                 String profilePubKey = profileManager.getPubKeyProperty().getValue();
                 Boolean isArbitrator = profileManager.getIsArbitratorProperty().getValue();
-                Trade.Role tradeRole = trade.getRole(profilePubKey, isArbitrator);
+                Trade.Role tradeRole = trade.role(profilePubKey, isArbitrator);
 
                 //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
-                tradeStatusLabel.textProperty().setValue(trade.getStatus().toString());
+                tradeStatusLabel.textProperty().setValue(trade.status().toString());
                 tradeRoleLabel.textProperty().setValue(tradeRole.toString());
                 paymentMethodLabel.textProperty().setValue(trade.getCurrencyCode().toString() + " via " + trade.getPaymentMethod().displayName());
                 paymentAmountLabel.textProperty().setValue(paymentAmount.toPlainString());
@@ -159,9 +159,9 @@ public class TradeDetailsPresenter {
                 paymentReferenceField.textProperty().setValue(null);
                 arbitrateReasonLabel.textProperty().setValue(null);
                 payoutReasonLabel.textProperty().setValue(null);
-                tradeStatusLabel.textProperty().setValue(trade.getStatus().toString());
+                tradeStatusLabel.textProperty().setValue(trade.status().toString());
 
-                if (trade.getStatus().equals(Trade.Status.FUNDED)) {
+                if (trade.status().equals(Trade.Status.FUNDED)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
                     if (tradeRole == Trade.Role.BUYER) {
                         paymentReferenceField.setDisable(false);
@@ -171,7 +171,7 @@ public class TradeDetailsPresenter {
                     } else if (tradeRole == Trade.Role.SELLER) {
                         arbitrateButton.setDisable(false);
                     }
-                } else if (trade.getStatus().equals(Trade.Status.PAID)) {
+                } else if (trade.status().equals(Trade.Status.PAID)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
                     paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
                     arbitrateButton.setDisable(false);
@@ -180,7 +180,7 @@ public class TradeDetailsPresenter {
                     } else if (tradeRole == Trade.Role.SELLER) {
                         paymentReceivedButton.setDisable(false);
                     }
-                } else if (trade.getStatus().equals(Trade.Status.COMPLETED)) {
+                } else if (trade.status().equals(Trade.Status.COMPLETED)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
                     if (trade.hasPayoutRequest()) {
                         paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
@@ -191,7 +191,7 @@ public class TradeDetailsPresenter {
                     if (trade.hasPayoutCompleted()) {
                         payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
                     }
-                } else if (trade.getStatus().equals(Trade.Status.ARBITRATING)) {
+                } else if (trade.status().equals(Trade.Status.ARBITRATING)) {
                     paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
                     if (trade.hasPayoutRequest()) {
                         paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
