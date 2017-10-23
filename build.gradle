@@ -42,7 +42,7 @@ if (project.hasProperty('configName')) {
     config = configName
 }
 
-def url = "http://"+net+".bytabit.net:8080"
+def url = "https://"+net+".bytabit.net"
 
 if (project.hasProperty('baseUrl')) {
     url = baseUrl
