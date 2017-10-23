@@ -1,12 +1,5 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.*;
-
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-@Getter
-@ToString
 public class PayoutCompleted {
 
     public enum Reason {
@@ -15,4 +8,17 @@ public class PayoutCompleted {
 
     private String payoutTxHash;
     private Reason reason;
+
+    public PayoutCompleted(String payoutTxHash, Reason reason) {
+        this.payoutTxHash = payoutTxHash;
+        this.reason = reason;
+    }
+
+    public String getPayoutTxHash() {
+        return payoutTxHash;
+    }
+
+    public Reason getReason() {
+        return reason;
+    }
 }

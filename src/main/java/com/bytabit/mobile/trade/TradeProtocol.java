@@ -110,9 +110,7 @@ public abstract class TradeProtocol {
 
         if (currentTrade.status().equals(FUNDED) || currentTrade.status().equals(PAID)) {
 
-            ArbitrateRequest arbitrateRequest = ArbitrateRequest.builder()
-                    .reason(reason)
-                    .build();
+            ArbitrateRequest arbitrateRequest = new ArbitrateRequest(reason);
 
             Trade arbitratingTrade = Trade.builder()
                     .escrowAddress(currentTrade.getEscrowAddress())

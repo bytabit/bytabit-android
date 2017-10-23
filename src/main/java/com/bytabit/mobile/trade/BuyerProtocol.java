@@ -34,12 +34,7 @@ public class BuyerProtocol extends TradeProtocol {
         String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
                 sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey);
 
-        BuyRequest buyRequest = BuyRequest.builder()
-                .buyerEscrowPubKey(buyerEscrowPubKey)
-                .btcAmount(buyBtcAmount)
-                .buyerProfilePubKey(buyerProfilePubKey)
-                .buyerPayoutAddress(buyerPayoutAddress)
-                .build();
+        BuyRequest buyRequest = new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress);
 
         // create trade
         Trade createdTrade = Trade.builder()
@@ -101,10 +96,7 @@ public class BuyerProtocol extends TradeProtocol {
 
             if (fundingTx != null) {
                 String payoutSignature = walletManager.getPayoutSignature(fundedTrade, fundingTx);
-                PayoutRequest payoutRequest = PayoutRequest.builder()
-                        .paymentReference(paymentReference)
-                        .payoutTxSignature(payoutSignature)
-                        .build();
+                PayoutRequest payoutRequest = new PayoutRequest(paymentReference, payoutSignature);
 
                 // 3. post payout request to server
                 try {
@@ -136,10 +128,7 @@ public class BuyerProtocol extends TradeProtocol {
                 String refundTxHash = walletManager.cancelEscrowToSeller(fundedTrade);
 
                 // 2. confirm refund tx and create payout completed
-                PayoutCompleted payoutCompleted = PayoutCompleted.builder()
-                        .payoutTxHash(refundTxHash)
-                        .reason(BUYER_SELLER_REFUND)
-                        .build();
+                PayoutCompleted payoutCompleted = new PayoutCompleted(refundTxHash, BUYER_SELLER_REFUND);
 
                 try {
                     Trade canceledTrade = Trade.builder()

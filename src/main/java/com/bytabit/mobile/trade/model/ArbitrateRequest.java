@@ -1,12 +1,5 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.*;
-
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-@Getter
-@ToString
 public class ArbitrateRequest {
 
     public enum Reason {
@@ -14,4 +7,14 @@ public class ArbitrateRequest {
     }
 
     private Reason reason;
+
+    public ArbitrateRequest(Reason reason) {
+        this.reason = reason;
+    }
+
+    public Reason getReason() {
+        return reason;
+    }
+
+
 }

@@ -6,6 +6,7 @@ import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.evt.*;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import com.bytabit.mobile.wallet.model.TransactionWithAmtBuilder;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import javafx.beans.property.DoubleProperty;
@@ -172,13 +173,13 @@ public class WalletManager {
                 @Override
                 public void onBlocksDownloaded(Peer peer, Block block, @Nullable FilteredBlock filteredBlock, int blocksLeft) {
                     super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
-                    subscriber.onNext(new BlockDownloaded(peer, block, filteredBlock, blocksLeft));
+                    subscriber.onNext(new BlockDownloadedBuilder().peer(peer).block(block).filteredBlock(filteredBlock).blocksLeft(blocksLeft).build());
                 }
 
                 @Override
                 protected void progress(double pct, int blocksSoFar, Date date) {
                     super.progress(pct, blocksSoFar, date);
-                    subscriber.onNext(new BlockDownloadProgress(pct / 100.00, blocksSoFar, LocalDateTime.fromDateFields(date)));
+                    subscriber.onNext(new BlockDownloadProgressBuilder().pct(pct / 100.00).blocksSoFar(blocksSoFar).date(LocalDateTime.fromDateFields(date)).build());
                 }
 
                 @Override
@@ -200,7 +201,7 @@ public class WalletManager {
                 @Override
                 public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
                     Context.propagate(btcContext);
-                    subscriber.onNext(new TransactionUpdatedEvent(tx, wallet));
+                    subscriber.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
                 }
             };
             tradeWallet.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
@@ -216,7 +217,7 @@ public class WalletManager {
                     @Override
                     public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
                         Context.propagate(btcContext);
-                        subscriber.onNext(new TransactionUpdatedEvent(tx, wallet));
+                        subscriber.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
                     }
                 };
                 escrowWallets.get(escrowAddress).addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
@@ -228,8 +229,7 @@ public class WalletManager {
         // get existing tx
         Set<TransactionWithAmt> txsWithAmt = new HashSet<>();
         for (Transaction t : tradeWallet.getTransactions(false)) {
-            txsWithAmt.add(new TransactionWithAmt(t, t.getValue(tradeWallet),
-                    getWatchedOutputAddress(t), t.getInput(0).getOutpoint().getHash().toString()));
+            txsWithAmt.add(new TransactionWithAmtBuilder().tx(t).coinAmt(t.getValue(tradeWallet)).outputAddress(getWatchedOutputAddress(t)).inputTxHash(t.getInput(0).getOutpoint().getHash().toString()).build());
         }
         javafx.application.Platform.runLater(() -> {
             tradeWalletTransactions.addAll(txsWithAmt);
@@ -242,9 +242,7 @@ public class WalletManager {
                     //LOG.debug("trade transaction updated event : {}", e);
                     TransactionUpdatedEvent txe = TransactionUpdatedEvent.class.cast(e);
 
-                    TransactionWithAmt txu = new TransactionWithAmt(txe.getTx(),
-                            txe.getAmt(), getWatchedOutputAddress(txe.getTx()),
-                            txe.getTx().getInput(0).getOutpoint().getHash().toString());
+                    TransactionWithAmt txu = new TransactionWithAmtBuilder().tx(txe.getTx()).coinAmt(txe.getAmt()).outputAddress(getWatchedOutputAddress(txe.getTx())).inputTxHash(txe.getTx().getInput(0).getOutpoint().getHash().toString()).build();
 
                     Integer index = tradeWalletTransactions.indexOf(txu);
                     if (index > -1) {
@@ -613,7 +611,7 @@ public class WalletManager {
                     amt = amt.add(output.getValue());
                 }
             }
-            transactionWithAmt = new TransactionWithAmt(tx, amt, toAddress, null);
+            transactionWithAmt = new TransactionWithAmtBuilder().tx(tx).coinAmt(amt).outputAddress(toAddress).inputTxHash(null).build();
         } else {
             LOG.error("Can't find Tx with hash: {} to address {}:", txHash, toAddress);
         }
@@ -625,9 +623,7 @@ public class WalletManager {
         Transaction tx = getEscrowTransaction(escrowAddress, txHash);
         if (tx != null) {
             TransactionUpdatedEvent txe = TransactionUpdatedEvent.builder().tx(tx).wallet(escrowWallets.get(escrowAddress)).build();
-            return new TransactionWithAmt(tx,
-                    txe.getAmt(), getWatchedOutputAddress(tx),
-                    tx.getInput(0).getOutpoint().getHash().toString());
+            return new TransactionWithAmtBuilder().tx(tx).coinAmt(txe.getAmt()).outputAddress(getWatchedOutputAddress(tx)).inputTxHash(tx.getInput(0).getOutpoint().getHash().toString()).build();
         } else {
             return null;
         }
@@ -636,10 +632,8 @@ public class WalletManager {
     public TransactionWithAmt getTradeTransactionWithAmt(String txHash) {
         Transaction tx = getTradeTransaction(txHash);
         if (tx != null) {
-            TransactionUpdatedEvent txe = new TransactionUpdatedEvent(tx, tradeWallet);
-            return new TransactionWithAmt(tx,
-                    txe.getAmt(), getWatchedOutputAddress(tx),
-                    tx.getInput(0).getOutpoint().getHash().toString());
+            TransactionUpdatedEvent txe = new TransactionUpdatedEventBuilder().tx(tx).wallet(tradeWallet).build();
+            return new TransactionWithAmtBuilder().tx(tx).coinAmt(txe.getAmt()).outputAddress(getWatchedOutputAddress(tx)).inputTxHash(tx.getInput(0).getOutpoint().getHash().toString()).build();
         } else return null;
     }
 
@@ -892,7 +886,7 @@ public class WalletManager {
                     @Override
                     public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
                         Context.propagate(btcContext);
-                        subscriber.onNext(new TransactionUpdatedEvent(tx, wallet));
+                        subscriber.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
                     }
                 };
                 escrowWallet.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);

@@ -12,7 +12,6 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
@@ -25,7 +24,6 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Getter
 public class OfferManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
@@ -132,5 +130,49 @@ public class OfferManager extends AbstractManager {
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
+    }
+
+    public StringProperty getSellerEscrowPubKeyProperty() {
+        return sellerEscrowPubKeyProperty;
+    }
+
+    public StringProperty getSellerProfilePubKeyProperty() {
+        return sellerProfilePubKeyProperty;
+    }
+
+    public StringProperty getArbitratorProfilePubKeyProperty() {
+        return arbitratorProfilePubKeyProperty;
+    }
+
+    public ObjectProperty<CurrencyCode> getCurrencyCodeProperty() {
+        return currencyCodeProperty;
+    }
+
+    public ObjectProperty<PaymentMethod> getPaymentMethodProperty() {
+        return paymentMethodProperty;
+    }
+
+    public ObjectProperty<BigDecimal> getMinAmountProperty() {
+        return minAmountProperty;
+    }
+
+    public ObjectProperty<BigDecimal> getMaxAmountProperty() {
+        return maxAmountProperty;
+    }
+
+    public ObjectProperty<BigDecimal> getPriceProperty() {
+        return priceProperty;
+    }
+
+    public ObjectProperty<BigDecimal> getBuyBtcAmountProperty() {
+        return buyBtcAmountProperty;
+    }
+
+    public ObjectProperty<SellOffer> getSelectedSellOfferProperty() {
+        return selectedSellOfferProperty;
+    }
+
+    public ObservableList<SellOffer> getSellOffersObservableList() {
+        return sellOffersObservableList;
     }
 }

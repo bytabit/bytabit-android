@@ -79,12 +79,7 @@ public class SellerProtocol extends TradeProtocol {
                     trade.getCurrencyCode(),
                     trade.getPaymentMethod()).get();
 
-            return PaymentRequest.builder()
-                    .fundingTxHash(fundingTx.getHashAsString())
-                    .paymentDetails(paymentDetails)
-                    .refundAddress(refundTxAddress.toBase58())
-                    .refundTxSignature(refundTxSignature)
-                    .build();
+            return new PaymentRequest(fundingTx.getHashAsString(), paymentDetails, refundTxAddress.toBase58(), refundTxSignature);
 
         } catch (InsufficientMoneyException e) {
             log.error("Insufficient BTC to fund trade escrow.");
@@ -110,10 +105,7 @@ public class SellerProtocol extends TradeProtocol {
                 String payoutTxHash = walletManager.payoutEscrowToBuyer(paidTrade);
 
                 // 2. confirm payout tx and create payout completed
-                PayoutCompleted payoutCompleted = PayoutCompleted.builder()
-                        .payoutTxHash(payoutTxHash)
-                        .reason(PayoutCompleted.Reason.SELLER_BUYER_PAYOUT)
-                        .build();
+                PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT);
 
                 // 5. post payout completed
                 try {

@@ -2,17 +2,13 @@ package com.bytabit.mobile.profile;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.profile.model.CurrencyCode;
-import com.bytabit.mobile.profile.model.PaymentDetails;
-import com.bytabit.mobile.profile.model.PaymentMethod;
-import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.profile.model.*;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
@@ -24,7 +20,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-@Getter
 public class ProfileManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(ProfileManager.class);
@@ -109,7 +104,48 @@ public class ProfileManager extends AbstractManager {
                 });
     }
 
+    public StringProperty getPubKeyProperty() {
+        return pubKeyProperty;
+    }
+
+    public BooleanProperty getIsArbitratorProperty() {
+        return isArbitratorProperty;
+    }
+
+    public StringProperty getUserNameProperty() {
+        return userNameProperty;
+    }
+
+    public StringProperty getPhoneNumProperty() {
+        return phoneNumProperty;
+    }
+
+    public SimpleObjectProperty<CurrencyCode> getCurrencyCodeProperty() {
+        return currencyCodeProperty;
+    }
+
+    public SimpleObjectProperty<PaymentMethod> getPaymentMethodProperty() {
+        return paymentMethodProperty;
+    }
+
+    public StringProperty getPaymentDetailsProperty() {
+        return paymentDetailsProperty;
+    }
+
+    public ObservableList<PaymentDetails> getPaymentDetails() {
+        return paymentDetails;
+    }
+
+    public ObservableList<Profile> getTraderProfiles() {
+        return traderProfiles;
+    }
+
+    public ObservableList<Profile> getArbitratorProfiles() {
+        return arbitratorProfiles;
+    }
+
     private void updateProfiles(List<Profile> profiles) {
+
         Profile found = null;
         for (Profile p : profiles) {
             if (p.getPubKey().equals(pubKeyProperty.getValue())) {
@@ -203,7 +239,7 @@ public class ProfileManager extends AbstractManager {
             if (found != null) {
                 paymentDetails.remove(found);
             }
-            paymentDetails.add(new PaymentDetails(cc, pm, pd));
+            paymentDetails.add(new PaymentDetailsBuilder().currencyCode(cc).paymentMethod(pm).paymentDetails(pd).build());
         }
     }
 
@@ -212,7 +248,7 @@ public class ProfileManager extends AbstractManager {
         for (CurrencyCode c : CurrencyCode.values()) {
             for (PaymentMethod p : c.paymentMethods()) {
                 retrievePaymentDetails(c, p).ifPresent(pd -> {
-                    paymentDetails.add(new PaymentDetails(c, p, pd));
+                    paymentDetails.add(new PaymentDetailsBuilder().currencyCode(c).paymentMethod(p).paymentDetails(pd).build());
                 });
             }
         }

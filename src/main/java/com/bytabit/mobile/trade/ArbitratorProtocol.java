@@ -94,10 +94,7 @@ public class ArbitratorProtocol extends TradeProtocol {
         if (payoutTxHash != null) {
 
             // 2. confirm refund tx and create payout completed
-            PayoutCompleted payoutCompleted = PayoutCompleted.builder()
-                    .payoutTxHash(payoutTxHash)
-                    .reason(reason)
-                    .build();
+            PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, reason);
 
             try {
 

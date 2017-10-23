@@ -1,9 +1,5 @@
 package com.bytabit.mobile.wallet.model;
 
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 import org.joda.time.LocalDateTime;
@@ -11,12 +7,8 @@ import org.joda.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.math.MathContext;
 
-@Getter
-@EqualsAndHashCode(of = "hash")
-@ToString
 public class TransactionWithAmt {
 
-    @Builder
     public TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress, String inputTxHash) {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
@@ -28,6 +20,10 @@ public class TransactionWithAmt {
         this.inputTxHash = inputTxHash;
     }
 
+    public static TransactionWithAmtBuilder builder() {
+        return new TransactionWithAmtBuilder();
+    }
+
     private String hash;
     private String confidenceType;
     private Integer depth;
@@ -37,8 +33,54 @@ public class TransactionWithAmt {
     private String outputAddress;
     private String inputTxHash;
 
+    public String getHash() {
+        return hash;
+    }
+
+    public String getConfidenceType() {
+        return confidenceType;
+    }
+
+    public Integer getDepth() {
+        return depth;
+    }
+
+    public LocalDateTime getDate() {
+        return date;
+    }
+
+    public String getMemo() {
+        return memo;
+    }
+
+    public Coin getCoinAmt() {
+        return coinAmt;
+    }
+
+    public String getOutputAddress() {
+        return outputAddress;
+    }
+
+    public String getInputTxHash() {
+        return inputTxHash;
+    }
+
     public BigDecimal getBtcAmt() {
         return new BigDecimal(coinAmt.toPlainString()).setScale(8, MathContext.DECIMAL64.getRoundingMode());
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TransactionWithAmt that = (TransactionWithAmt) o;
+
+        return hash != null ? hash.equals(that.hash) : that.hash == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return hash != null ? hash.hashCode() : 0;
+    }
 }
