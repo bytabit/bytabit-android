@@ -6,6 +6,7 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -100,7 +101,9 @@ public class OfferManager extends AbstractManager {
     void readOffers() {
         try {
             List<SellOffer> offers = sellOfferService.get().execute().body();
-            sellOffersObservableList.setAll(offers);
+            Platform.runLater(() -> {
+                sellOffersObservableList.setAll(offers);
+            });
         } catch (IOException ioe) {
             LOG.error(ioe.getMessage());
         }
@@ -111,7 +114,9 @@ public class OfferManager extends AbstractManager {
                 .subscribe(c -> {
                     try {
                         List<SellOffer> offers = c.execute().body();
-                        sellOffersObservableList.setAll(offers);
+                        Platform.runLater(() -> {
+                            sellOffersObservableList.setAll(offers);
+                        });
                     } catch (IOException ioe) {
                         LOG.error(ioe.getMessage());
                     }
@@ -124,7 +129,9 @@ public class OfferManager extends AbstractManager {
             sellOfferService.delete(sellerEscrowPubKeyProperty.getValue()).execute();
             for (SellOffer so : sellOffersObservableList) {
                 if (so.getSellerEscrowPubKey().equals(sellerEscrowPubKeyProperty.getValue())) {
-                    sellOffersObservableList.remove(so);
+                    Platform.runLater(() -> {
+                        sellOffersObservableList.remove(so);
+                    });
                 }
             }
         } catch (IOException ioe) {

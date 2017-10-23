@@ -60,7 +60,7 @@ processResources {
 }
 
 dependencies {
-    compile 'com.gluonhq:charm:4.3.7'
+    compile 'com.gluonhq:charm:4.4.0'
     compile 'com.airhacks:afterburner.mfx:1.6.3'
     compile 'org.bitcoinj:bitcoinj-core:0.14.4'
     compile 'com.madgag.spongycastle:prov:1.51.0.0'
@@ -81,8 +81,8 @@ dependencies {
     }
 
     //desktopRuntime 'com.gluonhq:charm-down-core-desktop:3.2.0'
-    androidRuntime 'com.gluonhq:charm-down-core-android:3.2.0'
-    iosRuntime 'com.gluonhq:charm-down-core-ios:3.2.0'
+    androidRuntime 'com.gluonhq:charm-down-core-android:3.5.0'
+    iosRuntime 'com.gluonhq:charm-down-core-ios:3.5.0'
 
     testCompile 'junit:junit:4.12'
 }

@@ -7,6 +7,7 @@ import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
@@ -156,8 +157,9 @@ public class TradeManager extends AbstractManager {
                     File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "trade.json");
                     FileReader tradeReader = new FileReader(tradeFile);
                     Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
-
-                    tradesObservableList.add(trade);
+                    Platform.runLater(() -> {
+                        tradesObservableList.add(trade);
+                    });
                 } catch (IOException ioe) {
                     LOG.error(ioe.getMessage());
                 }
@@ -281,10 +283,12 @@ public class TradeManager extends AbstractManager {
 
     private void updateTradesList(Trade updatedTrade) {
         int index = tradesObservableList.indexOf(updatedTrade);
-        if (index < 0) {
-            tradesObservableList.add(updatedTrade);
-        } else {
-            tradesObservableList.set(index, updatedTrade);
-        }
+        Platform.runLater(() -> {
+            if (index < 0) {
+                tradesObservableList.add(updatedTrade);
+            } else {
+                tradesObservableList.set(index, updatedTrade);
+            }
+        });
     }
 }

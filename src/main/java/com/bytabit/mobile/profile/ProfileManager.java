@@ -66,10 +66,12 @@ public class ProfileManager extends AbstractManager {
         userNameProperty = new SimpleStringProperty();
         phoneNumProperty = new SimpleStringProperty();
 
-        pubKeyProperty.setValue(retrieve(PROFILE_PUBKEY).orElse(null));
-        isArbitratorProperty.setValue(retrieve(PROFILE_ISARBITRATOR).map(Boolean::parseBoolean).orElse(Boolean.FALSE));
-        userNameProperty.setValue(retrieve(PROFILE_USERNAME).orElse(""));
-        phoneNumProperty.setValue(retrieve(PROFILE_PHONENUM).orElse(""));
+        Platform.runLater(() -> {
+            pubKeyProperty.setValue(retrieve(PROFILE_PUBKEY).orElse(null));
+            isArbitratorProperty.setValue(retrieve(PROFILE_ISARBITRATOR).map(Boolean::parseBoolean).orElse(Boolean.FALSE));
+            userNameProperty.setValue(retrieve(PROFILE_USERNAME).orElse(""));
+            phoneNumProperty.setValue(retrieve(PROFILE_PHONENUM).orElse(""));
+        });
 
         // payment details
 
@@ -175,9 +177,12 @@ public class ProfileManager extends AbstractManager {
     void createProfile() {
         String pubKey = retrieve(PROFILE_PUBKEY).orElse(null);
         if (pubKey == null) {
-            pubKey = tradeWalletManager.getFreshBase58AuthPubKey();
-            pubKeyProperty.setValue(pubKey);
-            store(PROFILE_PUBKEY, pubKey);
+            final String newPubKey = tradeWalletManager.getFreshBase58AuthPubKey();
+
+            Platform.runLater(() -> {
+                pubKeyProperty.setValue(newPubKey);
+            });
+            store(PROFILE_PUBKEY, newPubKey);
             updateProfile();
         }
     }
@@ -228,19 +233,21 @@ public class ProfileManager extends AbstractManager {
         PaymentMethod pm = paymentMethodProperty.getValue();
         String pd = paymentDetailsProperty.getValue();
 
-        if (cc != null && pm != null && pd.length() > 0) {
-            store(paymentDetailsKey(cc, pm), pd);
-            PaymentDetails found = null;
-            for (PaymentDetails p : paymentDetails) {
-                if (p.getCurrencyCode().equals(cc) && p.getPaymentMethod().equals(pm)) {
-                    found = p;
+        Platform.runLater(() -> {
+            if (cc != null && pm != null && pd.length() > 0) {
+                store(paymentDetailsKey(cc, pm), pd);
+                PaymentDetails found = null;
+                for (PaymentDetails p : paymentDetails) {
+                    if (p.getCurrencyCode().equals(cc) && p.getPaymentMethod().equals(pm)) {
+                        found = p;
+                    }
                 }
+                if (found != null) {
+                    paymentDetails.remove(found);
+                }
+                paymentDetails.add(new PaymentDetailsBuilder().currencyCode(cc).paymentMethod(pm).paymentDetails(pd).build());
             }
-            if (found != null) {
-                paymentDetails.remove(found);
-            }
-            paymentDetails.add(new PaymentDetailsBuilder().currencyCode(cc).paymentMethod(pm).paymentDetails(pd).build());
-        }
+        });
     }
 
     private List<PaymentDetails> retrievePaymentDetails() {

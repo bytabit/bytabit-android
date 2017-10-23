@@ -255,10 +255,6 @@ public class WalletManager {
 
         blockDownloadSubscription = blockDownloadEvents.observeOn(JavaFxScheduler.getInstance())
                 .subscribe(e -> {
-                    //LOG.debug("block download event : {}", e);
-//                    Platform.runLater(new Runnable() {
-//                        @Override
-//                        public void run() {
                     if (e instanceof BlockDownloadDone) {
                         BlockDownloadDone dde = BlockDownloadDone.class.cast(e);
                         downloadProgress.setValue(1.0);
@@ -267,8 +263,6 @@ public class WalletManager {
                         downloadProgress.setValue(dpe.getPct());
                     }
                     tradeWalletBalance.setValue(getWalletBalance().toFriendlyString());
-//                        }
-//                    });
                 });
 
         for (String escrowAddress : escrowTxUpdatedEvents.keySet()) {
