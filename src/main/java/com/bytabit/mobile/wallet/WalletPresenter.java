@@ -21,7 +21,7 @@ public class WalletPresenter {
     private static Logger LOG = LoggerFactory.getLogger(WalletPresenter.class);
 
     @Inject
-    private WalletManager tradeWalletManager;
+    private WalletManager walletManager;
 
     @FXML
     private View walletView;
@@ -61,7 +61,7 @@ public class WalletPresenter {
             }
         });
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
-        transactionListView.itemsProperty().bindContent(tradeWalletManager.getTradeWalletTransactions());
+        transactionListView.itemsProperty().bindContent(walletManager.getTradeWalletTransactions());
 
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
         depositButton.attachTo(withdrawButton, Side.LEFT);
@@ -73,6 +73,7 @@ public class WalletPresenter {
 
         walletView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
+                LOG.debug("Wallet view showing.");
 
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
@@ -86,9 +87,14 @@ public class WalletPresenter {
 
         });
 
-        balanceAmountLabel.textProperty().bind(tradeWalletManager.getTradeWalletBalance());
-        downloadProgressBar.progressProperty().bind(tradeWalletManager.downloadProgressProperty());
+        walletView.setOnShown(e -> {
+            if (e.getEventType().equals(LifecycleEvent.SHOWN)) {
+                LOG.debug("Wallet view shown.");
+                walletManager.start();
+            }
+        });
 
-        //tradeWalletManager.startWallet();
+        balanceAmountLabel.textProperty().bind(walletManager.getTradeWalletBalance());
+        downloadProgressBar.progressProperty().bind(walletManager.downloadProgressProperty());
     }
 }

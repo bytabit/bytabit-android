@@ -4,19 +4,21 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.trade.TradeManager;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
-import com.gluonhq.charm.glisten.control.AppBar;
-import com.gluonhq.charm.glisten.control.CharmListCell;
-import com.gluonhq.charm.glisten.control.CharmListView;
-import com.gluonhq.charm.glisten.control.ListTile;
+import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.fxml.FXML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class OffersPresenter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(OffersPresenter.class);
 
     @Inject
     OfferManager offerManager;
@@ -26,6 +28,9 @@ public class OffersPresenter {
 
     @Inject
     TradeManager tradeManager;
+
+    @Inject
+    private WalletManager walletManager;
 
     @FXML
     private View offersView;
@@ -68,6 +73,7 @@ public class OffersPresenter {
 
         offersView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
+                LOG.debug("Offers view showing.");
 
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
@@ -75,6 +81,13 @@ public class OffersPresenter {
                 appBar.setTitleText("Offers");
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
+            }
+        });
+
+        offersView.setOnShown(e -> {
+            if (e.getEventType().equals(LifecycleEvent.SHOWN)) {
+                LOG.debug("Offers view shown.");
+                walletManager.start();
             }
         });
 

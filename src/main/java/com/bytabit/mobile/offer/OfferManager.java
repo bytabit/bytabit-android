@@ -5,6 +5,7 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
@@ -20,6 +21,7 @@ import rx.Observable;
 import rx.schedulers.JavaFxScheduler;
 import rx.schedulers.Schedulers;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,6 +30,9 @@ import java.util.concurrent.TimeUnit;
 public class OfferManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
+
+    @Inject
+    private WalletManager walletManager;
 
     private final SellOfferService sellOfferService;
 
@@ -89,7 +94,9 @@ public class OfferManager extends AbstractManager {
                     .build();
             if (newSellOffer.isComplete()) {
                 SellOffer createdOffer = sellOfferService.put(newSellOffer.getSellerEscrowPubKey(), newSellOffer).execute().body();
-                sellOffersObservableList.add(createdOffer);
+                Platform.runLater(() -> {
+                    sellOffersObservableList.add(createdOffer);
+                });
             } else {
                 LOG.error("Sell offer is incomplete.");
             }

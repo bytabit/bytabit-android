@@ -25,7 +25,7 @@ public class ProfileManager extends AbstractManager {
     private static Logger LOG = LoggerFactory.getLogger(ProfileManager.class);
 
     @Inject
-    private WalletManager tradeWalletManager;
+    private WalletManager walletManager;
 
     private String PROFILE_PUBKEY = "profile.pubkey";
     private String PROFILE_ISARBITRATOR = "profile.isArbitrator";
@@ -177,7 +177,7 @@ public class ProfileManager extends AbstractManager {
     void createProfile() {
         String pubKey = retrieve(PROFILE_PUBKEY).orElse(null);
         if (pubKey == null) {
-            final String newPubKey = tradeWalletManager.getFreshBase58AuthPubKey();
+            final String newPubKey = walletManager.getFreshBase58AuthPubKey();
 
             Platform.runLater(() -> {
                 pubKeyProperty.setValue(newPubKey);

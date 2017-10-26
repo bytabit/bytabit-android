@@ -143,7 +143,9 @@ public class TradeManager extends AbstractManager {
     }
 
     public void setSelectedTrade(Trade trade) {
-        selectedTrade.setValue(trade);
+        Platform.runLater(() -> {
+            selectedTrade.setValue(trade);
+        });
     }
 
     private void readTrades() {

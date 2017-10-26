@@ -4,10 +4,7 @@ buildscript {
     repositories {
         jcenter()
         maven {
-            url 'http://dl.bintray.com/palantir/releases'
-        }
-        maven {
-            url 'https://plugins.gradle.org/m2/'
+            url "http://dl.bintray.com/palantir/releases"
         }
     }
     dependencies {
@@ -21,11 +18,8 @@ apply plugin: 'gitsemver'
 
 repositories {
     jcenter()
-    maven {
-        url 'http://dl.bintray.com/palantir/releases'
-    }
     maven { url 'http://nexus.gluonhq.com/nexus/content/repositories/releases' }
-    maven { url 'https://jitpack.io' }
+    maven { url "https://jitpack.io" }
 }
 
 mainClassName = 'com.bytabit.mobile.BytabitMobile'
@@ -60,29 +54,29 @@ processResources {
 }
 
 dependencies {
-    compile 'com.gluonhq:charm:4.4.0'
+    compile 'com.gluonhq:charm:4.3.7'
     compile 'com.airhacks:afterburner.mfx:1.6.3'
-    compile 'org.bitcoinj:bitcoinj-core:0.14.4'
-    compile 'com.madgag.spongycastle:prov:1.51.0.0'
-    compile 'joda-time:joda-time:2.9.1'
+    compile "org.bitcoinj:bitcoinj-core:0.14.4"
+    compile "com.madgag.spongycastle:prov:1.51.0.0"
+    compile "joda-time:joda-time:2.9.1"
     compile 'io.reactivex:rxjavafx:1.0.0'
     compile 'org.slf4j:slf4j-api:1.7.21'
-    compile 'com.fasterxml.jackson.jr:jackson-jr-retrofit2:2.9.2'
+    compile 'com.fasterxml.jackson.jr:jackson-jr-retrofit2:2.8.7'
 
     compile 'com.github.kenglxn.QRGen:javase:2.2.0'
-    desktopCompile 'ch.qos.logback:logback-classic:1.1.9'
-    desktopCompile 'ch.qos.logback:logback-core:1.1.9'
+    desktopRuntime "ch.qos.logback:logback-classic:1.1.9"
+    desktopRuntime "ch.qos.logback:logback-core:1.1.9"
 
     //androidCompile 'com.github.kenglxn.QRGen:android:2.2.0'
-    androidCompile 'com.github.tony19:logback-android-core:1.1.1-6'
-    androidCompile('com.github.tony19:logback-android-classic:1.1.1-6') {
+    androidRuntime 'com.github.tony19:logback-android-core:1.1.1-6'
+    androidRuntime('com.github.tony19:logback-android-classic:1.1.1-6') {
         // workaround issue #73
         exclude group: 'com.google.android', module: 'android'
     }
 
     //desktopRuntime 'com.gluonhq:charm-down-core-desktop:3.2.0'
-    androidRuntime 'com.gluonhq:charm-down-core-android:3.5.0'
-    iosRuntime 'com.gluonhq:charm-down-core-ios:3.5.0'
+    androidRuntime 'com.gluonhq:charm-down-core-android:3.2.0'
+    iosRuntime 'com.gluonhq:charm-down-core-ios:3.2.0'
 
     testCompile 'junit:junit:4.12'
 }

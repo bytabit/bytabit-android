@@ -59,8 +59,8 @@ public class BytabitMobile extends MobileApplication {
     private static CompositeObservable<NavEvent> navEventsComposite = new CompositeObservable<>();
 
     @Override
-    public void init() {
-
+    public void init() throws Exception {
+        super.init();
         addViewFactory(OFFER_VIEW, () -> (View) new OffersView().getView());
         addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView());
         addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView());
@@ -85,6 +85,7 @@ public class BytabitMobile extends MobileApplication {
 
     @Override
     public void postInit(Scene scene) {
+        super.postInit(scene);
 
         Swatch.ORANGE.assignTo(scene);
 
