@@ -15,7 +15,9 @@ public abstract class AbstractManager {
     }
 
     protected void store(String key, String value) {
-        Services.get(SettingsService.class).ifPresent(s -> s.store(prefix + key, value));
+        if (value != null) {
+            Services.get(SettingsService.class).ifPresent(s -> s.store(prefix + key, value));
+        }
     }
 
     protected void remove(String key) {

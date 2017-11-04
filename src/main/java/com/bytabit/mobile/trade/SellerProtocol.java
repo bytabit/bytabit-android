@@ -75,9 +75,9 @@ public class SellerProtocol extends TradeProtocol {
             String refundTxSignature = walletManager.getRefundSignature(trade, fundingTx, refundTxAddress);
 
             // 3. create payment request
-            String paymentDetails = profileManager.retrievePaymentDetails(
+            String paymentDetails = profileManager.getPaymentDetails(
                     trade.getCurrencyCode(),
-                    trade.getPaymentMethod()).get();
+                    trade.getPaymentMethod()).blockingGet();
 
             return new PaymentRequest(fundingTx.getHashAsString(), paymentDetails, refundTxAddress.toBase58(), refundTxSignature);
 

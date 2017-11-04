@@ -8,8 +8,11 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.StringBinding;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -91,6 +94,8 @@ public class OfferDetailsPresenter {
     @FXML
     private TextField buyBtcAmtTextField;
 
+    final private StringProperty myProfilePubKeyProperty = new SimpleStringProperty();
+
     public void initialize() {
 
         LOG.debug("initialize offer details presenter");
@@ -101,6 +106,13 @@ public class OfferDetailsPresenter {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Offer Details");
+                profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(p -> {
+                    myProfilePubKeyProperty.setValue(p.getPubKey());
+                    if (p.getPubKey().equals(offerManager.getSellerProfilePubKeyProperty().getValue())) {
+                        removeOfferButton.visibleProperty().set(true);
+                        buyGridPane.visibleProperty().set(false);
+                    }
+                });
             }
         });
 
@@ -129,7 +141,7 @@ public class OfferDetailsPresenter {
         currencyAmtLabel.textProperty().bind(currencyCodeBinding);
 
         removeOfferButton.visibleProperty().bind(Bindings.createBooleanBinding(() ->
-                        profileManager.getPubKeyProperty().getValue().equals(offerManager.getSellerProfilePubKeyProperty().getValue()),
+                        offerManager.getSellerProfilePubKeyProperty().getValue().equals(myProfilePubKeyProperty.getValue()),
                 offerManager.getSellerProfilePubKeyProperty()));
 
         removeOfferButton.setOnAction(e -> {
@@ -138,7 +150,7 @@ public class OfferDetailsPresenter {
         });
 
         buyGridPane.visibleProperty().bind(Bindings.createBooleanBinding(() ->
-                        !profileManager.getPubKeyProperty().getValue().equals(offerManager.getSellerProfilePubKeyProperty().getValue()),
+                        !myProfilePubKeyProperty.getValue().equals(offerManager.getSellerProfilePubKeyProperty().getValue()),
                 offerManager.getSellerProfilePubKeyProperty()));
 
         buyBtcAmtTextField.textProperty().bind(Bindings.createStringBinding(() -> {
@@ -154,7 +166,7 @@ public class OfferDetailsPresenter {
 
         buyBtcButton.setOnAction(e -> {
             String buyerEscrowPubKey = tradeWalletManager.getFreshBase58AuthPubKey();
-            String buyerProfilePubKey = profileManager.getPubKeyProperty().get();
+            String buyerProfilePubKey = myProfilePubKeyProperty.get();
             String buyerPayoutAddress = tradeWalletManager.getDepositAddress().toBase58();
 
             SellOffer selectedSellOffer = offerManager.getSelectedSellOfferProperty().get();

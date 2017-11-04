@@ -2,23 +2,22 @@ package com.bytabit.mobile.profile;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.profile.model.*;
+import com.bytabit.mobile.profile.model.CurrencyCode;
+import com.bytabit.mobile.profile.model.PaymentDetails;
+import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
-import javafx.application.Platform;
-import javafx.beans.property.*;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import io.reactivex.Single;
+import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import rx.schedulers.JavaFxScheduler;
-import rx.schedulers.Schedulers;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ProfileManager extends AbstractManager {
 
@@ -31,241 +30,103 @@ public class ProfileManager extends AbstractManager {
     private String PROFILE_ISARBITRATOR = "profile.isArbitrator";
     private String PROFILE_USERNAME = "profile.name";
     private String PROFILE_PHONENUM = "profile.phoneNum";
+
     private String PROFILE_PAYMENT_DETAILS = "profile.paymentDetails";
 
-    private final ProfileService profileService;
-
-    // profile properties
-    private final StringProperty pubKeyProperty;
-    private final BooleanProperty isArbitratorProperty;
-    private final StringProperty userNameProperty;
-    private final StringProperty phoneNumProperty;
-
-    // new payment details properties
-    private final SimpleObjectProperty<CurrencyCode> currencyCodeProperty;
-    private final SimpleObjectProperty<PaymentMethod> paymentMethodProperty;
-    private final StringProperty paymentDetailsProperty;
-
-    private final ObservableList<PaymentDetails> paymentDetails;
-    private final ObservableList<Profile> traderProfiles;
-    private final ObservableList<Profile> arbitratorProfiles;
-
+    private final ProfileService profilesService;
 
     public ProfileManager() {
+
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .addConverterFactory(new JacksonJrConverter<>(Profile.class))
                 .build();
 
-        profileService = retrofit.create(ProfileService.class);
-
-        // profile
-
-        pubKeyProperty = new SimpleStringProperty();
-        isArbitratorProperty = new SimpleBooleanProperty();
-        userNameProperty = new SimpleStringProperty();
-        phoneNumProperty = new SimpleStringProperty();
-
-        Platform.runLater(() -> {
-            pubKeyProperty.setValue(retrieve(PROFILE_PUBKEY).orElse(null));
-            isArbitratorProperty.setValue(retrieve(PROFILE_ISARBITRATOR).map(Boolean::parseBoolean).orElse(Boolean.FALSE));
-            userNameProperty.setValue(retrieve(PROFILE_USERNAME).orElse(""));
-            phoneNumProperty.setValue(retrieve(PROFILE_PHONENUM).orElse(""));
-        });
-
-        // payment details
-
-        currencyCodeProperty = new SimpleObjectProperty<>();
-        paymentMethodProperty = new SimpleObjectProperty<>();
-        paymentDetailsProperty = new SimpleStringProperty();
-
-        paymentDetails = FXCollections.observableArrayList();
-        paymentDetails.addAll(retrievePaymentDetails());
-
-        // other profiles
-
-        traderProfiles = FXCollections.observableArrayList();
-        arbitratorProfiles = FXCollections.observableArrayList();
-
-        try {
-            updateProfiles(profileService.get().execute().body());
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-        }
-
-        rx.Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> profileService.get())
-                .retry()
-                .observeOn(JavaFxScheduler.getInstance())
-                .subscribe(getProfiles -> {
-                    try {
-                        updateProfiles(getProfiles.execute().body());
-                    } catch (IOException ioe) {
-                        LOG.error(ioe.getMessage());
-                    }
-                });
+        profilesService = retrofit.create(ProfileService.class);
     }
 
-    public StringProperty getPubKeyProperty() {
-        return pubKeyProperty;
+    // my profile
+
+    public Single<Profile> storeMyProfile(Profile profile) {
+        return profilesService.putProfile(profile.getPubKey(), profile).map(p -> {
+            store(PROFILE_PUBKEY, p.getPubKey());
+            store(PROFILE_ISARBITRATOR, p.getIsArbitrator().toString());
+            store(PROFILE_USERNAME, p.getUserName());
+            store(PROFILE_PHONENUM, p.getPhoneNum());
+            return profile;
+        }).subscribeOn(Schedulers.io());
     }
 
-    public BooleanProperty getIsArbitratorProperty() {
-        return isArbitratorProperty;
-    }
+    public Single<Profile> retrieveMyProfile() {
 
-    public StringProperty getUserNameProperty() {
-        return userNameProperty;
-    }
-
-    public StringProperty getPhoneNumProperty() {
-        return phoneNumProperty;
-    }
-
-    public SimpleObjectProperty<CurrencyCode> getCurrencyCodeProperty() {
-        return currencyCodeProperty;
-    }
-
-    public SimpleObjectProperty<PaymentMethod> getPaymentMethodProperty() {
-        return paymentMethodProperty;
-    }
-
-    public StringProperty getPaymentDetailsProperty() {
-        return paymentDetailsProperty;
-    }
-
-    public ObservableList<PaymentDetails> getPaymentDetails() {
-        return paymentDetails;
-    }
-
-    public ObservableList<Profile> getTraderProfiles() {
-        return traderProfiles;
-    }
-
-    public ObservableList<Profile> getArbitratorProfiles() {
-        return arbitratorProfiles;
-    }
-
-    private void updateProfiles(List<Profile> profiles) {
-
-        Profile found = null;
-        for (Profile p : profiles) {
-            if (p.getPubKey().equals(pubKeyProperty.getValue())) {
-                found = p;
-            }
-        }
-        if (found != null) {
-            profiles.remove(found);
-        }
-        List<Profile> traders = new ArrayList<>();
-        List<Profile> arbitrators = new ArrayList<>();
-        for (Profile p : profiles) {
-            if (p.getIsArbitrator()) {
-                arbitrators.add(p);
-            } else {
-                traders.add(p);
-            }
-        }
-        Platform.runLater(() -> {
-            traderProfiles.setAll(traders);
-            arbitratorProfiles.setAll(arbitrators);
-        });
-    }
-
-    // profile methods
-
-    void createProfile() {
-        String pubKey = retrieve(PROFILE_PUBKEY).orElse(null);
-        if (pubKey == null) {
-            final String newPubKey = walletManager.getFreshBase58AuthPubKey();
-
-            Platform.runLater(() -> {
-                pubKeyProperty.setValue(newPubKey);
-            });
-            store(PROFILE_PUBKEY, newPubKey);
-            updateProfile();
-        }
-    }
-
-    void updateProfile() {
-        try {
-            Profile profile = Profile.builder()
-                    .pubKey(pubKeyProperty.getValue())
-                    .isArbitrator(isArbitratorProperty.getValue())
-                    .userName(userNameProperty.getValue())
-                    .phoneNum(phoneNumProperty.getValue())
+        if (!retrieve(PROFILE_PUBKEY).isPresent()) {
+            final Profile profile = Profile.builder()
+                    .pubKey(walletManager.getFreshBase58AuthPubKey())
+                    .isArbitrator(Boolean.FALSE)
+                    .userName(null)
+                    .phoneNum(null)
                     .build();
-
-            store(PROFILE_ISARBITRATOR, profile.getIsArbitrator().toString());
-            store(PROFILE_USERNAME, profile.getUserName());
-            store(PROFILE_PHONENUM, profile.getPhoneNum());
-
-            profileService.put(profile.getPubKey(), profile).execute();
-        } catch (IOException ex) {
-            LOG.error(ex.getMessage());
+            return storeMyProfile(profile);
+        } else {
+            return Single.fromCallable(() -> Profile.builder()
+                    .pubKey(retrieve(PROFILE_PUBKEY).get())
+                    .isArbitrator(Boolean.valueOf(retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
+                    .userName(retrieve(PROFILE_USERNAME).orElse(""))
+                    .phoneNum(retrieve(PROFILE_PHONENUM).orElse(""))
+                    .build()).subscribeOn(Schedulers.io());
         }
     }
 
-    // payment details methods
-
-    public List<CurrencyCode> currencyCodes() {
-        Set<CurrencyCode> currencyCodes = new HashSet<>();
-        for (PaymentDetails d : getPaymentDetails()) {
-            currencyCodes.add(d.getCurrencyCode());
-        }
-        List<CurrencyCode> codes = new ArrayList<>();
-        codes.addAll(currencyCodes);
-        return codes;
+    public Single<List<Profile>> getArbitratorProfiles() {
+        return profilesService.getProfiles()
+                .flattenAsObservable(pl -> pl)
+                .filter(Profile::getIsArbitrator)
+                .toList();
     }
 
-    public List<PaymentMethod> paymentMethods(CurrencyCode currencyCode) {
-        List<PaymentMethod> paymentMethods = new ArrayList<>();
-        for (PaymentDetails d : getPaymentDetails()) {
-            if (d.getCurrencyCode().equals(currencyCode)) {
-                paymentMethods.add(d.getPaymentMethod());
-            }
-        }
-        return paymentMethods;
+    // payment details
+
+    public Single<List<CurrencyCode>> getCurrencyCodes() {
+        return retrievePaymentDetails().flattenAsObservable(pdl -> pdl)
+                .map(PaymentDetails::getCurrencyCode)
+                .distinct().toList();
     }
 
-    void addPaymentDetails() {
-        CurrencyCode cc = currencyCodeProperty.getValue();
-        PaymentMethod pm = paymentMethodProperty.getValue();
-        String pd = paymentDetailsProperty.getValue();
+    public Single<List<PaymentMethod>> getPaymentMethods(CurrencyCode currencyCode) {
+        return retrievePaymentDetails().flattenAsObservable(pml -> pml)
+                .filter(pd -> currencyCode.equals(pd.getCurrencyCode()))
+                .map(PaymentDetails::getPaymentMethod)
+                .distinct().toList();
+    }
 
-        Platform.runLater(() -> {
-            if (cc != null && pm != null && pd.length() > 0) {
-                store(paymentDetailsKey(cc, pm), pd);
-                PaymentDetails found = null;
-                for (PaymentDetails p : paymentDetails) {
-                    if (p.getCurrencyCode().equals(cc) && p.getPaymentMethod().equals(pm)) {
-                        found = p;
-                    }
+    public Single<String> getPaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod) {
+        return retrievePaymentDetails().flattenAsObservable(pml -> pml)
+                .filter(pd -> currencyCode.equals(pd.getCurrencyCode()) && paymentMethod.equals(pd.getPaymentMethod()))
+                .map(PaymentDetails::getPaymentDetails)
+                .firstOrError();
+    }
+
+    public Single<PaymentDetails> storePaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod, String paymentDetails) {
+        return Single.fromCallable(() -> {
+            store(paymentDetailsKey(currencyCode, paymentMethod), paymentDetails);
+            return new PaymentDetails(currencyCode, paymentMethod, paymentDetails);
                 }
-                if (found != null) {
-                    paymentDetails.remove(found);
+        ).subscribeOn(Schedulers.io());
+    }
+
+    public Single<List<PaymentDetails>> retrievePaymentDetails() {
+        return Single.fromCallable(() -> {
+            List<PaymentDetails> paymentDetails = new ArrayList<>();
+            for (CurrencyCode c : CurrencyCode.values()) {
+                for (PaymentMethod p : c.paymentMethods()) {
+                    retrieve(paymentDetailsKey(c, p)).ifPresent(pd ->
+                            paymentDetails.add(PaymentDetails.builder().currencyCode(c).paymentMethod(p).paymentDetails(pd).build())
+                    );
                 }
-                paymentDetails.add(new PaymentDetailsBuilder().currencyCode(cc).paymentMethod(pm).paymentDetails(pd).build());
             }
-        });
-    }
-
-    private List<PaymentDetails> retrievePaymentDetails() {
-        List<PaymentDetails> paymentDetails = new ArrayList<>();
-        for (CurrencyCode c : CurrencyCode.values()) {
-            for (PaymentMethod p : c.paymentMethods()) {
-                retrievePaymentDetails(c, p).ifPresent(pd -> {
-                    paymentDetails.add(new PaymentDetailsBuilder().currencyCode(c).paymentMethod(p).paymentDetails(pd).build());
-                });
-            }
-        }
-        return paymentDetails;
-    }
-
-    public Optional<String> retrievePaymentDetails(CurrencyCode currencyCode,
-                                                   PaymentMethod paymentMethod) {
-
-        return retrieve(paymentDetailsKey(currencyCode, paymentMethod));
+            return paymentDetails;
+        }).subscribeOn(Schedulers.io());
     }
 
     private String paymentDetailsKey(CurrencyCode currencyCode,

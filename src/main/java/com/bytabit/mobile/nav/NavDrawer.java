@@ -14,7 +14,6 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import rx.Observable;
 
 import static com.bytabit.mobile.BytabitMobile.*;
 
@@ -45,7 +44,7 @@ public class NavDrawer {
             final Item quitItem = new Item("Quit", MaterialDesignIcon.EXIT_TO_APP.graphic());
             quitItem.selectedProperty().addListener((obs, ov, nv) -> {
                 if (nv) {
-                    BytabitMobile.getNavEventsComposite().add(Observable.just(new QuitEvent()));
+                    BytabitMobile.getNavEventsComposite().onNext(new QuitEvent());
                     Services.get(LifecycleService.class).ifPresent(LifecycleService::shutdown);
                 }
             });

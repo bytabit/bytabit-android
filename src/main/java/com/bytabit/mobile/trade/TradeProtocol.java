@@ -14,7 +14,8 @@ import retrofit2.Retrofit;
 import javax.inject.Inject;
 import java.io.IOException;
 
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.*;
+import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
+import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
 import static com.bytabit.mobile.trade.model.Trade.Status.FUNDED;
 import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
@@ -73,13 +74,13 @@ public abstract class TradeProtocol {
 
         Boolean zeroConfOK = false;
         PayoutCompleted.Reason payoutReason = completedTrade.getPayoutReason();
-        Trade.Role tradeRole = completedTrade.role(profileManager.getPubKeyProperty().getValue(), profileManager.getIsArbitratorProperty().getValue());
-        if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
-                (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
-                tradeRole.equals(Trade.Role.ARBITRATOR)) {
-
-            zeroConfOK = true;
-        }
+//        Trade.Role tradeRole = completedTrade.role(profileManager.getPubKeyProperty().getValue(), profileManager.getIsArbitratorProperty().getValue());
+//        if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
+//                (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
+//                tradeRole.equals(Trade.Role.ARBITRATOR)) {
+//
+//            zeroConfOK = true;
+//        }
 
         TransactionWithAmt tx = walletManager.getTransactionWithAmt(completedTrade.getEscrowAddress(), txHash, toAddress);
         if (tx != null) {

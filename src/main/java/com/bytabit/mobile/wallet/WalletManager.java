@@ -9,6 +9,9 @@ import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.bytabit.mobile.wallet.model.TransactionWithAmtBuilder;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import io.reactivex.Flowable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -28,11 +31,6 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.BackpressureOverflow;
-import rx.Observable;
-import rx.Subscription;
-import rx.schedulers.Schedulers;
-import rx.subscriptions.Subscriptions;
 
 import javax.annotation.Nullable;
 import java.io.*;
@@ -43,6 +41,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.TradeManager.TRADES_PATH;
+import static io.reactivex.BackpressureStrategy.BUFFER;
 import static org.bitcoinj.core.Transaction.REFERENCE_DEFAULT_MIN_TX_FEE;
 
 public class WalletManager {
@@ -71,11 +70,11 @@ public class WalletManager {
     private final BooleanProperty started;
 
     // rxJava observables
-    private final Observable<BlockDownloadEvent> blockDownloadEvents;
-    private final Observable<TransactionUpdatedEvent> tradeTxUpdatedEvents;
-    private final Map<String, Observable<TransactionUpdatedEvent>> escrowTxUpdatedEvents = new HashMap<>();
+    private final Flowable<BlockDownloadEvent> blockDownloadEvents;
+    private final Flowable<TransactionUpdatedEvent> tradeTxUpdatedEvents;
+    private final Map<String, Flowable<TransactionUpdatedEvent>> escrowTxUpdatedEvents = new HashMap<>();
 
-    private Subscription blockDownloadSubscription;
+    private Disposable blockDownloadSubscription;
 
     static {
         netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
@@ -97,7 +96,7 @@ public class WalletManager {
         tradeWallet = createOrLoadWallet(TRADE_WALLET_FILE_NAME, blockStoreFile, blockStoreFileExists);
 
         // post observable download events
-        blockDownloadEvents = Observable.create((Observable.OnSubscribe<BlockDownloadEvent>) subscriber -> {
+        blockDownloadEvents = Flowable.<BlockDownloadEvent>create(emitter -> {
 
             peerGroup = createPeerGroup(blockStoreFile, blockStoreFileExists);
             peerGroup.start();
@@ -105,42 +104,48 @@ public class WalletManager {
                 @Override
                 public void onBlocksDownloaded(Peer peer, Block block, @Nullable FilteredBlock filteredBlock, int blocksLeft) {
                     super.onBlocksDownloaded(peer, block, filteredBlock, blocksLeft);
-                    subscriber.onNext(new BlockDownloadedBuilder().peer(peer).block(block).filteredBlock(filteredBlock).blocksLeft(blocksLeft).build());
+                    emitter.onNext(new BlockDownloadedBuilder().peer(peer).block(block).filteredBlock(filteredBlock).blocksLeft(blocksLeft).build());
                 }
 
                 @Override
                 protected void progress(double pct, int blocksSoFar, Date date) {
                     super.progress(pct, blocksSoFar, date);
-                    subscriber.onNext(new BlockDownloadProgressBuilder().pct(pct / 100.00).blocksSoFar(blocksSoFar).date(LocalDateTime.fromDateFields(date)).build());
+                    emitter.onNext(new BlockDownloadProgressBuilder().pct(pct / 100.00).blocksSoFar(blocksSoFar).date(LocalDateTime.fromDateFields(date)).build());
                 }
 
                 @Override
                 protected void doneDownload() {
                     super.doneDownload();
-                    subscriber.onNext(new BlockDownloadDone());
+                    emitter.onNext(new BlockDownloadDone());
                 }
             });
+
             // on un-subscribe stop peer group
-            subscriber.add(Subscriptions.create(() -> {
+            emitter.setCancellable(() -> {
                 peerGroup.stop();
-            }));
-        }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
+            });
+
+        }, BUFFER).share();
+
+        //(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
 
         // post observable wallet running events
-        tradeTxUpdatedEvents = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
+        tradeTxUpdatedEvents = Flowable.<TransactionUpdatedEvent>create(emitter -> {
 
             TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
 
                 @Override
                 public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
                     Context.propagate(btcContext);
-                    subscriber.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
+                    emitter.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
                 }
             };
             tradeWallet.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
 
-            subscriber.add(Subscriptions.create(() -> tradeWallet.removeTransactionConfidenceEventListener(listener)));
-        }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
+            emitter.setCancellable(() -> {
+                tradeWallet.removeTransactionConfidenceEventListener(listener);
+            });
+        }, BUFFER).share();
 
         File tradesDir = new File(TRADES_PATH);
         List<String> escrowAddresses;
@@ -160,19 +165,19 @@ public class WalletManager {
 
         // post observable wallet running events
         for (String escrowAddress : escrowWallets.keySet()) {
-            escrowTxUpdatedEvents.put(escrowAddress, Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
+            escrowTxUpdatedEvents.put(escrowAddress, Flowable.<TransactionUpdatedEvent>create(emitter -> {
                 TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
 
                     @Override
                     public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
                         Context.propagate(btcContext);
-                        subscriber.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
+                        emitter.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
                     }
                 };
                 escrowWallets.get(escrowAddress).addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
 
-                subscriber.add(Subscriptions.create(() -> escrowWallets.get(escrowAddress).removeTransactionConfidenceEventListener(listener)));
-            }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share());
+                emitter.setCancellable(() -> escrowWallets.get(escrowAddress).removeTransactionConfidenceEventListener(listener));
+            }, BUFFER).share());
         }
 
         BytabitMobile.getNavEvents().filter(ne -> ne instanceof QuitEvent).subscribe(qe -> {
@@ -205,7 +210,11 @@ public class WalletManager {
             // get existing tx
             Set<TransactionWithAmt> txsWithAmt = new HashSet<>();
             for (Transaction t : tradeWallet.getTransactions(false)) {
-                txsWithAmt.add(new TransactionWithAmtBuilder().tx(t).coinAmt(t.getValue(tradeWallet)).outputAddress(getWatchedOutputAddress(t)).inputTxHash(t.getInput(0).getOutpoint().getHash().toString()).build());
+                txsWithAmt.add(new TransactionWithAmtBuilder().tx(t)
+                        .coinAmt(t.getValue(tradeWallet))
+                        .outputAddress(getWatchedOutputAddress(t))
+                        .inputTxHash(t.getInput(0).getOutpoint().getHash().toString())
+                        .build());
             }
 
             javafx.application.Platform.runLater(() -> {
@@ -215,7 +224,7 @@ public class WalletManager {
 
             // listen for other events
 
-            blockDownloadSubscription = blockDownloadEvents.observeOn(Schedulers.io())
+            blockDownloadSubscription = blockDownloadEvents.subscribeOn(Schedulers.io())
                     .subscribe(e -> {
                         javafx.application.Platform.runLater(() -> {
                             if (e instanceof BlockDownloadDone) {
@@ -305,7 +314,7 @@ public class WalletManager {
     }
 
     public void resetBlockchain() {
-        blockDownloadSubscription.unsubscribe();
+        blockDownloadSubscription.dispose();
         File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
         Boolean blockStoreFileExists = blockStoreFile.exists();
         if (blockStoreFile.delete()) {
@@ -828,19 +837,19 @@ public class WalletManager {
             escrowWallet.addWatchedAddress(address, (DateTime.now().getMillis() / 1000));
             escrowWallets.put(escrowAddress, escrowWallet);
 
-            Observable<TransactionUpdatedEvent> escrowWalletTxObservable = Observable.create((Observable.OnSubscribe<TransactionUpdatedEvent>) subscriber -> {
+            Flowable<TransactionUpdatedEvent> escrowWalletTxObservable = Flowable.<TransactionUpdatedEvent>create(emitter -> {
                 TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
 
                     @Override
                     public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
                         Context.propagate(btcContext);
-                        subscriber.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
+                        emitter.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
                     }
                 };
                 escrowWallet.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
 
-                subscriber.add(Subscriptions.create(() -> escrowWallet.removeTransactionConfidenceEventListener(listener)));
-            }).onBackpressureBuffer(100, null, BackpressureOverflow.ON_OVERFLOW_DROP_OLDEST).share();
+                emitter.setCancellable(() -> escrowWallet.removeTransactionConfidenceEventListener(listener));
+            }, BUFFER).share();
 
             escrowTxUpdatedEvents.put(escrowAddress, escrowWalletTxObservable);
             escrowWalletTxObservable.observeOn(Schedulers.io())

@@ -10,9 +10,6 @@ public class PaymentDetails {
         return new PaymentDetailsBuilder();
     }
 
-    public PaymentDetails() {
-    }
-
     public PaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod, String paymentDetails) {
         this.currencyCode = currencyCode;
         this.paymentMethod = paymentMethod;

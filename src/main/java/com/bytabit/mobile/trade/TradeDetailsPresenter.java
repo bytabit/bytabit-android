@@ -119,17 +119,17 @@ public class TradeDetailsPresenter {
             paymentReferenceField.setDisable(true);
             paymentReferenceField.setEditable(false);
 
-            if (profileManager.getIsArbitratorProperty().getValue()) {
-                actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
-                refundSellerButton.setDisable(true);
-                payoutBuyerButton.setDisable(true);
-            } else {
-                actionButtonsVBox.getChildren().remove(arbitrateButtonsFlowPane);
-                paymentSentButton.setDisable(true);
-                paymentReceivedButton.setDisable(true);
-                cancelButton.setDisable(true);
-                arbitrateButton.setDisable(true);
-            }
+//            if (profileManager.getIsArbitratorProperty().getValue()) {
+//                actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
+//                refundSellerButton.setDisable(true);
+//                payoutBuyerButton.setDisable(true);
+//            } else {
+//                actionButtonsVBox.getChildren().remove(arbitrateButtonsFlowPane);
+//                paymentSentButton.setDisable(true);
+//                paymentReceivedButton.setDisable(true);
+//                cancelButton.setDisable(true);
+//                arbitrateButton.setDisable(true);
+//            }
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
@@ -142,13 +142,13 @@ public class TradeDetailsPresenter {
                 BigDecimal price = trade.getPrice();
                 BigDecimal amount = trade.getBtcAmount();
                 BigDecimal paymentAmount = price.multiply(amount);
-                String profilePubKey = profileManager.getPubKeyProperty().getValue();
-                Boolean isArbitrator = profileManager.getIsArbitratorProperty().getValue();
-                Trade.Role tradeRole = trade.role(profilePubKey, isArbitrator);
+//                String profilePubKey = profileManager.getPubKeyProperty().getValue();
+//                Boolean isArbitrator = profileManager.getIsArbitratorProperty().getValue();
+//                Trade.Role tradeRole = trade.role(profilePubKey, isArbitrator);
 
                 //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
                 tradeStatusLabel.textProperty().setValue(trade.status().toString());
-                tradeRoleLabel.textProperty().setValue(tradeRole.toString());
+//                tradeRoleLabel.textProperty().setValue(tradeRole.toString());
                 paymentMethodLabel.textProperty().setValue(trade.getCurrencyCode().toString() + " via " + trade.getPaymentMethod().displayName());
                 paymentAmountLabel.textProperty().setValue(paymentAmount.toPlainString());
                 paymentAmountCurrencyLabel.textProperty().setValue(trade.getCurrencyCode().toString());
@@ -161,49 +161,49 @@ public class TradeDetailsPresenter {
                 payoutReasonLabel.textProperty().setValue(null);
                 tradeStatusLabel.textProperty().setValue(trade.status().toString());
 
-                if (trade.status().equals(Trade.Status.FUNDED)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-                    if (tradeRole == Trade.Role.BUYER) {
-                        paymentReferenceField.setDisable(false);
-                        paymentReferenceField.setEditable(true);
-                        paymentSentButton.setDisable(false);
-                        cancelButton.setDisable(false);
-                    } else if (tradeRole == Trade.Role.SELLER) {
-                        arbitrateButton.setDisable(false);
-                    }
-                } else if (trade.status().equals(Trade.Status.PAID)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-                    paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-                    arbitrateButton.setDisable(false);
-                    if (tradeRole == Trade.Role.BUYER) {
-                        paymentReceivedButton.setDisable(true);
-                    } else if (tradeRole == Trade.Role.SELLER) {
-                        paymentReceivedButton.setDisable(false);
-                    }
-                } else if (trade.status().equals(Trade.Status.COMPLETED)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-                    if (trade.hasPayoutRequest()) {
-                        paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-                    }
-                    if (trade.hasArbitrateRequest()) {
-                        arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
-                    }
-                    if (trade.hasPayoutCompleted()) {
-                        payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
-                    }
-                } else if (trade.status().equals(Trade.Status.ARBITRATING)) {
-                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-                    if (trade.hasPayoutRequest()) {
-                        paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-                    }
-                    arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
-                    if (tradeRole == Trade.Role.ARBITRATOR) {
-                        refundSellerButton.setDisable(false);
-                        if (trade.hasPayoutRequest()) {
-                            payoutBuyerButton.setDisable(false);
-                        }
-                    }
-                }
+//                if (trade.status().equals(Trade.Status.FUNDED)) {
+//                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+//                    if (tradeRole == Trade.Role.BUYER) {
+//                        paymentReferenceField.setDisable(false);
+//                        paymentReferenceField.setEditable(true);
+//                        paymentSentButton.setDisable(false);
+//                        cancelButton.setDisable(false);
+//                    } else if (tradeRole == Trade.Role.SELLER) {
+//                        arbitrateButton.setDisable(false);
+//                    }
+//                } else if (trade.status().equals(Trade.Status.PAID)) {
+//                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+//                    paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
+//                    arbitrateButton.setDisable(false);
+//                    if (tradeRole == Trade.Role.BUYER) {
+//                        paymentReceivedButton.setDisable(true);
+//                    } else if (tradeRole == Trade.Role.SELLER) {
+//                        paymentReceivedButton.setDisable(false);
+//                    }
+//                } else if (trade.status().equals(Trade.Status.COMPLETED)) {
+//                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+//                    if (trade.hasPayoutRequest()) {
+//                        paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
+//                    }
+//                    if (trade.hasArbitrateRequest()) {
+//                        arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
+//                    }
+//                    if (trade.hasPayoutCompleted()) {
+//                        payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
+//                    }
+//                } else if (trade.status().equals(Trade.Status.ARBITRATING)) {
+//                    paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+//                    if (trade.hasPayoutRequest()) {
+//                        paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
+//                    }
+//                    arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
+//                    if (tradeRole == Trade.Role.ARBITRATOR) {
+//                        refundSellerButton.setDisable(false);
+//                        if (trade.hasPayoutRequest()) {
+//                            payoutBuyerButton.setDisable(false);
+//                        }
+//                    }
+//                }
             }
         });
 

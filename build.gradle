@@ -36,7 +36,7 @@ if (project.hasProperty('configName')) {
     config = configName
 }
 
-def url = "https://"+net+".bytabit.net"
+def url = "https://" + net + ".bytabit.net"
 
 if (project.hasProperty('baseUrl')) {
     url = baseUrl
@@ -47,7 +47,7 @@ println config
 
 processResources {
     filesMatching("*.properties") {
-        filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config, BASEURL:url]
+        filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config, BASEURL: url]
     }
 
     outputs.upToDateWhen { false }
@@ -59,7 +59,9 @@ dependencies {
     compile "org.bitcoinj:bitcoinj-core:0.14.4"
     compile "com.madgag.spongycastle:prov:1.51.0.0"
     compile "joda-time:joda-time:2.9.1"
-    compile 'io.reactivex:rxjavafx:1.0.0'
+    compile 'com.squareup.retrofit2:adapter-rxjava2:2.3.0'
+    compile 'com.squareup.retrofit2:retrofit:2.3.0'
+    compile 'io.reactivex.rxjava2:rxjavafx:2.2.0'
     compile 'org.slf4j:slf4j-api:1.7.21'
     compile 'com.fasterxml.jackson.jr:jackson-jr-retrofit2:2.8.7'
 

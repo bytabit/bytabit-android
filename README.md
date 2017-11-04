@@ -65,6 +65,7 @@ gradle clean zipalignDebug
 
 1. connect via adb shell and run as com.bytabit.mobile
     ```
+    cd ~/Library/Android/sdk/platform-tools
     ./adb shell 
     run-as com.bytabit.mobile
     cd /data/data/com.bytabit.mobile

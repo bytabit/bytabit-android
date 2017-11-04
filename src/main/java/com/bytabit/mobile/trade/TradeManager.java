@@ -15,9 +15,6 @@ import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import rx.Observable;
-import rx.schedulers.JavaFxScheduler;
-import rx.schedulers.Schedulers;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -26,9 +23,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
 
 public class TradeManager extends AbstractManager {
@@ -98,15 +93,15 @@ public class TradeManager extends AbstractManager {
     public void requestArbitrate() {
         Trade trade = selectedTrade.getValue();
 
-        String profilePubKey = profileManager.getPubKeyProperty().getValue();
-        Boolean profileIsArbitrator = profileManager.getIsArbitratorProperty().getValue();
+//        String profilePubKey = profileManager.getPubKeyProperty().getValue();
+//        Boolean profileIsArbitrator = profileManager.getIsArbitratorProperty().getValue();
 
-        Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
-        if (role.equals(SELLER)) {
-            sellerProtocol.requestArbitrate(trade);
-        } else if (role.equals(BUYER)) {
-            buyerProtocol.requestArbitrate(trade);
-        }
+//        Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
+//        if (role.equals(SELLER)) {
+//            sellerProtocol.requestArbitrate(trade);
+//        } else if (role.equals(BUYER)) {
+//            buyerProtocol.requestArbitrate(trade);
+//        }
     }
 
     public void arbitratorRefundSeller() {
@@ -173,20 +168,20 @@ public class TradeManager extends AbstractManager {
 
     private void updateTrades() {
 
-        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> tradeService.get(profileManager.getPubKeyProperty().getValue()))
-                .retry()
-                .observeOn(JavaFxScheduler.getInstance())
-                .subscribe(c -> {
-                    try {
-                        List<Trade> trades = c.execute().body();
-                        if (trades != null) {
-                            receiveTrades(trades);
-                        }
-                    } catch (IOException ioe) {
-                        LOG.error(ioe.getMessage());
-                    }
-                });
+//        Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
+//                .map(tick -> tradeService.get(profileManager.getPubKeyProperty().getValue()))
+//                .retry()
+//                .observeOn(JavaFxScheduler.platform())
+//                .subscribe(c -> {
+//                    try {
+//                        List<Trade> trades = c.execute().body();
+//                        if (trades != null) {
+//                            receiveTrades(trades);
+//                        }
+//                    } catch (IOException ioe) {
+//                        LOG.error(ioe.getMessage());
+//                    }
+//                });
     }
 
     private void receiveTrades(List<Trade> trades) {
@@ -206,44 +201,44 @@ public class TradeManager extends AbstractManager {
 
         if (currentTrade == null || !currentTrade.status().equals(trade.status())) {
 
-            String profilePubKey = profileManager.getPubKeyProperty().getValue();
-            Boolean profileIsArbitrator = profileManager.getIsArbitratorProperty().getValue();
+//            String profilePubKey = profileManager.getPubKeyProperty().getValue();
+//            Boolean profileIsArbitrator = profileManager.getIsArbitratorProperty().getValue();
 
-            Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
-            TradeProtocol tradeProtocol;
+//            Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
+//            TradeProtocol tradeProtocol;
+//
+//            if (role.equals(SELLER)) {
+//                tradeProtocol = sellerProtocol;
+//            } else if (role.equals(BUYER)) {
+//                tradeProtocol = buyerProtocol;
+//            } else if (role.equals(ARBITRATOR)) {
+//                tradeProtocol = arbitratorProtocol;
+//            } else {
+//                throw new RuntimeException("Unable to determine trade protocol.");
+//            }
 
-            if (role.equals(SELLER)) {
-                tradeProtocol = sellerProtocol;
-            } else if (role.equals(BUYER)) {
-                tradeProtocol = buyerProtocol;
-            } else if (role.equals(ARBITRATOR)) {
-                tradeProtocol = arbitratorProtocol;
-            } else {
-                throw new RuntimeException("Unable to determine trade protocol.");
-            }
-
-            switch (trade.status()) {
-
-                case CREATED:
-                    updatedTrade = currentTrade == null ? tradeProtocol.handleCreated(trade) : null;
-                    break;
-
-                case FUNDED:
-                    updatedTrade = tradeProtocol.handleFunded(currentTrade, trade);
-                    break;
-
-                case PAID:
-                    updatedTrade = tradeProtocol.handlePaid(currentTrade, trade);
-                    break;
-
-                case COMPLETED:
-                    updatedTrade = tradeProtocol.handleCompleted(currentTrade, trade);
-                    break;
-
-                case ARBITRATING:
-                    updatedTrade = tradeProtocol.handleArbitrating(currentTrade, trade);
-                    break;
-            }
+//            switch (trade.status()) {
+//
+//                case CREATED:
+//                    updatedTrade = currentTrade == null ? tradeProtocol.handleCreated(trade) : null;
+//                    break;
+//
+//                case FUNDED:
+//                    updatedTrade = tradeProtocol.handleFunded(currentTrade, trade);
+//                    break;
+//
+//                case PAID:
+//                    updatedTrade = tradeProtocol.handlePaid(currentTrade, trade);
+//                    break;
+//
+//                case COMPLETED:
+//                    updatedTrade = tradeProtocol.handleCompleted(currentTrade, trade);
+//                    break;
+//
+//                case ARBITRATING:
+//                    updatedTrade = tradeProtocol.handleArbitrating(currentTrade, trade);
+//                    break;
+//            }
         }
 
         return updatedTrade;

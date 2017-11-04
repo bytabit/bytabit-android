@@ -6,6 +6,7 @@ import com.bytabit.mobile.profile.model.PaymentMethod;
 import java.math.BigDecimal;
 
 public class SellOfferBuilder {
+
     private String sellerEscrowPubKey;
     private String sellerProfilePubKey;
     private String arbitratorProfilePubKey;

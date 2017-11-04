@@ -42,11 +42,6 @@ public class OffersPresenter {
 
     public void initialize() {
 
-        // make sure profile initialized, do this here because this is HOME view
-        if (profileManager.getPubKeyProperty() == null) {
-            MobileApplication.getInstance().switchView(BytabitMobile.PROFILE_VIEW);
-        }
-
         offersListView.setCellFactory((view) -> new CharmListCell<SellOffer>() {
             @Override
             public void updateItem(SellOffer o, boolean empty) {
@@ -65,7 +60,6 @@ public class OffersPresenter {
                 }
             }
         });
-        //offersListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
 
         offersView.getLayers().add(addOfferButton.getLayer());
         addOfferButton.setOnAction((e) ->
@@ -91,7 +85,6 @@ public class OffersPresenter {
             }
         });
 
-        //offersListView.itemsProperty().addAll(offerManager.get());
         offersListView.itemsProperty().setValue(offerManager.getSellOffersObservableList());
         offersListView.selectedItemProperty().addListener((obs, oldValue, selectedSellOffer) -> {
             if (selectedSellOffer != null) {

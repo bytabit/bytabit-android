@@ -6,6 +6,7 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
@@ -90,12 +91,14 @@ public class PaymentPresenter {
             }
         });
 
-        profileManager.getCurrencyCodeProperty().bind(currencyChoiceBox.valueProperty());
-        profileManager.getPaymentMethodProperty().bind(paymentMethodChoiceBox.valueProperty());
-        profileManager.getPaymentDetailsProperty().bind(paymentDetailsTextField.textProperty());
+//        profileManager.getCurrencyCodeProperty().bind(currencyChoiceBox.valueProperty());
+//        profileManager.getPaymentMethodProperty().bind(paymentMethodChoiceBox.valueProperty());
+//        profileManager.getPaymentDetailsProperty().bind(paymentDetailsTextField.textProperty());
 
         addPaymentDetailButton.onActionProperty().setValue(e -> {
-            profileManager.addPaymentDetails();
+            profileManager.storePaymentDetails(currencyChoiceBox.valueProperty().get(), paymentMethodChoiceBox.valueProperty().get(),
+                    paymentDetailsTextField.textProperty().get()).observeOn(Schedulers.io()).subscribe();
+
             MobileApplication.getInstance().switchToPreviousView();
         });
     }

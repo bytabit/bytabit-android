@@ -5,8 +5,10 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
-import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import io.reactivex.Observable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -17,11 +19,7 @@ import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import rx.Observable;
-import rx.schedulers.JavaFxScheduler;
-import rx.schedulers.Schedulers;
 
-import javax.inject.Inject;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -30,9 +28,6 @@ import java.util.concurrent.TimeUnit;
 public class OfferManager extends AbstractManager {
 
     private static Logger LOG = LoggerFactory.getLogger(OfferManager.class);
-
-    @Inject
-    private WalletManager walletManager;
 
     private final SellOfferService sellOfferService;
 
@@ -79,12 +74,12 @@ public class OfferManager extends AbstractManager {
         readOffers();
     }
 
-    void createOffer() {
+    void createOffer(String sellerProfilePubKey) {
 
         try {
             SellOffer newSellOffer = SellOffer.builder()
                     .sellerEscrowPubKey(sellerEscrowPubKeyProperty.getValue())
-                    .sellerProfilePubKey(sellerProfilePubKeyProperty.getValue())
+                    .sellerProfilePubKey(sellerProfilePubKey)
                     .arbitratorProfilePubKey(arbitratorProfilePubKeyProperty.getValue())
                     .currencyCode(currencyCodeProperty.getValue())
                     .paymentMethod(paymentMethodProperty.getValue())
@@ -117,7 +112,7 @@ public class OfferManager extends AbstractManager {
         Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
                 .map(tick -> sellOfferService.get())
                 .retry()
-                .observeOn(JavaFxScheduler.getInstance())
+                .observeOn(JavaFxScheduler.platform())
                 .subscribe(c -> {
                     try {
                         List<SellOffer> offers = c.execute().body();

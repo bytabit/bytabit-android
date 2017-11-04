@@ -1,10 +1,13 @@
 package com.bytabit.mobile.profile;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.profile.model.Profile;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.Single;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
@@ -40,28 +43,33 @@ public class ProfilePresenter {
 
         LOG.debug("initialize profile presenter");
 
-        if (profileManager.getPubKeyProperty().getValue() == null) {
-            profileManager.createProfile();
-        }
-
-        pubKeyTextField.textProperty().bind(profileManager.getPubKeyProperty());
-
-        arbitratorCheckbox.selectedProperty().bindBidirectional(profileManager.getIsArbitratorProperty());
-        userNameTextField.textProperty().bindBidirectional(profileManager.getUserNameProperty());
-        phoneNumTextField.textProperty().bindBidirectional(profileManager.getPhoneNumProperty());
-
         profileView.showingProperty().addListener((ObservableValue<? extends Boolean> observable, Boolean oldValue, Boolean newValue) -> {
 
             if (newValue) {
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e -> {
-                    profileManager.updateProfile();
                     MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER);
                 }));
                 appBar.setTitleText("Profile");
+                refreshProfile(profileManager.retrieveMyProfile());
+            } else {
+                Profile updatedProfile = Profile.builder()
+                        .pubKey(pubKeyTextField.getText())
+                        .isArbitrator(arbitratorCheckbox.isSelected())
+                        .userName(userNameTextField.getText())
+                        .phoneNum(phoneNumTextField.getText())
+                        .build();
+                profileManager.storeMyProfile(updatedProfile).subscribe();
             }
         });
+    }
 
-        //profileManager.readProfiles();
+    private void refreshProfile(Single<Profile> profileObservable) {
+        profileObservable.observeOn(JavaFxScheduler.platform()).subscribe(p -> {
+            pubKeyTextField.setText(p.getPubKey());
+            arbitratorCheckbox.setSelected(p.getIsArbitrator());
+            userNameTextField.setText(p.getUserName());
+            phoneNumTextField.setText(p.getPhoneNum());
+        });
     }
 }

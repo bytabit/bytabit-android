@@ -1,6 +1,7 @@
 package com.bytabit.mobile.profile.model;
 
 public class ProfileBuilder {
+
     private String pubKey;
     private Boolean isArbitrator;
     private String userName;

@@ -4,6 +4,7 @@ import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 
 public class TransactionWithAmtBuilder {
+
     private Transaction tx;
     private Coin coinAmt;
     private String outputAddress;

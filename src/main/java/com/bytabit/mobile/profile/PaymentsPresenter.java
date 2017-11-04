@@ -10,6 +10,7 @@ import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.fxml.FXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +72,9 @@ public class PaymentsPresenter {
                         MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
                 appBar.setTitleText("Payment Details");
 
-                paymentDetailsListView.itemsProperty().setAll(profileManager.getPaymentDetails());
+                profileManager.retrievePaymentDetails().observeOn(JavaFxScheduler.platform()).subscribe(pdl ->
+                        paymentDetailsListView.itemsProperty().setAll(pdl)
+                );
             }
 
         });

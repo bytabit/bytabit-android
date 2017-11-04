@@ -19,13 +19,12 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.layout.layer.SidePopupView;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.Swatch;
+import io.reactivex.subjects.PublishSubject;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import rx.Observable;
-import rx.javafx.sources.CompositeObservable;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -56,7 +55,7 @@ public class BytabitMobile extends MobileApplication {
 
     final public static Executor EXECUTOR = Executors.newWorkStealingPool();
 
-    private static CompositeObservable<NavEvent> navEventsComposite = new CompositeObservable<>();
+    private static PublishSubject<NavEvent> navEventsComposite = PublishSubject.create();
 
     @Override
     public void init() throws Exception {
@@ -95,15 +94,15 @@ public class BytabitMobile extends MobileApplication {
 
     @Override
     public void stop() {
-        navEventsComposite.add(Observable.just(new QuitEvent()));
+        navEventsComposite.onNext(new QuitEvent());
         LOG.debug("Stop app");
     }
 
-    public static CompositeObservable<NavEvent> getNavEventsComposite() {
+    public static PublishSubject<NavEvent> getNavEventsComposite() {
         return navEventsComposite;
     }
 
-    public static Observable<NavEvent> getNavEvents() {
-        return navEventsComposite.toObservable();
+    public static PublishSubject<NavEvent> getNavEvents() {
+        return navEventsComposite;
     }
 }
