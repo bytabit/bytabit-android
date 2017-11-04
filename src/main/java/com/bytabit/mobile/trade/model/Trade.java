@@ -58,18 +58,15 @@ public class Trade {
         return new TradeBuilder();
     }
 
-    public Trade() {
-    }
-
-    public Trade(String escrowAddress, String sellerEscrowPubKey, String sellerProfilePubKey,
-                 String arbitratorProfilePubKey, CurrencyCode currencyCode,
-                 PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount,
-                 BigDecimal price, String buyerEscrowPubKey, BigDecimal btcAmount,
-                 String buyerProfilePubKey, String buyerPayoutAddress, String fundingTxHash,
-                 String paymentDetails, String refundAddress, String refundTxSignature,
-                 String paymentReference, String payoutTxSignature,
-                 ArbitrateRequest.Reason arbitrationReason, String payoutTxHash,
-                 PayoutCompleted.Reason payoutReason) {
+    Trade(String escrowAddress, String sellerEscrowPubKey, String sellerProfilePubKey,
+          String arbitratorProfilePubKey, CurrencyCode currencyCode,
+          PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount,
+          BigDecimal price, String buyerEscrowPubKey, BigDecimal btcAmount,
+          String buyerProfilePubKey, String buyerPayoutAddress, String fundingTxHash,
+          String paymentDetails, String refundAddress, String refundTxSignature,
+          String paymentReference, String payoutTxSignature,
+          ArbitrateRequest.Reason arbitrationReason, String payoutTxHash,
+          PayoutCompleted.Reason payoutReason) {
 
         this.escrowAddress = escrowAddress;
         this.sellerEscrowPubKey = sellerEscrowPubKey;

@@ -21,9 +21,6 @@ public class SellOffer {
         return new SellOfferBuilder();
     }
 
-    public SellOffer() {
-    }
-
     SellOffer(String sellerEscrowPubKey, String sellerProfilePubKey, String arbitratorProfilePubKey, CurrencyCode currencyCode, PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
         this.sellerEscrowPubKey = sellerEscrowPubKey;
         this.sellerProfilePubKey = sellerProfilePubKey;

@@ -9,7 +9,20 @@ import java.math.MathContext;
 
 public class TransactionWithAmt {
 
-    public TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress, String inputTxHash) {
+    private String hash;
+    private String confidenceType;
+    private Integer depth;
+    private LocalDateTime date;
+    private String memo;
+    private Coin coinAmt;
+    private String outputAddress;
+    private String inputTxHash;
+
+    public static TransactionWithAmtBuilder builder() {
+        return new TransactionWithAmtBuilder();
+    }
+
+    TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress, String inputTxHash) {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
         this.depth = tx.getConfidence().getDepthInBlocks();
@@ -19,19 +32,6 @@ public class TransactionWithAmt {
         this.outputAddress = outputAddress;
         this.inputTxHash = inputTxHash;
     }
-
-    public static TransactionWithAmtBuilder builder() {
-        return new TransactionWithAmtBuilder();
-    }
-
-    private String hash;
-    private String confidenceType;
-    private Integer depth;
-    private LocalDateTime date;
-    private String memo;
-    private Coin coinAmt;
-    private String outputAddress;
-    private String inputTxHash;
 
     public String getHash() {
         return hash;
