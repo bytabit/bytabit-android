@@ -10,7 +10,7 @@ public class PaymentDetails {
         return new PaymentDetailsBuilder();
     }
 
-    public PaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod, String paymentDetails) {
+    PaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod, String paymentDetails) {
         this.currencyCode = currencyCode;
         this.paymentMethod = paymentMethod;
         this.paymentDetails = paymentDetails;

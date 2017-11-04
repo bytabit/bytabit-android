@@ -11,10 +11,7 @@ public class Profile {
         return new ProfileBuilder();
     }
 
-    public Profile() {
-    }
-
-    public Profile(String pubKey, Boolean isArbitrator, String userName, String phoneNum) {
+    Profile(String pubKey, Boolean isArbitrator, String userName, String phoneNum) {
         this.pubKey = pubKey;
         this.isArbitrator = isArbitrator;
         this.userName = userName;

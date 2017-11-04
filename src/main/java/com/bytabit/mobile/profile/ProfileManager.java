@@ -110,7 +110,11 @@ public class ProfileManager extends AbstractManager {
     public Single<PaymentDetails> storePaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod, String paymentDetails) {
         return Single.fromCallable(() -> {
             store(paymentDetailsKey(currencyCode, paymentMethod), paymentDetails);
-            return new PaymentDetails(currencyCode, paymentMethod, paymentDetails);
+            return PaymentDetails.builder()
+                    .currencyCode(currencyCode)
+                    .paymentMethod(paymentMethod)
+                    .paymentDetails(paymentDetails)
+                    .build();
                 }
         ).subscribeOn(Schedulers.io());
     }
