@@ -7,7 +7,6 @@ import com.bytabit.mobile.profile.ProfileStringConverter;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
-import com.bytabit.mobile.wallet.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -36,9 +35,6 @@ public class AddOfferPresenter {
 
     @Inject
     ProfileManager profileManager;
-
-    @Inject
-    WalletManager tradeWalletManager;
 
     @FXML
     private View addOfferView;
@@ -79,16 +75,10 @@ public class AddOfferPresenter {
 
         LOG.debug("initialize add offer presenter");
 
-        StringConverter<BigDecimal> converter = new StringBigDecimalConverter();
-
-        minTradeAmtTextField.textProperty().bindBidirectional(offerManager.getMinAmountProperty(), converter);
-        maxTradeAmtTextField.textProperty().bindBidirectional(offerManager.getMaxAmountProperty(), converter);
-        btcPriceTextField.textProperty().bindBidirectional(offerManager.getPriceProperty(), converter);
+        StringConverter<BigDecimal> bigDecConverter = new StringBigDecimalConverter();
 
         arbitratorChoiceBox.setConverter(new ProfileStringConverter());
-        arbitratorChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, arbitrator) -> {
-            offerManager.getArbitratorProfilePubKeyProperty().setValue(arbitrator.getPubKey());
-        });
+
         addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
             if (newValue) {
@@ -96,51 +86,46 @@ public class AddOfferPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Create Sell Offer");
 
-                profileManager.getCurrencyCodes().subscribeOn(JavaFxScheduler.platform()).subscribe(cl -> {
+                profileManager.getCurrencyCodes().observeOn(JavaFxScheduler.platform()).subscribe(cl -> {
                     currencyChoiceBox.getItems().setAll(cl);
                     currencyChoiceBox.getSelectionModel().select(0);
                 });
 
                 // TODO myProfile = profileManager.retrieveProfile();
                 profileManager.getArbitratorProfiles().observeOn(JavaFxScheduler.platform())
-                        .subscribe(al -> arbitratorChoiceBox.getItems().setAll(al));
+                        .subscribe(al -> {
+                            arbitratorChoiceBox.getItems().setAll(al);
+                            arbitratorChoiceBox.getSelectionModel().select(0);
+                        });
 
                 paymentMethodChoiceBox.requestFocus();
 
-//                currencyChoiceBox.getItems().setAll(profileManager.currencyCodes());
-//                currencyChoiceBox.getSelectionModel().select(0);
-
                 profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform())
                         .subscribe(p -> myProfilePubKeyProperty.setValue(p.getPubKey()));
-
-//        if (profileManager.getPubKeyProperty().getValue() != null) {
-//            offerManager.getSellerProfilePubKeyProperty().setValue(profileManager.getPubKeyProperty().getValue());
-//        }
             }
         });
 
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
-        paymentMethodChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, paymentMethod) -> {
-            offerManager.getPaymentMethodProperty().setValue(paymentMethod);
-        });
 
         currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, ov, currencyCode) -> {
             if (currencyCode != null) {
-                profileManager.getPaymentMethods(currencyCode).subscribeOn(JavaFxScheduler.platform())
+                profileManager.getPaymentMethods(currencyCode).observeOn(JavaFxScheduler.platform())
                         .subscribe(pl -> {
                             paymentMethodChoiceBox.getItems().setAll(pl);
                             paymentMethodChoiceBox.getSelectionModel().select(0);
                             minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
                             maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
                             btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
-                            offerManager.getCurrencyCodeProperty().setValue(currencyCode);
                         });
             }
         });
 
         addOfferButton.onActionProperty().setValue(e -> {
-            offerManager.getSellerEscrowPubKeyProperty().setValue(tradeWalletManager.getFreshBase58AuthPubKey());
-            offerManager.createOffer(myProfilePubKeyProperty.get());
+            offerManager.createOffer(currencyChoiceBox.getValue(), paymentMethodChoiceBox.getValue(), arbitratorChoiceBox.getValue(),
+                    bigDecConverter.fromString(minTradeAmtTextField.textProperty().get()),
+                    bigDecConverter.fromString(maxTradeAmtTextField.textProperty().get()),
+                    bigDecConverter.fromString(btcPriceTextField.textProperty().get()))
+                    .observeOn(JavaFxScheduler.platform()).map(so -> offerManager.offers.add(so)).subscribe();
             MobileApplication.getInstance().switchToPreviousView();
         });
     }

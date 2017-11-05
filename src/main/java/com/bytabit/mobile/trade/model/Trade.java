@@ -54,6 +54,9 @@ public class Trade {
     private String payoutTxHash;
     private PayoutCompleted.Reason payoutReason;
 
+    public Trade() {
+    }
+
     public static TradeBuilder builder() {
         return new TradeBuilder();
     }

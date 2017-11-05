@@ -10,6 +10,7 @@ import com.bytabit.mobile.wallet.model.TransactionWithAmtBuilder;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import io.reactivex.Flowable;
+import io.reactivex.Single;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 import javafx.beans.property.*;
@@ -488,8 +489,18 @@ public class WalletManager {
         return tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).toAddress(netParams);
     }
 
-    public String getFreshBase58AuthPubKey() {
-        return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
+//    public String getFreshBase58AuthPubKey() {
+//        return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
+//    }
+
+    public Single<String> getFreshBase58AuthPubKey() {
+        return Single.fromCallable(() -> Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).getPubKey()))
+                .subscribeOn(Schedulers.io());
+    }
+
+    public Single<String> getFreshBase58ReceivePubKey() {
+        return Single.fromCallable(() -> Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey()))
+                .subscribeOn(Schedulers.io());
     }
 
     public Coin getWalletBalance() {

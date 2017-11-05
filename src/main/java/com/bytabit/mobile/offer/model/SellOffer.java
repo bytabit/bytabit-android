@@ -17,6 +17,9 @@ public class SellOffer {
     private BigDecimal maxAmount;
     private BigDecimal price;
 
+    public SellOffer() {
+    }
+
     public static SellOfferBuilder builder() {
         return new SellOfferBuilder();
     }

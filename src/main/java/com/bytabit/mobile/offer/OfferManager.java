@@ -3,24 +3,26 @@ package com.bytabit.mobile.offer;
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
+import com.gluonhq.connect.GluonObservableList;
+import io.reactivex.Completable;
 import io.reactivex.Observable;
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
-import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
-import java.io.IOException;
+import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -31,157 +33,53 @@ public class OfferManager extends AbstractManager {
 
     private final SellOfferService sellOfferService;
 
-    private final ObservableList<SellOffer> sellOffersObservableList;
+    @Inject
+    ProfileManager profileManager;
 
-    private final StringProperty sellerEscrowPubKeyProperty;
-    private final StringProperty sellerProfilePubKeyProperty;
-    private final StringProperty arbitratorProfilePubKeyProperty;
+    @Inject
+    WalletManager walletManager;
 
-    private final ObjectProperty<CurrencyCode> currencyCodeProperty;
-    private final ObjectProperty<PaymentMethod> paymentMethodProperty;
-    private final ObjectProperty<BigDecimal> minAmountProperty;
-    private final ObjectProperty<BigDecimal> maxAmountProperty;
-    private final ObjectProperty<BigDecimal> priceProperty;
-
-    private final ObjectProperty<BigDecimal> buyBtcAmountProperty;
-
-    private final ObjectProperty<SellOffer> selectedSellOfferProperty;
+    final ObjectProperty<SellOffer> selectedOffer = new SimpleObjectProperty<>();
+    final ObservableList<SellOffer> offers = new GluonObservableList<>();
 
     public OfferManager() {
         Retrofit sellOfferRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .addConverterFactory(new JacksonJrConverter<>(SellOffer.class))
                 .build();
 
         sellOfferService = sellOfferRetrofit.create(SellOfferService.class);
-
-        sellOffersObservableList = FXCollections.observableArrayList();
-
-        sellerEscrowPubKeyProperty = new SimpleStringProperty();
-        sellerProfilePubKeyProperty = new SimpleStringProperty();
-        arbitratorProfilePubKeyProperty = new SimpleStringProperty();
-
-        currencyCodeProperty = new SimpleObjectProperty<>();
-        paymentMethodProperty = new SimpleObjectProperty<>();
-        minAmountProperty = new SimpleObjectProperty<>();
-        maxAmountProperty = new SimpleObjectProperty<>();
-        priceProperty = new SimpleObjectProperty<>();
-
-        buyBtcAmountProperty = new SimpleObjectProperty<>();
-
-        selectedSellOfferProperty = new SimpleObjectProperty<>();
-
-        readOffers();
     }
 
-    void createOffer(String sellerProfilePubKey) {
+    public Single<SellOffer> createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, Profile arbitrator,
+                                         BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        try {
-            SellOffer newSellOffer = SellOffer.builder()
-                    .sellerEscrowPubKey(sellerEscrowPubKeyProperty.getValue())
-                    .sellerProfilePubKey(sellerProfilePubKey)
-                    .arbitratorProfilePubKey(arbitratorProfilePubKeyProperty.getValue())
-                    .currencyCode(currencyCodeProperty.getValue())
-                    .paymentMethod(paymentMethodProperty.getValue())
-                    .minAmount(minAmountProperty.getValue())
-                    .maxAmount(maxAmountProperty.getValue())
-                    .price(priceProperty.getValue())
-                    .build();
-            if (newSellOffer.isComplete()) {
-                SellOffer createdOffer = sellOfferService.put(newSellOffer.getSellerEscrowPubKey(), newSellOffer).execute().body();
-                Platform.runLater(() -> {
-                    sellOffersObservableList.add(createdOffer);
-                });
-            } else {
-                LOG.error("Sell offer is incomplete.");
-            }
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-        }
+        return Single.zip(profileManager.retrieveMyProfile(), walletManager.getFreshBase58ReceivePubKey(), (p, pk) ->
+                SellOffer.builder()
+                        .sellerProfilePubKey(p.getPubKey())
+                        .sellerEscrowPubKey(pk)
+                        .arbitratorProfilePubKey(arbitrator.getPubKey())
+                        .currencyCode(currencyCode)
+                        .paymentMethod(paymentMethod)
+                        .minAmount(minAmount)
+                        .maxAmount(maxAmount)
+                        .price(price)
+                        .build()
+        ).flatMap(o -> sellOfferService.put(o.getSellerEscrowPubKey(), o)).subscribeOn(Schedulers.io());
     }
 
-    void readOffers() {
-        try {
-            List<SellOffer> offers = sellOfferService.get().execute().body();
-            Platform.runLater(() -> {
-                sellOffersObservableList.setAll(offers);
-            });
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-        }
-        Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .map(tick -> sellOfferService.get())
-                .retry()
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> {
-                    try {
-                        List<SellOffer> offers = c.execute().body();
-                        Platform.runLater(() -> {
-                            sellOffersObservableList.setAll(offers);
-                        });
-                    } catch (IOException ioe) {
-                        LOG.error(ioe.getMessage());
-                    }
-                });
+    public Single<List<SellOffer>> getOffers() {
+        return sellOfferService.get().retry().subscribeOn(Schedulers.io());
     }
 
-    void deleteOffer() {
-
-        try {
-            sellOfferService.delete(sellerEscrowPubKeyProperty.getValue()).execute();
-            for (SellOffer so : sellOffersObservableList) {
-                if (so.getSellerEscrowPubKey().equals(sellerEscrowPubKeyProperty.getValue())) {
-                    Platform.runLater(() -> {
-                        sellOffersObservableList.remove(so);
-                    });
-                }
-            }
-        } catch (IOException ioe) {
-            LOG.error(ioe.getMessage());
-        }
+    public Observable<List<SellOffer>> watchOffers() {
+        return Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
+                .flatMap(tick -> sellOfferService.get().retry().toObservable())
+                .subscribeOn(Schedulers.io());
     }
 
-    public StringProperty getSellerEscrowPubKeyProperty() {
-        return sellerEscrowPubKeyProperty;
-    }
-
-    public StringProperty getSellerProfilePubKeyProperty() {
-        return sellerProfilePubKeyProperty;
-    }
-
-    public StringProperty getArbitratorProfilePubKeyProperty() {
-        return arbitratorProfilePubKeyProperty;
-    }
-
-    public ObjectProperty<CurrencyCode> getCurrencyCodeProperty() {
-        return currencyCodeProperty;
-    }
-
-    public ObjectProperty<PaymentMethod> getPaymentMethodProperty() {
-        return paymentMethodProperty;
-    }
-
-    public ObjectProperty<BigDecimal> getMinAmountProperty() {
-        return minAmountProperty;
-    }
-
-    public ObjectProperty<BigDecimal> getMaxAmountProperty() {
-        return maxAmountProperty;
-    }
-
-    public ObjectProperty<BigDecimal> getPriceProperty() {
-        return priceProperty;
-    }
-
-    public ObjectProperty<BigDecimal> getBuyBtcAmountProperty() {
-        return buyBtcAmountProperty;
-    }
-
-    public ObjectProperty<SellOffer> getSelectedSellOfferProperty() {
-        return selectedSellOfferProperty;
-    }
-
-    public ObservableList<SellOffer> getSellOffersObservableList() {
-        return sellOffersObservableList;
+    public Completable deleteOffer(String sellerEscrowPubKey) {
+        return sellOfferService.delete(sellerEscrowPubKey).subscribeOn(Schedulers.io());
     }
 }

@@ -61,13 +61,14 @@ public class ProfileManager extends AbstractManager {
     public Single<Profile> retrieveMyProfile() {
 
         if (!retrieve(PROFILE_PUBKEY).isPresent()) {
-            final Profile profile = Profile.builder()
-                    .pubKey(walletManager.getFreshBase58AuthPubKey())
-                    .isArbitrator(Boolean.FALSE)
-                    .userName(null)
-                    .phoneNum(null)
-                    .build();
-            return storeMyProfile(profile);
+            return walletManager.getFreshBase58AuthPubKey().flatMap(pk ->
+                    storeMyProfile(Profile.builder()
+                            .pubKey(pk)
+                            .isArbitrator(Boolean.FALSE)
+                            .userName(null)
+                            .phoneNum(null)
+                            .build())
+            );
         } else {
             return Single.fromCallable(() -> Profile.builder()
                     .pubKey(retrieve(PROFILE_PUBKEY).get())

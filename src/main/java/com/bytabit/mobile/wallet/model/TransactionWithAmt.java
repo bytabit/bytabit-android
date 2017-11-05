@@ -18,6 +18,9 @@ public class TransactionWithAmt {
     private String outputAddress;
     private String inputTxHash;
 
+    public TransactionWithAmt() {
+    }
+
     public static TransactionWithAmtBuilder builder() {
         return new TransactionWithAmtBuilder();
     }

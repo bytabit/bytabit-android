@@ -10,6 +10,7 @@ import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.fxml.FXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,10 @@ public class OffersPresenter {
             }
         });
 
+        offersListView.setItems(offerManager.offers);
+
         offersView.getLayers().add(addOfferButton.getLayer());
+
         addOfferButton.setOnAction((e) ->
                 MobileApplication.getInstance().switchView(BytabitMobile.ADD_OFFER_VIEW));
 
@@ -75,6 +79,9 @@ public class OffersPresenter {
                 appBar.setTitleText("Offers");
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
+
+                offerManager.getOffers().observeOn(JavaFxScheduler.platform())
+                        .subscribe(ol -> offerManager.offers.setAll(ol));
             }
         });
 
@@ -85,27 +92,30 @@ public class OffersPresenter {
             }
         });
 
-        offersListView.itemsProperty().setValue(offerManager.getSellOffersObservableList());
+        offerManager.watchOffers().observeOn(JavaFxScheduler.platform())
+                .subscribe(ol -> offerManager.offers.setAll(ol));
+
         offersListView.selectedItemProperty().addListener((obs, oldValue, selectedSellOffer) -> {
             if (selectedSellOffer != null) {
                 String sellerEscrowPubKey = selectedSellOffer.getSellerEscrowPubKey();
                 offersListView.selectedItemProperty().setValue(null);
-
-                if (tradeManager.activeSellerEscrowPubKey(sellerEscrowPubKey)) {
-                    // TODO go to active trade details view for this sell offer
-                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
-                } else {
-                    offerManager.getSelectedSellOfferProperty().setValue(selectedSellOffer);
-                    offerManager.getSellerEscrowPubKeyProperty().setValue(sellerEscrowPubKey);
-                    offerManager.getSellerProfilePubKeyProperty().setValue(selectedSellOffer.getSellerProfilePubKey());
-                    offerManager.getArbitratorProfilePubKeyProperty().setValue(selectedSellOffer.getArbitratorProfilePubKey());
-                    offerManager.getCurrencyCodeProperty().setValue(selectedSellOffer.getCurrencyCode());
-                    offerManager.getPaymentMethodProperty().setValue(selectedSellOffer.getPaymentMethod());
-                    offerManager.getMinAmountProperty().setValue(selectedSellOffer.getMinAmount());
-                    offerManager.getMaxAmountProperty().setValue(selectedSellOffer.getMaxAmount());
-                    offerManager.getPriceProperty().setValue(selectedSellOffer.getPrice());
-                    MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
-                }
+                offerManager.selectedOffer.setValue(selectedSellOffer);
+                MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+//                if (tradeManager.activeSellerEscrowPubKey(sellerEscrowPubKey)) {
+//                    // TODO go to active trade details view for this sell offer
+//                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
+//                } else {
+//                    offerManager.getSelectedSellOfferProperty().setValue(selectedSellOffer);
+//                    offerManager.getSellerEscrowPubKeyProperty().setValue(sellerEscrowPubKey);
+//                    offerManager.getSellerProfilePubKeyProperty().setValue(selectedSellOffer.getSellerProfilePubKey());
+//                    offerManager.getArbitratorProfilePubKeyProperty().setValue(selectedSellOffer.getArbitratorProfilePubKey());
+//                    offerManager.getCurrencyCodeProperty().setValue(selectedSellOffer.getCurrencyCode());
+//                    offerManager.getPaymentMethodProperty().setValue(selectedSellOffer.getPaymentMethod());
+//                    offerManager.getMinAmountProperty().setValue(selectedSellOffer.getMinAmount());
+//                    offerManager.getMaxAmountProperty().setValue(selectedSellOffer.getMaxAmount());
+//                    offerManager.getPriceProperty().setValue(selectedSellOffer.getPrice());
+//                    MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+//                }
             }
         });
     }

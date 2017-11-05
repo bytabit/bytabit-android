@@ -7,6 +7,9 @@ public class Profile {
     private String userName;
     private String phoneNum;
 
+    public Profile() {
+    }
+
     public static ProfileBuilder builder() {
         return new ProfileBuilder();
     }

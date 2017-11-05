@@ -6,6 +6,9 @@ public class PaymentDetails {
     private PaymentMethod paymentMethod;
     private String paymentDetails;
 
+    public PaymentDetails() {
+    }
+
     public static PaymentDetailsBuilder builder() {
         return new PaymentDetailsBuilder();
     }
