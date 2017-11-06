@@ -9,13 +9,13 @@ import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
-import com.gluonhq.connect.GluonObservableList;
 import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +39,8 @@ public class OfferManager extends AbstractManager {
     @Inject
     WalletManager walletManager;
 
-    final ObjectProperty<SellOffer> selectedOffer = new SimpleObjectProperty<>();
-    final ObservableList<SellOffer> offers = new GluonObservableList<>();
+    private final ObjectProperty<SellOffer> selectedOffer = new SimpleObjectProperty<>();
+    private final ObservableList<SellOffer> offers = FXCollections.observableArrayList();
 
     public OfferManager() {
         Retrofit sellOfferRetrofit = new Retrofit.Builder()
@@ -69,11 +69,11 @@ public class OfferManager extends AbstractManager {
         ).flatMap(o -> sellOfferService.put(o.getSellerEscrowPubKey(), o)).subscribeOn(Schedulers.io());
     }
 
-    public Single<List<SellOffer>> getOffers() {
+    public Single<List<SellOffer>> singleOffers() {
         return sellOfferService.get().retry().subscribeOn(Schedulers.io());
     }
 
-    public Observable<List<SellOffer>> watchOffers() {
+    public Observable<List<SellOffer>> observableOffers() {
         return Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
                 .flatMap(tick -> sellOfferService.get().retry().toObservable())
                 .subscribeOn(Schedulers.io());
@@ -81,5 +81,21 @@ public class OfferManager extends AbstractManager {
 
     public Completable deleteOffer(String sellerEscrowPubKey) {
         return sellOfferService.delete(sellerEscrowPubKey).subscribeOn(Schedulers.io());
+    }
+
+    public SellOffer getSelectedOffer() {
+        return selectedOffer.get();
+    }
+
+    public void setSelectedOffer(SellOffer selectedOffer) {
+        this.selectedOffer.set(selectedOffer);
+    }
+
+    public ObjectProperty<SellOffer> selectedOfferProperty() {
+        return selectedOffer;
+    }
+
+    public ObservableList<SellOffer> getOffers() {
+        return offers;
     }
 }

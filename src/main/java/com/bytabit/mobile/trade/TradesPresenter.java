@@ -67,10 +67,13 @@ public class TradesPresenter {
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
             }
-
         });
 
-//        tradeManager.getTradesObservableList().addListener((ListChangeListener<Trade>) change -> {
+        tradeManager.initialize();
+
+//        tradeManager.watchUpdatedTrades().observeOn(JavaFxScheduler.platform()).forEach(this::updateTradesList);
+
+//        tradeManager.singleTrades().addListener((ListChangeListener<Trade>) change -> {
 //            while (change.next()) {
 //                for (Trade trade : change.getAddedSubList()) {
 //                    if (trade.createSellOffer().getSellerProfilePubKeyProperty()
@@ -104,7 +107,7 @@ public class TradesPresenter {
 //            }
 //        });
 
-        tradesListView.itemsProperty().setValue(tradeManager.getTradesObservableList());
+        tradesListView.itemsProperty().setValue(tradeManager.getTrades());
 
         tradesListView.selectedItemProperty().addListener((obs, oldValue, trade) -> {
             if (trade != null) {
@@ -114,4 +117,14 @@ public class TradesPresenter {
             }
         });
     }
+
+//    private void updateTradesList(Trade updatedTrade) {
+//        ObservableList<Trade> tradesObservableList = tradeManager.singleTrades();
+//        int index = tradesObservableList.indexOf(updatedTrade);
+//        if (index < 0) {
+//            tradesObservableList.add(updatedTrade);
+//        } else {
+//            tradesObservableList.set(index, updatedTrade);
+//        }
+//    }
 }

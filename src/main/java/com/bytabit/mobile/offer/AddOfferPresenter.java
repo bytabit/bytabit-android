@@ -125,7 +125,7 @@ public class AddOfferPresenter {
                     bigDecConverter.fromString(minTradeAmtTextField.textProperty().get()),
                     bigDecConverter.fromString(maxTradeAmtTextField.textProperty().get()),
                     bigDecConverter.fromString(btcPriceTextField.textProperty().get()))
-                    .observeOn(JavaFxScheduler.platform()).map(so -> offerManager.offers.add(so)).subscribe();
+                    .observeOn(JavaFxScheduler.platform()).map(so -> offerManager.getOffers().add(so)).subscribe();
             MobileApplication.getInstance().switchToPreviousView();
         });
     }

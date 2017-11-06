@@ -62,7 +62,7 @@ public class OffersPresenter {
             }
         });
 
-        offersListView.setItems(offerManager.offers);
+        offersListView.setItems(offerManager.getOffers());
 
         offersView.getLayers().add(addOfferButton.getLayer());
 
@@ -80,8 +80,8 @@ public class OffersPresenter {
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
 
-                offerManager.getOffers().observeOn(JavaFxScheduler.platform())
-                        .subscribe(ol -> offerManager.offers.setAll(ol));
+                offerManager.singleOffers().observeOn(JavaFxScheduler.platform())
+                        .subscribe(ol -> offerManager.getOffers().setAll(ol));
             }
         });
 
@@ -92,14 +92,14 @@ public class OffersPresenter {
             }
         });
 
-        offerManager.watchOffers().observeOn(JavaFxScheduler.platform())
-                .subscribe(ol -> offerManager.offers.setAll(ol));
+        offerManager.observableOffers().observeOn(JavaFxScheduler.platform())
+                .subscribe(ol -> offerManager.getOffers().setAll(ol));
 
         offersListView.selectedItemProperty().addListener((obs, oldValue, selectedSellOffer) -> {
             if (selectedSellOffer != null) {
                 String sellerEscrowPubKey = selectedSellOffer.getSellerEscrowPubKey();
                 offersListView.selectedItemProperty().setValue(null);
-                offerManager.selectedOffer.setValue(selectedSellOffer);
+                offerManager.setSelectedOffer(selectedSellOffer);
                 MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
 //                if (tradeManager.activeSellerEscrowPubKey(sellerEscrowPubKey)) {
 //                    // TODO go to active trade details view for this sell offer

@@ -7,11 +7,11 @@ import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import io.reactivex.Single;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.bitcoinj.core.Transaction;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
@@ -26,9 +26,9 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 1.B: create trade, post created trade
-    public Trade createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount,
-                             String buyerEscrowPubKey, String buyerProfilePubKey,
-                             String buyerPayoutAddress) {
+    public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount,
+                                     String buyerEscrowPubKey, String buyerProfilePubKey,
+                                     String buyerPayoutAddress) {
 
         // create buy request
         String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
@@ -47,16 +47,14 @@ public class BuyerProtocol extends TradeProtocol {
         walletManager.createEscrowWallet(createdTrade.getEscrowAddress());
 
         // post buy request to server
-        try {
+//        try {
+        log.debug("Put buyRequest to create new trade: {}", createdTrade);
 
-            tradeService.put(createdTrade.getEscrowAddress(), createdTrade).execute();
-            log.debug("Put buyRequest to create new trade: {}", createdTrade);
-        } catch (IOException ioe) {
-            log.error(ioe.getMessage());
-            throw new RuntimeException(ioe);
-        }
-
-        return createdTrade;
+        return tradeService.put(createdTrade.getEscrowAddress(), createdTrade);
+//        } catch (IOException ioe) {
+//            log.error(ioe.getMessage());
+//            throw new RuntimeException(ioe);
+//        }
     }
 
     @Override
@@ -99,20 +97,20 @@ public class BuyerProtocol extends TradeProtocol {
                 PayoutRequest payoutRequest = new PayoutRequest(paymentReference, payoutSignature);
 
                 // 3. post payout request to server
-                try {
-                    Trade paidTrade = Trade.builder()
-                            .escrowAddress(fundedTrade.getEscrowAddress())
-                            .sellOffer(fundedTrade.sellOffer())
-                            .buyRequest(fundedTrade.buyRequest())
-                            .paymentRequest(fundedTrade.paymentRequest())
-                            .payoutRequest(payoutRequest)
-                            .build();
+//                try {
+                Trade paidTrade = Trade.builder()
+                        .escrowAddress(fundedTrade.getEscrowAddress())
+                        .sellOffer(fundedTrade.sellOffer())
+                        .buyRequest(fundedTrade.buyRequest())
+                        .paymentRequest(fundedTrade.paymentRequest())
+                        .payoutRequest(payoutRequest)
+                        .build();
 
-                    tradeService.put(paidTrade.getEscrowAddress(), paidTrade).execute();
+                tradeService.put(paidTrade.getEscrowAddress(), paidTrade).subscribe();
 
-                } catch (IOException e) {
-                    log.error("Can't put paid trade to server.");
-                }
+//                } catch (IOException e) {
+//                    log.error("Can't put paid trade to server.");
+//                }
             } else {
                 log.error("Funding transaction not found for payout request.");
             }
@@ -130,20 +128,20 @@ public class BuyerProtocol extends TradeProtocol {
                 // 2. confirm refund tx and create payout completed
                 PayoutCompleted payoutCompleted = new PayoutCompleted(refundTxHash, BUYER_SELLER_REFUND);
 
-                try {
-                    Trade canceledTrade = Trade.builder()
-                            .escrowAddress(fundedTrade.getEscrowAddress())
-                            .sellOffer(fundedTrade.sellOffer())
-                            .buyRequest(fundedTrade.buyRequest())
-                            .paymentRequest(fundedTrade.paymentRequest())
-                            .payoutCompleted(payoutCompleted)
-                            .build();
+//                try {
+                Trade canceledTrade = Trade.builder()
+                        .escrowAddress(fundedTrade.getEscrowAddress())
+                        .sellOffer(fundedTrade.sellOffer())
+                        .buyRequest(fundedTrade.buyRequest())
+                        .paymentRequest(fundedTrade.paymentRequest())
+                        .payoutCompleted(payoutCompleted)
+                        .build();
 
-                    tradeService.put(canceledTrade.getEscrowAddress(), canceledTrade).execute();
+                tradeService.put(canceledTrade.getEscrowAddress(), canceledTrade).subscribe();
 
-                } catch (IOException e) {
-                    log.error("Can't post payout completed to server.", e);
-                }
+//                } catch (IOException e) {
+//                    log.error("Can't post payout completed to server.", e);
+//                }
 
             } catch (InsufficientMoneyException e) {
                 // TODO notify user

@@ -10,7 +10,6 @@ import org.bitcoinj.core.Transaction;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.IOException;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
 import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
@@ -39,7 +38,7 @@ public class SellerProtocol extends TradeProtocol {
         if (paymentRequest != null) {
 
             // 4. put payment request
-            try {
+//            try {
                 fundedTrade = Trade.builder()
                         .escrowAddress(createdTrade.getEscrowAddress())
                         .sellOffer(createdTrade.sellOffer())
@@ -47,12 +46,12 @@ public class SellerProtocol extends TradeProtocol {
                         .paymentRequest(paymentRequest)
                         .build();
 
-                tradeService.put(fundedTrade.getEscrowAddress(), fundedTrade).execute();
+            tradeService.put(fundedTrade.getEscrowAddress(), fundedTrade).subscribe();
 
-            } catch (IOException e) {
-                log.error("Unable to PUT funded trade.", e);
-                // TODO retry putting payment request
-            }
+//            } catch (IOException e) {
+//                log.error("Unable to PUT funded trade.", e);
+//                // TODO retry putting payment request
+//            }
         } else {
             log.error("Unable to fund trade.");
         }
@@ -108,7 +107,7 @@ public class SellerProtocol extends TradeProtocol {
                 PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT);
 
                 // 5. post payout completed
-                try {
+//                try {
 
                     completedTrade = Trade.builder()
                             .escrowAddress(paidTrade.getEscrowAddress())
@@ -119,11 +118,11 @@ public class SellerProtocol extends TradeProtocol {
                             .payoutCompleted(payoutCompleted)
                             .build();
 
-                    tradeService.put(completedTrade.getEscrowAddress(), completedTrade).execute();
+                tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
 
-                } catch (IOException e) {
-                    log.error("Can't post payout completed to server.");
-                }
+//                } catch (IOException e) {
+//                    log.error("Can't post payout completed to server.");
+//                }
 
             } catch (InsufficientMoneyException e) {
                 // TODO notify user

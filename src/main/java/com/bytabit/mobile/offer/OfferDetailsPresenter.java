@@ -10,7 +10,6 @@ import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.Single;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
-import io.reactivex.schedulers.Schedulers;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -107,21 +106,21 @@ public class OfferDetailsPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Offer Details");
 
-                sellerProfilePubKeyLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getSellerProfilePubKey());
-                sellerEscrowPubKeyLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getSellerEscrowPubKey());
-                arbitratorProfilePubKeyLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getArbitratorProfilePubKey());
-                currencyLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getCurrencyCode().name());
-                paymentMethodLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getPaymentMethod().name());
-                minTradeAmtLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getMinAmount().toPlainString());
-                minTradeAmtCurrencyLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getCurrencyCode().name());
-                maxTradeAmtLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getMaxAmount().toPlainString());
-                maxTradeAmtCurrencyLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getCurrencyCode().name());
-                priceLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getPrice().toPlainString());
-                priceCurrencyLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getCurrencyCode().name());
-                currencyAmtLabel.textProperty().setValue(offerManager.selectedOffer.getValue().getCurrencyCode().name());
+                sellerProfilePubKeyLabel.textProperty().setValue(offerManager.getSelectedOffer().getSellerProfilePubKey());
+                sellerEscrowPubKeyLabel.textProperty().setValue(offerManager.getSelectedOffer().getSellerEscrowPubKey());
+                arbitratorProfilePubKeyLabel.textProperty().setValue(offerManager.getSelectedOffer().getArbitratorProfilePubKey());
+                currencyLabel.textProperty().setValue(offerManager.getSelectedOffer().getCurrencyCode().name());
+                paymentMethodLabel.textProperty().setValue(offerManager.getSelectedOffer().getPaymentMethod().name());
+                minTradeAmtLabel.textProperty().setValue(offerManager.getSelectedOffer().getMinAmount().toPlainString());
+                minTradeAmtCurrencyLabel.textProperty().setValue(offerManager.getSelectedOffer().getCurrencyCode().name());
+                maxTradeAmtLabel.textProperty().setValue(offerManager.getSelectedOffer().getMaxAmount().toPlainString());
+                maxTradeAmtCurrencyLabel.textProperty().setValue(offerManager.getSelectedOffer().getCurrencyCode().name());
+                priceLabel.textProperty().setValue(offerManager.getSelectedOffer().getPrice().toPlainString());
+                priceCurrencyLabel.textProperty().setValue(offerManager.getSelectedOffer().getCurrencyCode().name());
+                currencyAmtLabel.textProperty().setValue(offerManager.getSelectedOffer().getCurrencyCode().name());
 
                 profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(p -> {
-                    boolean isMyOffer = p.getPubKey().equals(offerManager.selectedOffer.getValue().getSellerProfilePubKey());
+                    boolean isMyOffer = p.getPubKey().equals(offerManager.getSelectedOffer().getSellerProfilePubKey());
                     removeOfferButton.visibleProperty().set(isMyOffer);
                     buyGridPane.visibleProperty().set(!isMyOffer);
                 });
@@ -130,8 +129,8 @@ public class OfferDetailsPresenter {
 
         removeOfferButton.setOnAction(e -> {
             offerManager.deleteOffer(sellerEscrowPubKeyLabel.textProperty().get())
-                    .doOnComplete(() -> offerManager.getOffers().observeOn(JavaFxScheduler.platform())
-                            .subscribe(ol -> offerManager.offers.setAll(ol))).subscribe();
+                    .doOnComplete(() -> offerManager.singleOffers().observeOn(JavaFxScheduler.platform())
+                            .subscribe(ol -> offerManager.getOffers().setAll(ol))).subscribe();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
@@ -152,7 +151,7 @@ public class OfferDetailsPresenter {
             Single.zip(profileManager.retrieveMyProfile(), walletManager.getFreshBase58AuthPubKey(), (buyerProfile, buyerEscrowPubKey) -> {
 
                 String buyerPayoutAddress = walletManager.getDepositAddress().toBase58();
-                SellOffer selectedSellOffer = offerManager.selectedOffer.get();
+                SellOffer selectedSellOffer = offerManager.getSelectedOffer();
                 BigDecimal buyBtcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().get());
 
                 // TODO better input validation
@@ -163,7 +162,7 @@ public class OfferDetailsPresenter {
                 } else {
                     return null;
                 }
-            }).observeOn(Schedulers.io()).subscribe();
+            }).flatMap(t -> t).observeOn(JavaFxScheduler.platform()).subscribe(trade -> tradeManager.getTrades().add(trade));
 
             MobileApplication.getInstance().switchToPreviousView();
         });

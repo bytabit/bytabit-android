@@ -5,8 +5,6 @@ import com.bytabit.mobile.trade.model.Trade;
 import org.bitcoinj.core.InsufficientMoneyException;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT;
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
 import static com.bytabit.mobile.trade.model.Trade.Status.ARBITRATING;
@@ -96,7 +94,7 @@ public class ArbitratorProtocol extends TradeProtocol {
             // 2. confirm refund tx and create payout completed
             PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, reason);
 
-            try {
+//            try {
 
                 Trade completedTrade = Trade.builder()
                         .escrowAddress(arbitratingTrade.getEscrowAddress())
@@ -107,11 +105,11 @@ public class ArbitratorProtocol extends TradeProtocol {
                         .payoutCompleted(payoutCompleted)
                         .build();
 
-                tradeService.put(completedTrade.getEscrowAddress(), completedTrade).execute();
+            tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
 
-            } catch (IOException e) {
-                log.error("Unable to put completed arbitrated trade.", e);
-            }
+//            } catch (IOException e) {
+//                log.error("Unable to put completed arbitrated trade.", e);
+//            }
         }
     }
 }

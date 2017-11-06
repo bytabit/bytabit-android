@@ -10,9 +10,9 @@ import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
-import java.io.IOException;
 
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
@@ -37,6 +37,7 @@ public abstract class TradeProtocol {
 
         Retrofit tradeRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .addConverterFactory(new JacksonJrConverter<>(Trade.class))
                 .build();
         tradeService = tradeRetrofit.create(TradeService.class);
@@ -91,8 +92,6 @@ public abstract class TradeProtocol {
 
                     // remove watch on escrow and refund addresses
                     walletManager.removeWatchedEscrowAddress(completedTrade.getEscrowAddress());
-                    //walletManager.removeWatchedEscrowAddress(trade.paymentRequest().getRefundAddress());
-                    //walletManager.removeWatchedEscrowAddress(trade.buyRequest().getBuyerPayoutAddress());
 
                 } else {
                     log.info("PayoutCompleted Tx depth not yet greater than 1.");
@@ -122,11 +121,11 @@ public abstract class TradeProtocol {
                     .arbitrateRequest(arbitrateRequest)
                     .build();
 
-            try {
-                tradeService.put(currentTrade.getEscrowAddress(), arbitratingTrade).execute();
-            } catch (IOException e) {
-                log.error("Can't post ArbitrateRequest to server.");
-            }
+//            try {
+            tradeService.put(currentTrade.getEscrowAddress(), arbitratingTrade).subscribe();
+//            } catch (IOException e) {
+//                log.error("Can't post ArbitrateRequest to server.");
+//            }
         }
     }
 
