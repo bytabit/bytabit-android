@@ -105,17 +105,20 @@ public class TradeManager extends AbstractManager {
     }
 
     public void requestArbitrate() {
-        Trade trade = selectedTrade.getValue();
 
-//        String profilePubKey = profileManager.getPubKeyProperty().getValue();
-//        Boolean profileIsArbitrator = profileManager.getIsArbitratorProperty().getValue();
+        profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
+            Trade trade = selectedTrade.getValue();
 
-//        Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
-//        if (role.equals(SELLER)) {
-//            sellerProtocol.requestArbitrate(trade);
-//        } else if (role.equals(BUYER)) {
-//            buyerProtocol.requestArbitrate(trade);
-//        }
+            String profilePubKey = profile.getPubKey();
+            Boolean profileIsArbitrator = profile.getIsArbitrator();
+
+            Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
+            if (role.equals(SELLER)) {
+                sellerProtocol.requestArbitrate(trade);
+            } else if (role.equals(BUYER)) {
+                buyerProtocol.requestArbitrate(trade);
+            }
+        });
     }
 
     public void arbitratorRefundSeller() {
