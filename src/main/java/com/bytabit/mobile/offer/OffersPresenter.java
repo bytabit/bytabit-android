@@ -43,6 +43,8 @@ public class OffersPresenter {
 
     public void initialize() {
 
+        tradeManager.initialize();
+
         offersListView.setCellFactory((view) -> new CharmListCell<SellOffer>() {
             @Override
             public void updateItem(SellOffer o, boolean empty) {
@@ -62,7 +64,7 @@ public class OffersPresenter {
             }
         });
 
-        offersListView.setItems(offerManager.getOffers());
+        //offersListView.setItems(offerManager.getOffers());
 
         offersView.getLayers().add(addOfferButton.getLayer());
 
@@ -80,20 +82,23 @@ public class OffersPresenter {
                 appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
                         System.out.println("Search")));
 
-                offerManager.singleOffers().observeOn(JavaFxScheduler.platform())
-                        .subscribe(ol -> offerManager.getOffers().setAll(ol));
+//                offerManager.observableOffers().observeOn(JavaFxScheduler.platform())
+//                        .subscribe(ol -> offersListView.itemsProperty().setAll(ol));
             }
         });
 
         offersView.setOnShown(e -> {
             if (e.getEventType().equals(LifecycleEvent.SHOWN)) {
                 LOG.debug("Offers view shown.");
-                walletManager.start();
+//                walletManager.start();
             }
         });
 
-        offerManager.observableOffers().observeOn(JavaFxScheduler.platform())
-                .subscribe(ol -> offerManager.getOffers().setAll(ol));
+        offerManager.getOffers().observeOn(JavaFxScheduler.platform())
+                .subscribe(ol -> offersListView.itemsProperty().setAll(ol));
+
+//        offerManager.observableOffers().observeOn(JavaFxScheduler.platform())
+//                .subscribe(ol -> offerManager.getOffers().setAll(ol));
 
         offersListView.selectedItemProperty().addListener((obs, oldValue, selectedSellOffer) -> {
             if (selectedSellOffer != null) {

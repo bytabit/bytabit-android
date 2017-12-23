@@ -19,6 +19,7 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.layout.layer.SidePopupView;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.Swatch;
+import io.reactivex.Observable;
 import io.reactivex.subjects.PublishSubject;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
@@ -55,7 +56,7 @@ public class BytabitMobile extends MobileApplication {
 
     final public static Executor EXECUTOR = Executors.newWorkStealingPool();
 
-    private static PublishSubject<NavEvent> navEventsComposite = PublishSubject.create();
+    private static PublishSubject<NavEvent> navEventsSubject = PublishSubject.create();
 
     @Override
     public void init() throws Exception {
@@ -94,15 +95,15 @@ public class BytabitMobile extends MobileApplication {
 
     @Override
     public void stop() {
-        navEventsComposite.onNext(new QuitEvent());
+        navEventsSubject.onNext(new QuitEvent());
         LOG.debug("Stop app");
     }
 
-    public static PublishSubject<NavEvent> getNavEventsComposite() {
-        return navEventsComposite;
+    public static PublishSubject<NavEvent> getNavEventsSubject() {
+        return navEventsSubject;
     }
 
-    public static PublishSubject<NavEvent> getNavEvents() {
-        return navEventsComposite;
+    public static Observable<NavEvent> getNavEvents() {
+        return navEventsSubject.share();
     }
 }

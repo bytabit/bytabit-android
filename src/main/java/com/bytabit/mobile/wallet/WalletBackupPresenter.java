@@ -51,9 +51,9 @@ public class WalletBackupPresenter {
                 appBar.setTitleText("Wallet Backup");
             }
 
-            seedWordsTextArea.setText(walletManager.getSeedWords());
-            xprvTextArea.setText(walletManager.getXprvKey());
-            xpubTextArea.setText(walletManager.getXpubKey());
+//            seedWordsTextArea.setText(walletManager.getSeedWords());
+//            xprvTextArea.setText(walletManager.getXprvKey());
+//            xpubTextArea.setText(walletManager.getXpubKey());
         });
 
     }

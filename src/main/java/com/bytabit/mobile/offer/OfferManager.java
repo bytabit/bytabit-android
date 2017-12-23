@@ -10,13 +10,11 @@ import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.Completable;
+import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
@@ -39,8 +37,11 @@ public class OfferManager extends AbstractManager {
     @Inject
     WalletManager walletManager;
 
-    private final ObjectProperty<SellOffer> selectedOffer = new SimpleObjectProperty<>();
-    private final ObservableList<SellOffer> offers = FXCollections.observableArrayList();
+    private final Observable<List<SellOffer>> offers;
+
+    private final PublishSubject<SellOffer> selectedOfferSubject;
+
+    private final Observable<SellOffer> selectedOffer;
 
     public OfferManager() {
         Retrofit sellOfferRetrofit = new Retrofit.Builder()
@@ -50,6 +51,13 @@ public class OfferManager extends AbstractManager {
                 .build();
 
         sellOfferService = sellOfferRetrofit.create(SellOfferService.class);
+
+        offers = Observable.concat(singleOffers().toObservable(), observableOffers())
+                .subscribeOn(Schedulers.io()).publish().autoConnect();
+
+        selectedOfferSubject = PublishSubject.create();
+        selectedOffer = selectedOfferSubject.publish().autoConnect()
+                .subscribeOn(Schedulers.io());
     }
 
     public Single<SellOffer> createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, Profile arbitrator,
@@ -69,13 +77,20 @@ public class OfferManager extends AbstractManager {
         ).flatMap(o -> sellOfferService.put(o.getSellerEscrowPubKey(), o)).subscribeOn(Schedulers.io());
     }
 
-    public Single<List<SellOffer>> singleOffers() {
-        return sellOfferService.get().retry().subscribeOn(Schedulers.io());
+    private Single<List<SellOffer>> singleOffers() {
+        return sellOfferService.get()
+                .retryWhen(errors ->
+                        errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
+                )
+                .subscribeOn(Schedulers.io());
     }
 
-    public Observable<List<SellOffer>> observableOffers() {
+    private Observable<List<SellOffer>> observableOffers() {
         return Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .flatMap(tick -> sellOfferService.get().retry().toObservable())
+                .flatMap(tick -> sellOfferService.get()
+                        .retryWhen(errors ->
+                                errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
+                        ).toObservable())
                 .subscribeOn(Schedulers.io());
     }
 
@@ -83,19 +98,15 @@ public class OfferManager extends AbstractManager {
         return sellOfferService.delete(sellerEscrowPubKey).subscribeOn(Schedulers.io());
     }
 
-    public SellOffer getSelectedOffer() {
-        return selectedOffer.get();
-    }
-
-    public void setSelectedOffer(SellOffer selectedOffer) {
-        this.selectedOffer.set(selectedOffer);
-    }
-
-    public ObjectProperty<SellOffer> selectedOfferProperty() {
+    public Observable<SellOffer> getSelectedOffer() {
         return selectedOffer;
     }
 
-    public ObservableList<SellOffer> getOffers() {
+    public void setSelectedOffer(SellOffer selectedOffer) {
+        this.selectedOfferSubject.onNext(selectedOffer);
+    }
+
+    public Observable<List<SellOffer>> getOffers() {
         return offers;
     }
 }

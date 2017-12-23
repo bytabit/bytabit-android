@@ -1,13 +1,12 @@
 package com.bytabit.mobile.trade;
 
+import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-import org.bitcoinj.core.InsufficientMoneyException;
 import org.slf4j.LoggerFactory;
 
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT;
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
-import static com.bytabit.mobile.trade.model.Trade.Status.ARBITRATING;
 
 public class ArbitratorProtocol extends TradeProtocol {
 
@@ -15,8 +14,13 @@ public class ArbitratorProtocol extends TradeProtocol {
         super(LoggerFactory.getLogger(ArbitratorProtocol.class));
     }
 
-    @Override
+    //@Override
     public Trade handleCreated(Trade createdTrade) {
+        return null;
+    }
+
+    @Override
+    public Trade handleCreated(BuyerCreated created) {
         return null;
     }
 
@@ -34,15 +38,16 @@ public class ArbitratorProtocol extends TradeProtocol {
     public Trade handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
 
         // TODO handle unexpected status
-        if (currentTrade == null) {
-
-            walletManager.createEscrowWallet(arbitratingTrade.getEscrowAddress());
-            walletManager.resetBlockchain();
-
-            return arbitratingTrade;
-        } else {
-            return null;
-        }
+//        if (currentTrade == null) {
+//
+//            walletManager.createEscrowWallet(arbitratingTrade.getEscrowAddress());
+//            walletManager.resetBlockchain();
+//
+//            return arbitratingTrade;
+//        } else {
+//            return null;
+//        }
+        return null;
     }
 
     @Override
@@ -57,34 +62,34 @@ public class ArbitratorProtocol extends TradeProtocol {
 
     public void refundSeller(Trade currentTrade) {
 
-        if (currentTrade.status().equals(ARBITRATING)) {
-
-            String payoutTxHash = null;
-            try {
-                payoutTxHash = walletManager.refundEscrowToSeller(currentTrade);
-                completeTrade(currentTrade, payoutTxHash, ARBITRATOR_SELLER_REFUND);
-
-            } catch (InsufficientMoneyException e) {
-                // TODO notify user
-                log.error("Insufficient funds to refund escrow to seller.", e);
-            }
-        }
+//        if (currentTrade.status().equals(ARBITRATING)) {
+//
+//            String payoutTxHash = null;
+//            try {
+//                payoutTxHash = walletManager.refundEscrowToSeller(currentTrade);
+//                completeTrade(currentTrade, payoutTxHash, ARBITRATOR_SELLER_REFUND);
+//
+//            } catch (InsufficientMoneyException e) {
+//                // TODO notify user
+//                log.error("Insufficient funds to refund escrow to seller.", e);
+//            }
+//        }
     }
 
     public void payoutBuyer(Trade currentTrade) {
 
-        if (currentTrade.status().equals(ARBITRATING)) {
-
-            String payoutTxHash = null;
-            try {
-                payoutTxHash = walletManager.payoutEscrowToBuyer(currentTrade);
-                completeTrade(currentTrade, payoutTxHash, ARBITRATOR_BUYER_PAYOUT);
-
-            } catch (InsufficientMoneyException e) {
-                // TODO notify user
-                log.error("Insufficient funds to refund escrow to seller.", e);
-            }
-        }
+//        if (currentTrade.status().equals(ARBITRATING)) {
+//
+//            String payoutTxHash = null;
+//            try {
+//                payoutTxHash = walletManager.payoutEscrowToBuyer(currentTrade);
+//                completeTrade(currentTrade, payoutTxHash, ARBITRATOR_BUYER_PAYOUT);
+//
+//            } catch (InsufficientMoneyException e) {
+//                // TODO notify user
+//                log.error("Insufficient funds to refund escrow to seller.", e);
+//            }
+//        }
     }
 
     private void completeTrade(Trade arbitratingTrade, String payoutTxHash, PayoutCompleted.Reason reason) {

@@ -3,6 +3,7 @@ package com.bytabit.mobile.trade.model;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 
 import java.math.BigDecimal;
 
@@ -12,7 +13,7 @@ import static com.bytabit.mobile.trade.model.Trade.Status.*;
 public class Trade {
 
     public enum Status {
-        CREATED, FUNDED, PAID, COMPLETED, ARBITRATING
+        CREATED, FUNDING, FUNDED, PAID, COMPLETING, COMPLETED, ARBITRATING
     }
 
     public enum Role {
@@ -37,11 +38,14 @@ public class Trade {
     private String buyerProfilePubKey;
     private String buyerPayoutAddress;
 
-    // Payment Request
+    // Funding, Payment Request
     private String fundingTxHash;
     private String paymentDetails;
     private String refundAddress;
     private String refundTxSignature;
+
+    // Funded, Tx Confirmation
+    private TransactionWithAmt fundingTransactionWithAmt;
 
     // Payout Request
     private String paymentReference;
@@ -53,6 +57,9 @@ public class Trade {
     // Payout Completed
     private String payoutTxHash;
     private PayoutCompleted.Reason payoutReason;
+
+    // Completed, Tx Confirmation
+    private TransactionWithAmt payoutTransactionWithAmt;
 
     public Trade() {
     }
@@ -276,7 +283,10 @@ public class Trade {
         if (escrowAddress != null && hasSellOffer() && hasBuyRequest()) {
             status = CREATED;
         }
-        if (status == CREATED && hasPaymentRequest()) {
+        if (status == CREATED && hasPaymentRequest() && fundingTransactionWithAmt() != null) {
+            status = FUNDING;
+        }
+        if (status == FUNDING && fundingTransactionWithAmt().getDepth() > 0) {
             status = FUNDED;
         }
         if (status == FUNDED && hasPayoutRequest()) {
@@ -285,7 +295,10 @@ public class Trade {
         if (hasArbitrateRequest()) {
             status = ARBITRATING;
         }
-        if (hasPayoutCompleted()) {
+        if (hasPayoutCompleted() && payoutTransactionWithAmt() != null) {
+            status = COMPLETING;
+        }
+        if (status == COMPLETING && payoutTransactionWithAmt().getDepth() > 0) {
             status = COMPLETED;
         }
         return status;
@@ -326,7 +339,7 @@ public class Trade {
         return new BuyRequest(this.buyerEscrowPubKey, this.btcAmount, this.buyerProfilePubKey, this.buyerPayoutAddress);
     }
 
-    private boolean hasPaymentRequest() {
+    public boolean hasPaymentRequest() {
         return fundingTxHash != null &&
                 paymentDetails != null &&
                 refundAddress != null &&
@@ -383,6 +396,24 @@ public class Trade {
         return role;
     }
 
+    public Trade fundingTransactionWithAmt(TransactionWithAmt transactionWithAmt) {
+        this.fundingTransactionWithAmt = fundingTransactionWithAmt;
+        return this;
+    }
+
+    public TransactionWithAmt fundingTransactionWithAmt() {
+        return fundingTransactionWithAmt;
+    }
+
+    public Trade payoutTransactionWithAmt(TransactionWithAmt transactionWithAmt) {
+        this.payoutTransactionWithAmt = fundingTransactionWithAmt;
+        return this;
+    }
+
+    public TransactionWithAmt payoutTransactionWithAmt() {
+        return payoutTransactionWithAmt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -390,11 +421,108 @@ public class Trade {
 
         Trade trade = (Trade) o;
 
-        return escrowAddress != null ? escrowAddress.equals(trade.escrowAddress) : trade.escrowAddress == null;
+        if (escrowAddress != null ? !escrowAddress.equals(trade.escrowAddress) : trade.escrowAddress != null)
+            return false;
+        if (sellerEscrowPubKey != null ? !sellerEscrowPubKey.equals(trade.sellerEscrowPubKey) : trade.sellerEscrowPubKey != null)
+            return false;
+        if (sellerProfilePubKey != null ? !sellerProfilePubKey.equals(trade.sellerProfilePubKey) : trade.sellerProfilePubKey != null)
+            return false;
+        if (arbitratorProfilePubKey != null ? !arbitratorProfilePubKey.equals(trade.arbitratorProfilePubKey) : trade.arbitratorProfilePubKey != null)
+            return false;
+        if (currencyCode != trade.currencyCode) return false;
+        if (paymentMethod != trade.paymentMethod) return false;
+        if (minAmount != null ? !minAmount.equals(trade.minAmount) : trade.minAmount != null)
+            return false;
+        if (maxAmount != null ? !maxAmount.equals(trade.maxAmount) : trade.maxAmount != null)
+            return false;
+        if (price != null ? !price.equals(trade.price) : trade.price != null)
+            return false;
+        if (buyerEscrowPubKey != null ? !buyerEscrowPubKey.equals(trade.buyerEscrowPubKey) : trade.buyerEscrowPubKey != null)
+            return false;
+        if (btcAmount != null ? !btcAmount.equals(trade.btcAmount) : trade.btcAmount != null)
+            return false;
+        if (buyerProfilePubKey != null ? !buyerProfilePubKey.equals(trade.buyerProfilePubKey) : trade.buyerProfilePubKey != null)
+            return false;
+        if (buyerPayoutAddress != null ? !buyerPayoutAddress.equals(trade.buyerPayoutAddress) : trade.buyerPayoutAddress != null)
+            return false;
+        if (fundingTxHash != null ? !fundingTxHash.equals(trade.fundingTxHash) : trade.fundingTxHash != null)
+            return false;
+        if (paymentDetails != null ? !paymentDetails.equals(trade.paymentDetails) : trade.paymentDetails != null)
+            return false;
+        if (refundAddress != null ? !refundAddress.equals(trade.refundAddress) : trade.refundAddress != null)
+            return false;
+        if (refundTxSignature != null ? !refundTxSignature.equals(trade.refundTxSignature) : trade.refundTxSignature != null)
+            return false;
+        if (fundingTransactionWithAmt != null ? !fundingTransactionWithAmt.equals(trade.fundingTransactionWithAmt) : trade.fundingTransactionWithAmt != null)
+            return false;
+        if (paymentReference != null ? !paymentReference.equals(trade.paymentReference) : trade.paymentReference != null)
+            return false;
+        if (payoutTxSignature != null ? !payoutTxSignature.equals(trade.payoutTxSignature) : trade.payoutTxSignature != null)
+            return false;
+        if (arbitrationReason != trade.arbitrationReason) return false;
+        if (payoutTxHash != null ? !payoutTxHash.equals(trade.payoutTxHash) : trade.payoutTxHash != null)
+            return false;
+        if (payoutReason != trade.payoutReason) return false;
+        return payoutTransactionWithAmt != null ? payoutTransactionWithAmt.equals(trade.payoutTransactionWithAmt) : trade.payoutTransactionWithAmt == null;
     }
 
     @Override
     public int hashCode() {
-        return escrowAddress != null ? escrowAddress.hashCode() : 0;
+        int result = escrowAddress != null ? escrowAddress.hashCode() : 0;
+        result = 31 * result + (sellerEscrowPubKey != null ? sellerEscrowPubKey.hashCode() : 0);
+        result = 31 * result + (sellerProfilePubKey != null ? sellerProfilePubKey.hashCode() : 0);
+        result = 31 * result + (arbitratorProfilePubKey != null ? arbitratorProfilePubKey.hashCode() : 0);
+        result = 31 * result + (currencyCode != null ? currencyCode.hashCode() : 0);
+        result = 31 * result + (paymentMethod != null ? paymentMethod.hashCode() : 0);
+        result = 31 * result + (minAmount != null ? minAmount.hashCode() : 0);
+        result = 31 * result + (maxAmount != null ? maxAmount.hashCode() : 0);
+        result = 31 * result + (price != null ? price.hashCode() : 0);
+        result = 31 * result + (buyerEscrowPubKey != null ? buyerEscrowPubKey.hashCode() : 0);
+        result = 31 * result + (btcAmount != null ? btcAmount.hashCode() : 0);
+        result = 31 * result + (buyerProfilePubKey != null ? buyerProfilePubKey.hashCode() : 0);
+        result = 31 * result + (buyerPayoutAddress != null ? buyerPayoutAddress.hashCode() : 0);
+        result = 31 * result + (fundingTxHash != null ? fundingTxHash.hashCode() : 0);
+        result = 31 * result + (paymentDetails != null ? paymentDetails.hashCode() : 0);
+        result = 31 * result + (refundAddress != null ? refundAddress.hashCode() : 0);
+        result = 31 * result + (refundTxSignature != null ? refundTxSignature.hashCode() : 0);
+        result = 31 * result + (fundingTransactionWithAmt != null ? fundingTransactionWithAmt.hashCode() : 0);
+        result = 31 * result + (paymentReference != null ? paymentReference.hashCode() : 0);
+        result = 31 * result + (payoutTxSignature != null ? payoutTxSignature.hashCode() : 0);
+        result = 31 * result + (arbitrationReason != null ? arbitrationReason.hashCode() : 0);
+        result = 31 * result + (payoutTxHash != null ? payoutTxHash.hashCode() : 0);
+        result = 31 * result + (payoutReason != null ? payoutReason.hashCode() : 0);
+        result = 31 * result + (payoutTransactionWithAmt != null ? payoutTransactionWithAmt.hashCode() : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer("Trade{");
+        sb.append("escrowAddress='").append(escrowAddress).append('\'');
+        sb.append(", sellerEscrowPubKey='").append(sellerEscrowPubKey).append('\'');
+        sb.append(", sellerProfilePubKey='").append(sellerProfilePubKey).append('\'');
+        sb.append(", arbitratorProfilePubKey='").append(arbitratorProfilePubKey).append('\'');
+        sb.append(", currencyCode=").append(currencyCode);
+        sb.append(", paymentMethod=").append(paymentMethod);
+        sb.append(", minAmount=").append(minAmount);
+        sb.append(", maxAmount=").append(maxAmount);
+        sb.append(", price=").append(price);
+        sb.append(", buyerEscrowPubKey='").append(buyerEscrowPubKey).append('\'');
+        sb.append(", btcAmount=").append(btcAmount);
+        sb.append(", buyerProfilePubKey='").append(buyerProfilePubKey).append('\'');
+        sb.append(", buyerPayoutAddress='").append(buyerPayoutAddress).append('\'');
+        sb.append(", fundingTxHash='").append(fundingTxHash).append('\'');
+        sb.append(", paymentDetails='").append(paymentDetails).append('\'');
+        sb.append(", refundAddress='").append(refundAddress).append('\'');
+        sb.append(", refundTxSignature='").append(refundTxSignature).append('\'');
+        sb.append(", fundingTransactionWithAmt=").append(fundingTransactionWithAmt);
+        sb.append(", paymentReference='").append(paymentReference).append('\'');
+        sb.append(", payoutTxSignature='").append(payoutTxSignature).append('\'');
+        sb.append(", arbitrationReason=").append(arbitrationReason);
+        sb.append(", payoutTxHash='").append(payoutTxHash).append('\'');
+        sb.append(", payoutReason=").append(payoutReason);
+        sb.append(", payoutTransactionWithAmt=").append(payoutTransactionWithAmt);
+        sb.append('}');
+        return sb.toString();
     }
 }

@@ -3,6 +3,7 @@ package com.bytabit.mobile.trade.model;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 
 import java.math.BigDecimal;
 
@@ -32,6 +33,9 @@ public class TradeBuilder {
     private String refundAddress;
     private String refundTxSignature;
 
+    // Funded, Tx Confirmation
+    private TransactionWithAmt fundingTransactionWithAmt;
+
     // Payout Request
     private String paymentReference;
     private String payoutTxSignature;
@@ -42,6 +46,9 @@ public class TradeBuilder {
     // Payout Completed
     private String payoutTxHash;
     private PayoutCompleted.Reason payoutReason;
+
+    // Completed, Tx Confirmation
+    private TransactionWithAmt payoutTransactionWithAmt;
 
     public TradeBuilder escrowAddress(String escrowAddress) {
         this.escrowAddress = escrowAddress;
@@ -82,6 +89,13 @@ public class TradeBuilder {
         return this;
     }
 
+    public TradeBuilder fundingTransactionWithAmt(TransactionWithAmt transactionWithAmt) {
+        if (transactionWithAmt != null) {
+            this.fundingTransactionWithAmt = transactionWithAmt;
+        }
+        return this;
+    }
+
     public TradeBuilder payoutRequest(PayoutRequest payoutRequest) {
         if (payoutRequest != null) {
             this.paymentReference = payoutRequest.getPaymentReference();
@@ -101,6 +115,13 @@ public class TradeBuilder {
         if (payoutCompleted != null) {
             this.payoutTxHash = payoutCompleted.getPayoutTxHash();
             this.payoutReason = payoutCompleted.getReason();
+        }
+        return this;
+    }
+
+    public TradeBuilder payoutTransactionWithAmt(TransactionWithAmt transactionWithAmt) {
+        if (transactionWithAmt != null) {
+            this.payoutTransactionWithAmt = transactionWithAmt;
         }
         return this;
     }

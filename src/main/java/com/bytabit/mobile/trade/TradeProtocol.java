@@ -3,11 +3,11 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
-import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import org.slf4j.Logger;
@@ -44,9 +44,10 @@ public abstract class TradeProtocol {
         tradeService = tradeRetrofit.create(TradeService.class);
     }
 
-    // CREATED, FUNDED, PAID, COMPLETED, ARBITRATING
+    // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-    abstract public Trade handleCreated(Trade createdTrade);
+
+    abstract public Trade handleCreated(BuyerCreated created);
 
     abstract public Trade handleFunded(Trade createdTrade, Trade fundedTrade);
 
@@ -87,25 +88,25 @@ public abstract class TradeProtocol {
             zeroConfOK = true;
         }
 
-        TransactionWithAmt tx = walletManager.getTransactionWithAmt(completedTrade.getEscrowAddress(), txHash, toAddress);
-        if (tx != null) {
-            if (tx.getBtcAmt().compareTo(completedTrade.getBtcAmount()) == 0) {
-                if (zeroConfOK || tx.getDepth() > 0) {
-
-                    verifiedCompletedTrade = completedTrade;
-
-                    // remove watch on escrow and refund addresses
-                    walletManager.removeWatchedEscrowAddress(completedTrade.getEscrowAddress());
-
-                } else {
-                    log.info("PayoutCompleted Tx depth not yet greater than 1.");
-                }
-            } else {
-                log.error("Tx amount wrong for PayoutCompleted.");
-            }
-        } else {
-            log.error("Tx not found for PayoutCompleted.");
-        }
+//        TransactionWithAmt tx = walletManager.getTransactionWithAmt(completedTrade.getEscrowAddress(), txHash, toAddress);
+//        if (tx != null) {
+//            if (tx.getBtcAmt().compareTo(completedTrade.getBtcAmount()) == 0) {
+//                if (zeroConfOK || tx.getDepth() > 0) {
+//
+//                    verifiedCompletedTrade = completedTrade;
+//
+//                    // remove watch on escrow and refund addresses
+//                    walletManager.removeWatchedEscrowAddress(completedTrade.getEscrowAddress());
+//
+//                } else {
+//                    log.info("PayoutCompleted Tx depth not yet greater than 1.");
+//                }
+//            } else {
+//                log.error("Tx amount wrong for PayoutCompleted.");
+//            }
+//        } else {
+//            log.error("Tx not found for PayoutCompleted.");
+//        }
 
         return verifiedCompletedTrade;
     }

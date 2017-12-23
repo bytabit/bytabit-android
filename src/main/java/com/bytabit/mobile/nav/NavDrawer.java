@@ -44,7 +44,7 @@ public class NavDrawer {
             final Item quitItem = new Item("Quit", MaterialDesignIcon.EXIT_TO_APP.graphic());
             quitItem.selectedProperty().addListener((obs, ov, nv) -> {
                 if (nv) {
-                    BytabitMobile.getNavEventsComposite().onNext(new QuitEvent());
+                    BytabitMobile.getNavEventsSubject().onNext(new QuitEvent());
                     Services.get(LifecycleService.class).ifPresent(LifecycleService::shutdown);
                 }
             });

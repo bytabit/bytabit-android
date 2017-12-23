@@ -11,6 +11,7 @@ import com.gluonhq.charm.glisten.control.CharmListView;
 import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.fxml.FXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +108,17 @@ public class TradesPresenter {
 //            }
 //        });
 
-        tradesListView.itemsProperty().setValue(tradeManager.getTrades());
+        tradeManager.getUpdatedTrades().observeOn(JavaFxScheduler.platform())
+                .subscribe(trade -> {
+                    int index = tradesListView.itemsProperty().indexOf(trade);
+                    if (index > -1) {
+                        tradesListView.itemsProperty().set(index, trade);
+                    } else {
+                        tradesListView.itemsProperty().add(trade);
+                    }
+                });
+
+//        tradesListView.itemsProperty().setValue(tradeManager.getTradeEvents());
 
         tradesListView.selectedItemProperty().addListener((obs, oldValue, trade) -> {
             if (trade != null) {

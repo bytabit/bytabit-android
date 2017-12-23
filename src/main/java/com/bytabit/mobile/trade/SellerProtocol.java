@@ -1,18 +1,14 @@
 package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.PaymentRequest;
-import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.InsufficientMoneyException;
-import org.bitcoinj.core.Transaction;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
-import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
 public class SellerProtocol extends TradeProtocol {
 
@@ -24,13 +20,13 @@ public class SellerProtocol extends TradeProtocol {
     }
 
     // 1.S: seller receives created trade with sell offer + buy request
-    @Override
+    //@Override
     public Trade handleCreated(Trade createdTrade) {
 
         Trade fundedTrade = null;
 
         // watch trade escrow address
-        walletManager.createEscrowWallet(createdTrade.getEscrowAddress());
+//        walletManager.createEscrowWallet(createdTrade.getEscrowAddress());
 
         // fund escrow and create paymentRequest
         PaymentRequest paymentRequest = fundEscrow(createdTrade);
@@ -63,28 +59,34 @@ public class SellerProtocol extends TradeProtocol {
     private PaymentRequest fundEscrow(Trade trade) {
 
         // TODO verify escrow not yet funded ?
-        try {
-            // 1. fund escrow
-            Transaction fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
-                    trade.getBtcAmount());
+//        try {
+//            // 1. fund escrow
+//            Transaction fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
+//                    trade.getBtcAmount());
+//
+//            // 2. create refund tx address and signature
+//
+//            Address refundTxAddress = walletManager.getDepositAddress();
+//            String refundTxSignature = walletManager.getRefundSignature(trade, fundingTx, refundTxAddress);
+//
+//            // 3. create payment request
+//            String paymentDetails = profileManager.getPaymentDetails(
+//                    trade.getCurrencyCode(),
+//                    trade.getPaymentMethod()).blockingGet();
+//
+//            return new PaymentRequest(fundingTx.getHashAsString(), paymentDetails, refundTxAddress.toBase58(), refundTxSignature);
+//
+//        } catch (InsufficientMoneyException e) {
+//            log.error("Insufficient BTC to fund trade escrow.");
+//            // TODO let user know not enough BTC in wallet
+//            return null;
+//        }
+        return null;
+    }
 
-            // 2. create refund tx address and signature
-
-            Address refundTxAddress = walletManager.getDepositAddress();
-            String refundTxSignature = walletManager.getRefundSignature(trade, fundingTx, refundTxAddress);
-
-            // 3. create payment request
-            String paymentDetails = profileManager.getPaymentDetails(
-                    trade.getCurrencyCode(),
-                    trade.getPaymentMethod()).blockingGet();
-
-            return new PaymentRequest(fundingTx.getHashAsString(), paymentDetails, refundTxAddress.toBase58(), refundTxSignature);
-
-        } catch (InsufficientMoneyException e) {
-            log.error("Insufficient BTC to fund trade escrow.");
-            // TODO let user know not enough BTC in wallet
-            return null;
-        }
+    @Override
+    public Trade handleCreated(BuyerCreated created) {
+        return null;
     }
 
     @Override
@@ -97,38 +99,38 @@ public class SellerProtocol extends TradeProtocol {
 
         Trade completedTrade = null;
 
-        if (paidTrade.status().equals(PAID)) {
-
-            // 1. sign and broadcast payout tx
-            try {
-                String payoutTxHash = walletManager.payoutEscrowToBuyer(paidTrade);
-
-                // 2. confirm payout tx and create payout completed
-                PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT);
-
-                // 5. post payout completed
-//                try {
-
-                    completedTrade = Trade.builder()
-                            .escrowAddress(paidTrade.getEscrowAddress())
-                            .sellOffer(paidTrade.sellOffer())
-                            .buyRequest(paidTrade.buyRequest())
-                            .paymentRequest(paidTrade.paymentRequest())
-                            .payoutRequest(paidTrade.payoutRequest())
-                            .payoutCompleted(payoutCompleted)
-                            .build();
-
-                tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
-
-//                } catch (IOException e) {
-//                    log.error("Can't post payout completed to server.");
-//                }
-
-            } catch (InsufficientMoneyException e) {
-                // TODO notify user
-                log.error("Insufficient funds to payout escrow to buyer.");
-            }
-        }
+//        if (paidTrade.status().equals(PAID)) {
+//
+//            // 1. sign and broadcast payout tx
+//            try {
+//                String payoutTxHash = walletManager.payoutEscrowToBuyer(paidTrade);
+//
+//                // 2. confirm payout tx and create payout completed
+//                PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT);
+//
+//                // 5. post payout completed
+////                try {
+//
+//                    completedTrade = Trade.builder()
+//                            .escrowAddress(paidTrade.getEscrowAddress())
+//                            .sellOffer(paidTrade.sellOffer())
+//                            .buyRequest(paidTrade.buyRequest())
+//                            .paymentRequest(paidTrade.paymentRequest())
+//                            .payoutRequest(paidTrade.payoutRequest())
+//                            .payoutCompleted(payoutCompleted)
+//                            .build();
+//
+//                tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
+//
+////                } catch (IOException e) {
+////                    log.error("Can't post payout completed to server.");
+////                }
+//
+//            } catch (InsufficientMoneyException e) {
+//                // TODO notify user
+//                log.error("Insufficient funds to payout escrow to buyer.");
+//            }
+//        }
 
         return completedTrade;
     }

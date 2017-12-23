@@ -7,6 +7,7 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -55,24 +56,26 @@ public class DepositPresenter {
                 appBar.setTitleText("Deposit");
             }
 
-            Address depositAddress = walletManager.getDepositAddress();
-            bitcoinAddressLabel.setText(depositAddress.toBase58());
-            LOG.debug("deposit address: {}", depositAddress.toBase58());
+            walletManager.getDepositAddress().observeOn(JavaFxScheduler.platform())
+                    .subscribe(da -> {
+                        bitcoinAddressLabel.setText(da.toBase58());
+                        LOG.debug("deposit address: {}", da.toBase58());
 
-            LOG.debug("Platform is: {}", Platform.getCurrent());
+                        LOG.debug("Platform is: {}", Platform.getCurrent());
 
-            QRCode qrCode = QRCode.from(depositAddressUri(depositAddress));
+                        QRCode qrCode = QRCode.from(depositAddressUri(da));
 
-            // TODO FT-150 Cross platform QR code generator for wallet deposits
-            if (Platform.isDesktop()) {
-                ByteArrayOutputStream outputStream = qrCode.stream();
-                Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
-                qrCodeImageView.setImage(img);
-            } else {
-                copyButton.setText("Share");
-            }
-            copyButton.visibleProperty().setValue(true);
-            copyButton.setOnAction((event) -> copyAddress(depositAddress));
+                        // TODO FT-150 Cross platform QR code generator for wallet deposits
+                        if (Platform.isDesktop()) {
+                            ByteArrayOutputStream outputStream = qrCode.stream();
+                            Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
+                            qrCodeImageView.setImage(img);
+                        } else {
+                            copyButton.setText("Share");
+                        }
+                        copyButton.visibleProperty().setValue(true);
+                        copyButton.setOnAction((event) -> copyAddress(da));
+                    });
         });
     }
 
