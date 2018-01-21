@@ -73,7 +73,7 @@ public class OffersPresenter {
 
         offersView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
-                LOG.debug("Offers view showing.");
+                LOG.debug("Offers view pending.");
 
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->

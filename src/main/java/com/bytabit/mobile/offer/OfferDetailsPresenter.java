@@ -4,15 +4,12 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.TradeManager;
-import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import io.reactivex.Single;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
-import io.reactivex.schedulers.Schedulers;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -123,11 +120,11 @@ public class OfferDetailsPresenter {
                     priceCurrencyLabel.textProperty().setValue(selectedOffer.getCurrencyCode().name());
                     currencyAmtLabel.textProperty().setValue(selectedOffer.getCurrencyCode().name());
 
-                    profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(p -> {
-                        boolean isMyOffer = p.getPubKey().equals(selectedOffer.getSellerProfilePubKey());
-                        removeOfferButton.visibleProperty().set(isMyOffer);
-                        buyGridPane.visibleProperty().set(!isMyOffer);
-                    });
+//                    profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(p -> {
+//                        boolean isMyOffer = p.getPubKey().equals(selectedOffer.getSellerProfilePubKey());
+//                        removeOfferButton.visibleProperty().set(isMyOffer);
+//                        buyGridPane.visibleProperty().set(!isMyOffer);
+//                    });
                 });
 
         offerDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
@@ -159,24 +156,24 @@ public class OfferDetailsPresenter {
         }, priceLabel.textProperty(), buyCurrencyAmtTextField.textProperty()));
 
         buyBtcButton.setOnAction(e -> {
-            Single.zip(profileManager.retrieveMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
-                    (buyerProfile, buyerEscrowPubKey, depositAddress) -> {
-                        String buyerPayoutAddress = depositAddress.toBase58();
-                        BigDecimal buyBtcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().get());
-
-                        // TODO input validation
-                        BuyRequest buyRequest = new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfile.getPubKey(), buyerPayoutAddress);
-                        return tradeManager.buyerCreateTrade(getSelectedOffer(), buyRequest);
-                    })
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(JavaFxScheduler.platform())
-                    .doOnSuccess(created -> {
-                        LOG.info("Created trade.");
-                        MobileApplication.getInstance().switchToPreviousView();
-                    })
-                    .doOnError(exception -> {
-                        LOG.error("Couldn't create trade.", exception);
-                    }).subscribe();
+//            Single.zip(profileManager.loadMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
+//                    (buyerProfile, buyerEscrowPubKey, depositAddress) -> {
+//                        String buyerPayoutAddress = depositAddress.toBase58();
+//                        BigDecimal buyBtcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().get());
+//
+//                        // TODO input validation
+//                        BuyRequest buyRequest = new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfile.getPubKey(), buyerPayoutAddress);
+//                        return tradeManager.buyerCreateTrade(getSelectedOffer(), buyRequest);
+//                    })
+//                    .subscribeOn(Schedulers.io())
+//                    .observeOn(JavaFxScheduler.platform())
+//                    .doOnSuccess(created -> {
+//                        LOG.info("Created trade.");
+//                        MobileApplication.getInstance().switchToPreviousView();
+//                    })
+//                    .doOnError(exception -> {
+//                        LOG.error("Couldn't create trade.", exception);
+//                    }).subscribe();
         });
     }
 

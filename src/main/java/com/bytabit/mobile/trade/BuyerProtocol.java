@@ -2,9 +2,7 @@ package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.trade.evt.BuyerCreated;
-import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.WalletManager;
 import io.reactivex.Single;
 import org.slf4j.LoggerFactory;
 
@@ -21,26 +19,27 @@ public class BuyerProtocol extends TradeProtocol {
     // 1.B: create trade, post created trade
     public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
 
-        Single<Trade> createdTrade = Single.zip(profileManager.retrieveMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
-                (buyerProfile, buyerEscrowPubKey, depositAddress) -> {
-                    String buyerPayoutAddress = depositAddress.toBase58();
+//        Single<Trade> createdTrade = Single.zip(profileManager.loadMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
+//                (buyerProfile, buyerEscrowPubKey, depositAddress) -> {
+//                    String buyerPayoutAddress = depositAddress.toBase58();
+//
+//                    // TODO input validation
+//                    BuyRequest buyRequest = new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfile.getPubKey(), buyerPayoutAddress);
+//
+//                    // create escrow address
+//                    String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
+//                            sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey);
+//
+//                    // create trade
+//                    return Trade.builder()
+//                            .sellOffer(sellOffer)
+//                            .escrowAddress(tradeEscrowAddress)
+//                            .buyRequest(buyRequest)
+//                            .build();
+//                });
 
-                    // TODO input validation
-                    BuyRequest buyRequest = new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfile.getPubKey(), buyerPayoutAddress);
-
-                    // create escrow address
-                    String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
-                            sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey);
-
-                    // create trade
-                    return Trade.builder()
-                            .sellOffer(sellOffer)
-                            .escrowAddress(tradeEscrowAddress)
-                            .buyRequest(buyRequest)
-                            .build();
-                });
-
-        return createdTrade.flatMap(t -> tradeService.put(t.getEscrowAddress(), t));
+//        return createdTrade.flatMap(t -> tradeService.put(t.getEscrowAddress(), t));
+        return null;
     }
 
     // 1.B: create trade, post created trade

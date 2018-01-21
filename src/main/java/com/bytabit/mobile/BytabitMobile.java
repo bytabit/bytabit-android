@@ -5,7 +5,6 @@ import com.bytabit.mobile.nav.evt.NavEvent;
 import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.bytabit.mobile.offer.AddOfferView;
 import com.bytabit.mobile.offer.OfferDetailsView;
-import com.bytabit.mobile.offer.OffersView;
 import com.bytabit.mobile.profile.PaymentView;
 import com.bytabit.mobile.profile.PaymentsView;
 import com.bytabit.mobile.profile.ProfileView;
@@ -38,7 +37,7 @@ public class BytabitMobile extends MobileApplication {
     final public static String WALLET_BACKUP_VIEW = "WalletBackup";
     final public static String DEPOSIT_VIEW = "Deposit";
 
-    final public static String OFFER_VIEW = HOME_VIEW;
+    final public static String OFFER_VIEW = "Offers";//HOME_VIEW;
     final public static String ADD_OFFER_VIEW = "AddOffer";
     final public static String OFFER_DETAILS_VIEW = "OfferDetails";
 
@@ -46,7 +45,7 @@ public class BytabitMobile extends MobileApplication {
     final public static String TRADE_DETAILS_VIEW = "TradeDetails";
     final public static String TRADE_DEV_INFO_VIEW = "TradeDevInfo";
 
-    final public static String PROFILE_VIEW = "Profile";
+    final public static String PROFILE_VIEW = HOME_VIEW; //"Profile";
     final public static String PAYMENT_VIEW = "PaymentDetails";
     final public static String ADD_PAYMENT_VIEW = "AddPaymentDetail";
 
@@ -61,7 +60,7 @@ public class BytabitMobile extends MobileApplication {
     @Override
     public void init() throws Exception {
         super.init();
-        addViewFactory(OFFER_VIEW, () -> (View) new OffersView().getView());
+//        addViewFactory(OFFER_VIEW, () -> (View) new OffersView().getView());
         addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView());
         addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView());
 

@@ -8,9 +8,7 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
 import com.gluonhq.charm.glisten.application.MobileApplication;
-import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
-import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -81,44 +79,44 @@ public class AddOfferPresenter {
 
         addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
 
-            if (newValue) {
-                AppBar appBar = MobileApplication.getInstance().getAppBar();
-                appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-                appBar.setTitleText("Create Sell Offer");
-
-                profileManager.getCurrencyCodes().observeOn(JavaFxScheduler.platform()).subscribe(cl -> {
-                    currencyChoiceBox.getItems().setAll(cl);
-                    currencyChoiceBox.getSelectionModel().select(0);
-                });
-
-                // TODO myProfile = profileManager.retrieveProfile();
-                profileManager.getArbitratorProfiles().observeOn(JavaFxScheduler.platform())
-                        .subscribe(al -> {
-                            arbitratorChoiceBox.getItems().setAll(al);
-                            arbitratorChoiceBox.getSelectionModel().select(0);
-                        });
-
-                paymentMethodChoiceBox.requestFocus();
-
-                profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform())
-                        .subscribe(p -> myProfilePubKeyProperty.setValue(p.getPubKey()));
-            }
+//            if (newValue) {
+//                AppBar appBar = MobileApplication.getInstance().getAppBar();
+//                appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
+//                appBar.setTitleText("Create Sell Offer");
+//
+//                profileManager.getCurrencyCodes().observeOn(JavaFxScheduler.platform()).subscribe(cl -> {
+//                    currencyChoiceBox.getItems().setAll(cl);
+//                    currencyChoiceBox.getSelectionModel().select(0);
+//                });
+//
+//                // TODO myProfile = profileManager.retrieveProfile();
+//                profileManager.getArbitratorProfiles().observeOn(JavaFxScheduler.platform())
+//                        .subscribe(al -> {
+//                            arbitratorChoiceBox.getItems().setAll(al);
+//                            arbitratorChoiceBox.getSelectionModel().select(0);
+//                        });
+//
+//                paymentMethodChoiceBox.requestFocus();
+//
+//                profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform())
+//                        .subscribe(p -> myProfilePubKeyProperty.setValue(p.getPubKey()));
+//            }
         });
 
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
 
-        currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, ov, currencyCode) -> {
-            if (currencyCode != null) {
-                profileManager.getPaymentMethods(currencyCode).observeOn(JavaFxScheduler.platform())
-                        .subscribe(pl -> {
-                            paymentMethodChoiceBox.getItems().setAll(pl);
-                            paymentMethodChoiceBox.getSelectionModel().select(0);
-                            minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
-                            maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
-                            btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
-                        });
-            }
-        });
+//        currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, ov, currencyCode) -> {
+//            if (currencyCode != null) {
+//                profileManager.getPaymentMethods(currencyCode).observeOn(JavaFxScheduler.platform())
+//                        .subscribe(pl -> {
+//                            paymentMethodChoiceBox.getItems().setAll(pl);
+//                            paymentMethodChoiceBox.getSelectionModel().select(0);
+//                            minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
+//                            maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
+//                            btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
+//                        });
+//            }
+//        });
 
         addOfferButton.onActionProperty().setValue(e -> {
             offerManager.createOffer(currencyChoiceBox.getValue(), paymentMethodChoiceBox.getValue(), arbitratorChoiceBox.getValue(),

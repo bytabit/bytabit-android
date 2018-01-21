@@ -63,18 +63,19 @@ public class OfferManager extends AbstractManager {
     public Single<SellOffer> createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, Profile arbitrator,
                                          BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        return Single.zip(profileManager.retrieveMyProfile(), walletManager.getFreshBase58ReceivePubKey(), (p, pk) ->
-                SellOffer.builder()
-                        .sellerProfilePubKey(p.getPubKey())
-                        .sellerEscrowPubKey(pk)
-                        .arbitratorProfilePubKey(arbitrator.getPubKey())
-                        .currencyCode(currencyCode)
-                        .paymentMethod(paymentMethod)
-                        .minAmount(minAmount)
-                        .maxAmount(maxAmount)
-                        .price(price)
-                        .build()
-        ).flatMap(o -> sellOfferService.put(o.getSellerEscrowPubKey(), o)).subscribeOn(Schedulers.io());
+//        return Single.zip(profileManager.loadMyProfile(), walletManager.getFreshBase58ReceivePubKey(), (p, pk) ->
+//                SellOffer.builder()
+//                        .sellerProfilePubKey(p.getPubKey())
+//                        .sellerEscrowPubKey(pk)
+//                        .arbitratorProfilePubKey(arbitrator.getPubKey())
+//                        .currencyCode(currencyCode)
+//                        .paymentMethod(paymentMethod)
+//                        .minAmount(minAmount)
+//                        .maxAmount(maxAmount)
+//                        .price(price)
+//                        .build()
+//        ).flatMap(o -> sellOfferService.put(o.getSellerEscrowPubKey(), o)).subscribeOn(Schedulers.io());
+        return null;
     }
 
     private Single<List<SellOffer>> singleOffers() {

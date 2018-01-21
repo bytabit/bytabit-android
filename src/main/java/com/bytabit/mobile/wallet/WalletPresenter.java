@@ -97,7 +97,7 @@ public class WalletPresenter {
 
         walletView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
-                LOG.debug("Wallet view showing.");
+                LOG.debug("Wallet view pending.");
 
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->

@@ -11,11 +11,9 @@ import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
-import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.Single;
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import javafx.application.Platform;
@@ -28,12 +26,10 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
 
@@ -81,36 +77,36 @@ public class TradeManager extends AbstractManager {
 
         if (tradeEvents == null) {
 
-            Observable<TradeEvent> readTrades = profileManager.retrieveMyProfile().toObservable()
-                    .flatMap(profile -> Observable.create(source -> {
-                        // load stored tradeEvents
-                        File tradesDir = new File(TRADES_PATH);
-                        if (!tradesDir.exists()) {
-                            tradesDir.mkdirs();
-                        } else if (tradesDir.list() != null) {
-                            for (String tradeId : tradesDir.list()) {
-                                try {
-                                    File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "trade.json");
-                                    if (tradeFile.exists()) {
-                                        FileReader tradeReader = new FileReader(tradeFile);
-                                        Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
-                                        emitTradeEvents(source, profile, trade);
-                                    }
-                                } catch (IOException ioe) {
-                                    source.onError(ioe);
-                                }
-                            }
-                        }
-                        source.onComplete();
-                    }));
-
-            Observable<TradeEvent> receivedTrades = profileManager.retrieveMyProfile().toObservable()
-                    .flatMap(profile -> Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
-                            .flatMap(tick -> tradeService.get(profile.getPubKey())
-                                    .retryWhen(errors ->
-                                            errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
-                                    ).flattenAsObservable(tl -> tl))
-                            .flatMap(trade -> Observable.create(source -> emitTradeEvents(source, profile, trade))));
+//            Observable<TradeEvent> readTrades = profileManager.loadMyProfile().toObservable()
+//                    .flatMap(profile -> Observable.create(source -> {
+//                        // load stored tradeEvents
+//                        File tradesDir = new File(TRADES_PATH);
+//                        if (!tradesDir.exists()) {
+//                            tradesDir.mkdirs();
+//                        } else if (tradesDir.list() != null) {
+//                            for (String tradeId : tradesDir.list()) {
+//                                try {
+//                                    File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "trade.json");
+//                                    if (tradeFile.exists()) {
+//                                        FileReader tradeReader = new FileReader(tradeFile);
+//                                        Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
+//                                        emitTradeEvents(source, profile, trade);
+//                                    }
+//                                } catch (IOException ioe) {
+//                                    source.onError(ioe);
+//                                }
+//                            }
+//                        }
+//                        source.onComplete();
+//                    }));
+//
+//            Observable<TradeEvent> receivedTrades = profileManager.loadMyProfile().toObservable()
+//                    .flatMap(profile -> Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
+//                            .flatMap(tick -> tradeService.get(profile.getPubKey())
+//                                    .retryWhen(errors ->
+//                                            errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
+//                                    ).flattenAsObservable(tl -> tl))
+//                            .flatMap(trade -> Observable.create(source -> emitTradeEvents(source, profile, trade))));
 
             createdTradeEvents = PublishSubject.create();
 
@@ -119,17 +115,17 @@ public class TradeManager extends AbstractManager {
             // post or patch all created trade events
 
 
-            tradeEvents = readTrades.concatWith(receivedTrades).mergeWith(createdTradeEvents)
-                    .distinct().subscribeOn(Schedulers.io()).observeOn(Schedulers.io())
-                    .replay().autoConnect(3);
-
-            tradeEvents.filter(te -> te.getRole().equals(BUYER)).subscribe(te -> {
-                // buyer protocol
-                if (te instanceof BuyerCreated) {
-                    buyerProtocol.handleCreated((BuyerCreated) te);
-                    LOG.debug("Created trade event: {}", te);
-                }
-            });
+//            tradeEvents = readTrades.concatWith(receivedTrades).mergeWith(createdTradeEvents)
+//                    .distinct().subscribeOn(Schedulers.io()).observeOn(Schedulers.io())
+//                    .replay().autoConnect(3);
+//
+//            tradeEvents.filter(te -> te.getRole().equals(BUYER)).subscribe(te -> {
+//                // buyer protocol
+//                if (te instanceof BuyerCreated) {
+//                    buyerProtocol.handleCreated((BuyerCreated) te);
+//                    LOG.debug("Created trade event: {}", te);
+//                }
+//            });
 
             tradeEvents.filter(te -> te.getRole().equals(SELLER)).subscribe(te -> {
                 // seller protocol
@@ -211,7 +207,7 @@ public class TradeManager extends AbstractManager {
                 LOG.debug(String.format("Writing updated trade: %s", trade.toString()));
             });
 
-//            tradeEvents = profileManager.retrieveMyProfile().toObservable().subscribeOn(Schedulers.io())
+//            tradeEvents = profileManager.loadMyProfile().toObservable().subscribeOn(Schedulers.io())
 //                    .flatMap(profile -> readTrades.map(trade -> trade.isLoaded(true))
 //                            .concatWith(receivedTrades).mergeWith(createdTradeEvents)
 //                            .scan(new HashMap<String, Trade>(), (currentTrades, foundTrade) -> {
@@ -263,13 +259,13 @@ public class TradeManager extends AbstractManager {
 //                source.onSuccess(trades);
 //            }).toObservable();
 //
-//            Observable<List<Trade>> watchedTrades = profileManager.retrieveMyProfile().toObservable()
+//            Observable<List<Trade>> watchedTrades = profileManager.loadMyProfile().toObservable()
 //                    .flatMap(profile -> Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
 //                            .flatMap(tick -> tradeService.get(profile.getPubKey()).retry().toObservable()));
 //
 //            createdTradeEvents = PublishSubject.create();
 //
-//            tradeEvents = profileManager.retrieveMyProfile().toObservable().subscribeOn(Schedulers.io())
+//            tradeEvents = profileManager.loadMyProfile().toObservable().subscribeOn(Schedulers.io())
 //                    .flatMap(profile -> storedTrades.concatWith(watchedTrades).mergeWith(createdTradeEvents)
 //                            .scan(new HashMap<String, Trade>(), (currentTrades, foundTrades) -> {
 //                                for (Trade currentTrade : currentTrades.values()) {
@@ -318,19 +314,19 @@ public class TradeManager extends AbstractManager {
 
     public void requestArbitrate() {
 
-        profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
-            Trade trade = selectedTrade.getValue();
-
-            String profilePubKey = profile.getPubKey();
-            Boolean profileIsArbitrator = profile.getIsArbitrator();
-
-            Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
-            if (role.equals(SELLER)) {
-                sellerProtocol.requestArbitrate(trade);
-            } else if (role.equals(BUYER)) {
-                buyerProtocol.requestArbitrate(trade);
-            }
-        });
+//        profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
+//            Trade trade = selectedTrade.getValue();
+//
+//            String profilePubKey = profile.getPubKey();
+//            Boolean profileIsArbitrator = profile.getIsArbitrator();
+//
+//            Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
+//            if (role.equals(SELLER)) {
+//                sellerProtocol.requestArbitrate(trade);
+//            } else if (role.equals(BUYER)) {
+//                buyerProtocol.requestArbitrate(trade);
+//            }
+//        });
     }
 
     public void arbitratorRefundSeller() {

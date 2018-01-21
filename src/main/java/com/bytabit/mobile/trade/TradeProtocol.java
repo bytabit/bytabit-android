@@ -2,21 +2,20 @@ package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.ProfileManager;
-import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
 
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.*;
+import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
+import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
 import static com.bytabit.mobile.trade.model.Trade.Status.FUNDED;
 import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
@@ -63,8 +62,8 @@ public abstract class TradeProtocol {
 
     public Trade handleCompleted(Trade currentTrade, Trade completedTrade) {
 
-        // TODO refactor to use Observable
-        Profile profile = profileManager.retrieveMyProfile().observeOn(JavaFxScheduler.platform()).blockingGet();
+//        // TODO refactor to use Observable
+//        Profile profile = profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).blockingGet();
 
         Trade verifiedCompletedTrade = null;
 
@@ -80,13 +79,13 @@ public abstract class TradeProtocol {
 
         Boolean zeroConfOK = false;
         PayoutCompleted.Reason payoutReason = completedTrade.getPayoutReason();
-        Trade.Role tradeRole = completedTrade.role(profile.getPubKey(), profile.getIsArbitrator());
-        if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
-                (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
-                tradeRole.equals(Trade.Role.ARBITRATOR)) {
-
-            zeroConfOK = true;
-        }
+//        Trade.Role tradeRole = completedTrade.role(profile.getPubKey(), profile.getIsArbitrator());
+//        if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
+//                (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
+//                tradeRole.equals(Trade.Role.ARBITRATOR)) {
+//
+//            zeroConfOK = true;
+//        }
 
 //        TransactionWithAmt tx = walletManager.getTransactionWithAmt(completedTrade.getEscrowAddress(), txHash, toAddress);
 //        if (tx != null) {
