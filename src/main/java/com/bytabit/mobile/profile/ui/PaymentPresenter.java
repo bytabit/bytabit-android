@@ -1,8 +1,7 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.profile.ui;
 
-import com.bytabit.mobile.profile.PaymentsResult.PaymentDetailsResult;
-import com.bytabit.mobile.profile.action.PaymentDetailsAction;
-import com.bytabit.mobile.profile.event.PaymentDetailsEvent;
+import com.bytabit.mobile.profile.manager.PaymentDetailsAction;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
@@ -23,6 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+
+import static com.bytabit.mobile.profile.ui.PaymentDetailsEvent.Type.DETAILS_ADD_BUTTON_PRESSED;
 
 public class PaymentPresenter {
 
@@ -88,7 +89,9 @@ public class PaymentPresenter {
         // transform events to actions
 
         Observable<PaymentDetailsAction> paymentDetailsActions = paymentDetailsEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform()).map(event -> {
+                .observeOn(JavaFxScheduler.platform())
+                .filter(e -> e.matches(DETAILS_ADD_BUTTON_PRESSED))
+                .map(event -> {
                     switch (event.getType()) {
 
 //                        case LIST_VIEW_SHOWING:
@@ -110,14 +113,18 @@ public class PaymentPresenter {
 //                        case DETAILS_CURRENCY_SELECTED:
 //                            break;
                         default:
-                            throw new RuntimeException("Unexpected PaymentDetailsEvent.Type");
+                            throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
                     }
                 });
 
         // transform actions to results
 
-        Observable<PaymentDetailsResult> paymentDetailsResults = paymentDetailsActions
-                .compose(profileManager.paymentDetailsActionTransformer());
+//        Observable<PaymentDetailsResult> paymentDetailsResults = paymentDetailsActions
+//                .compose(profileManager.paymentDetailsActionTransformer());
+
+        paymentDetailsActions.subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .subscribe(profileManager.getPaymentDetailsActions());
 
         // handle events
 
@@ -152,7 +159,7 @@ public class PaymentPresenter {
 
         // handle results
 
-        paymentDetailsResults.subscribeOn(Schedulers.io())
+        profileManager.getPaymentDetailsResults().subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(result -> {
                     switch (result.getType()) {

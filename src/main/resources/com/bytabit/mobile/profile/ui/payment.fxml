@@ -7,7 +7,7 @@
 <View fx:id="paymentView" maxHeight="-Infinity" maxWidth="-Infinity"
       minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
       xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.bytabit.mobile.profile.PaymentPresenter">
+      fx:controller="com.bytabit.mobile.profile.ui.PaymentPresenter">
     <top>
         <GridPane BorderPane.alignment="CENTER">
             <columnConstraints>

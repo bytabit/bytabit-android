@@ -1,6 +1,6 @@
 package com.bytabit.mobile.trade;
 
-import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.mvc.View;

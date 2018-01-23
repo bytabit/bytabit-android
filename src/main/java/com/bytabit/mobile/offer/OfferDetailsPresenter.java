@@ -1,7 +1,7 @@
 package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.TradeManager;
 import com.bytabit.mobile.wallet.WalletManager;

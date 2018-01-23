@@ -3,7 +3,7 @@ package com.bytabit.mobile.offer;
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;

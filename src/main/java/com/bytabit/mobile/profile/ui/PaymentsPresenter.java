@@ -1,9 +1,8 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.profile.PaymentsResult.PaymentDetailsResult;
-import com.bytabit.mobile.profile.action.PaymentDetailsAction;
-import com.bytabit.mobile.profile.event.PaymentDetailsEvent;
+import com.bytabit.mobile.profile.manager.PaymentDetailsAction;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -23,6 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+
+import static com.bytabit.mobile.profile.ui.PaymentDetailsEvent.Type.LIST_VIEW_SHOWING;
 
 public class PaymentsPresenter {
 
@@ -87,35 +88,41 @@ public class PaymentsPresenter {
 
         // transform events to actions
 
-        Observable<PaymentDetailsAction> paymentDetailsActions = paymentDetailsEvents.map(event -> {
+        Observable<PaymentDetailsAction> paymentDetailsActions =
+                paymentDetailsEvents
+                        .filter(e -> e.matches(LIST_VIEW_SHOWING))
+                        .map(event -> {
+                            switch (event.getType()) {
+                                case LIST_VIEW_SHOWING:
+                                    return PaymentDetailsAction.load();
+//                                case LIST_VIEW_NOT_SHOWING:
+//                                    break;
+//                                case LIST_ITEM_CHANGED:
+//                                    break;
+//                                case LIST_ADD_BUTTON_PRESSED:
+//                                    return PaymentDetailsAction.add();
+//                                break;
+//                                case DETAILS_VIEW_SHOWING:
+//                                    break;
+//                                case DETAILS_VIEW_NOT_SHOWING:
+//                                    break;
+//                                case DETAILS_ADD_BUTTON_PRESSED:
+//                                    break;
+                                default:
+                                    throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
+                            }
+                        })
+                        .startWith(PaymentDetailsAction.load());
 
-            switch (event.getType()) {
-                case LIST_VIEW_SHOWING:
-                    return PaymentDetailsAction.load();
-//                case LIST_VIEW_NOT_SHOWING:
-//                    break;
-//                case LIST_ITEM_CHANGED:
-//                    break;
-//                case LIST_ADD_BUTTON_PRESSED:
-//                    return PaymentDetailsAction.add();
-//                    break;
-//                case DETAILS_VIEW_SHOWING:
-//                    break;
-//                case DETAILS_VIEW_NOT_SHOWING:
-//                    break;
-//                case DETAILS_ADD_BUTTON_PRESSED:
-//                    break;
-                default:
-                    throw new RuntimeException("Unexpected PaymentDetailsEvent.Type");
-            }
-        });
+        paymentDetailsActions.subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .subscribe(profileManager.getPaymentDetailsActions());
 
-        paymentDetailsActions.
 
-                // transform actions to results
+        // transform actions to results
 
-                Observable<PaymentDetailsResult> paymentDetailsResults = paymentDetailsActions
-                .compose(profileManager.paymentDetailsActionTransformer());
+//                Observable <PaymentDetailsResult> paymentDetailsResults = paymentDetailsActions
+//                .compose(profileManager.paymentDetailsActionTransformer());
 
         // handle events
 
@@ -144,7 +151,7 @@ public class PaymentsPresenter {
 
         // handle results
 
-        paymentDetailsResults.subscribeOn(Schedulers.io())
+        profileManager.getPaymentDetailsResults().subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(result -> {
                     switch (result.getType()) {
@@ -155,7 +162,7 @@ public class PaymentsPresenter {
                         case LOADED:
                         case UPDATED:
                             paymentsView.setDisable(false);
-                            paymentDetailsListView.itemsProperty().add(result.getData());
+                            updatePaymentDetailsList(result.getData());
                             break;
                         case ERROR:
                             break;
@@ -169,5 +176,19 @@ public class PaymentsPresenter {
             MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER);
         }));
         appBar.setTitleText("Payment Details");
+    }
+
+    private void addPaymentDetailsList(PaymentDetails updated) {
+
+        paymentDetailsListView.itemsProperty().add(updated);
+    }
+
+    private void updatePaymentDetailsList(PaymentDetails updated) {
+
+        int index = paymentDetailsListView.itemsProperty().indexOf(updated);
+        if (index > -1) {
+            paymentDetailsListView.itemsProperty().remove(index);
+        }
+        paymentDetailsListView.itemsProperty().add(updated);
     }
 }

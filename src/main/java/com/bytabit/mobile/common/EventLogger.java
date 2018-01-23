@@ -47,7 +47,11 @@ public class EventLogger {
 
         return results -> results.observeOn(Schedulers.io())
                 .map(result -> {
-                    logger.debug("Result type: {}", result.getType());
+                    if (result.getError() != null) {
+                        logger.debug("Result type: {}, Error: {}", result.getType(), result.getError().getMessage());
+                    } else {
+                        logger.debug("Result type: {}", result.getType());
+                    }
                     return result;
                 });
     }

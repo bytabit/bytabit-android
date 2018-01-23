@@ -1,4 +1,4 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.profile.model.Profile;
 import javafx.util.StringConverter;

@@ -1,9 +1,9 @@
-package com.bytabit.mobile.profile.action;
+package com.bytabit.mobile.profile.manager;
 
 import com.bytabit.mobile.common.AbstractEvent;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 
-import static com.bytabit.mobile.profile.action.PaymentDetailsAction.Type.*;
+import static com.bytabit.mobile.profile.manager.PaymentDetailsAction.Type.*;
 
 public class PaymentDetailsAction extends AbstractEvent<PaymentDetailsAction.Type, PaymentDetails> {
 

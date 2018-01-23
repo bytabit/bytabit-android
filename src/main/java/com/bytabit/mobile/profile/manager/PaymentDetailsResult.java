@@ -1,9 +1,9 @@
-package com.bytabit.mobile.profile.PaymentsResult;
+package com.bytabit.mobile.profile.manager;
 
 import com.bytabit.mobile.common.AbstractResult;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 
-import static com.bytabit.mobile.profile.PaymentsResult.PaymentDetailsResult.Type.*;
+import static com.bytabit.mobile.profile.manager.PaymentDetailsResult.Type.*;
 
 public class PaymentDetailsResult extends AbstractResult<PaymentDetailsResult.Type, PaymentDetails> {
 

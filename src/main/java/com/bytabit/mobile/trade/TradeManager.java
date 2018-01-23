@@ -3,7 +3,7 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.profile.ProfileManager;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.evt.*;
 import com.bytabit.mobile.trade.model.BuyRequest;

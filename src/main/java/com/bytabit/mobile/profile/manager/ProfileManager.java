@@ -1,12 +1,8 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.profile.manager;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.profile.PaymentsResult.MyProfileResult;
-import com.bytabit.mobile.profile.PaymentsResult.PaymentDetailsResult;
-import com.bytabit.mobile.profile.action.MyProfileAction;
-import com.bytabit.mobile.profile.action.PaymentDetailsAction;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
@@ -15,19 +11,15 @@ import com.bytabit.mobile.wallet.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.Observable;
 import io.reactivex.ObservableTransformer;
-import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
-import java.util.List;
 import java.util.Optional;
 
 public class ProfileManager extends AbstractManager {
-
-//    private static Logger LOG = LoggerFactory.getLogger(ProfileManager.class);
 
     @Inject
     private WalletManager walletManager;
@@ -45,15 +37,15 @@ public class ProfileManager extends AbstractManager {
 
     // profile
 
-    private final ObservableTransformer<MyProfileAction, MyProfileResult> myProfileActionTransformer;
+    private final PublishSubject<ProfileAction> myProfileActions;
+
+    private final Observable<ProfileResult> myProfileResults;
 
     // payment details
 
-//    private final ObservableTransformer<PaymentDetailsAction, PaymentDetailsResult> paymentDetailsActionTransformer;
-
     private final PublishSubject<PaymentDetailsAction> paymentDetailsActions;
 
-    private final Observable<List<PaymentDetailsResult>> paymentDetailsResults;
+    private final Observable<PaymentDetailsResult> paymentDetailsResults;
 
     public ProfileManager() {
 
@@ -65,7 +57,9 @@ public class ProfileManager extends AbstractManager {
 
         profilesService = retrofit.create(ProfileService.class);
 
-        myProfileActionTransformer = actions ->
+        myProfileActions = PublishSubject.create();
+
+        ObservableTransformer<ProfileAction, ProfileResult> myProfileActionTransformer = actions ->
                 actions.compose(eventLogger.logActions()).flatMap(action -> {
                     switch (action.getType()) {
                         case LOAD:
@@ -73,23 +67,25 @@ public class ProfileManager extends AbstractManager {
                                 return createMyProfile()
                                         .flatMap(this::storeMyProfile)
                                         .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
-                                        .map(MyProfileResult::created);
+                                        .map(ProfileResult::created);
                             } else {
                                 return loadMyProfile()
-                                        .map(MyProfileResult::loaded);
+                                        .map(ProfileResult::loaded);
                             }
                         case UPDATE:
                             return loadMyProfile()
                                     .map(oldProfile -> updateMyProfile(oldProfile, action.getData()))
                                     .flatMap(this::storeMyProfile)
                                     .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
-                                    .map(MyProfileResult::updated);
+                                    .map(ProfileResult::updated);
                         default:
-                            throw new RuntimeException("Unexpected MyProfileAction.Type");
+                            throw new RuntimeException(String.format("Unexpected ProfileAction.Type: %s", action.getType()));
                     }
-                }).onErrorReturn(MyProfileResult::error)
+                }).onErrorReturn(ProfileResult::error)
                         .compose(eventLogger.logResults())
-                        .startWith(MyProfileResult.pending());
+                        .startWith(ProfileResult.pending());
+
+        myProfileResults = myProfileActions.compose(myProfileActionTransformer);
 
         // payment details
 
@@ -108,7 +104,7 @@ public class ProfileManager extends AbstractManager {
                             return storePaymentDetails(action.getData())
                                     .map(PaymentDetailsResult::updated);
                         default:
-                            throw new RuntimeException("Unexpected MyProfileAction.Type");
+                            throw new RuntimeException(String.format("Unexpected PaymentDetailsAction.Type: %s", action.getType()));
                     }
                 }).onErrorReturn(PaymentDetailsResult::error)
                         .compose(eventLogger.logResults())
@@ -119,8 +115,12 @@ public class ProfileManager extends AbstractManager {
 
     // my profile
 
-    public ObservableTransformer<MyProfileAction, MyProfileResult> myProfileActionTransformer() {
-        return myProfileActionTransformer;
+    public PublishSubject<ProfileAction> getMyProfileActions() {
+        return myProfileActions;
+    }
+
+    public Observable<ProfileResult> getMyProfileResults() {
+        return myProfileResults;
     }
 
     private Profile updateMyProfile(Profile oldProfile, Profile newProfile) {
@@ -162,18 +162,14 @@ public class ProfileManager extends AbstractManager {
                 .build()).subscribeOn(Schedulers.io());
     }
 
-    private Single<List<Profile>> getArbitratorProfiles() {
-        return profilesService.getProfiles()
-                .flattenAsObservable(pl -> pl)
-                .filter(Profile::getIsArbitrator)
-                .toList();
-    }
+//    private Single<List<Profile>> getArbitratorProfiles() {
+//        return profilesService.getProfiles()
+//                .flattenAsObservable(pl -> pl)
+//                .filter(Profile::getIsArbitrator)
+//                .toList();
+//    }
 
     // payment details
-
-    public ObservableTransformer<PaymentDetailsAction, PaymentDetailsResult> paymentDetailsActionTransformer() {
-        return paymentDetailsActionTransformer;
-    }
 
     public PublishSubject<PaymentDetailsAction> getPaymentDetailsActions() {
         return paymentDetailsActions;
@@ -182,26 +178,6 @@ public class ProfileManager extends AbstractManager {
     public Observable<PaymentDetailsResult> getPaymentDetailsResults() {
         return paymentDetailsResults;
     }
-
-    //    private Single<List<CurrencyCode>> getCurrencyCodes() {
-//        return loadPaymentDetails().flattenAsObservable(pdl -> pdl)
-//                .map(PaymentDetails::getCurrencyCode)
-//                .distinct().toList();
-//    }
-//
-//    private Single<List<PaymentMethod>> getPaymentMethods(CurrencyCode currencyCode) {
-//        return loadPaymentDetails().flattenAsObservable(pml -> pml)
-//                .filter(pd -> currencyCode.equals(pd.getCurrencyCode()))
-//                .map(PaymentDetails::getPaymentMethod)
-//                .distinct().toList();
-//    }
-//
-//    private Single<String> getPaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod) {
-//        return loadPaymentDetails().flattenAsObservable(pml -> pml)
-//                .filter(pd -> currencyCode.equals(pd.getCurrencyCode()) && paymentMethod.equals(pd.getPaymentMethod()))
-//                .map(PaymentDetails::getPaymentDetails)
-//                .firstOrError();
-//    }
 
     private Observable<PaymentDetails> storePaymentDetails(PaymentDetails paymentDetails) {
         return Observable.fromCallable(() -> {
@@ -213,17 +189,7 @@ public class ProfileManager extends AbstractManager {
     }
 
     private Observable<PaymentDetails> loadPaymentDetails() {
-//        return Observable.fromCallable(() -> {
-//            List<PaymentDetails> paymentDetails = new ArrayList<>();
-//            for (CurrencyCode c : CurrencyCode.values()) {
-//                for (PaymentMethod p : c.paymentMethods()) {
-//                    retrieve(paymentDetailsKey(c, p)).ifPresent(pd ->
-//                            paymentDetails.add(PaymentDetails.builder().currencyCode(c).paymentMethod(p).paymentDetails(pd).build())
-//                    );
-//                }
-//            }
-//            return paymentDetails;
-//        }).flatMap(pdl -> pdl).subscribeOn(Schedulers.io());
+
         return Observable.fromArray(CurrencyCode.values())
                 .flatMap(c -> Observable.fromIterable(c.paymentMethods())
                         .map(p -> retrieve(paymentDetailsKey(c, p)).map(pd ->

@@ -39,15 +39,13 @@ public class PaymentDetails {
         PaymentDetails that = (PaymentDetails) o;
 
         if (currencyCode != that.currencyCode) return false;
-        if (paymentMethod != that.paymentMethod) return false;
-        return paymentDetails != null ? paymentDetails.equals(that.paymentDetails) : that.paymentDetails == null;
+        return paymentMethod == that.paymentMethod;
     }
 
     @Override
     public int hashCode() {
-        int result = currencyCode != null ? currencyCode.hashCode() : 0;
-        result = 31 * result + (paymentMethod != null ? paymentMethod.hashCode() : 0);
-        result = 31 * result + (paymentDetails != null ? paymentDetails.hashCode() : 0);
+        int result = currencyCode.hashCode();
+        result = 31 * result + paymentMethod.hashCode();
         return result;
     }
 }

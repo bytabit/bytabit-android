@@ -1,4 +1,4 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.profile.manager;
 
 import com.bytabit.mobile.profile.model.Profile;
 import io.reactivex.Single;

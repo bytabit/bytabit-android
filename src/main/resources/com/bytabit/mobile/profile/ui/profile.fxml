@@ -7,7 +7,7 @@
 <View fx:id="profileView" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity"
       minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
       xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.bytabit.mobile.profile.ProfilePresenter">
+      fx:controller="com.bytabit.mobile.profile.ui.ProfilePresenter">
    <center>
        <VBox alignment="TOP_CENTER" BorderPane.alignment="CENTER">
          <children>

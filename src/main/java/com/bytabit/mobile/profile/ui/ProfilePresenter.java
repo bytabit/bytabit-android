@@ -1,9 +1,9 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.profile.PaymentsResult.MyProfileResult;
-import com.bytabit.mobile.profile.action.MyProfileAction;
-import com.bytabit.mobile.profile.event.MyProfileEvent;
+import com.bytabit.mobile.profile.manager.ProfileAction;
+import com.bytabit.mobile.profile.manager.ProfileManager;
+import com.bytabit.mobile.profile.manager.ProfileResult;
 import com.bytabit.mobile.profile.model.Profile;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -20,6 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+
+import static com.bytabit.mobile.profile.manager.ProfileAction.Type.LOAD;
+import static com.bytabit.mobile.profile.manager.ProfileAction.Type.UPDATE;
 
 public class ProfilePresenter {
 
@@ -49,30 +52,33 @@ public class ProfilePresenter {
 
         LOG.debug("initialize profile presenter");
 
-        Observable<MyProfileEvent> viewShowingEvents =
+        Observable<ProfileEvent> viewShowingEvents =
                 JavaFxObservable.changesOf(profileView.showingProperty())
                         .map(showing -> {
                             if (showing.getNewVal()) {
-                                return MyProfileEvent.viewShowing();
+                                return ProfileEvent.viewShowing();
                             } else
-                                return MyProfileEvent.viewNotShowing(createProfileFromUI());
+                                return ProfileEvent.viewNotShowing(createProfileFromUI());
                         });
 
-        Observable<MyProfileEvent> myProfileEvents = viewShowingEvents.publish().refCount();
+        Observable<ProfileEvent> myProfileEvents = viewShowingEvents.publish().refCount();
 
-        Observable<MyProfileAction> myProfileActions = myProfileEvents.map(event -> {
+        Observable<ProfileAction> myProfileActions = myProfileEvents.map(event -> {
             switch (event.getType()) {
                 case VIEW_SHOWING:
-                    return MyProfileAction.load();
+                    return new ProfileAction(LOAD, null);
                 case VIEW_NOT_SHOWING:
-                    return MyProfileAction.update(event.getData());
+                    return new ProfileAction(UPDATE, event.getData());
                 default:
-                    throw new RuntimeException("Unexpected MyProfileEvent.Type");
+                    throw new RuntimeException(String.format("Unexpected ProfileEvent.Type: %s", event.getType()));
             }
         });
 
-        Observable<MyProfileResult> myProfileResults = myProfileActions
-                .compose(profileManager.myProfileActionTransformer());
+        myProfileActions.subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .subscribe(profileManager.getMyProfileActions());
+
+        Observable<ProfileResult> myProfileResults = profileManager.getMyProfileResults();
 
         myProfileEvents.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
@@ -108,9 +114,7 @@ public class ProfilePresenter {
 
     private void setAppBar() {
         AppBar appBar = MobileApplication.getInstance().getAppBar();
-        appBar.setNavIcon(MaterialDesignIcon.MENU.button(e -> {
-            MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER);
-        }));
+        appBar.setNavIcon(MaterialDesignIcon.MENU.button(e -> MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
         appBar.setTitleText("Profile");
     }
 

@@ -1,4 +1,4 @@
-package com.bytabit.mobile.profile;
+package com.bytabit.mobile.profile.ui;
 
 import com.airhacks.afterburner.views.FXMLView;
 

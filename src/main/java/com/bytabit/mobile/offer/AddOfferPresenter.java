@@ -1,9 +1,7 @@
 package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.common.StringBigDecimalConverter;
-import com.bytabit.mobile.profile.PaymentMethodStringConverter;
-import com.bytabit.mobile.profile.ProfileManager;
-import com.bytabit.mobile.profile.ProfileStringConverter;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;

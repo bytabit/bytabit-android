@@ -1,10 +1,10 @@
-package com.bytabit.mobile.profile.event;
+package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.common.AbstractEvent;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 
-import static com.bytabit.mobile.profile.event.PaymentDetailsEvent.Type.*;
+import static com.bytabit.mobile.profile.ui.PaymentDetailsEvent.Type.*;
 
 public class PaymentDetailsEvent extends AbstractEvent<PaymentDetailsEvent.Type, PaymentDetails> {
 
