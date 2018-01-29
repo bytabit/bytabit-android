@@ -1,5 +1,6 @@
 package com.bytabit.mobile.profile.ui;
 
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.PaymentDetailsAction;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
@@ -18,16 +19,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.TextField;
 import javafx.util.StringConverter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 import static com.bytabit.mobile.profile.ui.PaymentDetailsEvent.Type.DETAILS_ADD_BUTTON_PRESSED;
 
 public class PaymentPresenter {
-
-    private static Logger LOG = LoggerFactory.getLogger(PaymentPresenter.class);
 
     @Inject
     private ProfileManager profileManager;
@@ -47,9 +44,9 @@ public class PaymentPresenter {
     @FXML
     private Button addPaymentDetailButton;
 
-    public void initialize() {
+    private final EventLogger eventLogger = EventLogger.of(PaymentPresenter.class);
 
-        LOG.debug("initialize add payment details presenter");
+    public void initialize() {
 
         // setup view components
 
@@ -84,7 +81,8 @@ public class PaymentPresenter {
                 .map(actionEvent -> PaymentDetailsEvent.detailsAddButtonPressed(createPaymentDetailsFromUI()));
 
         Observable<PaymentDetailsEvent> paymentDetailsEvents = Observable.merge(viewShowingEvents,
-                currencySelectedEvents, addPaymentDetailButtonEvents).publish().refCount();
+                currencySelectedEvents, addPaymentDetailButtonEvents)
+                .compose(eventLogger.logEvents()).publish().refCount();
 
         // transform events to actions
 
@@ -93,25 +91,8 @@ public class PaymentPresenter {
                 .filter(e -> e.matches(DETAILS_ADD_BUTTON_PRESSED))
                 .map(event -> {
                     switch (event.getType()) {
-
-//                        case LIST_VIEW_SHOWING:
-//                            break;
-//                        case LIST_VIEW_NOT_SHOWING:
-//                            break;
-//                        case LIST_ITEM_CHANGED:
-//                            break;
-//                        case LIST_ADD_BUTTON_PRESSED:
-//                            break;
-//                        case DETAILS_VIEW_SHOWING:
-//                            break;
-//                        case DETAILS_VIEW_NOT_SHOWING:
-//                            break;
                         case DETAILS_ADD_BUTTON_PRESSED:
-                            return PaymentDetailsAction.add(event.getData());
-//                        case DETAILS_BACK_BUTTON_PRESSED:
-//                            break;
-//                        case DETAILS_CURRENCY_SELECTED:
-//                            break;
+                            return PaymentDetailsAction.update(event.getData());
                         default:
                             throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
                     }
@@ -119,11 +100,9 @@ public class PaymentPresenter {
 
         // transform actions to results
 
-//        Observable<PaymentDetailsResult> paymentDetailsResults = paymentDetailsActions
-//                .compose(profileManager.paymentDetailsActionTransformer());
-
         paymentDetailsActions.subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
                 .subscribe(profileManager.getPaymentDetailsActions());
 
         // handle events
@@ -132,14 +111,6 @@ public class PaymentPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(event -> {
                     switch (event.getType()) {
-//                        case LIST_VIEW_SHOWING:
-//                            break;
-//                        case LIST_VIEW_NOT_SHOWING:
-//                            break;
-//                        case LIST_ITEM_CHANGED:
-//                            break;
-//                        case LIST_ADD_BUTTON_PRESSED:
-//                            break;
                         case DETAILS_VIEW_SHOWING:
                             setAppBar();
                             clearForm();
@@ -147,12 +118,6 @@ public class PaymentPresenter {
                         case DETAILS_CURRENCY_SELECTED:
                             updatePaymentMethods(event.getData().getCurrencyCode());
                             break;
-//                        case DETAILS_VIEW_NOT_SHOWING:
-//                            break;
-//                        case DETAILS_ADD_BUTTON_PRESSED:
-//                            break;
-//                        case DETAILS_BACK_BUTTON_PRESSED:
-//                            break;
                     }
 
                 });
@@ -167,7 +132,6 @@ public class PaymentPresenter {
                             break;
                         case LOADED:
                             break;
-                        case ADDED:
                         case UPDATED:
                             MobileApplication.getInstance().switchToPreviousView();
                             break;
@@ -175,47 +139,6 @@ public class PaymentPresenter {
                             break;
                     }
                 });
-
-//        paymentView.showingProperty().addListener((observable, oldValue, newValue) -> {
-//
-//            if (newValue) {
-//                AppBar appBar = MobileApplication.getInstance().getAppBar();
-//                appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-//                appBar.setTitleText("Add Payment Details");
-//            }
-//
-//            paymentDetailsTextField.textProperty().setValue(null);
-//            currencyChoiceBox.getItems().setAll(CurrencyCode.values());
-//            currencyChoiceBox.getSelectionModel().select(0);
-//            currencyChoiceBox.requestFocus();
-//        });
-//
-//        currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, currencyCode) -> {
-//            if (currencyCode != null) {
-//                paymentMethodChoiceBox.getItems().setAll(currencyCode.paymentMethods());
-//                paymentMethodChoiceBox.getSelectionModel().select(0);
-//            }
-//        });
-//
-//
-//        paymentMethodChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, oldValue, paymentMethod) -> {
-//            if (paymentMethod != null) {
-//                paymentDetailsTextField.setPromptText(paymentMethod.requiredDetails());
-//            } else {
-//                paymentDetailsTextField.setPromptText("");
-//            }
-//        });
-
-//        profileManager.getCurrencyCodeProperty().bind(currencyChoiceBox.valueProperty());
-//        profileManager.getPaymentMethodProperty().bind(paymentMethodChoiceBox.valueProperty());
-//        profileManager.getPaymentDetailsProperty().bind(paymentDetailsTextField.textProperty());
-
-//        addPaymentDetailButton.onActionProperty().setValue(e -> {
-//            profileManager.storePaymentDetails(currencyChoiceBox.valueProperty().get(), paymentMethodChoiceBox.valueProperty().get(),
-//                    paymentDetailsTextField.textProperty().get()).observeOn(Schedulers.io()).subscribe();
-//
-//            MobileApplication.getInstance().switchToPreviousView();
-//        });
     }
 
     private void setAppBar() {

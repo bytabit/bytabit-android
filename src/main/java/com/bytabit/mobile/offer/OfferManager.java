@@ -7,7 +7,7 @@ import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
-import com.bytabit.mobile.wallet.WalletManager;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.Completable;
 import io.reactivex.Flowable;

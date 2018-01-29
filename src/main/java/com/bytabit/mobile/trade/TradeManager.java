@@ -8,7 +8,7 @@ import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.evt.*;
 import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.WalletManager;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.Observable;

@@ -7,7 +7,7 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
-import com.bytabit.mobile.wallet.WalletManager;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.Observable;
 import io.reactivex.ObservableTransformer;
@@ -60,7 +60,7 @@ public class ProfileManager extends AbstractManager {
         myProfileActions = PublishSubject.create();
 
         ObservableTransformer<ProfileAction, ProfileResult> myProfileActionTransformer = actions ->
-                actions.compose(eventLogger.logActions()).flatMap(action -> {
+                actions.compose(eventLogger.logEvents()).flatMap(action -> {
                     switch (action.getType()) {
                         case LOAD:
                             if (!retrieve(PROFILE_PUBKEY).isPresent()) {
@@ -92,14 +92,11 @@ public class ProfileManager extends AbstractManager {
         paymentDetailsActions = PublishSubject.create();
 
         ObservableTransformer<PaymentDetailsAction, PaymentDetailsResult> paymentDetailsActionTransformer = actions ->
-                actions.compose(eventLogger.logActions()).flatMap(action -> {
+                actions.distinctUntilChanged().compose(eventLogger.logEvents()).flatMap(action -> {
                     switch (action.getType()) {
                         case LOAD:
                             return loadPaymentDetails()
                                     .map(PaymentDetailsResult::loaded);
-                        case ADD:
-                            return storePaymentDetails(action.getData())
-                                    .map(PaymentDetailsResult::added);
                         case UPDATE:
                             return storePaymentDetails(action.getData())
                                     .map(PaymentDetailsResult::updated);
@@ -110,7 +107,8 @@ public class ProfileManager extends AbstractManager {
                         .compose(eventLogger.logResults())
                         .startWith(PaymentDetailsResult.pending());
 
-        paymentDetailsResults = paymentDetailsActions.compose(paymentDetailsActionTransformer);
+        paymentDetailsResults = paymentDetailsActions.compose(paymentDetailsActionTransformer)
+                .publish().refCount();
     }
 
     // my profile
@@ -161,13 +159,6 @@ public class ProfileManager extends AbstractManager {
                 .phoneNum(retrieve(PROFILE_PHONENUM).orElse(""))
                 .build()).subscribeOn(Schedulers.io());
     }
-
-//    private Single<List<Profile>> getArbitratorProfiles() {
-//        return profilesService.getProfiles()
-//                .flattenAsObservable(pl -> pl)
-//                .filter(Profile::getIsArbitrator)
-//                .toList();
-//    }
 
     // payment details
 

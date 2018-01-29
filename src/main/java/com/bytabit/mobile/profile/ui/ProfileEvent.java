@@ -12,11 +12,11 @@ public class ProfileEvent extends AbstractEvent<ProfileEvent.Type, Profile> {
         VIEW_SHOWING, VIEW_NOT_SHOWING
     }
 
-    public static ProfileEvent viewShowing() {
+    static ProfileEvent viewShowing() {
         return new ProfileEvent(VIEW_SHOWING, null);
     }
 
-    public static ProfileEvent viewNotShowing(Profile profile) {
+    static ProfileEvent viewNotShowing(Profile profile) {
         return new ProfileEvent(VIEW_NOT_SHOWING, profile);
     }
 

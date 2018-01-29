@@ -9,11 +9,11 @@ public class EventLogger {
 
     private Logger logger;
 
-    public EventLogger(Class<?> clazz) {
+    private EventLogger(Class<?> clazz) {
         logger = LoggerFactory.getLogger(clazz);
     }
 
-    public EventLogger(Logger logger) {
+    private EventLogger(Logger logger) {
         this.logger = logger;
     }
 
@@ -27,19 +27,10 @@ public class EventLogger {
 
     public <E extends AbstractEvent> ObservableTransformer<E, E> logEvents() {
 
-        return results -> results.observeOn(Schedulers.io())
-                .map(result -> {
-                    logger.debug("Event type: {}", result.getType());
-                    return result;
-                });
-    }
-
-    public <E extends AbstractEvent> ObservableTransformer<E, E> logActions() {
-
-        return results -> results.observeOn(Schedulers.io())
-                .map(result -> {
-                    logger.debug("Action type: {}", result.getType());
-                    return result;
+        return events -> events.observeOn(Schedulers.io())
+                .map(event -> {
+                    logger.debug("{}", displayTypeName(event));
+                    return event;
                 });
     }
 
@@ -48,11 +39,17 @@ public class EventLogger {
         return results -> results.observeOn(Schedulers.io())
                 .map(result -> {
                     if (result.getError() != null) {
-                        logger.debug("Result type: {}, Error: {}", result.getType(), result.getError().getMessage());
+                        logger.debug("{}, Error: {}", displayTypeName(result), result.getError().getMessage());
                     } else {
-                        logger.debug("Result type: {}", result.getType());
+                        logger.debug("{}", displayTypeName(result));
                     }
                     return result;
                 });
+    }
+
+    private String displayTypeName(AbstractEvent event) {
+        String[] name = event.getType().getClass().getCanonicalName().split("\\.");
+        int len = name.length;
+        return String.format("%s.%s.%s", name[len - 2], name[len - 1], event.getType());
     }
 }

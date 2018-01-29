@@ -1,6 +1,7 @@
-package com.bytabit.mobile.wallet;
+package com.bytabit.mobile.wallet.ui;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.bytabit.mobile.wallet.model.TransactionWithAmtBuilder;
 import com.gluonhq.charm.glisten.application.MobileApplication;

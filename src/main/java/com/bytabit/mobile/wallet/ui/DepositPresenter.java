@@ -1,5 +1,6 @@
-package com.bytabit.mobile.wallet;
+package com.bytabit.mobile.wallet.ui;
 
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.ShareService;

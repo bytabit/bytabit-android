@@ -9,7 +9,15 @@ public class ProfileAction extends AbstractEvent<ProfileAction.Type, Profile> {
         LOAD, UPDATE
     }
 
-    public ProfileAction(Type type, Profile profile) {
+    public static ProfileAction load() {
+        return new ProfileAction(Type.LOAD, null);
+    }
+
+    public static ProfileAction update(Profile profile) {
+        return new ProfileAction(Type.UPDATE, profile);
+    }
+
+    private ProfileAction(Type type, Profile profile) {
         super(type, profile);
     }
 }

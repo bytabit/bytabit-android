@@ -1,6 +1,7 @@
 package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.ProfileAction;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.manager.ProfileResult;
@@ -16,17 +17,10 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
-import static com.bytabit.mobile.profile.manager.ProfileAction.Type.LOAD;
-import static com.bytabit.mobile.profile.manager.ProfileAction.Type.UPDATE;
-
 public class ProfilePresenter {
-
-    private static Logger LOG = LoggerFactory.getLogger(ProfilePresenter.class);
 
     @Inject
     private ProfileManager profileManager;
@@ -46,11 +40,9 @@ public class ProfilePresenter {
     @FXML
     private TextField phoneNumTextField;
 
-//    private final EventLogger eventLogger = EventLogger.of(LOG);
+    private final EventLogger eventLogger = EventLogger.of(ProfilePresenter.class);
 
     public void initialize() {
-
-        LOG.debug("initialize profile presenter");
 
         Observable<ProfileEvent> viewShowingEvents =
                 JavaFxObservable.changesOf(profileView.showingProperty())
@@ -61,14 +53,15 @@ public class ProfilePresenter {
                                 return ProfileEvent.viewNotShowing(createProfileFromUI());
                         });
 
-        Observable<ProfileEvent> myProfileEvents = viewShowingEvents.publish().refCount();
+        Observable<ProfileEvent> myProfileEvents = viewShowingEvents
+                .compose(eventLogger.logEvents()).publish().refCount();
 
         Observable<ProfileAction> myProfileActions = myProfileEvents.map(event -> {
             switch (event.getType()) {
                 case VIEW_SHOWING:
-                    return new ProfileAction(LOAD, null);
+                    return ProfileAction.load();
                 case VIEW_NOT_SHOWING:
-                    return new ProfileAction(UPDATE, event.getData());
+                    return ProfileAction.update(event.getData());
                 default:
                     throw new RuntimeException(String.format("Unexpected ProfileEvent.Type: %s", event.getType()));
             }
@@ -106,7 +99,6 @@ public class ProfilePresenter {
                             setProfile(result.getData());
                             break;
                         case ERROR:
-                            LOG.error(result.getError().getMessage());
                             break;
                     }
                 });

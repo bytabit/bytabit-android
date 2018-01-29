@@ -14,39 +14,39 @@ public class PaymentDetailsEvent extends AbstractEvent<PaymentDetailsEvent.Type,
         DETAILS_ADD_BUTTON_PRESSED, DETAILS_BACK_BUTTON_PRESSED, DETAILS_CURRENCY_SELECTED
     }
 
-    public static PaymentDetailsEvent listViewShowing() {
+    static PaymentDetailsEvent listViewShowing() {
         return new PaymentDetailsEvent(LIST_VIEW_SHOWING, null);
     }
 
-    public static PaymentDetailsEvent listViewNotShowing() {
+    static PaymentDetailsEvent listViewNotShowing() {
         return new PaymentDetailsEvent(LIST_VIEW_NOT_SHOWING, null);
     }
 
-    public static PaymentDetailsEvent listItemChanged(PaymentDetails paymentDetails) {
+    static PaymentDetailsEvent listItemChanged(PaymentDetails paymentDetails) {
         return new PaymentDetailsEvent(LIST_ITEM_CHANGED, paymentDetails);
     }
 
-    public static PaymentDetailsEvent listAddButtonPressed() {
+    static PaymentDetailsEvent listAddButtonPressed() {
         return new PaymentDetailsEvent(LIST_ADD_BUTTON_PRESSED, null);
     }
 
-    public static PaymentDetailsEvent detailsViewShowing() {
+    static PaymentDetailsEvent detailsViewShowing() {
         return new PaymentDetailsEvent(DETAILS_VIEW_SHOWING, null);
     }
 
-    public static PaymentDetailsEvent detailsViewNotShowing() {
+    static PaymentDetailsEvent detailsViewNotShowing() {
         return new PaymentDetailsEvent(DETAILS_VIEW_NOT_SHOWING, null);
     }
 
-    public static PaymentDetailsEvent detailsAddButtonPressed(PaymentDetails paymentDetails) {
+    static PaymentDetailsEvent detailsAddButtonPressed(PaymentDetails paymentDetails) {
         return new PaymentDetailsEvent(DETAILS_ADD_BUTTON_PRESSED, paymentDetails);
     }
 
-    public static PaymentDetailsEvent detailsBackButtonPressed() {
+    static PaymentDetailsEvent detailsBackButtonPressed() {
         return new PaymentDetailsEvent(DETAILS_BACK_BUTTON_PRESSED, null);
     }
 
-    public static PaymentDetailsEvent detailsCurrencySelected(CurrencyCode currencyCode) {
+    static PaymentDetailsEvent detailsCurrencySelected(CurrencyCode currencyCode) {
         return new PaymentDetailsEvent(DETAILS_CURRENCY_SELECTED,
                 PaymentDetails.builder().currencyCode(currencyCode).build());
     }

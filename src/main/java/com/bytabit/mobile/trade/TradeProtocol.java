@@ -6,7 +6,7 @@ import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.WalletManager;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;

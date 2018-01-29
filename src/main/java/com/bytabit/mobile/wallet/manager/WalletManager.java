@@ -1,4 +1,4 @@
-package com.bytabit.mobile.wallet;
+package com.bytabit.mobile.wallet.manager;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;

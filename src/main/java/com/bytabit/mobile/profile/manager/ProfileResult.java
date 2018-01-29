@@ -11,23 +11,23 @@ public class ProfileResult extends AbstractResult<ProfileResult.Type, Profile> {
         PENDING, CREATED, LOADED, UPDATED, ERROR
     }
 
-    public static ProfileResult pending() {
+    static ProfileResult pending() {
         return new ProfileResult(PENDING, null, null);
     }
 
-    public static ProfileResult created(Profile profile) {
+    static ProfileResult created(Profile profile) {
         return new ProfileResult(CREATED, profile, null);
     }
 
-    public static ProfileResult loaded(Profile profile) {
+    static ProfileResult loaded(Profile profile) {
         return new ProfileResult(LOADED, profile, null);
     }
 
-    public static ProfileResult updated(Profile profile) {
+    static ProfileResult updated(Profile profile) {
         return new ProfileResult(UPDATED, profile, null);
     }
 
-    public static ProfileResult error(Throwable error) {
+    static ProfileResult error(Throwable error) {
         return new ProfileResult(ERROR, null, error);
     }
 

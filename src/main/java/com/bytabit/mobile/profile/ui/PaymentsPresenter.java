@@ -1,6 +1,7 @@
 package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.PaymentDetailsAction;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.PaymentDetails;
@@ -18,16 +19,12 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 import static com.bytabit.mobile.profile.ui.PaymentDetailsEvent.Type.LIST_VIEW_SHOWING;
 
 public class PaymentsPresenter {
-
-    private static Logger LOG = LoggerFactory.getLogger(PaymentsPresenter.class);
 
     @Inject
     private ProfileManager profileManager;
@@ -38,10 +35,11 @@ public class PaymentsPresenter {
     @FXML
     private CharmListView<PaymentDetails, String> paymentDetailsListView;
 
+    private final EventLogger eventLogger = EventLogger.of(PaymentsPresenter.class);
+
     private FloatingActionButton addPaymentDetailsButton = new FloatingActionButton();
 
     public void initialize() {
-        LOG.debug("initialize payment details list presenter");
 
         // setup view components
 
@@ -84,7 +82,8 @@ public class PaymentsPresenter {
                 .map(actionEvent -> PaymentDetailsEvent.listAddButtonPressed());
 
         Observable<PaymentDetailsEvent> paymentDetailsEvents = Observable.merge(viewShowingEvents,
-                listItemChangedEvents, addButtonEvents).publish().refCount();
+                listItemChangedEvents, addButtonEvents)
+                .compose(eventLogger.logEvents()).publish().refCount();
 
         // transform events to actions
 
@@ -95,34 +94,15 @@ public class PaymentsPresenter {
                             switch (event.getType()) {
                                 case LIST_VIEW_SHOWING:
                                     return PaymentDetailsAction.load();
-//                                case LIST_VIEW_NOT_SHOWING:
-//                                    break;
-//                                case LIST_ITEM_CHANGED:
-//                                    break;
-//                                case LIST_ADD_BUTTON_PRESSED:
-//                                    return PaymentDetailsAction.add();
-//                                break;
-//                                case DETAILS_VIEW_SHOWING:
-//                                    break;
-//                                case DETAILS_VIEW_NOT_SHOWING:
-//                                    break;
-//                                case DETAILS_ADD_BUTTON_PRESSED:
-//                                    break;
                                 default:
                                     throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
                             }
-                        })
-                        .startWith(PaymentDetailsAction.load());
+                        }).startWith(PaymentDetailsAction.load());
 
         paymentDetailsActions.subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
                 .subscribe(profileManager.getPaymentDetailsActions());
-
-
-        // transform actions to results
-
-//                Observable <PaymentDetailsResult> paymentDetailsResults = paymentDetailsActions
-//                .compose(profileManager.paymentDetailsActionTransformer());
 
         // handle events
 
@@ -156,9 +136,8 @@ public class PaymentsPresenter {
                 .subscribe(result -> {
                     switch (result.getType()) {
                         case PENDING:
-                            //paymentsView.setDisable(true);
+//                            paymentsView.setDisable(true);
                             break;
-                        case ADDED:
                         case LOADED:
                         case UPDATED:
                             paymentsView.setDisable(false);
@@ -176,11 +155,6 @@ public class PaymentsPresenter {
             MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER);
         }));
         appBar.setTitleText("Payment Details");
-    }
-
-    private void addPaymentDetailsList(PaymentDetails updated) {
-
-        paymentDetailsListView.itemsProperty().add(updated);
     }
 
     private void updatePaymentDetailsList(PaymentDetails updated) {

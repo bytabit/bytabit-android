@@ -4,7 +4,7 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.TradeManager;
-import com.bytabit.mobile.wallet.WalletManager;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
