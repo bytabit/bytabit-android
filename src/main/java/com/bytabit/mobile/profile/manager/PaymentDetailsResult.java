@@ -5,11 +5,13 @@ import com.bytabit.mobile.profile.model.PaymentDetails;
 
 import static com.bytabit.mobile.profile.manager.PaymentDetailsResult.Type.*;
 
-public class PaymentDetailsResult extends AbstractResult<PaymentDetailsResult.Type, PaymentDetails> {
+public class PaymentDetailsResult extends AbstractResult<PaymentDetailsResult.Type> {
 
     public enum Type {
         PENDING, LOADED, UPDATED, ERROR
     }
+
+    private PaymentDetails paymentDetails;
 
     static PaymentDetailsResult pending() {
         return new PaymentDetailsResult(PENDING, null, null);
@@ -27,7 +29,12 @@ public class PaymentDetailsResult extends AbstractResult<PaymentDetailsResult.Ty
         return new PaymentDetailsResult(ERROR, null, error);
     }
 
-    private PaymentDetailsResult(Type type, PaymentDetails data, Throwable error) {
-        super(type, data, error);
+    private PaymentDetailsResult(Type type, PaymentDetails paymentDetails, Throwable error) {
+        super(type, error);
+        this.paymentDetails = paymentDetails;
+    }
+
+    public PaymentDetails getPaymentDetails() {
+        return paymentDetails;
     }
 }

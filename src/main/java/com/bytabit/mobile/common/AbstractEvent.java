@@ -2,22 +2,16 @@ package com.bytabit.mobile.common;
 
 import com.google.common.collect.Sets;
 
-public abstract class AbstractEvent<T, D> {
+public abstract class AbstractEvent<T> {
 
     private T type;
-    private D data;
 
-    protected AbstractEvent(T type, D data) {
+    protected AbstractEvent(T type) {
         this.type = type;
-        this.data = data;
     }
 
     public T getType() {
         return type;
-    }
-
-    public D getData() {
-        return data;
     }
 
     public boolean matches(T... types) {

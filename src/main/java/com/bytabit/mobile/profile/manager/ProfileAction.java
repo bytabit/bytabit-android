@@ -3,11 +3,13 @@ package com.bytabit.mobile.profile.manager;
 import com.bytabit.mobile.common.AbstractEvent;
 import com.bytabit.mobile.profile.model.Profile;
 
-public class ProfileAction extends AbstractEvent<ProfileAction.Type, Profile> {
+public class ProfileAction extends AbstractEvent<ProfileAction.Type> {
 
     public enum Type {
         LOAD, UPDATE
     }
+
+    private Profile profile;
 
     public static ProfileAction load() {
         return new ProfileAction(Type.LOAD, null);
@@ -18,6 +20,11 @@ public class ProfileAction extends AbstractEvent<ProfileAction.Type, Profile> {
     }
 
     private ProfileAction(Type type, Profile profile) {
-        super(type, profile);
+        super(type);
+        this.profile = profile;
+    }
+
+    public Profile getProfile() {
+        return profile;
     }
 }

@@ -89,7 +89,7 @@ public abstract class TradeProtocol {
 
 //        TransactionWithAmt tx = walletManager.getTransactionWithAmt(completedTrade.getEscrowAddress(), txHash, toAddress);
 //        if (tx != null) {
-//            if (tx.getBtcAmt().compareTo(completedTrade.getBtcAmount()) == 0) {
+//            if (tx.getTransactionBigDecimalAmt().compareTo(completedTrade.getBtcAmount()) == 0) {
 //                if (zeroConfOK || tx.getDepth() > 0) {
 //
 //                    verifiedCompletedTrade = completedTrade;

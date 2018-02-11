@@ -62,7 +62,7 @@ public class BuyerProtocol extends TradeProtocol {
 //            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
 //
 //            if (tx != null) {
-//                if (fundedTrade.getBtcAmount().add(walletManager.defaultTxFee()).compareTo(tx.getBtcAmt()) == 0) {
+//                if (fundedTrade.getBtcAmount().add(walletManager.defaultTxFee()).compareTo(tx.getTransactionBigDecimalAmt()) == 0) {
 //                    verifiedFundedTrade = fundedTrade;
 //                } else {
 //                    log.error("Trade not found for payment request or funding tx btc amount doesn't match buy offer btc amount.");

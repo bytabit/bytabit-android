@@ -6,17 +6,18 @@ import org.bitcoinj.core.Transaction;
 public class TransactionWithAmtBuilder {
 
     private Transaction tx;
-    private Coin coinAmt;
+    private Coin transactionAmt;
     private String outputAddress;
     private String inputTxHash;
+    private Coin walletBalance;
 
     public TransactionWithAmtBuilder tx(Transaction tx) {
         this.tx = tx;
         return this;
     }
 
-    public TransactionWithAmtBuilder coinAmt(Coin coinAmt) {
-        this.coinAmt = coinAmt;
+    public TransactionWithAmtBuilder transactionAmt(Coin transactionAmt) {
+        this.transactionAmt = transactionAmt;
         return this;
     }
 
@@ -30,7 +31,12 @@ public class TransactionWithAmtBuilder {
         return this;
     }
 
+    public TransactionWithAmtBuilder walletBalance(Coin walletBalance) {
+        this.walletBalance = walletBalance;
+        return this;
+    }
+
     public TransactionWithAmt build() {
-        return new TransactionWithAmt(tx, coinAmt, outputAddress, inputTxHash);
+        return new TransactionWithAmt(tx, transactionAmt, outputAddress, inputTxHash, walletBalance);
     }
 }

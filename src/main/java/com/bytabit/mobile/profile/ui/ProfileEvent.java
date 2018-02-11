@@ -6,11 +6,13 @@ import com.bytabit.mobile.profile.model.Profile;
 import static com.bytabit.mobile.profile.ui.ProfileEvent.Type.VIEW_NOT_SHOWING;
 import static com.bytabit.mobile.profile.ui.ProfileEvent.Type.VIEW_SHOWING;
 
-public class ProfileEvent extends AbstractEvent<ProfileEvent.Type, Profile> {
+public class ProfileEvent extends AbstractEvent<ProfileEvent.Type> {
 
     public enum Type {
         VIEW_SHOWING, VIEW_NOT_SHOWING
     }
+
+    private Profile profile;
 
     static ProfileEvent viewShowing() {
         return new ProfileEvent(VIEW_SHOWING, null);
@@ -21,7 +23,12 @@ public class ProfileEvent extends AbstractEvent<ProfileEvent.Type, Profile> {
     }
 
     private ProfileEvent(Type type, Profile profile) {
-        super(type, profile);
+        super(type);
+        this.profile = profile;
+    }
+
+    public Profile getProfile() {
+        return profile;
     }
 }
 

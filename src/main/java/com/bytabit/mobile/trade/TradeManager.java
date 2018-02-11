@@ -49,6 +49,9 @@ public class TradeManager extends AbstractManager {
     @Inject
     private ProfileManager profileManager;
 
+    @Inject
+    private WalletManager walletManager;
+
     private final TradeService tradeService;
 
     private Observable<TradeEvent> tradeEvents;
@@ -290,7 +293,7 @@ public class TradeManager extends AbstractManager {
 
     public BuyerCreated buyerCreateTrade(SellOffer sellOffer, BuyRequest buyRequest) {
 
-        String escrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
+        String escrowAddress = walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
                 sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
         BuyerCreated created = new BuyerCreated(escrowAddress, BUYER, sellOffer, buyRequest);
         createdTradeEvents.onNext(created);

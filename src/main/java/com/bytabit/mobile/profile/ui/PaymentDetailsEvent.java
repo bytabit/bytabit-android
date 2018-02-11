@@ -6,13 +6,15 @@ import com.bytabit.mobile.profile.model.PaymentDetails;
 
 import static com.bytabit.mobile.profile.ui.PaymentDetailsEvent.Type.*;
 
-public class PaymentDetailsEvent extends AbstractEvent<PaymentDetailsEvent.Type, PaymentDetails> {
+public class PaymentDetailsEvent extends AbstractEvent<PaymentDetailsEvent.Type> {
 
     public enum Type {
         LIST_VIEW_SHOWING, LIST_VIEW_NOT_SHOWING, LIST_ITEM_CHANGED,
         LIST_ADD_BUTTON_PRESSED, DETAILS_VIEW_SHOWING, DETAILS_VIEW_NOT_SHOWING,
         DETAILS_ADD_BUTTON_PRESSED, DETAILS_BACK_BUTTON_PRESSED, DETAILS_CURRENCY_SELECTED
     }
+
+    private PaymentDetails paymentDetails;
 
     static PaymentDetailsEvent listViewShowing() {
         return new PaymentDetailsEvent(LIST_VIEW_SHOWING, null);
@@ -51,8 +53,13 @@ public class PaymentDetailsEvent extends AbstractEvent<PaymentDetailsEvent.Type,
                 PaymentDetails.builder().currencyCode(currencyCode).build());
     }
 
-    private PaymentDetailsEvent(Type type, PaymentDetails data) {
-        super(type, data);
+    private PaymentDetailsEvent(Type type, PaymentDetails paymentDetails) {
+        super(type);
+        this.paymentDetails = paymentDetails;
+    }
+
+    public PaymentDetails getPaymentDetails() {
+        return paymentDetails;
     }
 }
 

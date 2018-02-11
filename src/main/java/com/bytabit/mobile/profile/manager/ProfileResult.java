@@ -5,11 +5,13 @@ import com.bytabit.mobile.profile.model.Profile;
 
 import static com.bytabit.mobile.profile.manager.ProfileResult.Type.*;
 
-public class ProfileResult extends AbstractResult<ProfileResult.Type, Profile> {
+public class ProfileResult extends AbstractResult<ProfileResult.Type> {
 
     public enum Type {
         PENDING, CREATED, LOADED, UPDATED, ERROR
     }
+
+    private Profile profile;
 
     static ProfileResult pending() {
         return new ProfileResult(PENDING, null, null);
@@ -31,7 +33,12 @@ public class ProfileResult extends AbstractResult<ProfileResult.Type, Profile> {
         return new ProfileResult(ERROR, null, error);
     }
 
-    private ProfileResult(Type type, Profile data, Throwable error) {
-        super(type, data, error);
+    private ProfileResult(Type type, Profile profile, Throwable error) {
+        super(type, error);
+        this.profile = profile;
+    }
+
+    public Profile getProfile() {
+        return profile;
     }
 }

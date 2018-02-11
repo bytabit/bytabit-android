@@ -82,7 +82,7 @@ public class PaymentPresenter {
 
         Observable<PaymentDetailsEvent> paymentDetailsEvents = Observable.merge(viewShowingEvents,
                 currencySelectedEvents, addPaymentDetailButtonEvents)
-                .compose(eventLogger.logEvents()).publish().refCount();
+                .compose(eventLogger.logEvents()).share();
 
         // transform events to actions
 
@@ -92,7 +92,7 @@ public class PaymentPresenter {
                 .map(event -> {
                     switch (event.getType()) {
                         case DETAILS_ADD_BUTTON_PRESSED:
-                            return PaymentDetailsAction.update(event.getData());
+                            return PaymentDetailsAction.update(event.getPaymentDetails());
                         default:
                             throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
                     }
@@ -116,7 +116,7 @@ public class PaymentPresenter {
                             clearForm();
                             break;
                         case DETAILS_CURRENCY_SELECTED:
-                            updatePaymentMethods(event.getData().getCurrencyCode());
+                            updatePaymentMethods(event.getPaymentDetails().getCurrencyCode());
                             break;
                     }
 

@@ -3,7 +3,6 @@ package com.bytabit.mobile.wallet.ui;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import com.bytabit.mobile.wallet.model.TransactionWithAmtBuilder;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
@@ -45,11 +44,11 @@ public class WalletPresenter {
     public void initialize() {
         LOG.debug("initialize wallet presenter");
 
-        walletManager.getBlockDownloadProgress().observeOn(JavaFxScheduler.platform())
-                .subscribe(bdp -> downloadProgressBar.progressProperty().setValue(bdp));
+        walletManager.getBlockDownloadResults().observeOn(JavaFxScheduler.platform())
+                .subscribe(bdr -> downloadProgressBar.progressProperty().setValue(bdr.getPercent()));
 
-        walletManager.getTradeWalletBalance().observeOn(JavaFxScheduler.platform())
-                .subscribe(wb -> balanceAmountLabel.textProperty().setValue(wb));
+//        walletManager.getTradeWalletBalance().observeOn(JavaFxScheduler.platform())
+//                .subscribe(wb -> balanceAmountLabel.textProperty().setValue(wb));
 
         // setup transaction list view
         transactionListView.setCellFactory((view) -> new CharmListCell<TransactionWithAmt>() {
@@ -58,7 +57,7 @@ public class WalletPresenter {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC, %tc", tx.getCoinAmt().toPlainString(), tx.getDate().toDate());
+                    String amount = String.format("%s BTC, %tc", tx.getTransactionCoinAmt().toPlainString(), tx.getDate().toDate());
                     String details = String.format(Locale.US, "%s (%d), Hash: %s", tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());
                     setText(null);
@@ -71,20 +70,16 @@ public class WalletPresenter {
         });
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
 //        transactionListView.itemsProperty().bindContent(walletManager.getTradeWalletTransactions());
-        walletManager.getTradeTxUpdatedEvents().observeOn(JavaFxScheduler.platform())
-                .subscribe(txu -> {
-                    TransactionWithAmt transactionWithAmt = new TransactionWithAmtBuilder()
-                            .tx(txu.getTx())
-                            .coinAmt(txu.getAmt())
-                            //.outputAddress(getWatchedOutputAddress(txe.getTx()))
-                            .inputTxHash(txu.getTx().getInput(0).getOutpoint().getHash().toString())
-                            .build();
+        walletManager.getTradeWalletTransactionResults().observeOn(JavaFxScheduler.platform())
+                .subscribe(tr -> {
+                    TransactionWithAmt transactionWithAmt = tr.getTransactionWithAmt();
                     int index = transactionListView.itemsProperty().indexOf(transactionWithAmt);
                     if (index > -1) {
                         transactionListView.itemsProperty().remove(index);
                         //transactionListView.itemsProperty().set(index, transactionWithAmt);
                     } //else {
                     transactionListView.itemsProperty().add(transactionWithAmt);
+                    balanceAmountLabel.textProperty().setValue(tr.getTransactionWithAmt().getWalletCoinBalance().toFriendlyString());
                     //}
                 });
 

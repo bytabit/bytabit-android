@@ -14,9 +14,10 @@ public class TransactionWithAmt {
     private Integer depth;
     private LocalDateTime date;
     private String memo;
-    private Coin coinAmt;
+    private Coin transactionAmt;
     private String outputAddress;
     private String inputTxHash;
+    private Coin walletBalance;
 
     public TransactionWithAmt() {
     }
@@ -25,15 +26,16 @@ public class TransactionWithAmt {
         return new TransactionWithAmtBuilder();
     }
 
-    TransactionWithAmt(Transaction tx, Coin coinAmt, String outputAddress, String inputTxHash) {
+    TransactionWithAmt(Transaction tx, Coin transactionAmt, String outputAddress, String inputTxHash, Coin walletBalance) {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
         this.depth = tx.getConfidence().getDepthInBlocks();
         this.date = new LocalDateTime(tx.getUpdateTime());
         this.memo = tx.getMemo();
-        this.coinAmt = coinAmt;
+        this.transactionAmt = transactionAmt;
         this.outputAddress = outputAddress;
         this.inputTxHash = inputTxHash;
+        this.walletBalance = walletBalance;
     }
 
     public String getHash() {
@@ -56,8 +58,20 @@ public class TransactionWithAmt {
         return memo;
     }
 
-    public Coin getCoinAmt() {
-        return coinAmt;
+    public Coin getTransactionCoinAmt() {
+        return transactionAmt;
+    }
+
+    public BigDecimal getTransactionBigDecimalAmt() {
+        return new BigDecimal(transactionAmt.toPlainString()).setScale(8, MathContext.DECIMAL64.getRoundingMode());
+    }
+
+    public Coin getWalletCoinBalance() {
+        return walletBalance;
+    }
+
+    public BigDecimal getWalletBigDecimalBalance() {
+        return new BigDecimal(walletBalance.toPlainString()).setScale(8, MathContext.DECIMAL64.getRoundingMode());
     }
 
     public String getOutputAddress() {
@@ -66,10 +80,6 @@ public class TransactionWithAmt {
 
     public String getInputTxHash() {
         return inputTxHash;
-    }
-
-    public BigDecimal getBtcAmt() {
-        return new BigDecimal(coinAmt.toPlainString()).setScale(8, MathContext.DECIMAL64.getRoundingMode());
     }
 
     @Override

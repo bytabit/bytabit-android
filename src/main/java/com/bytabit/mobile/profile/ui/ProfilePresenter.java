@@ -54,14 +54,14 @@ public class ProfilePresenter {
                         });
 
         Observable<ProfileEvent> myProfileEvents = viewShowingEvents
-                .compose(eventLogger.logEvents()).publish().refCount();
+                .compose(eventLogger.logEvents()).share();
 
         Observable<ProfileAction> myProfileActions = myProfileEvents.map(event -> {
             switch (event.getType()) {
                 case VIEW_SHOWING:
                     return ProfileAction.load();
                 case VIEW_NOT_SHOWING:
-                    return ProfileAction.update(event.getData());
+                    return ProfileAction.update(event.getProfile());
                 default:
                     throw new RuntimeException(String.format("Unexpected ProfileEvent.Type: %s", event.getType()));
             }
@@ -96,7 +96,7 @@ public class ProfilePresenter {
                         case LOADED:
                         case UPDATED:
                             profileView.setDisable(false);
-                            setProfile(result.getData());
+                            setProfile(result.getProfile());
                             break;
                         case ERROR:
                             break;

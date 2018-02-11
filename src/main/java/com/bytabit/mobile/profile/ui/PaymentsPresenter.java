@@ -83,7 +83,7 @@ public class PaymentsPresenter {
 
         Observable<PaymentDetailsEvent> paymentDetailsEvents = Observable.merge(viewShowingEvents,
                 listItemChangedEvents, addButtonEvents)
-                .compose(eventLogger.logEvents()).publish().refCount();
+                .compose(eventLogger.logEvents()).share();
 
         // transform events to actions
 
@@ -141,7 +141,7 @@ public class PaymentsPresenter {
                         case LOADED:
                         case UPDATED:
                             paymentsView.setDisable(false);
-                            updatePaymentDetailsList(result.getData());
+                            updatePaymentDetailsList(result.getPaymentDetails());
                             break;
                         case ERROR:
                             break;

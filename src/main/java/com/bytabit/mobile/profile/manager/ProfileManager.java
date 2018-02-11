@@ -74,7 +74,7 @@ public class ProfileManager extends AbstractManager {
                             }
                         case UPDATE:
                             return loadMyProfile()
-                                    .map(oldProfile -> updateMyProfile(oldProfile, action.getData()))
+                                    .map(oldProfile -> updateMyProfile(oldProfile, action.getProfile()))
                                     .flatMap(this::storeMyProfile)
                                     .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
                                     .map(ProfileResult::updated);
@@ -98,7 +98,7 @@ public class ProfileManager extends AbstractManager {
                             return loadPaymentDetails()
                                     .map(PaymentDetailsResult::loaded);
                         case UPDATE:
-                            return storePaymentDetails(action.getData())
+                            return storePaymentDetails(action.getPaymentDetails())
                                     .map(PaymentDetailsResult::updated);
                         default:
                             throw new RuntimeException(String.format("Unexpected PaymentDetailsAction.Type: %s", action.getType()));
@@ -108,7 +108,7 @@ public class ProfileManager extends AbstractManager {
                         .startWith(PaymentDetailsResult.pending());
 
         paymentDetailsResults = paymentDetailsActions.compose(paymentDetailsActionTransformer)
-                .publish().refCount();
+                .share();
     }
 
     // my profile
