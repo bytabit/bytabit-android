@@ -17,7 +17,7 @@ public class TradeDevInfoPresenter {
     private static Logger LOG = LoggerFactory.getLogger(TradeDevInfoPresenter.class);
 
     @Inject
-    private TradeManager tradeManager;
+    TradeManager tradeManager;
 
     @FXML
     private View tradeDevInfoView;

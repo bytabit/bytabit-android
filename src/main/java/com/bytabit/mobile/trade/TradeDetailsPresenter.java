@@ -21,76 +21,76 @@ public class TradeDetailsPresenter {
     private static Logger LOG = LoggerFactory.getLogger(TradeDetailsPresenter.class);
 
     @Inject
-    private TradeManager tradeManager;
+    TradeManager tradeManager;
 
     @Inject
-    private ProfileManager profileManager;
+    ProfileManager profileManager;
 
     @FXML
-    private View tradeDetailsView;
+    View tradeDetailsView;
 
     @FXML
-    private Label tradeStatusLabel;
+    Label tradeStatusLabel;
 
     @FXML
-    private Label tradeRoleLabel;
+    Label tradeRoleLabel;
 
     @FXML
-    private Label paymentMethodLabel;
+    Label paymentMethodLabel;
 
     @FXML
-    private Label paymentDetailsLabel;
+    Label paymentDetailsLabel;
 
     @FXML
-    private Label arbitrateReasonLabel;
+    Label arbitrateReasonLabel;
 
     @FXML
-    private Label payoutReasonLabel;
+    Label payoutReasonLabel;
 
     @FXML
-    private Label paymentAmountLabel;
+    Label paymentAmountLabel;
 
     @FXML
-    private Label paymentAmountCurrencyLabel;
+    Label paymentAmountCurrencyLabel;
 
     @FXML
-    private Label purchasedAmountLabel;
+    Label purchasedAmountLabel;
 
     @FXML
-    private Label priceLabel;
+    Label priceLabel;
 
     @FXML
-    private Label priceCurrencyLabel;
+    Label priceCurrencyLabel;
 
     @FXML
-    private Button paymentSentButton;
+    Button paymentSentButton;
 
     @FXML
-    private Button paymentReceivedButton;
+    Button paymentReceivedButton;
 
     @FXML
-    private TextField paymentReferenceField;
+    TextField paymentReferenceField;
 
     @FXML
-    private Button arbitrateButton;
+    Button arbitrateButton;
 
     @FXML
-    private Button cancelButton;
+    Button cancelButton;
 
     @FXML
-    private Button refundSellerButton;
+    Button refundSellerButton;
 
     @FXML
-    private Button payoutBuyerButton;
+    Button payoutBuyerButton;
 
     @FXML
-    private VBox actionButtonsVBox;
+    VBox actionButtonsVBox;
 
     @FXML
-    private FlowPane tradeButtonsFlowPane;
+    FlowPane tradeButtonsFlowPane;
 
     @FXML
-    private FlowPane arbitrateButtonsFlowPane;
+    FlowPane arbitrateButtonsFlowPane;
 
     StringConverter<Trade.Status> statusStringConverter = new StringConverter<Trade.Status>() {
 

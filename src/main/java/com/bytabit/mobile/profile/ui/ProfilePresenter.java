@@ -1,11 +1,11 @@
 package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.profile.manager.ProfileAction;
 import com.bytabit.mobile.profile.manager.ProfileManager;
-import com.bytabit.mobile.profile.manager.ProfileResult;
 import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -17,13 +17,18 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.inject.Inject;
 
 public class ProfilePresenter {
 
     @Inject
-    private ProfileManager profileManager;
+    ProfileManager profileManager;
+
+    @Inject
+    WalletManager walletManager;
 
     @FXML
     private View profileView;
@@ -44,63 +49,86 @@ public class ProfilePresenter {
 
     public void initialize() {
 
-        Observable<ProfileEvent> viewShowingEvents =
+        Observable<PresenterEvent> viewShowingEvents =
                 JavaFxObservable.changesOf(profileView.showingProperty())
                         .map(showing -> {
                             if (showing.getNewVal()) {
-                                return ProfileEvent.viewShowing();
+                                return new ViewShowing();
                             } else
-                                return ProfileEvent.viewNotShowing(createProfileFromUI());
+                                return new ViewNotShowing(createProfileFromUI());
                         });
 
-        Observable<ProfileEvent> myProfileEvents = viewShowingEvents
+        Observable<PresenterEvent> profileEvents = viewShowingEvents
                 .compose(eventLogger.logEvents()).share();
 
-        Observable<ProfileAction> myProfileActions = myProfileEvents.map(event -> {
-            switch (event.getType()) {
-                case VIEW_SHOWING:
-                    return ProfileAction.load();
-                case VIEW_NOT_SHOWING:
-                    return ProfileAction.update(event.getProfile());
-                default:
-                    throw new RuntimeException(String.format("Unexpected ProfileEvent.Type: %s", event.getType()));
-            }
-        });
+        Observable<ProfileManager.ProfileAction> loadProfileActions = profileEvents
+                .ofType(ViewShowing.class)
+                .map(e -> profileManager.new LoadProfile());
 
-        myProfileActions.subscribeOn(Schedulers.io())
+        Observable<ProfileManager.ProfileAction> updateProfileActions = profileEvents
+                .ofType(ViewNotShowing.class)
+                .map(e -> profileManager.new UpdateProfile(e.getProfile()));
+
+        Observable<WalletManager.WalletResult> walletResults =
+                walletManager.getWalletResults();
+
+        Observable<ProfileManager.ProfileAction> createProfileAction = walletResults
+                .ofType(WalletManager.ProfilePubKey.class)
+                .map(r -> profileManager.new CreateProfile(r.getPubKey()));
+
+        Observable<ProfileManager.ProfileAction> profileActions = loadProfileActions
+                .mergeWith(createProfileAction)
+                .mergeWith(updateProfileActions);
+
+        profileActions.subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .subscribe(profileManager.getMyProfileActions());
+                .compose(eventLogger.logEvents())
+                .subscribe(profileManager.getActions());
 
-        Observable<ProfileResult> myProfileResults = profileManager.getMyProfileResults();
-
-        myProfileEvents.subscribeOn(Schedulers.io())
+        profileEvents.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(event -> {
-                    switch (event.getType()) {
-                        case VIEW_SHOWING:
-                            setAppBar();
-                            break;
-                        case VIEW_NOT_SHOWING:
-                            break;
-                    }
+                .ofType(ViewShowing.class)
+                .subscribe(e -> setAppBar());
+
+        Observable<ProfileManager.ProfileResult> profileResults =
+                profileManager.getResults();
+
+        Observable<WalletManager.WalletAction> getProfilePubKeyAction = profileResults
+                .ofType(ProfileManager.ProfileNotCreated.class)
+                .map(r -> walletManager.new GetProfilePubKey());
+
+        getProfilePubKeyAction.subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
+                .subscribe(walletManager.getActions());
+
+        profileResults.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(ProfileManager.ProfilePending.class)
+                .subscribe(r -> profileView.setDisable(true));
+
+        profileResults.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(ProfileManager.ProfileCreated.class)
+                .subscribe(r -> {
+                    profileView.setDisable(false);
+                    setProfile(r.getProfile());
                 });
 
-        myProfileResults.subscribeOn(Schedulers.io())
+        profileResults.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(result -> {
-                    switch (result.getType()) {
-                        case PENDING:
-                            profileView.setDisable(true);
-                            break;
-                        case CREATED:
-                        case LOADED:
-                        case UPDATED:
-                            profileView.setDisable(false);
-                            setProfile(result.getProfile());
-                            break;
-                        case ERROR:
-                            break;
-                    }
+                .ofType(ProfileManager.ProfileLoaded.class)
+                .subscribe(r -> {
+                    profileView.setDisable(false);
+                    setProfile(r.getProfile());
+                });
+
+        profileResults.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(ProfileManager.ProfileUpdated.class)
+                .subscribe(r -> {
+                    profileView.setDisable(false);
+                    setProfile(r.getProfile());
                 });
     }
 
@@ -125,5 +153,19 @@ public class ProfilePresenter {
         }
         userNameTextField.setText(profile.getUserName());
         phoneNumTextField.setText(profile.getPhoneNum());
+    }
+
+    // Event classes
+
+    private interface PresenterEvent extends Event {
+    }
+
+    @NoArgsConstructor
+    private class ViewShowing implements PresenterEvent {
+    }
+
+    @Data
+    private class ViewNotShowing implements PresenterEvent {
+        private final Profile profile;
     }
 }

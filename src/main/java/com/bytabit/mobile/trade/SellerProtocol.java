@@ -13,9 +13,9 @@ import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
 public class SellerProtocol extends TradeProtocol {
 
     @Inject
-    private ProfileManager profileManager;
+    ProfileManager profileManager;
 
-    public SellerProtocol() {
+    SellerProtocol() {
         super(LoggerFactory.getLogger(SellerProtocol.class));
     }
 
@@ -35,12 +35,12 @@ public class SellerProtocol extends TradeProtocol {
 
             // 4. put payment request
 //            try {
-                fundedTrade = Trade.builder()
-                        .escrowAddress(createdTrade.getEscrowAddress())
-                        .sellOffer(createdTrade.sellOffer())
-                        .buyRequest(createdTrade.buyRequest())
-                        .paymentRequest(paymentRequest)
-                        .build();
+            fundedTrade = Trade.builder()
+                    .escrowAddress(createdTrade.getEscrowAddress())
+                    .sellOffer(createdTrade.sellOffer())
+                    .buyRequest(createdTrade.buyRequest())
+                    .paymentRequest(paymentRequest)
+                    .build();
 
             tradeService.put(fundedTrade.getEscrowAddress(), fundedTrade).subscribe();
 

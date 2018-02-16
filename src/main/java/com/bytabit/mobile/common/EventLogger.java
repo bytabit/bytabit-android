@@ -25,31 +25,26 @@ public class EventLogger {
         return new EventLogger(logger);
     }
 
-    public <E extends AbstractEvent> ObservableTransformer<E, E> logEvents() {
+    public <E extends Event> ObservableTransformer<E, E> logEvents() {
 
         return events -> events.observeOn(Schedulers.io())
                 .map(event -> {
-                    logger.debug("{}", displayTypeName(event));
+                    logger.debug("{}", event.getClass().getSimpleName());
                     return event;
                 });
     }
 
-    public <R extends AbstractResult> ObservableTransformer<R, R> logResults() {
+    public <R extends Result> ObservableTransformer<R, R> logResults() {
 
         return results -> results.observeOn(Schedulers.io())
                 .map(result -> {
-                    if (result.getError() != null) {
-                        logger.debug("{}, Error: {}", displayTypeName(result), result.getError().getMessage());
+                    String className = result.getClass().getSimpleName();
+                    if (result instanceof ErrorResult) {
+                        logger.error("{}, Error: {}", className, ((ErrorResult) result).getError().getMessage());
                     } else {
-                        logger.debug("{}", displayTypeName(result));
+                        logger.debug("{}", className);
                     }
                     return result;
                 });
-    }
-
-    private String displayTypeName(AbstractEvent event) {
-        String[] name = event.getType().getClass().getCanonicalName().split("\\.");
-        int len = name.length;
-        return String.format("%s.%s.%s", name[len - 2], name[len - 1], event.getType());
     }
 }

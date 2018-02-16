@@ -1,7 +1,7 @@
 package com.bytabit.mobile.profile.ui;
 
+import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.profile.manager.PaymentDetailsAction;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
@@ -19,15 +19,15 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.TextField;
 import javafx.util.StringConverter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.inject.Inject;
-
-import static com.bytabit.mobile.profile.ui.PaymentDetailsEvent.Type.DETAILS_ADD_BUTTON_PRESSED;
 
 public class PaymentPresenter {
 
     @Inject
-    private ProfileManager profileManager;
+    ProfileManager profileManager;
 
     @FXML
     private View paymentView;
@@ -71,74 +71,66 @@ public class PaymentPresenter {
 
         // setup event observables
 
-        Observable<PaymentDetailsEvent> viewShowingEvents = JavaFxObservable.changesOf(paymentView.showingProperty())
-                .map(showing -> showing.getNewVal() ? PaymentDetailsEvent.detailsViewShowing() : PaymentDetailsEvent.detailsViewNotShowing());
+        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(paymentView.showingProperty())
+                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
 
-        Observable<PaymentDetailsEvent> currencySelectedEvents = JavaFxObservable.changesOf(currencyChoiceBox.valueProperty())
-                .map(change -> PaymentDetailsEvent.detailsCurrencySelected(change.getNewVal()));
+        Observable<PresenterEvent> currencySelectedEvents = JavaFxObservable.changesOf(currencyChoiceBox.valueProperty())
+                .map(change -> new CurrencySelected(change.getNewVal()));
 
-        Observable<PaymentDetailsEvent> addPaymentDetailButtonEvents = JavaFxObservable.actionEventsOf(addPaymentDetailButton)
-                .map(actionEvent -> PaymentDetailsEvent.detailsAddButtonPressed(createPaymentDetailsFromUI()));
+        Observable<PresenterEvent> addPaymentDetailButtonEvents = JavaFxObservable.actionEventsOf(addPaymentDetailButton)
+                .map(actionEvent -> new AddButtonPressed(createPaymentDetailsFromUI()));
 
-        Observable<PaymentDetailsEvent> paymentDetailsEvents = Observable.merge(viewShowingEvents,
+        Observable<PresenterEvent> paymentEvents = Observable.merge(viewShowingEvents,
                 currencySelectedEvents, addPaymentDetailButtonEvents)
                 .compose(eventLogger.logEvents()).share();
 
         // transform events to actions
 
-        Observable<PaymentDetailsAction> paymentDetailsActions = paymentDetailsEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .filter(e -> e.matches(DETAILS_ADD_BUTTON_PRESSED))
-                .map(event -> {
-                    switch (event.getType()) {
-                        case DETAILS_ADD_BUTTON_PRESSED:
-                            return PaymentDetailsAction.update(event.getPaymentDetails());
-                        default:
-                            throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
-                    }
-                });
+        Observable<ProfileManager.ProfileAction> updatePaymentDetailsActions = paymentEvents
+                .subscribeOn(Schedulers.io())
+                .ofType(AddButtonPressed.class)
+                .map(event -> profileManager.new UpdatePaymentDetails(event.paymentDetails));
+
+//                .observeOn(JavaFxScheduler.platform())
+//                .filter(e -> e.matches(DETAILS_ADD_BUTTON_PRESSED))
+//                .map(event -> {
+//                    switch (event.getType()) {
+//                        case DETAILS_ADD_BUTTON_PRESSED:
+//                            return PaymentDetailsAction.update(event.getPaymentDetails());
+//                        default:
+//                            throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
+//                    }
+//                });
 
         // transform actions to results
 
-        paymentDetailsActions.subscribeOn(Schedulers.io())
+        updatePaymentDetailsActions.subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .compose(eventLogger.logEvents())
-                .subscribe(profileManager.getPaymentDetailsActions());
+                .subscribe(profileManager.getActions());
 
         // handle events
 
-        paymentDetailsEvents.subscribeOn(Schedulers.io())
+        paymentEvents.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .ofType(ViewShowing.class)
                 .subscribe(event -> {
-                    switch (event.getType()) {
-                        case DETAILS_VIEW_SHOWING:
-                            setAppBar();
-                            clearForm();
-                            break;
-                        case DETAILS_CURRENCY_SELECTED:
-                            updatePaymentMethods(event.getPaymentDetails().getCurrencyCode());
-                            break;
-                    }
-
+                    setAppBar();
+                    clearForm();
                 });
+
+        paymentEvents.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(CurrencySelected.class)
+                .subscribe(event -> updatePaymentMethods(event.getCurrencyCode()));
 
         // handle results
 
-        profileManager.getPaymentDetailsResults().subscribeOn(Schedulers.io())
+        profileManager.getResults().subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(result -> {
-                    switch (result.getType()) {
-                        case PENDING:
-                            break;
-                        case LOADED:
-                            break;
-                        case UPDATED:
-                            MobileApplication.getInstance().switchToPreviousView();
-                            break;
-                        case ERROR:
-                            break;
-                    }
-                });
+                .ofType(ProfileManager.PaymentDetailsUpdated.class)
+                .subscribe(result ->
+                        MobileApplication.getInstance().switchToPreviousView());
     }
 
     private void setAppBar() {
@@ -166,5 +158,28 @@ public class PaymentPresenter {
                 .paymentMethod(paymentMethodChoiceBox.getValue())
                 .paymentDetails(paymentDetailsTextField.textProperty().getValue())
                 .build();
+    }
+
+    // Event classes
+
+    interface PresenterEvent extends Event {
+    }
+
+    @NoArgsConstructor
+    private class ViewShowing implements PresenterEvent {
+    }
+
+    @NoArgsConstructor
+    private class ViewNotShowing implements PresenterEvent {
+    }
+
+    @Data
+    private class CurrencySelected implements PresenterEvent {
+        private final CurrencyCode currencyCode;
+    }
+
+    @Data
+    private class AddButtonPressed implements PresenterEvent {
+        private final PaymentDetails paymentDetails;
     }
 }

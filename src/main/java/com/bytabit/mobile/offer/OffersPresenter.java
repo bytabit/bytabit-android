@@ -31,15 +31,15 @@ public class OffersPresenter {
     TradeManager tradeManager;
 
     @Inject
-    private WalletManager walletManager;
+    WalletManager walletManager;
 
     @FXML
-    private View offersView;
+    View offersView;
 
     @FXML
-    private CharmListView<SellOffer, String> offersListView;
+    CharmListView<SellOffer, String> offersListView;
 
-    private FloatingActionButton addOfferButton = new FloatingActionButton();
+    FloatingActionButton addOfferButton = new FloatingActionButton();
 
     public void initialize() {
 

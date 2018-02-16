@@ -1,6 +1,7 @@
 package com.bytabit.mobile.wallet.ui;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -8,10 +9,13 @@ import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.Observable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
+import lombok.NoArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +27,7 @@ public class WalletPresenter {
     private static Logger LOG = LoggerFactory.getLogger(WalletPresenter.class);
 
     @Inject
-    private WalletManager walletManager;
+    WalletManager walletManager;
 
     @FXML
     private View walletView;
@@ -44,8 +48,19 @@ public class WalletPresenter {
     public void initialize() {
         LOG.debug("initialize wallet presenter");
 
-        walletManager.getBlockDownloadResults().observeOn(JavaFxScheduler.platform())
-                .subscribe(bdr -> downloadProgressBar.progressProperty().setValue(bdr.getPercent()));
+        Observable<WalletManager.BlockDownloadResult> blockDownloadResults =
+                walletManager.getBlockDownloadResults().autoConnect().share();
+
+        blockDownloadResults.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(WalletManager.BlockDownloadUpdate.class)
+                .subscribe(result ->
+                        downloadProgressBar.progressProperty().setValue(result.getPercent()));
+
+        blockDownloadResults.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(WalletManager.BlockDownloadDone.class)
+                .subscribe(result -> downloadProgressBar.progressProperty().setValue(1.0));
 
 //        walletManager.getTradeWalletBalance().observeOn(JavaFxScheduler.platform())
 //                .subscribe(wb -> balanceAmountLabel.textProperty().setValue(wb));
@@ -70,7 +85,11 @@ public class WalletPresenter {
         });
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
 //        transactionListView.itemsProperty().bindContent(walletManager.getTradeWalletTransactions());
-        walletManager.getTradeWalletTransactionResults().observeOn(JavaFxScheduler.platform())
+
+        walletManager.getTradeWalletTransactionResults().autoConnect()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(WalletManager.TradeWalletUpdate.class)
                 .subscribe(tr -> {
                     TransactionWithAmt transactionWithAmt = tr.getTransactionWithAmt();
                     int index = transactionListView.itemsProperty().indexOf(transactionWithAmt);
@@ -116,5 +135,18 @@ public class WalletPresenter {
 //
 //        balanceAmountLabel.textProperty().bind(walletManager.getTradeWalletBalance());
 //        downloadProgressBar.progressProperty().bind(walletManager.downloadProgressProperty());
+    }
+
+    // Event classes
+
+    private interface PresenterEvent extends Event {
+    }
+
+    @NoArgsConstructor
+    private class ViewShowing implements PresenterEvent {
+    }
+
+    @NoArgsConstructor
+    private class ViewNotShowing implements PresenterEvent {
     }
 }

@@ -2,11 +2,9 @@ package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.common.AbstractManager;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.evt.*;
-import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
@@ -38,19 +36,19 @@ public class TradeManager extends AbstractManager {
     private static Logger LOG = LoggerFactory.getLogger(TradeManager.class);
 
     @Inject
-    private BuyerProtocol buyerProtocol;
+    BuyerProtocol buyerProtocol;
 
     @Inject
-    private SellerProtocol sellerProtocol;
+    SellerProtocol sellerProtocol;
 
     @Inject
-    private ArbitratorProtocol arbitratorProtocol;
+    ArbitratorProtocol arbitratorProtocol;
 
     @Inject
-    private ProfileManager profileManager;
+    ProfileManager profileManager;
 
     @Inject
-    private WalletManager walletManager;
+    WalletManager walletManager;
 
     private final TradeService tradeService;
 
@@ -65,6 +63,7 @@ public class TradeManager extends AbstractManager {
     public final static String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
+    @Inject
     public TradeManager() {
 
         Retrofit tradeRetrofit = new Retrofit.Builder()
@@ -291,14 +290,14 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-    public BuyerCreated buyerCreateTrade(SellOffer sellOffer, BuyRequest buyRequest) {
-
-        String escrowAddress = walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
-                sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
-        BuyerCreated created = new BuyerCreated(escrowAddress, BUYER, sellOffer, buyRequest);
-        createdTradeEvents.onNext(created);
-        return created;
-    }
+//    public BuyerCreated buyerCreateTrade(SellOffer sellOffer, BuyRequest buyRequest) {
+//
+//        String escrowAddress = walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
+//                sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
+//        BuyerCreated created = new BuyerCreated(escrowAddress, BUYER, sellOffer, buyRequest);
+//        createdTradeEvents.onNext(created);
+//        return created;
+//    }
 
 //    public Single<Trade> buyerCreateTrade(SellOffer sellOffer, BigDecimal buyBtcAmount,
 //                                          String buyerEscrowPubKey, String buyerProfilePubKey,

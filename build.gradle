@@ -107,7 +107,6 @@ jfxmobile {
     android {
         manifest = 'src/android/AndroidManifest.xml'
         dexOptions {
-            incremental true
             javaMaxHeapSize "4g"
         }
         packagingOptions {

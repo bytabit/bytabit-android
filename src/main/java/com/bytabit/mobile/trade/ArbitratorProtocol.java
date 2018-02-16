@@ -101,14 +101,14 @@ public class ArbitratorProtocol extends TradeProtocol {
 
 //            try {
 
-                Trade completedTrade = Trade.builder()
-                        .escrowAddress(arbitratingTrade.getEscrowAddress())
-                        .sellOffer(arbitratingTrade.sellOffer())
-                        .buyRequest(arbitratingTrade.buyRequest())
-                        .paymentRequest(arbitratingTrade.paymentRequest())
-                        .payoutRequest(arbitratingTrade.payoutRequest())
-                        .payoutCompleted(payoutCompleted)
-                        .build();
+            Trade completedTrade = Trade.builder()
+                    .escrowAddress(arbitratingTrade.getEscrowAddress())
+                    .sellOffer(arbitratingTrade.sellOffer())
+                    .buyRequest(arbitratingTrade.buyRequest())
+                    .paymentRequest(arbitratingTrade.paymentRequest())
+                    .payoutRequest(arbitratingTrade.payoutRequest())
+                    .payoutCompleted(payoutCompleted)
+                    .build();
 
             tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
 
