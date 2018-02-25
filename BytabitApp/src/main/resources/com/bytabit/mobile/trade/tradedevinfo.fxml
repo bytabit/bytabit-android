@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.gluonhq.charm.glisten.mvc.View?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<View fx:id="tradeDevInfoView" maxHeight="-Infinity" maxWidth="-Infinity"
+      minHeight="-Infinity" minWidth="-Infinity"
+      prefHeight="600.0" prefWidth="350.0" xmlns="http://javafx.com/javafx/8.0.111"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.bytabit.mobile.trade.TradeDevInfoPresenter">
+    <center>
+        <VBox alignment="TOP_CENTER" BorderPane.alignment="CENTER">
+            <children>
+                <GridPane maxHeight="-Infinity" maxWidth="1.7976931348623157E308">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="159.0"
+                                           minWidth="103.0" percentWidth="45.0"
+                                           prefWidth="159.0"/>
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="227.0"
+                                           minWidth="171.0" prefWidth="171.0"/>
+                    </columnConstraints>
+                    <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
+                    </rowConstraints>
+                    <children>
+                        <Label text="Seller Escrow PubKey" GridPane.rowIndex="1"/>
+                        <Label text="Seller Profile PubKey" GridPane.rowIndex="2"/>
+                        <Label fx:id="sellerEscrowPubKeyLabel" text="TBD"
+                               GridPane.columnIndex="1"
+                               GridPane.rowIndex="1"/>
+                        <Label fx:id="sellerProfilePubKeyLabel" text="TBD"
+                               GridPane.columnIndex="1"
+                               GridPane.rowIndex="2"/>
+                        <Label text="Arbit. Profile PubKey" GridPane.rowIndex="3"/>
+                        <Label fx:id="arbitratorProfilePubKeyLabel" text="TBD"
+                               GridPane.columnIndex="1"
+                               GridPane.rowIndex="3"/>
+                        <Label text="Trade Escrow Address"/>
+                        <Label fx:id="tradeEscrowAddressLabel" text="TBD"
+                               GridPane.columnIndex="1"/>
+                    </children>
+                    <opaqueInsets>
+                        <Insets top="10.0"/>
+                    </opaqueInsets>
+                    <VBox.margin>
+                        <Insets left="10.0" right="10.0" top="10.0"/>
+                    </VBox.margin>
+                </GridPane>
+            </children>
+            <opaqueInsets>
+                <Insets/>
+            </opaqueInsets>
+        </VBox>
+    </center>
+</View>
