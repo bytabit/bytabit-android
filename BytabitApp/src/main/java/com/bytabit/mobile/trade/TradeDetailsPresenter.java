@@ -116,7 +116,7 @@ public class TradeDetailsPresenter {
             paymentReferenceField.setEditable(false);
 
 //            profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
-//                if (profile.getIsArbitrator()) {
+//                if (profile.isArbitrator()) {
 //                    actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
 //                    refundSellerButton.setDisable(true);
 //                    payoutBuyerButton.setDisable(true);
@@ -140,8 +140,8 @@ public class TradeDetailsPresenter {
 //                    BigDecimal amount = trade.getBtcAmount();
 //                    BigDecimal paymentAmount = price.multiply(amount);
 ////                String profilePubKey = profileManager.getPubKeyProperty().getValue();
-////                Boolean isArbitrator = profileManager.getIsArbitratorProperty().getValue();
-//                    Trade.Role tradeRole = trade.role(profile.getPubKey(), profile.getIsArbitrator());
+////                Boolean arbitrator = profileManager.getIsArbitratorProperty().getValue();
+//                    Trade.Role tradeRole = trade.role(profile.getPubKey(), profile.isArbitrator());
 //
 //                    //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
 //                    tradeStatusLabel.textProperty().setValue(trade.status().toString());

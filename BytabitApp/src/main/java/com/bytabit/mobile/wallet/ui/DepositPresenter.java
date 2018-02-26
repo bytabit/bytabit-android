@@ -17,19 +17,15 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
-import net.glxn.qrgen.javase.QRCode;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.uri.BitcoinURI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 
 public class DepositPresenter {
 
@@ -128,16 +124,16 @@ public class DepositPresenter {
 
         LOG.debug("Platform is: {}", Platform.getCurrent());
 
-        QRCode qrCode = QRCode.from(depositAddressUri(address));
+        //QRCode qrCode = QRCode.from(depositAddressUri(address));
 
         // TODO FT-150 Cross platform QR code generator for wallet deposits
-        if (Platform.isDesktop()) {
-            ByteArrayOutputStream outputStream = qrCode.stream();
-            Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
-            qrCodeImageView.setImage(img);
-        } else {
-            copyButton.setText("Share");
-        }
+//        if (Platform.isDesktop()) {
+//            ByteArrayOutputStream outputStream = qrCode.stream();
+//            Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
+//            qrCodeImageView.setImage(img);
+//        } else {
+        copyButton.setText("Share");
+//        }
         copyButton.visibleProperty().setValue(true);
         copyButton.setOnAction((event) -> copyAddress(address));
     }

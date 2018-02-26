@@ -2,7 +2,7 @@ package com.bytabit.mobile.profile.model;
 
 public class ProfileBuilder {
     private String pubKey;
-    private Boolean isArbitrator;
+    private Boolean arbitrator = false;
     private String userName = "";
     private String phoneNum = "";
 
@@ -11,8 +11,8 @@ public class ProfileBuilder {
         return this;
     }
 
-    public ProfileBuilder isArbitrator(Boolean isArbitrator) {
-        this.isArbitrator = isArbitrator;
+    public ProfileBuilder arbitrator(Boolean isArbitrator) {
+        this.arbitrator = isArbitrator;
         return this;
     }
 
@@ -27,6 +27,6 @@ public class ProfileBuilder {
     }
 
     public Profile build() {
-        return new Profile(pubKey, isArbitrator, userName, phoneNum);
+        return new Profile(pubKey, arbitrator, userName, phoneNum);
     }
 }

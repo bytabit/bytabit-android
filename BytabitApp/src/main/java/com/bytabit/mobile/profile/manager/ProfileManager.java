@@ -1,24 +1,20 @@
 package com.bytabit.mobile.profile.manager;
 
 import com.bytabit.mobile.common.*;
-import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
-import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.Observable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
-import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import java.util.Optional;
 
 public class ProfileManager extends AbstractManager {
 
     private String PROFILE_PUBKEY = "profile.pubkey";
-    private String PROFILE_ISARBITRATOR = "profile.isArbitrator";
+    private String PROFILE_ISARBITRATOR = "profile.arbitrator";
     private String PROFILE_USERNAME = "profile.name";
     private String PROFILE_PHONENUM = "profile.phoneNum";
 
@@ -34,13 +30,7 @@ public class ProfileManager extends AbstractManager {
 
     public ProfileManager() {
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(AppConfig.getBaseUrl())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .addConverterFactory(new JacksonJrConverter<>(Profile.class))
-                .build();
-
-        profilesService = retrofit.create(ProfileService.class);
+        profilesService = new ProfileService();
 
         actions = PublishSubject.create();
 
@@ -60,31 +50,12 @@ public class ProfileManager extends AbstractManager {
                 .filter(a -> !retrieve(PROFILE_PUBKEY).isPresent())
                 .map(a -> new ProfileNotCreated());
 
-        // wallet results to profile results
-//        Observable<ProfileCreated> profileCreatedResults = walletManager.getResults()
-//                .ofType(WalletManager.TradeWalletProfilePubKey.class)
-//                .map(r -> createMyProfile(r.getPubKey()))
-//                .flatMap(this::storeMyProfile)
-//                .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
-//                .map(ProfileCreated::new);
-
         Observable<ProfileResult> profileCreatedResults = actionObservable
                 .ofType(CreateProfile.class)
                 .map(a -> createMyProfile(a.getPubKey()))
                 .map(this::storeMyProfile)
                 .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
                 .map(ProfileCreated::new);
-
-        // profile actions to wallet actions
-//        Observable<WalletManager.GetTradeWalletProfilePubKey> getTradeWalletProfilePubKey =
-//                actionObservable.ofType(LoadProfile.class)
-//                        .filter(a -> !retrieve(PROFILE_PUBKEY).isPresent())
-//                        .map(a -> walletManager.new GetTradeWalletProfilePubKey());
-//
-//        getTradeWalletProfilePubKey.subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.io())
-//                .compose(eventLogger.logEvents())
-//                .subscribe(walletManager.getActions());
 
         Observable<ProfileResult> updateProfileResults = actionObservable
                 .ofType(UpdateProfile.class)
@@ -94,53 +65,6 @@ public class ProfileManager extends AbstractManager {
                         .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
                         .map(ProfileUpdated::new)
                 );
-
-//        ObservableTransformer<UpdateProfile, ProfileResult> myProfileActionTransformer = actions ->
-//                actions.compose(eventLogger.logEvents()).flatMap(action -> {
-//                    switch (action.getType()) {
-//                        case LOAD:
-//                            if (!retrieve(PROFILE_PUBKEY).isPresent()) {
-//                                return createMyProfile()
-//                                        .flatMap(this::storeMyProfile)
-//                                        .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
-//                                        .map(ProfileResult::created);
-//                            } else {
-//                                return loadMyProfile()
-//                                        .map(ProfileResult::loaded);
-//                            }
-//                        case UPDATE:
-//                            return loadMyProfile()
-//                                    .map(oldProfile -> updateMyProfile(oldProfile, action.getProfile()))
-//                                    .flatMap(this::storeMyProfile)
-//                                    .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
-//                                    .map(ProfileResult::updated);
-//                        default:
-//                            throw new RuntimeException(String.format("Unexpected ProfileAction.Type: %s", action.getType()));
-//                    }
-//                }).onErrorReturn(ProfileResult::error)
-//                        .compose(eventLogger.logResults())
-//                        .startWith(ProfileResult.pending());
-
-//        Observable<ProfileResult> loadedProfileResults = actions
-//                .filter(LoadProfile.class::isInstance)
-//                .map(LoadProfile.class::cast)
-//                .flatMap(a -> {
-//                    if (!retrieve(PROFILE_PUBKEY).isPresent()) {
-//                        return createMyProfile()
-//                                .flatMap(this::storeMyProfile)
-//                                .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
-//                                .map(ProfileResult::created);
-//                    } else {
-//                        return loadMyProfile()
-//                                .map(ProfileResult::loaded);
-//                    }
-//                });
-
-//        results = actions.compose(myProfileActionTransformer);
-
-        // payment details
-
-//        paymentDetailsActions = PublishSubject.create();
 
         // payment details actions to results
 
@@ -155,25 +79,6 @@ public class ProfileManager extends AbstractManager {
                 .map(a -> a.getPaymentDetails())
                 .flatMap(this::storePaymentDetails)
                 .map(PaymentDetailsUpdated::new);
-
-//        ObservableTransformer<PaymentDetailsAction, PaymentDetailsResult> paymentDetailsActionTransformer = actions ->
-//                actions.distinctUntilChanged().compose(eventLogger.logEvents()).flatMap(action -> {
-//                    switch (action.getType()) {
-//                        case LOAD:
-//                            return loadPaymentDetails()
-//                                    .map(PaymentDetailsResult::loaded);
-//                        case UPDATE:
-//                            return storePaymentDetails(action.getPaymentDetails())
-//                                    .map(PaymentDetailsResult::updated);
-//                        default:
-//                            throw new RuntimeException(String.format("Unexpected PaymentDetailsAction.Type: %s", action.getType()));
-//                    }
-//                }).onErrorReturn(PaymentDetailsResult::error)
-//                        .compose(eventLogger.logResults())
-//                        .startWith(PaymentDetailsResult.pending());
-//
-//        paymentDetailsResults = paymentDetailsActions.compose(paymentDetailsActionTransformer)
-//                .share();
 
         results = profileLoadedResults
                 .mergeWith(profileNotCreatedResults)
@@ -192,7 +97,7 @@ public class ProfileManager extends AbstractManager {
     private Profile updateMyProfile(Profile oldProfile, Profile newProfile) {
         return Profile.builder()
                 .pubKey(oldProfile.getPubKey())
-                .isArbitrator(newProfile.getIsArbitrator())
+                .arbitrator(newProfile.isArbitrator())
                 .userName(newProfile.getUserName())
                 .phoneNum(newProfile.getPhoneNum())
                 .build();
@@ -201,7 +106,7 @@ public class ProfileManager extends AbstractManager {
     private Profile storeMyProfile(Profile profile) {
 
         store(PROFILE_PUBKEY, profile.getPubKey());
-        store(PROFILE_ISARBITRATOR, profile.getIsArbitrator().toString());
+        store(PROFILE_ISARBITRATOR, Boolean.valueOf(profile.isArbitrator()).toString());
         store(PROFILE_USERNAME, profile.getUserName());
         store(PROFILE_PHONENUM, profile.getPhoneNum());
         return profile;
@@ -210,7 +115,7 @@ public class ProfileManager extends AbstractManager {
     private Profile createMyProfile(String authPubKey) {
         return Profile.builder()
                 .pubKey(authPubKey)
-                .isArbitrator(Boolean.FALSE)
+                .arbitrator(Boolean.FALSE)
                 .build();
     }
 
@@ -218,7 +123,7 @@ public class ProfileManager extends AbstractManager {
 
         return Observable.fromCallable(() -> Profile.builder()
                 .pubKey(retrieve(PROFILE_PUBKEY).get())
-                .isArbitrator(Boolean.valueOf(retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
+                .arbitrator(Boolean.valueOf(retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
                 .userName(retrieve(PROFILE_USERNAME).orElse(""))
                 .phoneNum(retrieve(PROFILE_PHONENUM).orElse(""))
                 .build()).subscribeOn(Schedulers.io());

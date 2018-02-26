@@ -18,7 +18,6 @@ import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
@@ -46,7 +45,7 @@ public class OfferManager extends AbstractManager {
     public OfferManager() {
         Retrofit sellOfferRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .addConverterFactory(new JacksonJrConverter<>(SellOffer.class))
                 .build();
 

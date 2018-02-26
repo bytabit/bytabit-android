@@ -61,9 +61,6 @@ public class WalletPresenter {
                 .ofType(WalletManager.BlockDownloadDone.class)
                 .subscribe(result -> downloadProgressBar.progressProperty().setValue(1.0));
 
-//        walletManager.getTradeWalletBalance().observeOn(JavaFxScheduler.platform())
-//                .subscribe(wb -> balanceAmountLabel.textProperty().setValue(wb));
-
         // setup transaction list view
         transactionListView.setCellFactory((view) -> new CharmListCell<TransactionWithAmt>() {
             @Override
@@ -82,8 +79,8 @@ public class WalletPresenter {
                 }
             }
         });
+
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
-//        transactionListView.itemsProperty().bindContent(walletManager.getTradeWalletTransactions());
 
         walletManager.getTradeWalletTransactionResults().autoConnect()
                 .subscribeOn(Schedulers.io())
@@ -124,16 +121,6 @@ public class WalletPresenter {
             }
 
         });
-
-//        walletView.setOnShown(e -> {
-//            if (e.getEventType().equals(LifecycleEvent.SHOWN)) {
-//                LOG.debug("Wallet view shown.");
-//                walletManager.start();
-//            }
-//        });
-//
-//        balanceAmountLabel.textProperty().bind(walletManager.getTradeWalletBalance());
-//        downloadProgressBar.progressProperty().bind(walletManager.downloadProgressProperty());
     }
 
     // Event classes

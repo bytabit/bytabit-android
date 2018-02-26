@@ -1,18 +1,32 @@
 package com.bytabit.mobile.profile.manager;
 
+import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.model.Profile;
+import com.gluonhq.connect.GluonObservableObject;
+import com.gluonhq.connect.provider.DataProvider;
+import com.gluonhq.connect.provider.ObjectDataWriter;
+import com.gluonhq.connect.provider.RestClient;
 import io.reactivex.Single;
-import retrofit2.http.*;
+import io.reactivex.SingleEmitter;
 
-import java.util.List;
+public class ProfileService {
 
-public interface ProfileService {
+    Single<Profile> putProfile(String pubkey, Profile profile) {
 
-    @Headers("Content-Type:application/json")
-    @PUT("/profiles/{pubKey}")
-    Single<Profile> putProfile(@Path("pubKey") String pubkey, @Body Profile profile);
+        return Single.create((SingleEmitter<Profile> source) -> {
 
-    @Headers("Content-Type:application/json")
-    @GET("/profiles")
-    Single<List<Profile>> getProfiles();
+            RestClient putRestClient = RestClient.create()
+                    .host(AppConfig.getBaseUrl())
+                    .path(String.format("/profiles/%s", pubkey))
+                    .method("PUT")
+                    .contentType("application/json");
+
+            ObjectDataWriter<Profile> dataWriter = putRestClient.createObjectDataWriter(Profile.class);
+            GluonObservableObject<Profile> putProfile = DataProvider.storeObject(profile, dataWriter);
+
+            putProfile.addListener((o, ov, nv) -> source.onSuccess(nv));
+
+            putProfile.exceptionProperty().addListener((o, ov, nv) -> source.onError(nv));
+        });
+    }
 }

@@ -10,7 +10,6 @@ import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import org.slf4j.Logger;
 import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
 
@@ -37,7 +36,7 @@ public abstract class TradeProtocol {
 
         Retrofit tradeRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .addConverterFactory(new JacksonJrConverter<>(Trade.class))
                 .build();
         tradeService = tradeRetrofit.create(TradeService.class);
@@ -79,7 +78,7 @@ public abstract class TradeProtocol {
 
         Boolean zeroConfOK = false;
         PayoutCompleted.Reason payoutReason = completedTrade.getPayoutReason();
-//        Trade.Role tradeRole = completedTrade.role(profile.getPubKey(), profile.getIsArbitrator());
+//        Trade.Role tradeRole = completedTrade.role(profile.getPubKey(), profile.isArbitrator());
 //        if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
 //                (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
 //                tradeRole.equals(Trade.Role.ARBITRATOR)) {

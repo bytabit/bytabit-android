@@ -20,7 +20,6 @@ import javafx.beans.property.SimpleObjectProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -68,7 +67,7 @@ public class TradeManager extends AbstractManager {
 
         Retrofit tradeRetrofit = new Retrofit.Builder()
                 .baseUrl(AppConfig.getBaseUrl())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .addConverterFactory(new JacksonJrConverter<>(Trade.class))
                 .build();
 
@@ -320,7 +319,7 @@ public class TradeManager extends AbstractManager {
 //            Trade trade = selectedTrade.getValue();
 //
 //            String profilePubKey = profile.getPubKey();
-//            Boolean profileIsArbitrator = profile.getIsArbitrator();
+//            Boolean profileIsArbitrator = profile.isArbitrator();
 //
 //            Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
 //            if (role.equals(SELLER)) {
@@ -364,7 +363,7 @@ public class TradeManager extends AbstractManager {
         if (currentTrade == null || !currentTrade.status().equals(foundTrade.status())) {
 
             String profilePubKey = profile.getPubKey();
-            Boolean profileIsArbitrator = profile.getIsArbitrator();
+            Boolean profileIsArbitrator = profile.isArbitrator();
 
             Trade.Role role = foundTrade.role(profilePubKey, profileIsArbitrator);
             TradeProtocol tradeProtocol;
@@ -454,7 +453,7 @@ public class TradeManager extends AbstractManager {
     private void emitTradeEvents(ObservableEmitter<TradeEvent> source, Profile profile, Trade trade) {
 
         String escrowAddress = trade.getEscrowAddress();
-        Trade.Role role = trade.role(profile.getPubKey(), profile.getIsArbitrator());
+        Trade.Role role = trade.role(profile.getPubKey(), profile.isArbitrator());
 
         source.onNext(new BuyerCreated(escrowAddress, role, trade.sellOffer(), trade.buyRequest()));
         if (trade.status().compareTo(Trade.Status.FUNDING) >= 0) {

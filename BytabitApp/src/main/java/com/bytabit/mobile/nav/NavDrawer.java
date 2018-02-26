@@ -30,7 +30,7 @@ public class NavDrawer {
                 new ImageView(new Image(NavDrawer.class.getResourceAsStream("/logo42.png"))));
         drawer.setHeader(header);
 
-        final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFER_VIEW);
+        final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFERS_VIEW);
         final Item tradesItem = new ViewItem("Trades", MaterialDesignIcon.SWAP_VERTICAL_CIRCLE.graphic(), TRADE_VIEW);
         final Item walletItem = new ViewItem("Wallet", MaterialDesignIcon.ACCOUNT_BALANCE_WALLET.graphic(), WALLET_VIEW);
         final Item paymentDetailsItem = new ViewItem("Payment Details", MaterialDesignIcon.ACCOUNT_BALANCE.graphic(), PAYMENT_VIEW);

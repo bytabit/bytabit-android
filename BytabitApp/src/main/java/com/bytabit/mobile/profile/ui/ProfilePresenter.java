@@ -139,16 +139,14 @@ public class ProfilePresenter {
     private Profile createProfileFromUI() {
         return Profile.builder()
                 .pubKey(pubKeyTextField.getText())
-                .isArbitrator(arbitratorCheckbox.isSelected())
+                .arbitrator(arbitratorCheckbox.isSelected())
                 .userName(userNameTextField.getText())
                 .phoneNum(phoneNumTextField.getText()).build();
     }
 
     private void setProfile(Profile profile) {
         pubKeyTextField.setText(profile.getPubKey());
-        if (profile.getIsArbitrator() != null) {
-            arbitratorCheckbox.setSelected(profile.getIsArbitrator());
-        }
+        arbitratorCheckbox.setSelected(profile.isArbitrator());
         userNameTextField.setText(profile.getUserName());
         phoneNumTextField.setText(profile.getPhoneNum());
     }

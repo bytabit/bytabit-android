@@ -118,29 +118,6 @@ public class PaymentsPresenter {
                 .subscribe(event ->
                         MobileApplication.getInstance().switchView(BytabitMobile.ADD_PAYMENT_VIEW));
 
-//        paymentDetailsEvents.subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .subscribe(event -> {
-//                    switch (event.getType()) {
-//                        case LIST_VIEW_SHOWING:
-//                            setAppBar();
-//                            break;
-//                        case LIST_VIEW_NOT_SHOWING:
-//                            break;
-//                        case LIST_ITEM_CHANGED:
-//                            break;
-//                        case LIST_ADD_BUTTON_PRESSED:
-//                            MobileApplication.getInstance().switchView(BytabitMobile.ADD_PAYMENT_VIEW);
-//                            break;
-//                        case DETAILS_VIEW_SHOWING:
-//                            break;
-//                        case DETAILS_VIEW_NOT_SHOWING:
-//                            break;
-//                        case DETAILS_ADD_BUTTON_PRESSED:
-//                            break;
-//                    }
-//                });
-
         // handle results
 
         profileManager.getResults().ofType(ProfileManager.PaymentDetailsPending.class)
@@ -164,22 +141,6 @@ public class PaymentsPresenter {
                     updatePaymentDetailsList(result.getPaymentDetails());
                 });
 
-//        profileManager.getPaymentDetailsResults().subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .subscribe(result -> {
-//                    switch (result.getType()) {
-//                        case PENDING:
-////                            paymentsView.setDisable(true);
-//                            break;
-//                        case LOADED:
-//                        case UPDATED:
-//                            paymentsView.setDisable(false);
-//                            updatePaymentDetailsList(result.getPaymentDetails());
-//                            break;
-//                        case ERROR:
-//                            break;
-//                    }
-//                });
     }
 
     private void setAppBar() {
