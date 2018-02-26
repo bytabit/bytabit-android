@@ -211,8 +211,6 @@ public class ProfileManager extends AbstractManager {
         return Profile.builder()
                 .pubKey(authPubKey)
                 .isArbitrator(Boolean.FALSE)
-                .userName(null)
-                .phoneNum(null)
                 .build();
     }
 

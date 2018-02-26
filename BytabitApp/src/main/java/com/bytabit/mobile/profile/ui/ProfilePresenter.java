@@ -84,8 +84,8 @@ public class ProfilePresenter {
                 .subscribe(profileManager.getActions());
 
         profileEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
                 .ofType(ViewShowing.class)
+                .observeOn(JavaFxScheduler.platform())
                 .subscribe(e -> setAppBar());
 
         Observable<ProfileManager.ProfileResult> profileResults =
@@ -101,29 +101,29 @@ public class ProfilePresenter {
                 .subscribe(walletManager.getActions());
 
         profileResults.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
                 .ofType(ProfileManager.ProfilePending.class)
+                .observeOn(JavaFxScheduler.platform())
                 .subscribe(r -> profileView.setDisable(true));
 
         profileResults.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
                 .ofType(ProfileManager.ProfileCreated.class)
+                .observeOn(JavaFxScheduler.platform())
                 .subscribe(r -> {
                     profileView.setDisable(false);
                     setProfile(r.getProfile());
                 });
 
         profileResults.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
                 .ofType(ProfileManager.ProfileLoaded.class)
+                .observeOn(JavaFxScheduler.platform())
                 .subscribe(r -> {
                     profileView.setDisable(false);
                     setProfile(r.getProfile());
                 });
 
         profileResults.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
                 .ofType(ProfileManager.ProfileUpdated.class)
+                .observeOn(JavaFxScheduler.platform())
                 .subscribe(r -> {
                     profileView.setDisable(false);
                     setProfile(r.getProfile());

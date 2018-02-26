@@ -3,8 +3,8 @@ package com.bytabit.mobile.profile.model;
 public class ProfileBuilder {
     private String pubKey;
     private Boolean isArbitrator;
-    private String userName;
-    private String phoneNum;
+    private String userName = "";
+    private String phoneNum = "";
 
     public ProfileBuilder pubKey(String pubKey) {
         this.pubKey = pubKey;

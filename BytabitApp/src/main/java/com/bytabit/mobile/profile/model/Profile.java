@@ -3,7 +3,7 @@ package com.bytabit.mobile.profile.model;
 public class Profile {
 
     private String pubKey;
-    private Boolean isArbitrator;
+    private Boolean isArbitrator = false;
     private String userName;
     private String phoneNum;
 
@@ -31,6 +31,22 @@ public class Profile {
 
     public String getPhoneNum() {
         return phoneNum;
+    }
+
+    public void setPubKey(String pubKey) {
+        this.pubKey = pubKey;
+    }
+
+    public void setArbitrator(Boolean arbitrator) {
+        isArbitrator = arbitrator;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public void setPhoneNum(String phoneNum) {
+        this.phoneNum = phoneNum;
     }
 
     public static ProfileBuilder builder() {
