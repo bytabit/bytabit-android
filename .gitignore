@@ -1,5 +1,5 @@
-
-/build/
-/.idea/
-/.gradle/
-/captures/
+build/
+.idea/
+.gradle/
+captures/
+gen/
