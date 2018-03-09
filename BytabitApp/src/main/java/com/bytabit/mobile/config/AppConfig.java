@@ -17,6 +17,7 @@ public class AppConfig {
     private static final Logger log = LoggerFactory.getLogger(AppConfig.class.getName());
 
     private final static String PROP_FILE_NAME = "config.properties";
+
     private static Properties props;
     private static File privateStorage;
 

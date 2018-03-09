@@ -1,0 +1,10 @@
+.app-bar > .title-box > .label,
+.dialog > .container > .dialog-title,
+.button, .check-box, .label, .text-field,
+.header, .footer, .list-cell, .text-area {
+    -fx-font-family: 'san-serif';
+}
+
+.icon-text {
+    -fx-font-family: 'Material Icons';
+}

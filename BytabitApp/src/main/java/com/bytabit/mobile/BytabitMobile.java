@@ -15,6 +15,9 @@ import com.bytabit.mobile.trade.TradesView;
 import com.bytabit.mobile.wallet.ui.DepositView;
 import com.bytabit.mobile.wallet.ui.WalletBackupView;
 import com.bytabit.mobile.wallet.ui.WalletView;
+import com.gluonhq.charm.down.Platform;
+import com.gluonhq.charm.down.Services;
+import com.gluonhq.charm.down.plugins.DisplayService;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.layout.layer.SidePopupView;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -27,6 +30,7 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -61,6 +65,7 @@ public class BytabitMobile extends MobileApplication {
     @Override
     public void init() throws Exception {
         super.init();
+
         addViewFactory(OFFERS_VIEW, () -> (View) new OffersView().getView());
         addViewFactory(ADD_OFFER_VIEW, () -> (View) new AddOfferView().getView());
         addViewFactory(OFFER_DETAILS_VIEW, () -> (View) new OfferDetailsView().getView());
@@ -89,7 +94,16 @@ public class BytabitMobile extends MobileApplication {
 
         Swatch.ORANGE.assignTo(scene);
 
-        scene.getStylesheets().add(BytabitMobile.class.getResource("style.css").toExternalForm());
+        String formFactorSuffix = Services.get(DisplayService.class)
+                .map(s -> s.isTablet() ? "_tablet" : "")
+                .orElse("");
+
+        String stylesheetName = String.format("bytabit_%s%s.css",
+                Platform.getCurrent().name().toLowerCase(Locale.ROOT),
+                formFactorSuffix);
+
+        scene.getStylesheets().add(BytabitMobile.class.getResource(stylesheetName).toExternalForm());
+
         ((Stage) scene.getWindow()).getIcons().add(new Image(BytabitMobile.class.getResourceAsStream("/logo.png")));
     }
 

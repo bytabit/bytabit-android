@@ -11,6 +11,8 @@ import com.gluonhq.charm.glisten.control.NavigationDrawer;
 import com.gluonhq.charm.glisten.control.NavigationDrawer.Item;
 import com.gluonhq.charm.glisten.control.NavigationDrawer.ViewItem;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -23,12 +25,10 @@ public class NavDrawer {
 
     public NavDrawer() {
 
-        this.drawer = new NavigationDrawer();
         String config = AppConfig.getConfigName().equals("default") ? "" : ", " + AppConfig.getConfigName();
         NavigationDrawer.Header header = new NavigationDrawer.Header("Bytabit Mobile",
                 String.format("%s (%s)", AppConfig.getVersion(), AppConfig.getBtcNetwork() + config),
                 new ImageView(new Image(NavDrawer.class.getResourceAsStream("/logo42.png"))));
-        drawer.setHeader(header);
 
         final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFERS_VIEW);
         final Item tradesItem = new ViewItem("Trades", MaterialDesignIcon.SWAP_VERTICAL_CIRCLE.graphic(), TRADE_VIEW);
@@ -38,7 +38,9 @@ public class NavDrawer {
         final Item aboutItem = new ViewItem("Help", MaterialDesignIcon.HELP.graphic(), HELP_VIEW);
         aboutItem.setDisable(true);
 
-        drawer.getItems().addAll(offersItem, tradesItem, walletItem, paymentDetailsItem, profileItem, aboutItem);
+        ObservableList<Node> items = FXCollections.observableArrayList();
+        items.addAll(offersItem, tradesItem, walletItem, paymentDetailsItem, profileItem, aboutItem);
+        this.drawer = new NavigationDrawer(header, items);
 
         if (Platform.isDesktop()) {
             final Item quitItem = new Item("Quit", MaterialDesignIcon.EXIT_TO_APP.graphic());
