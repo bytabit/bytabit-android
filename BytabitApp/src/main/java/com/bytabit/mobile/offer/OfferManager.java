@@ -1,28 +1,21 @@
 package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.common.AbstractManager;
-import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.manager.WalletManager;
-import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
-import io.reactivex.Completable;
-import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import retrofit2.Retrofit;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class OfferManager extends AbstractManager {
 
@@ -36,23 +29,36 @@ public class OfferManager extends AbstractManager {
     @Inject
     WalletManager walletManager;
 
-    private final Observable<List<SellOffer>> offers;
+    private final Observable<SellOffer> offers;
 
     private final PublishSubject<SellOffer> selectedOfferSubject;
 
     private final Observable<SellOffer> selectedOffer;
 
     public OfferManager() {
-        Retrofit sellOfferRetrofit = new Retrofit.Builder()
-                .baseUrl(AppConfig.getBaseUrl())
-                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .addConverterFactory(new JacksonJrConverter<>(SellOffer.class))
-                .build();
 
-        sellOfferService = sellOfferRetrofit.create(SellOfferService.class);
+        sellOfferService = new SellOfferService();
 
-        offers = Observable.concat(singleOffers().toObservable(), observableOffers())
-                .subscribeOn(Schedulers.io()).publish().autoConnect();
+//        offers = Observable.concat(singleOffers().toObservable(), observableOffers())
+//                .subscribeOn(Schedulers.io()).publish().autoConnect();
+
+        Single<SellOffer> putSellOffer = sellOfferService.putOffer(SellOffer.builder()
+                .sellerEscrowPubKey("TEST20180316-2")
+                .build());
+
+        Single<SellOffer> deleteSellOffer = sellOfferService.deleteOffer("TEST20180316-2");
+
+        SellOffer sellOfferPut = putSellOffer.blockingGet();
+
+        deleteSellOffer.subscribe(so -> LOG.info("Deleted Offer " + so.getSellerEscrowPubKey()));
+        offers = sellOfferService.getOffers().flattenAsObservable(o -> o);
+
+        offers.subscribeOn(Schedulers.io()).observeOn(Schedulers.io()).forEach(o ->
+                LOG.info(String.format("Found offer: %s", o.getSellerEscrowPubKey()))
+        );
+        offers.subscribeOn(Schedulers.io()).observeOn(Schedulers.io()).doOnError(o ->
+                LOG.error(o.toString())
+        );
 
         selectedOfferSubject = PublishSubject.create();
         selectedOffer = selectedOfferSubject.publish().autoConnect()
@@ -77,25 +83,25 @@ public class OfferManager extends AbstractManager {
         return null;
     }
 
-    private Single<List<SellOffer>> singleOffers() {
-        return sellOfferService.get()
-                .retryWhen(errors ->
-                        errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
-                )
-                .subscribeOn(Schedulers.io());
-    }
+//    private Single<List<SellOffer>> singleOffers() {
+//        return sellOfferService.getOffers()
+//                .retryWhen(errors ->
+//                        errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
+//                )
+//                .subscribeOn(Schedulers.io());
+//    }
 
-    private Observable<List<SellOffer>> observableOffers() {
-        return Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .flatMap(tick -> sellOfferService.get()
-                        .retryWhen(errors ->
-                                errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
-                        ).toObservable())
-                .subscribeOn(Schedulers.io());
-    }
+//    private Observable<List<SellOffer>> observableOffers() {
+//        return Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
+//                .flatMap(tick -> sellOfferService.getOffers()
+//                        .retryWhen(errors ->
+//                                errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
+//                        ).toObservable())
+//                .subscribeOn(Schedulers.io());
+//    }
 
-    public Completable deleteOffer(String sellerEscrowPubKey) {
-        return sellOfferService.delete(sellerEscrowPubKey).subscribeOn(Schedulers.io());
+    public Single<SellOffer> deleteOffer(String sellerEscrowPubKey) {
+        return sellOfferService.deleteOffer(sellerEscrowPubKey).subscribeOn(Schedulers.io());
     }
 
     public Observable<SellOffer> getSelectedOffer() {
@@ -106,7 +112,7 @@ public class OfferManager extends AbstractManager {
         this.selectedOfferSubject.onNext(selectedOffer);
     }
 
-    public Observable<List<SellOffer>> getOffers() {
-        return offers;
-    }
+//    public Observable<List<SellOffer>> getOffers() {
+//        return offers;
+//    }
 }

@@ -2,12 +2,12 @@ package com.bytabit.mobile.profile.manager;
 
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.model.Profile;
-import com.gluonhq.connect.GluonObservableObject;
-import com.gluonhq.connect.provider.DataProvider;
 import com.gluonhq.connect.provider.ObjectDataWriter;
 import com.gluonhq.connect.provider.RestClient;
 import io.reactivex.Single;
 import io.reactivex.SingleEmitter;
+
+import java.io.IOException;
 
 public class ProfileService {
 
@@ -22,11 +22,12 @@ public class ProfileService {
                     .contentType("application/json");
 
             ObjectDataWriter<Profile> dataWriter = putRestClient.createObjectDataWriter(Profile.class);
-            GluonObservableObject<Profile> putProfile = DataProvider.storeObject(profile, dataWriter);
 
-            putProfile.addListener((o, ov, nv) -> source.onSuccess(nv));
-
-            putProfile.exceptionProperty().addListener((o, ov, nv) -> source.onError(nv));
+            try {
+                dataWriter.writeObject(profile).ifPresent(source::onSuccess);
+            } catch (IOException ioe) {
+                source.onError(ioe);
+            }
         });
     }
 }

@@ -2,15 +2,11 @@ package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.profile.manager.ProfileManager;
-import com.bytabit.mobile.trade.TradeManager;
-import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import javafx.fxml.FXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,14 +20,14 @@ public class OffersPresenter {
     @Inject
     OfferManager offerManager;
 
-    @Inject
-    ProfileManager profileManager;
-
-    @Inject
-    TradeManager tradeManager;
-
-    @Inject
-    WalletManager walletManager;
+//    @Inject
+//    ProfileManager profileManager;
+//
+//    @Inject
+//    TradeManager tradeManager;
+//
+//    @Inject
+//    WalletManager walletManager;
 
     @FXML
     View offersView;
@@ -43,7 +39,7 @@ public class OffersPresenter {
 
     public void initialize() {
 
-        tradeManager.initialize();
+//        tradeManager.initialize();
 
         offersListView.setCellFactory((view) -> new CharmListCell<SellOffer>() {
             @Override
@@ -94,8 +90,8 @@ public class OffersPresenter {
             }
         });
 
-        offerManager.getOffers().observeOn(JavaFxScheduler.platform())
-                .subscribe(ol -> offersListView.itemsProperty().setAll(ol));
+//        offerManager.getOffers().observeOn(JavaFxScheduler.platform())
+//                .subscribe(ol -> offersListView.itemsProperty().setAll(ol));
 
 //        offerManager.observableOffers().observeOn(JavaFxScheduler.platform())
 //                .subscribe(ol -> offerManager.getOffers().setAll(ol));
