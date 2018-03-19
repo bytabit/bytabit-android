@@ -139,7 +139,7 @@ public class OfferDetailsPresenter {
         removeOfferButton.setOnAction(e -> {
             offerManager.deleteOffer(sellerEscrowPubKeyLabel.textProperty().get());
             //.doOnComplete(() -> offerManager.singleOffers().observeOn(JavaFxScheduler.platform())
-            //.subscribe(ol -> offerManager.getOffers().setAll(ol))).subscribe();
+            //.subscribe(ol -> offerManager.get().setAll(ol))).subscribe();
             MobileApplication.getInstance().switchToPreviousView();
         });
 

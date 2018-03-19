@@ -11,13 +11,13 @@ import java.io.IOException;
 
 public class ProfileService {
 
-    Single<Profile> putProfile(String pubkey, Profile profile) {
+    Single<Profile> put(Profile profile) {
 
         return Single.create((SingleEmitter<Profile> source) -> {
 
             RestClient putRestClient = RestClient.create()
                     .host(AppConfig.getBaseUrl())
-                    .path(String.format("/profiles/%s", pubkey))
+                    .path(String.format("/profiles/%s", profile.getPubKey()))
                     .method("PUT")
                     .contentType("application/json");
 

@@ -42,16 +42,16 @@ public class OfferManager extends AbstractManager {
 //        offers = Observable.concat(singleOffers().toObservable(), observableOffers())
 //                .subscribeOn(Schedulers.io()).publish().autoConnect();
 
-        Single<SellOffer> putSellOffer = sellOfferService.putOffer(SellOffer.builder()
+        Single<SellOffer> putSellOffer = sellOfferService.put(SellOffer.builder()
                 .sellerEscrowPubKey("TEST20180316-2")
                 .build());
 
-        Single<SellOffer> deleteSellOffer = sellOfferService.deleteOffer("TEST20180316-2");
+        Single<SellOffer> deleteSellOffer = sellOfferService.delete("TEST20180316-2");
 
         SellOffer sellOfferPut = putSellOffer.blockingGet();
 
         deleteSellOffer.subscribe(so -> LOG.info("Deleted Offer " + so.getSellerEscrowPubKey()));
-        offers = sellOfferService.getOffers().flattenAsObservable(o -> o);
+        offers = sellOfferService.get().flattenAsObservable(o -> o);
 
         offers.subscribeOn(Schedulers.io()).observeOn(Schedulers.io()).forEach(o ->
                 LOG.info(String.format("Found offer: %s", o.getSellerEscrowPubKey()))
@@ -84,7 +84,7 @@ public class OfferManager extends AbstractManager {
     }
 
 //    private Single<List<SellOffer>> singleOffers() {
-//        return sellOfferService.getOffers()
+//        return sellOfferService.get()
 //                .retryWhen(errors ->
 //                        errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
 //                )
@@ -93,7 +93,7 @@ public class OfferManager extends AbstractManager {
 
 //    private Observable<List<SellOffer>> observableOffers() {
 //        return Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-//                .flatMap(tick -> sellOfferService.getOffers()
+//                .flatMap(tick -> sellOfferService.get()
 //                        .retryWhen(errors ->
 //                                errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
 //                        ).toObservable())
@@ -101,7 +101,7 @@ public class OfferManager extends AbstractManager {
 //    }
 
     public Single<SellOffer> deleteOffer(String sellerEscrowPubKey) {
-        return sellOfferService.deleteOffer(sellerEscrowPubKey).subscribeOn(Schedulers.io());
+        return sellOfferService.delete(sellerEscrowPubKey).subscribeOn(Schedulers.io());
     }
 
     public Observable<SellOffer> getSelectedOffer() {
@@ -112,7 +112,7 @@ public class OfferManager extends AbstractManager {
         this.selectedOfferSubject.onNext(selectedOffer);
     }
 
-//    public Observable<List<SellOffer>> getOffers() {
+//    public Observable<List<SellOffer>> get() {
 //        return offers;
 //    }
 }

@@ -60,7 +60,7 @@ public class OffersPresenter {
             }
         });
 
-        //offersListView.setItems(offerManager.getOffers());
+        //offersListView.setItems(offerManager.get());
 
         offersView.getLayers().add(addOfferButton.getLayer());
 
@@ -90,11 +90,11 @@ public class OffersPresenter {
             }
         });
 
-//        offerManager.getOffers().observeOn(JavaFxScheduler.platform())
+//        offerManager.get().observeOn(JavaFxScheduler.platform())
 //                .subscribe(ol -> offersListView.itemsProperty().setAll(ol));
 
 //        offerManager.observableOffers().observeOn(JavaFxScheduler.platform())
-//                .subscribe(ol -> offerManager.getOffers().setAll(ol));
+//                .subscribe(ol -> offerManager.get().setAll(ol));
 
         offersListView.selectedItemProperty().addListener((obs, oldValue, selectedSellOffer) -> {
             if (selectedSellOffer != null) {

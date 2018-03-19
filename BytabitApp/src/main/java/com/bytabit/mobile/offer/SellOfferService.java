@@ -27,7 +27,7 @@ public class SellOfferService {
 //    @DELETE("/offers/{sellerEscrowPubKey}")
 //    Completable delete(@Path("sellerEscrowPubKey") String sellerEscrowPubKey);
 
-    Single<SellOffer> putOffer(SellOffer sellOffer) {
+    Single<SellOffer> put(SellOffer sellOffer) {
         return Single.create((SingleEmitter<SellOffer> source) -> {
 
             RestClient putRestClient = RestClient.create()
@@ -46,7 +46,7 @@ public class SellOfferService {
         });
     }
 
-    Single<List<SellOffer>> getOffers() {
+    Single<List<SellOffer>> get() {
 
         return Single.create(source -> {
 
@@ -68,7 +68,7 @@ public class SellOfferService {
         });
     }
 
-    Single<SellOffer> deleteOffer(String sellerEscrowPubKey) {
+    Single<SellOffer> delete(String sellerEscrowPubKey) {
 
         return Single.create(source -> {
 

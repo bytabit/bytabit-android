@@ -54,7 +54,7 @@ public class ProfileManager extends AbstractManager {
                 .ofType(CreateProfile.class)
                 .map(a -> createMyProfile(a.getPubKey()))
                 .map(this::storeMyProfile)
-                .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
+                .flatMap(profile -> profilesService.put(profile.getPubKey(), profile).toObservable())
                 .map(ProfileCreated::new);
 
         Observable<ProfileResult> updateProfileResults = actionObservable
@@ -62,7 +62,7 @@ public class ProfileManager extends AbstractManager {
                 .flatMap(a -> loadMyProfile()
                         .map(oldProfile -> updateMyProfile(oldProfile, a.getProfile()))
                         .map(this::storeMyProfile)
-                        .flatMap(profile -> profilesService.putProfile(profile.getPubKey(), profile).toObservable())
+                        .flatMap(profile -> profilesService.put(profile.getPubKey(), profile).toObservable())
                         .map(ProfileUpdated::new)
                 );
 
