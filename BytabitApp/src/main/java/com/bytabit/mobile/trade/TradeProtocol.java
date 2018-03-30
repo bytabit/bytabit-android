@@ -1,15 +1,12 @@
 package com.bytabit.mobile.trade;
 
-import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
-import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import org.slf4j.Logger;
-import retrofit2.Retrofit;
 
 import javax.inject.Inject;
 
@@ -34,12 +31,7 @@ public abstract class TradeProtocol {
 
         this.log = log;
 
-        Retrofit tradeRetrofit = new Retrofit.Builder()
-                .baseUrl(AppConfig.getBaseUrl())
-                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .addConverterFactory(new JacksonJrConverter<>(Trade.class))
-                .build();
-        tradeService = tradeRetrofit.create(TradeService.class);
+        tradeService = new TradeService();
     }
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
@@ -124,11 +116,7 @@ public abstract class TradeProtocol {
                     .arbitrateRequest(arbitrateRequest)
                     .build();
 
-//            try {
-            tradeService.put(currentTrade.getEscrowAddress(), arbitratingTrade).subscribe();
-//            } catch (IOException e) {
-//                log.error("Can't post ArbitrateRequest to server.");
-//            }
+            tradeService.put(arbitratingTrade).subscribe();
         }
     }
 

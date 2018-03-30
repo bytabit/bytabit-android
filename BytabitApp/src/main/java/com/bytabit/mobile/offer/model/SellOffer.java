@@ -114,31 +114,27 @@ public class SellOffer {
 
         SellOffer sellOffer = (SellOffer) o;
 
-        if (sellerEscrowPubKey != null ? !sellerEscrowPubKey.equals(sellOffer.sellerEscrowPubKey) : sellOffer.sellerEscrowPubKey != null)
-            return false;
-        if (sellerProfilePubKey != null ? !sellerProfilePubKey.equals(sellOffer.sellerProfilePubKey) : sellOffer.sellerProfilePubKey != null)
-            return false;
-        if (arbitratorProfilePubKey != null ? !arbitratorProfilePubKey.equals(sellOffer.arbitratorProfilePubKey) : sellOffer.arbitratorProfilePubKey != null)
+        if (!sellerEscrowPubKey.equals(sellOffer.sellerEscrowPubKey)) return false;
+        if (!sellerProfilePubKey.equals(sellOffer.sellerProfilePubKey)) return false;
+        if (!arbitratorProfilePubKey.equals(sellOffer.arbitratorProfilePubKey))
             return false;
         if (currencyCode != sellOffer.currencyCode) return false;
         if (paymentMethod != sellOffer.paymentMethod) return false;
-        if (minAmount != null ? !minAmount.equals(sellOffer.minAmount) : sellOffer.minAmount != null)
-            return false;
-        if (maxAmount != null ? !maxAmount.equals(sellOffer.maxAmount) : sellOffer.maxAmount != null)
-            return false;
-        return price != null ? price.equals(sellOffer.price) : sellOffer.price == null;
+        if (!minAmount.equals(sellOffer.minAmount)) return false;
+        if (!maxAmount.equals(sellOffer.maxAmount)) return false;
+        return price.equals(sellOffer.price);
     }
 
     @Override
     public int hashCode() {
-        int result = sellerEscrowPubKey != null ? sellerEscrowPubKey.hashCode() : 0;
-        result = 31 * result + (sellerProfilePubKey != null ? sellerProfilePubKey.hashCode() : 0);
-        result = 31 * result + (arbitratorProfilePubKey != null ? arbitratorProfilePubKey.hashCode() : 0);
-        result = 31 * result + (currencyCode != null ? currencyCode.hashCode() : 0);
-        result = 31 * result + (paymentMethod != null ? paymentMethod.hashCode() : 0);
-        result = 31 * result + (minAmount != null ? minAmount.hashCode() : 0);
-        result = 31 * result + (maxAmount != null ? maxAmount.hashCode() : 0);
-        result = 31 * result + (price != null ? price.hashCode() : 0);
+        int result = sellerEscrowPubKey.hashCode();
+        result = 31 * result + sellerProfilePubKey.hashCode();
+        result = 31 * result + arbitratorProfilePubKey.hashCode();
+        result = 31 * result + currencyCode.hashCode();
+        result = 31 * result + paymentMethod.hashCode();
+        result = 31 * result + minAmount.hashCode();
+        result = 31 * result + maxAmount.hashCode();
+        result = 31 * result + price.hashCode();
         return result;
     }
 }

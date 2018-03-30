@@ -54,7 +54,7 @@ public class ProfileManager extends AbstractManager {
                 .ofType(CreateProfile.class)
                 .map(a -> createMyProfile(a.getPubKey()))
                 .map(this::storeMyProfile)
-                .flatMap(profile -> profilesService.put(profile.getPubKey(), profile).toObservable())
+                .flatMap(profile -> profilesService.put(profile).toObservable())
                 .map(ProfileCreated::new);
 
         Observable<ProfileResult> updateProfileResults = actionObservable
@@ -62,7 +62,7 @@ public class ProfileManager extends AbstractManager {
                 .flatMap(a -> loadMyProfile()
                         .map(oldProfile -> updateMyProfile(oldProfile, a.getProfile()))
                         .map(this::storeMyProfile)
-                        .flatMap(profile -> profilesService.put(profile.getPubKey(), profile).toObservable())
+                        .flatMap(profile -> profilesService.put(profile).toObservable())
                         .map(ProfileUpdated::new)
                 );
 
@@ -74,11 +74,18 @@ public class ProfileManager extends AbstractManager {
                 .map(PaymentDetailsLoaded::new);
 
         Observable<ProfileResult> updatePaymentDetailsResults = actionObservable
-                .filter(a -> a instanceof UpdatePaymentDetails)
                 .ofType(UpdatePaymentDetails.class)
                 .map(a -> a.getPaymentDetails())
                 .flatMap(this::storePaymentDetails)
                 .map(PaymentDetailsUpdated::new);
+
+        // arbitrator profile action results
+        Observable<ProfileResult> loadArbitratorProfiles = actionObservable
+                .ofType(LoadArbitratorProfiles.class)
+                .flatMap(a -> profilesService.get().toObservable())
+                .flatMapIterable(l -> l)
+                .filter(Profile::isArbitrator)
+                .map(ArbitratorProfileLoaded::new);
 
         results = profileLoadedResults
                 .mergeWith(profileNotCreatedResults)
@@ -86,6 +93,7 @@ public class ProfileManager extends AbstractManager {
                 .mergeWith(updateProfileResults)
                 .mergeWith(loadPaymentDetailsResults)
                 .mergeWith(updatePaymentDetailsResults)
+                .mergeWith(loadArbitratorProfiles)
                 .onErrorReturn(e -> new ProfileError(e))
                 .startWith(new ProfilePending())
                 .compose(eventLogger.logResults())
@@ -213,6 +221,9 @@ public class ProfileManager extends AbstractManager {
         }
     }
 
+    public class LoadArbitratorProfiles implements ProfileAction {
+    }
+
     // Profile Result classes
 
     public interface ProfileResult extends Result {
@@ -309,6 +320,18 @@ public class ProfileManager extends AbstractManager {
 
         public Throwable getError() {
             return error;
+        }
+    }
+
+    public class ArbitratorProfileLoaded implements ProfileResult {
+        private final Profile profile;
+
+        public ArbitratorProfileLoaded(Profile profile) {
+            this.profile = profile;
+        }
+
+        public Profile getProfile() {
+            return profile;
         }
     }
 }

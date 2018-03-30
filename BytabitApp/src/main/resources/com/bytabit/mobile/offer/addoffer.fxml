@@ -6,7 +6,7 @@
 <?import javafx.scene.layout.*?>
 <View fx:id="addOfferView" maxHeight="-Infinity" maxWidth="-Infinity"
       minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
-      xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bytabit.mobile.offer.AddOfferPresenter">
     <center>
         <VBox alignment="TOP_CENTER" BorderPane.alignment="CENTER">
@@ -85,8 +85,7 @@
                                 <TextField fx:id="btcPriceTextField"
                                            maxHeight="-Infinity"/>
                                 <Label fx:id="btcPriceCurrencyLabel"
-                                       contentDisplay="CENTER"
-                                       text="CUR">
+                                       contentDisplay="CENTER" text="CUR">
                                     <padding>
                                         <Insets left="5.0"/>
                                     </padding>

@@ -8,7 +8,6 @@ import com.bytabit.mobile.trade.evt.*;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
-import com.fasterxml.jackson.jr.retrofit2.JacksonJrConverter;
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.Single;
@@ -19,7 +18,6 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import retrofit2.Retrofit;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -65,13 +63,7 @@ public class TradeManager extends AbstractManager {
     @Inject
     public TradeManager() {
 
-        Retrofit tradeRetrofit = new Retrofit.Builder()
-                .baseUrl(AppConfig.getBaseUrl())
-                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .addConverterFactory(new JacksonJrConverter<>(Trade.class))
-                .build();
-
-        tradeService = tradeRetrofit.create(TradeService.class);
+        tradeService = new TradeService();
     }
 
     public void initialize() {

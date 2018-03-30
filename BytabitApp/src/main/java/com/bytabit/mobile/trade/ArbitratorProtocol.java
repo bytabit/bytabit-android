@@ -110,7 +110,7 @@ public class ArbitratorProtocol extends TradeProtocol {
                     .payoutCompleted(payoutCompleted)
                     .build();
 
-            tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
+            tradeService.put(completedTrade).subscribe();
 
 //            } catch (IOException e) {
 //                log.error("Unable to put completed arbitrated trade.", e);

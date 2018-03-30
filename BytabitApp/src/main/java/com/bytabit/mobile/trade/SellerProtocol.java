@@ -42,7 +42,7 @@ public class SellerProtocol extends TradeProtocol {
                     .paymentRequest(paymentRequest)
                     .build();
 
-            tradeService.put(fundedTrade.getEscrowAddress(), fundedTrade).subscribe();
+            tradeService.put(fundedTrade).subscribe();
 
 //            } catch (IOException e) {
 //                log.error("Unable to PUT funded trade.", e);

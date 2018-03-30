@@ -60,7 +60,7 @@ dependencies {
     compile "joda-time:joda-time:2.9.1"
     compile 'io.reactivex.rxjava2:rxjavafx:2.2.0'
     compile 'org.slf4j:slf4j-api:1.7.21'
-    compile 'com.fasterxml.jackson.jr:jackson-jr-retrofit2:2.8.7'
+    compile 'com.fasterxml.jackson.jr:jackson-jr-objects:2.9.0'
 
     desktopRuntime "ch.qos.logback:logback-classic:1.1.9"
     desktopRuntime "ch.qos.logback:logback-core:1.1.9"

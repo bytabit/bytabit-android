@@ -52,4 +52,21 @@ public class Profile {
     public static ProfileBuilder builder() {
         return new ProfileBuilder();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Profile profile = (Profile) o;
+
+        if (!pubKey.equals(profile.pubKey)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return pubKey.hashCode();
+    }
 }

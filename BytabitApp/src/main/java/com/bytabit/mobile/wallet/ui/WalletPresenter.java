@@ -91,11 +91,9 @@ public class WalletPresenter {
                     int index = transactionListView.itemsProperty().indexOf(transactionWithAmt);
                     if (index > -1) {
                         transactionListView.itemsProperty().remove(index);
-                        //transactionListView.itemsProperty().set(index, transactionWithAmt);
-                    } //else {
+                    }
                     transactionListView.itemsProperty().add(transactionWithAmt);
                     balanceAmountLabel.textProperty().setValue(tr.getTransactionWithAmt().getWalletCoinBalance().toFriendlyString());
-                    //}
                 });
 
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
