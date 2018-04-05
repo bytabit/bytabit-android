@@ -2,22 +2,18 @@ package com.bytabit.mobile.offer;
 
 import com.bytabit.mobile.common.*;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.profile.manager.ProfileManager;
-import com.bytabit.mobile.profile.model.CurrencyCode;
-import com.bytabit.mobile.profile.model.PaymentMethod;
-import com.bytabit.mobile.profile.model.Profile;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
-import java.math.BigDecimal;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class OfferManager extends AbstractManager {
 
-    private final EventLogger eventLogger = EventLogger.of(ProfileManager.class);
+    private final EventLogger eventLogger = EventLogger.of(OfferManager.class);
 
     private final SellOfferService sellOfferService;
 
@@ -45,20 +41,36 @@ public class OfferManager extends AbstractManager {
 
         Observable<OfferAction> actionObservable = actions
                 .compose(eventLogger.logEvents())
+                .startWith(new LoadOffers())
                 .share();
 
         Observable<OfferResult> offerUpdates = Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .flatMap(tick -> sellOfferService.get().retryWhen(errors ->
+                .flatMap(tick -> sellOfferService.getAll().retryWhen(errors ->
                         errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-                        .flattenAsObservable(o -> o)).map(OfferUpdated::new);
+                        .toObservable()).map(OffersUpdated::new);
 
         Observable<OfferResult> offerUpdatedResults = actionObservable.ofType(CreateSellOffer.class).map(e ->
                 sellOfferService.put(e.getOffer()))
                 .flatMap(Single::toObservable)
                 .map(OfferUpdated::new);
 
-        results = Observable.merge(offerUpdates, offerUpdatedResults)
+        Observable<OfferResult> loadOffersResults = actionObservable.ofType(LoadOffers.class)
+                .flatMap(e -> sellOfferService.getAll().toObservable())
+                .map(OffersUpdated::new);
+
+        Observable<OfferResult> selectOfferResults = actionObservable.ofType(SelectOffer.class)
+                .map(SelectOffer::getOffer)
+                .map(OfferSelected::new);
+
+        Observable<OfferResult> removeOfferResults = actionObservable.ofType(RemoveOffer.class)
+                .flatMap(e -> sellOfferService.delete(e.sellerEscrowPubKey).toObservable())
+                .map(SellOffer::getSellerEscrowPubKey)
+                .map(OfferRemoved::new);
+
+        results = Observable.merge(loadOffersResults, offerUpdates, offerUpdatedResults,
+                selectOfferResults).mergeWith(removeOfferResults)
                 .onErrorReturn(OfferError::new)
+                .compose(eventLogger.logResults())
                 .share();
 
 //        offers = Observable.concat(singleOffers().toObservable(), observableOffers())
@@ -73,7 +85,7 @@ public class OfferManager extends AbstractManager {
 //        SellOffer sellOfferPut = putSellOffer.blockingGet();
 //
 //        deleteSellOffer.subscribe(so -> LOG.info("Deleted Offer " + so.getSellerEscrowPubKey()));
-//        offers = sellOfferService.get().flattenAsObservable(o -> o);
+//        offers = sellOfferService.getAll().flattenAsObservable(o -> o);
 //
 //        offers.subscribeOn(Schedulers.io()).observeOn(Schedulers.io()).forEach(o ->
 //                LOG.info(String.format("Found offer: %s", o.getSellerEscrowPubKey()))
@@ -87,8 +99,8 @@ public class OfferManager extends AbstractManager {
 //                .subscribeOn(Schedulers.io());
     }
 
-    public Single<SellOffer> createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, Profile arbitrator,
-                                         BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
+//    public Single<List<SellOffer>> createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, Profile arbitrator,
+//                                         BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
 //        return Single.zip(profileManager.loadMyProfile(), walletManager.getFreshBase58ReceivePubKey(), (p, pk) ->
 //                SellOffer.builder()
@@ -102,11 +114,11 @@ public class OfferManager extends AbstractManager {
 //                        .price(price)
 //                        .build()
 //        ).flatMap(o -> sellOfferService.put(o.getSellerEscrowPubKey(), o)).subscribeOn(Schedulers.io());
-        return null;
-    }
+//        return null;
+//    }
 
 //    private Single<List<SellOffer>> singleOffers() {
-//        return sellOfferService.get()
+//        return sellOfferService.getAll()
 //                .retryWhen(errors ->
 //                        errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
 //                )
@@ -115,7 +127,7 @@ public class OfferManager extends AbstractManager {
 
 //    private Observable<List<SellOffer>> observableOffers() {
 //        return Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-//                .flatMap(tick -> sellOfferService.get()
+//                .flatMap(tick -> sellOfferService.getAll()
 //                        .retryWhen(errors ->
 //                                errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS))
 //                        ).toObservable())
@@ -142,7 +154,7 @@ public class OfferManager extends AbstractManager {
 //        this.selectedOfferSubject.onNext(selectedOffer);
 //    }
 
-//    public Observable<List<SellOffer>> get() {
+//    public Observable<List<SellOffer>> getAll() {
 //        return offers;
 //    }
 
@@ -151,8 +163,11 @@ public class OfferManager extends AbstractManager {
     public interface OfferAction extends Event {
     }
 
+    public class LoadOffers implements OfferAction {
+    }
+
     public class CreateSellOffer implements OfferAction {
-        private SellOffer offer;
+        final private SellOffer offer;
 
         public CreateSellOffer(SellOffer offer) {
             this.offer = offer;
@@ -163,6 +178,30 @@ public class OfferManager extends AbstractManager {
         }
     }
 
+    public class SelectOffer implements OfferAction {
+        private final SellOffer offer;
+
+        public SelectOffer(SellOffer offer) {
+            this.offer = offer;
+        }
+
+        public SellOffer getOffer() {
+            return offer;
+        }
+    }
+
+    public class RemoveOffer implements OfferAction {
+        final private String sellerEscrowPubKey;
+
+        public RemoveOffer(String sellerEscrowPubKey) {
+            this.sellerEscrowPubKey = sellerEscrowPubKey;
+        }
+
+        public String getSellerEscrowPubKey() {
+            return sellerEscrowPubKey;
+        }
+    }
+
     // Offer Result classes
 
     public interface OfferResult extends Result {
@@ -170,7 +209,7 @@ public class OfferManager extends AbstractManager {
 
     public class OfferUpdated implements OfferResult {
 
-        private SellOffer offer;
+        private final SellOffer offer;
 
         public OfferUpdated(SellOffer offer) {
             this.offer = offer;
@@ -178,6 +217,43 @@ public class OfferManager extends AbstractManager {
 
         public SellOffer getOffer() {
             return offer;
+        }
+    }
+
+    public class OffersUpdated implements OfferResult {
+
+        private final List<SellOffer> offers;
+
+        public OffersUpdated(List<SellOffer> offers) {
+            this.offers = offers;
+        }
+
+        public List<SellOffer> getOffers() {
+            return offers;
+        }
+    }
+
+    public class OfferSelected implements OfferResult {
+        private final SellOffer offer;
+
+        public OfferSelected(SellOffer offer) {
+            this.offer = offer;
+        }
+
+        public SellOffer getOffer() {
+            return offer;
+        }
+    }
+
+    public class OfferRemoved implements OfferResult {
+        final private String sellerEscrowPubKey;
+
+        public OfferRemoved(String sellerEscrowPubKey) {
+            this.sellerEscrowPubKey = sellerEscrowPubKey;
+        }
+
+        public String getSellerEscrowPubKey() {
+            return sellerEscrowPubKey;
         }
     }
 

@@ -15,6 +15,7 @@ import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.Observable;
 import io.reactivex.rxjavafx.observables.JavaFxObservable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 
@@ -78,8 +79,11 @@ public class OffersPresenter {
                 addOfferButton.setOnAction(source::onNext))
                 .map(actionEvent -> new AddButtonPressed());
 
+        Observable<OfferSelected> offerSelectedEvents = JavaFxObservable.changesOf(offersListView.selectedItemProperty())
+                .map(Change::getNewVal).map(OfferSelected::new);
+
         Observable<PresenterEvent> offerEvents = Observable.merge(viewShowingEvents,
-                addOfferButtonEvents)
+                addOfferButtonEvents, offerSelectedEvents)
                 .compose(eventLogger.logEvents()).share();
 
         // transform events to actions
@@ -91,7 +95,7 @@ public class OffersPresenter {
                 .ofType(OffersPresenter.ViewShowing.class)
                 .subscribe(event -> {
                     setAppBar();
-                    //clearForm();
+                    clearSelection();
                 });
 
         offerEvents.subscribeOn(Schedulers.io())
@@ -101,24 +105,51 @@ public class OffersPresenter {
                     MobileApplication.getInstance().switchView(BytabitMobile.ADD_OFFER_VIEW);
                 });
 
+        offerEvents.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(OffersPresenter.OfferSelected.class)
+                .subscribe(event -> {
+                    MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
+                    offerManager.getActions().onNext(offerManager.new SelectOffer(event.getSellOffer()));
+                });
+
         // handle results
 
-        //offersListView.setItems(offerManager.get());
+        //offersListView.setItems(offerManager.getAll());
 
 //        addOfferButton.setOnAction((e) ->
 //                MobileApplication.getInstance().switchView(BytabitMobile.ADD_OFFER_VIEW));
 
+        offerManager.getResults().ofType(OfferManager.OffersUpdated.class)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .map(OfferManager.OffersUpdated::getOffers)
+                .subscribe(sellOffers ->
+                        offersListView.itemsProperty().setAll(sellOffers)
+                );
+
         offerManager.getResults().ofType(OfferManager.OfferUpdated.class)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(result -> {
-                    SellOffer sellOffer = result.getOffer();
+                .map(OfferManager.OfferUpdated::getOffer)
+                .subscribe(sellOffer -> {
                     int index = offersListView.itemsProperty().indexOf(sellOffer);
                     if (index > -1) {
                         offersListView.itemsProperty().remove(index);
                     }
                     offersListView.itemsProperty().add(sellOffer);
                 });
+
+        offerManager.getResults().ofType(OfferManager.OfferRemoved.class)
+                .observeOn(JavaFxScheduler.platform())
+                .map(OfferManager.OfferRemoved::getSellerEscrowPubKey)
+                .subscribe(sellerEscrowPubKey -> {
+                    int index = offersListView.itemsProperty().indexOf(SellOffer.builder()
+                            .sellerEscrowPubKey(sellerEscrowPubKey)
+                            .build());
+                    offersListView.itemsProperty().remove(index);
+                });
+
 
 //        offersView.showingProperty().addListener((obs, oldValue, newValue) -> {
 //            if (newValue) {
@@ -141,11 +172,11 @@ public class OffersPresenter {
 //                //LOG.info(so.toString())
 //        );
 
-//        offerManager.get().observeOn(JavaFxScheduler.platform())
+//        offerManager.getAll().observeOn(JavaFxScheduler.platform())
 //                .subscribe(ol -> offersListView.itemsProperty().setAll(ol));
 
 //        offerManager.observableOffers().observeOn(JavaFxScheduler.platform())
-//                .subscribe(ol -> offerManager.get().setAll(ol));
+//                .subscribe(ol -> offerManager.getAll().setAll(ol));
 
 //        offersListView.selectedItemProperty().addListener((obs, oldValue, selectedSellOffer) -> {
 //            if (selectedSellOffer != null) {
@@ -181,6 +212,10 @@ public class OffersPresenter {
                 System.out.println("Search")));
     }
 
+    private void clearSelection() {
+        offersListView.selectedItemProperty().setValue(null);
+    }
+
     // Event classes
 
     interface PresenterEvent extends Event {
@@ -205,5 +240,17 @@ public class OffersPresenter {
     }
 
     private class AddButtonPressed implements PresenterEvent {
+    }
+
+    private class OfferSelected implements PresenterEvent {
+        private final SellOffer sellOffer;
+
+        public OfferSelected(SellOffer sellOffer) {
+            this.sellOffer = sellOffer;
+        }
+
+        public SellOffer getSellOffer() {
+            return sellOffer;
+        }
     }
 }

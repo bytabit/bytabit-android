@@ -9,7 +9,7 @@ public class InputCleaner {
 
     public static ObservableTransformer<Change<String>, String> numbers() {
 
-        final String regex = "(^$)|(^[0-9]{1,4}[.]?)|(^[0-9]{1,4}[.][0-9]{0,6})";
+        final String regex = "(^$)|(^[0-9]{1,5}[.]?)|(^[0-9]{1,5}[.][0-9]{0,6})";
 
         return changes -> changes.observeOn(Schedulers.io()).map(change ->
                 change.getNewVal().matches(regex) ? change.getNewVal() : change.getOldVal());

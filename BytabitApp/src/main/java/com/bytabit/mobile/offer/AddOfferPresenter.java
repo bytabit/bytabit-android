@@ -10,6 +10,7 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -40,6 +41,9 @@ public class AddOfferPresenter {
 
     @Inject
     ProfileManager profileManager;
+
+    @Inject
+    WalletManager walletManager;
 
     @FXML
     private View addOfferView;
@@ -95,7 +99,7 @@ public class AddOfferPresenter {
 
         Observable<PresenterEvent> addOfferButtonEvents = Observable.create(source ->
                 addOfferButton.setOnAction(source::onNext))
-                .map(actionEvent -> new AddButtonPressed(createOfferFromUI("sellerProfilePubKey", "sellerEscrowPubKey")));
+                .map(actionEvent -> new AddButtonPressed());
 
         Observable<CurrencyCodeSelected> currencyCodeSelectedEvents = JavaFxObservable.changesOf(currencyChoiceBox.getSelectionModel().selectedItemProperty())
                 .map(Change::getNewVal)
@@ -129,9 +133,19 @@ public class AddOfferPresenter {
                 .ofType(ViewShowing.class)
                 .map(e -> profileManager.new LoadArbitratorProfiles());
 
-        Observable<OfferManager.CreateSellOffer> createOfferActions = addOfferEvents
+        Observable<ProfileManager.LoadProfile> loadProfileActions = addOfferEvents
                 .ofType(AddButtonPressed.class)
-                .map(AddButtonPressed::getSellOffer)
+                .map(e -> profileManager.new LoadProfile());
+
+        Observable<WalletManager.GetEscrowPubKey> getEscrowPubKeyActions = addOfferEvents
+                .ofType(AddButtonPressed.class)
+                .map(e -> walletManager.new GetEscrowPubKey());
+
+        Observable<OfferManager.CreateSellOffer> createOfferActions = Observable.zip(
+                addOfferEvents.ofType(AddButtonPressed.class),
+                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
+                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),
+                (a, p, e) -> createOffer(p.getProfile().getPubKey(), e.getPubKey()))
                 .map(e -> offerManager.new CreateSellOffer(e));
 
         createOfferActions
@@ -140,11 +154,17 @@ public class AddOfferPresenter {
                 .compose(eventLogger.logEvents())
                 .subscribe(offerManager.getActions());
 
-        Observable.merge(loadPaymentDetailsActions, loadArbitratorProfilesActions)
+        Observable.merge(loadPaymentDetailsActions, loadArbitratorProfilesActions, loadProfileActions)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .compose(eventLogger.logEvents())
                 .subscribe(profileManager.getActions());
+
+        getEscrowPubKeyActions
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
+                .subscribe(walletManager.getActions());
 
         // handle events
 
@@ -284,11 +304,11 @@ public class AddOfferPresenter {
 
 //        addOfferButton.onActionProperty().setValue(e -> {
 //            offerManager.createOffer(currencyChoiceBox.getValue(), paymentMethodChoiceBox.getValue(), arbitratorChoiceBox.getValue(),
-//                    bigDecConverter.fromString(minTradeAmtTextField.textProperty().get()),
-//                    bigDecConverter.fromString(maxTradeAmtTextField.textProperty().get()),
-//                    bigDecConverter.fromString(btcPriceTextField.textProperty().get()))
+//                    bigDecConverter.fromString(minTradeAmtTextField.textProperty().getAll()),
+//                    bigDecConverter.fromString(maxTradeAmtTextField.textProperty().getAll()),
+//                    bigDecConverter.fromString(btcPriceTextField.textProperty().getAll()))
 //                    .observeOn(JavaFxScheduler.platform())
-//                    //.map(so -> offerManager.get().add(so))
+//                    //.map(so -> offerManager.getAll().add(so))
 //                    .subscribe();
 //            MobileApplication.getInstance().switchToPreviousView();
 //        });
@@ -309,7 +329,13 @@ public class AddOfferPresenter {
         btcPriceTextField.clear();
     }
 
-    private SellOffer createOfferFromUI(String sellerProfilePubKey, String sellerEscrowPubKey) {
+    private SellOffer createOffer(String sellerProfilePubKey, String sellerEscrowPubKey) {
+
+        Observable<String> profilePubkey = profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class)
+                .map(p -> p.getProfile().getPubKey());
+
+        Observable<String> escrowPubKey = walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class)
+                .map(WalletManager.EscrowPubKey::getPubKey);
 
         String arbitratorProfilePubKey = arbitratorChoiceBox.selectionModelProperty().getValue().getSelectedItem().getPubKey();
         CurrencyCode currencyCode = currencyChoiceBox.selectionModelProperty().getValue().getSelectedItem();
@@ -342,15 +368,6 @@ public class AddOfferPresenter {
     }
 
     private class AddButtonPressed implements PresenterEvent {
-        private final SellOffer sellOffer;
-
-        public AddButtonPressed(SellOffer sellOffer) {
-            this.sellOffer = sellOffer;
-        }
-
-        public SellOffer getSellOffer() {
-            return sellOffer;
-        }
     }
 
     private class CurrencyCodeSelected implements PresenterEvent {

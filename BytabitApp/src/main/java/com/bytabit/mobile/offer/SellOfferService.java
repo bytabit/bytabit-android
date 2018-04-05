@@ -21,7 +21,7 @@ public class SellOfferService {
 //
 //    @Headers("Content-Type:application/json")
 //    @GET("/offers")
-//    Single<List<SellOffer>> get();
+//    Single<List<SellOffer>> getAll();
 //
 //    @Headers("Content-Type:application/json")
 //    @DELETE("/offers/{sellerEscrowPubKey}")
@@ -46,7 +46,7 @@ public class SellOfferService {
         });
     }
 
-    Single<List<SellOffer>> get() {
+    Single<List<SellOffer>> getAll() {
 
         return Single.create(source -> {
 

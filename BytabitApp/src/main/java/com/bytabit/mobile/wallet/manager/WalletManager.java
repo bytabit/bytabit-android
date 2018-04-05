@@ -130,6 +130,12 @@ public class WalletManager {
                         .map(this::getFreshBase58AuthPubKey)
                         .map(ProfilePubKey::new).toObservable());
 
+        Observable<WalletResult> tradeWalletEscrowPubKeyResults = actionObservable
+                .ofType(GetEscrowPubKey.class)
+                .flatMap(a -> tradeWallet
+                        .map(this::getFreshBase58ReceivePubKey)
+                        .map(EscrowPubKey::new).toObservable());
+
         Observable<WalletResult> tradeWalletDepositAddressResults = actionObservable
                 .ofType(GetTradeWalletDepositAddress.class)
                 .flatMap(a -> tradeWallet
@@ -138,6 +144,7 @@ public class WalletManager {
 
         walletResults = tradeWalletInfoResults
                 .mergeWith(tradeWalletProfilePubKeyResults)
+                .mergeWith(tradeWalletEscrowPubKeyResults)
                 .mergeWith(tradeWalletDepositAddressResults)
                 .compose(eventLogger.logResults())
                 .subscribeOn(Schedulers.io()).share();
@@ -720,7 +727,7 @@ public class WalletManager {
 
     private String getFreshBase58AuthPubKey(Wallet tradeWallet) {
         Context.propagate(btcContext);
-        return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
+        return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).getPubKey());
     }
 
 //    public Single<String> getFreshBase58AuthPubKey() {
@@ -1230,6 +1237,9 @@ public class WalletManager {
     public class GetProfilePubKey implements WalletAction {
     }
 
+    public class GetEscrowPubKey implements WalletAction {
+    }
+
     // Wallet Result Classes
 
     public interface WalletResult extends Result {
@@ -1275,6 +1285,18 @@ public class WalletManager {
         private final String pubKey;
 
         public ProfilePubKey(String pubKey) {
+            this.pubKey = pubKey;
+        }
+
+        public String getPubKey() {
+            return pubKey;
+        }
+    }
+
+    public class EscrowPubKey implements WalletResult {
+        private final String pubKey;
+
+        public EscrowPubKey(String pubKey) {
             this.pubKey = pubKey;
         }
 

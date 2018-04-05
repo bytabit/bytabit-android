@@ -114,27 +114,11 @@ public class SellOffer {
 
         SellOffer sellOffer = (SellOffer) o;
 
-        if (!sellerEscrowPubKey.equals(sellOffer.sellerEscrowPubKey)) return false;
-        if (!sellerProfilePubKey.equals(sellOffer.sellerProfilePubKey)) return false;
-        if (!arbitratorProfilePubKey.equals(sellOffer.arbitratorProfilePubKey))
-            return false;
-        if (currencyCode != sellOffer.currencyCode) return false;
-        if (paymentMethod != sellOffer.paymentMethod) return false;
-        if (!minAmount.equals(sellOffer.minAmount)) return false;
-        if (!maxAmount.equals(sellOffer.maxAmount)) return false;
-        return price.equals(sellOffer.price);
+        return sellerEscrowPubKey.equals(sellOffer.sellerEscrowPubKey);
     }
 
     @Override
     public int hashCode() {
-        int result = sellerEscrowPubKey.hashCode();
-        result = 31 * result + sellerProfilePubKey.hashCode();
-        result = 31 * result + arbitratorProfilePubKey.hashCode();
-        result = 31 * result + currencyCode.hashCode();
-        result = 31 * result + paymentMethod.hashCode();
-        result = 31 * result + minAmount.hashCode();
-        result = 31 * result + maxAmount.hashCode();
-        result = 31 * result + price.hashCode();
-        return result;
+        return sellerEscrowPubKey.hashCode();
     }
 }
