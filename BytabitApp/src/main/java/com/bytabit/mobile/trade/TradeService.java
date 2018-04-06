@@ -10,6 +10,7 @@ import io.reactivex.SingleEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class TradeService {
@@ -37,7 +38,10 @@ public class TradeService {
 
             try {
                 List<Trade> trades = new ArrayList<>();
-                listDataReader.iterator().forEachRemaining(trades::add);
+                Iterator<Trade> tradeIterator = listDataReader.iterator();
+                while (tradeIterator.hasNext()) {
+                    trades.add(tradeIterator.next());
+                }
                 source.onSuccess(trades);
             } catch (IOException ioe) {
                 source.onError(ioe);

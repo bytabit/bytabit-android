@@ -10,6 +10,7 @@ import io.reactivex.SingleEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class ProfileService {
@@ -48,7 +49,10 @@ public class ProfileService {
 
             try {
                 List<Profile> profiles = new ArrayList<>();
-                listDataReader.iterator().forEachRemaining(profiles::add);
+                Iterator<Profile> profileIterator = listDataReader.iterator();
+                while (profileIterator.hasNext()) {
+                    profiles.add(profileIterator.next());
+                }
                 source.onSuccess(profiles);
             } catch (IOException ioe) {
                 source.onError(ioe);

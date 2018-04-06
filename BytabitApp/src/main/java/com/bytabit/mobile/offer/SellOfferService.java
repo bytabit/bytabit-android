@@ -11,6 +11,7 @@ import io.reactivex.SingleEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public class SellOfferService {
@@ -60,7 +61,10 @@ public class SellOfferService {
 
             try {
                 List<SellOffer> sellOffers = new ArrayList<>();
-                listDataReader.iterator().forEachRemaining(sellOffers::add);
+                Iterator<SellOffer> sellOfferIterator = listDataReader.iterator();
+                while (sellOfferIterator.hasNext()) {
+                    sellOffers.add(sellOfferIterator.next());
+                }
                 source.onSuccess(sellOffers);
             } catch (IOException ioe) {
                 source.onError(ioe);

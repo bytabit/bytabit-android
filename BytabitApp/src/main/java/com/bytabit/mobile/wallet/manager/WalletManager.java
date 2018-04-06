@@ -270,6 +270,7 @@ public class WalletManager {
         // create block chain
 
         Single<BlockChain> blockChain = Single.zip(blockStore, tradeWallet, readEscrowWallets, (bs, tw, rew) -> {
+            Context.propagate(btcContext);
             List<Wallet> wallets = new ArrayList<>();
             wallets.add(tw);
             wallets.addAll(rew);
