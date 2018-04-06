@@ -1,8 +1,8 @@
 package com.bytabit.mobile.offer;
 
+import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.common.InputCleaner;
 import com.bytabit.mobile.common.StringBigDecimalConverter;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
@@ -92,6 +92,10 @@ public class AddOfferPresenter {
 
         arbitratorChoiceBox.setConverter(new ProfileStringConverter());
 
+        minTradeAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
+        maxTradeAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
+        btcPriceTextField.setTextFormatter(new DecimalTextFieldFormatter());
+
         // setup event observables
 
         Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(addOfferView.showingProperty())
@@ -109,14 +113,17 @@ public class AddOfferPresenter {
                 .map(Change::getNewVal)
                 .map(PaymentMethodSelected::new);
 
-        Observable<MinTradeAmountChanged> minTradeAmountEvents = JavaFxObservable.changesOf(minTradeAmtTextField.textProperty())
-                .map(MinTradeAmountChanged::new);
-
-        Observable<MaxTradeAmountChanged> maxTradeAmountEvents = JavaFxObservable.changesOf(maxTradeAmtTextField.textProperty())
-                .map(MaxTradeAmountChanged::new);
-
-        Observable<PriceChanged> priceEvents = JavaFxObservable.changesOf(btcPriceTextField.textProperty())
-                .map(PriceChanged::new);
+//        Observable<MinTradeAmountFocusChanged> minTradeAmountFocusEvents = JavaFxObservable.changesOf(minTradeAmtTextField.focusedProperty())
+//                .map(Change::getNewVal)
+//                .map(MinTradeAmountFocusChanged::new);
+//
+//        Observable<MaxTradeAmountFocusChanged> maxTradeAmountEvents = JavaFxObservable.changesOf(maxTradeAmtTextField.focusedProperty())
+//                .map(Change::getNewVal)
+//                .map(MaxTradeAmountFocusChanged::new);
+//
+//        Observable<PriceFocusChanged> priceEvents = JavaFxObservable.changesOf(btcPriceTextField.focusedProperty())
+//                .map(Change::getNewVal)
+//                .map(PriceFocusChanged::new);
 
         Observable<PresenterEvent> addOfferEvents = Observable.merge(viewShowingEvents,
                 addOfferButtonEvents, currencyCodeSelectedEvents, paymentMethodSelectedEvents)
@@ -206,32 +213,34 @@ public class AddOfferPresenter {
                     btcPriceCurrencyLabel.setText(cc);
                 });
 
-        minTradeAmountEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(MinTradeAmountChanged::getChange)
-                .compose(InputCleaner.numbers())
-                .subscribe(t -> {
-                    minTradeAmtTextField.setText(t);
-                    minTradeAmtTextField.positionCaret(t.length());
-                });
-
-        maxTradeAmountEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(MaxTradeAmountChanged::getChange)
-                .compose(InputCleaner.numbers())
-                .subscribe(t -> {
-                    maxTradeAmtTextField.setText(t);
-                    maxTradeAmtTextField.positionCaret(t.length());
-                });
-
-        priceEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(PriceChanged::getChange)
-                .compose(InputCleaner.numbers())
-                .subscribe(t -> {
-                    btcPriceTextField.setText(t);
-                    btcPriceTextField.positionCaret(t.length());
-                });
+//        minTradeAmountFocusEvents.subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(MinTradeAmountFocusChanged::getFocused)
+//                .filter(c -> !c)
+//                .map(c -> minTradeAmtTextField.getText())
+//                .compose(InputCleaner.numbers())
+//                .subscribe(t -> {
+//                    minTradeAmtTextField.setText(t);
+//                    //minTradeAmtTextField.positionCaret(t.length());
+//                });
+//
+//        maxTradeAmountEvents.subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(MaxTradeAmountFocusChanged::getChange)
+//                .compose(InputCleaner.numbers())
+//                .subscribe(t -> {
+//                    maxTradeAmtTextField.setText(t);
+//                    maxTradeAmtTextField.positionCaret(t.length());
+//                });
+//
+//        priceEvents.subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(PriceFocusChanged::getChange)
+//                .compose(InputCleaner.numbers())
+//                .subscribe(t -> {
+//                    btcPriceTextField.setText(t);
+//                    btcPriceTextField.positionCaret(t.length());
+//                });
 
         // handle results
 
@@ -394,39 +403,39 @@ public class AddOfferPresenter {
         }
     }
 
-    private class MinTradeAmountChanged implements PresenterEvent {
-        private final Change<String> change;
-
-        public MinTradeAmountChanged(Change<String> change) {
-            this.change = change;
-        }
-
-        public Change<String> getChange() {
-            return change;
-        }
-    }
-
-    private class MaxTradeAmountChanged implements PresenterEvent {
-        private final Change<String> change;
-
-        public MaxTradeAmountChanged(Change<String> change) {
-            this.change = change;
-        }
-
-        public Change<String> getChange() {
-            return change;
-        }
-    }
-
-    private class PriceChanged implements PresenterEvent {
-        private final Change<String> change;
-
-        public PriceChanged(Change<String> change) {
-            this.change = change;
-        }
-
-        public Change<String> getChange() {
-            return change;
-        }
-    }
+//    private class MinTradeAmountFocusChanged implements PresenterEvent {
+//        private final Boolean focused;
+//
+//        public MinTradeAmountFocusChanged(Boolean focused) {
+//            this.focused = focused;
+//        }
+//
+//        public Boolean getFocused() {
+//            return focused;
+//        }
+//    }
+//
+//    private class MaxTradeAmountFocusChanged implements PresenterEvent {
+//        private final Boolean focused;
+//
+//        public MaxTradeAmountFocusChanged(Boolean focused) {
+//            this.focused = focused;
+//        }
+//
+//        public Boolean getFocused() {
+//            return focused;
+//        }
+//    }
+//
+//    private class PriceFocusChanged implements PresenterEvent {
+//        private final Boolean focused;
+//
+//        public PriceFocusChanged(Boolean focused) {
+//            this.focused = focused;
+//        }
+//
+//        public Boolean getFocused() {
+//            return focused;
+//        }
+//    }
 }
