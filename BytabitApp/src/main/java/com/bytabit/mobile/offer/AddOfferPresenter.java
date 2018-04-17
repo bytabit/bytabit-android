@@ -113,18 +113,6 @@ public class AddOfferPresenter {
                 .map(Change::getNewVal)
                 .map(PaymentMethodSelected::new);
 
-//        Observable<MinTradeAmountFocusChanged> minTradeAmountFocusEvents = JavaFxObservable.changesOf(minTradeAmtTextField.focusedProperty())
-//                .map(Change::getNewVal)
-//                .map(MinTradeAmountFocusChanged::new);
-//
-//        Observable<MaxTradeAmountFocusChanged> maxTradeAmountEvents = JavaFxObservable.changesOf(maxTradeAmtTextField.focusedProperty())
-//                .map(Change::getNewVal)
-//                .map(MaxTradeAmountFocusChanged::new);
-//
-//        Observable<PriceFocusChanged> priceEvents = JavaFxObservable.changesOf(btcPriceTextField.focusedProperty())
-//                .map(Change::getNewVal)
-//                .map(PriceFocusChanged::new);
-
         Observable<PresenterEvent> addOfferEvents = Observable.merge(viewShowingEvents,
                 addOfferButtonEvents, currencyCodeSelectedEvents, paymentMethodSelectedEvents)
                 .compose(eventLogger.logEvents())
@@ -213,35 +201,6 @@ public class AddOfferPresenter {
                     btcPriceCurrencyLabel.setText(cc);
                 });
 
-//        minTradeAmountFocusEvents.subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .map(MinTradeAmountFocusChanged::getFocused)
-//                .filter(c -> !c)
-//                .map(c -> minTradeAmtTextField.getText())
-//                .compose(InputCleaner.numbers())
-//                .subscribe(t -> {
-//                    minTradeAmtTextField.setText(t);
-//                    //minTradeAmtTextField.positionCaret(t.length());
-//                });
-//
-//        maxTradeAmountEvents.subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .map(MaxTradeAmountFocusChanged::getChange)
-//                .compose(InputCleaner.numbers())
-//                .subscribe(t -> {
-//                    maxTradeAmtTextField.setText(t);
-//                    maxTradeAmtTextField.positionCaret(t.length());
-//                });
-//
-//        priceEvents.subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .map(PriceFocusChanged::getChange)
-//                .compose(InputCleaner.numbers())
-//                .subscribe(t -> {
-//                    btcPriceTextField.setText(t);
-//                    btcPriceTextField.positionCaret(t.length());
-//                });
-
         // handle results
 
         profileManager.getResults().ofType(ProfileManager.PaymentDetailsLoaded.class)
@@ -271,56 +230,6 @@ public class AddOfferPresenter {
                         arbitratorChoiceBox.selectionModelProperty().getValue().selectFirst();
                     }
                 });
-
-//        addOfferView.showingProperty().addListener((observable, oldValue, newValue) -> {
-
-//            if (newValue) {
-//                AppBar appBar = MobileApplication.getInstance().getAppBar();
-//                appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-//                appBar.setTitleText("Create Sell Offer");
-//
-//                profileManager.getCurrencyCodes().observeOn(JavaFxScheduler.platform()).subscribe(cl -> {
-//                    currencyChoiceBox.getItems().setAll(cl);
-//                    currencyChoiceBox.getSelectionModel().select(0);
-//                });
-//
-//                // TODO myProfile = profileManager.retrieveProfile();
-//                profileManager.getArbitratorProfiles().observeOn(JavaFxScheduler.platform())
-//                        .subscribe(al -> {
-//                            arbitratorChoiceBox.getItems().setAll(al);
-//                            arbitratorChoiceBox.getSelectionModel().select(0);
-//                        });
-//
-//                paymentMethodChoiceBox.requestFocus();
-//
-//                profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform())
-//                        .subscribe(p -> myProfilePubKeyProperty.setValue(p.getPubKey()));
-//            }
-//        });
-
-//        currencyChoiceBox.getSelectionModel().selectedItemProperty().addListener((obj, ov, currencyCode) -> {
-//            if (currencyCode != null) {
-//                profileManager.getPaymentMethods(currencyCode).observeOn(JavaFxScheduler.platform())
-//                        .subscribe(pl -> {
-//                            paymentMethodChoiceBox.getItems().setAll(pl);
-//                            paymentMethodChoiceBox.getSelectionModel().select(0);
-//                            minTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
-//                            maxTradeAmtCurrencyLabel.textProperty().setValue(currencyCode.name());
-//                            btcPriceCurrencyLabel.textProperty().setValue(currencyCode.name());
-//                        });
-//            }
-//        });
-
-//        addOfferButton.onActionProperty().setValue(e -> {
-//            offerManager.createOffer(currencyChoiceBox.getValue(), paymentMethodChoiceBox.getValue(), arbitratorChoiceBox.getValue(),
-//                    bigDecConverter.fromString(minTradeAmtTextField.textProperty().getAll()),
-//                    bigDecConverter.fromString(maxTradeAmtTextField.textProperty().getAll()),
-//                    bigDecConverter.fromString(btcPriceTextField.textProperty().getAll()))
-//                    .observeOn(JavaFxScheduler.platform())
-//                    //.map(so -> offerManager.getAll().add(so))
-//                    .subscribe();
-//            MobileApplication.getInstance().switchToPreviousView();
-//        });
     }
 
     private void setAppBar() {
@@ -339,12 +248,6 @@ public class AddOfferPresenter {
     }
 
     private SellOffer createOffer(String sellerProfilePubKey, String sellerEscrowPubKey) {
-
-        Observable<String> profilePubkey = profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class)
-                .map(p -> p.getProfile().getPubKey());
-
-        Observable<String> escrowPubKey = walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class)
-                .map(WalletManager.EscrowPubKey::getPubKey);
 
         String arbitratorProfilePubKey = arbitratorChoiceBox.selectionModelProperty().getValue().getSelectedItem().getPubKey();
         CurrencyCode currencyCode = currencyChoiceBox.selectionModelProperty().getValue().getSelectedItem();
@@ -402,40 +305,4 @@ public class AddOfferPresenter {
             return paymentMethod;
         }
     }
-
-//    private class MinTradeAmountFocusChanged implements PresenterEvent {
-//        private final Boolean focused;
-//
-//        public MinTradeAmountFocusChanged(Boolean focused) {
-//            this.focused = focused;
-//        }
-//
-//        public Boolean getFocused() {
-//            return focused;
-//        }
-//    }
-//
-//    private class MaxTradeAmountFocusChanged implements PresenterEvent {
-//        private final Boolean focused;
-//
-//        public MaxTradeAmountFocusChanged(Boolean focused) {
-//            this.focused = focused;
-//        }
-//
-//        public Boolean getFocused() {
-//            return focused;
-//        }
-//    }
-//
-//    private class PriceFocusChanged implements PresenterEvent {
-//        private final Boolean focused;
-//
-//        public PriceFocusChanged(Boolean focused) {
-//            this.focused = focused;
-//        }
-//
-//        public Boolean getFocused() {
-//            return focused;
-//        }
-//    }
 }

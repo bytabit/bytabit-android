@@ -208,7 +208,7 @@ public class TradeDetailsPresenter {
         paymentSentButton.setOnAction(e -> {
             LOG.debug("paymentSentButton pressed");
             if (paymentReferenceField.getText() != null && !paymentReferenceField.getText().isEmpty()) {
-                tradeManager.buyerSendPayment(paymentReferenceField.getText());
+//                tradeManager.buyerSendPayment(paymentReferenceField.getText());
                 MobileApplication.getInstance().switchToPreviousView();
             } else {
                 LOG.debug("No payment reference provided, skipped buyerSendPayment.");
@@ -218,31 +218,31 @@ public class TradeDetailsPresenter {
 
         paymentReceivedButton.setOnAction(e -> {
             LOG.debug("paymentReceivedButton pressed");
-            tradeManager.sellerConfirmPaymentReceived();
+//            tradeManager.sellerConfirmPaymentReceived();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
         arbitrateButton.setOnAction(e -> {
             LOG.debug("arbitrateButton pressed");
-            tradeManager.requestArbitrate();
+//            tradeManager.requestArbitrate();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
         refundSellerButton.setOnAction(e -> {
             LOG.debug("refundSellerButton pressed");
-            tradeManager.arbitratorRefundSeller();
+//            tradeManager.arbitratorRefundSeller();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
         payoutBuyerButton.setOnAction(e -> {
             LOG.debug("payoutBuyerButton pressed");
-            tradeManager.arbitratorPayoutBuyer();
+//            tradeManager.arbitratorPayoutBuyer();
             MobileApplication.getInstance().switchToPreviousView();
         });
 
         cancelButton.setOnAction(e -> {
             LOG.debug("cancelButton pressed");
-            tradeManager.buyerCancel();
+//            tradeManager.buyerCancel();
             MobileApplication.getInstance().switchToPreviousView();
         });
     }

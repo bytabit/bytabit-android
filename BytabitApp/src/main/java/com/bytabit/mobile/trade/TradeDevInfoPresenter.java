@@ -1,6 +1,5 @@
 package com.bytabit.mobile.trade;
 
-import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -45,12 +44,12 @@ public class TradeDevInfoPresenter {
                 appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
                 appBar.setTitleText("Trade Debug Info");
 
-                Trade trade = tradeManager.getSelectedTrade();
+//                Trade trade = tradeManager.getSelectedTrade();
 
-                tradeEscrowAddressLabel.textProperty().setValue(trade.getEscrowAddress());
-                sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellerEscrowPubKey());
-                sellerProfilePubKeyLabel.textProperty().setValue(trade.getSellerProfilePubKey());
-                arbitratorProfilePubKeyLabel.textProperty().setValue(trade.getArbitratorProfilePubKey());
+//                tradeEscrowAddressLabel.textProperty().setValue(trade.getEscrowAddress());
+//                sellerEscrowPubKeyLabel.textProperty().setValue(trade.getSellerEscrowPubKey());
+//                sellerProfilePubKeyLabel.textProperty().setValue(trade.getSellerProfilePubKey());
+//                arbitratorProfilePubKeyLabel.textProperty().setValue(trade.getArbitratorProfilePubKey());
             }
         });
     }

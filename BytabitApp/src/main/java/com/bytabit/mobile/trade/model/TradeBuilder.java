@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 public class TradeBuilder {
 
     private String escrowAddress;
+    private Trade.Role role;
 
     // Sell Offer
     private String sellerEscrowPubKey;
@@ -52,6 +53,11 @@ public class TradeBuilder {
 
     public TradeBuilder escrowAddress(String escrowAddress) {
         this.escrowAddress = escrowAddress;
+        return this;
+    }
+
+    public TradeBuilder role(Trade.Role role) {
+        this.role = role;
         return this;
     }
 
@@ -127,7 +133,7 @@ public class TradeBuilder {
     }
 
     public Trade build() {
-        return new Trade(escrowAddress, sellerEscrowPubKey, sellerProfilePubKey,
+        return new Trade(escrowAddress, role, sellerEscrowPubKey, sellerProfilePubKey,
                 arbitratorProfilePubKey, currencyCode,
                 paymentMethod, minAmount, maxAmount,
                 price, buyerEscrowPubKey, btcAmount,

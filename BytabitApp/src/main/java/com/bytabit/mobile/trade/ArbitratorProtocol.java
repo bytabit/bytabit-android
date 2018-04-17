@@ -1,9 +1,9 @@
 package com.bytabit.mobile.trade;
 
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-import org.slf4j.LoggerFactory;
 
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT;
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
@@ -11,7 +11,7 @@ import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_S
 public class ArbitratorProtocol extends TradeProtocol {
 
     public ArbitratorProtocol() {
-        super(LoggerFactory.getLogger(ArbitratorProtocol.class));
+        super(EventLogger.of(ArbitratorProtocol.class));
     }
 
     //@Override
@@ -110,7 +110,7 @@ public class ArbitratorProtocol extends TradeProtocol {
                     .payoutCompleted(payoutCompleted)
                     .build();
 
-            tradeService.put(completedTrade).subscribe();
+//            tradeService.put(completedTrade).subscribe();
 
 //            } catch (IOException e) {
 //                log.error("Unable to put completed arbitrated trade.", e);

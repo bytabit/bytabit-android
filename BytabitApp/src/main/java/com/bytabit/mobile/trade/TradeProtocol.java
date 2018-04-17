@@ -1,14 +1,10 @@
 package com.bytabit.mobile.trade;
 
-import com.bytabit.mobile.profile.manager.ProfileManager;
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.manager.WalletManager;
-import org.slf4j.Logger;
-
-import javax.inject.Inject;
 
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
@@ -17,21 +13,24 @@ import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
 public abstract class TradeProtocol {
 
-    protected final Logger log;
+//    protected final Logger log;
 
-    @Inject
-    protected WalletManager walletManager;
+    protected final EventLogger eventLogger;
 
-    @Inject
-    protected ProfileManager profileManager;
 
-    protected final TradeService tradeService;
+//    @Inject
+//    protected WalletManager walletManager;
 
-    protected TradeProtocol(Logger log) {
+//    @Inject
+//    protected ProfileManager profileManager;
 
-        this.log = log;
+//    protected final TradeService tradeService;
 
-        tradeService = new TradeService();
+    protected TradeProtocol(EventLogger eventLogger) {
+
+        this.eventLogger = eventLogger;
+
+//        tradeService = new TradeService();
     }
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
@@ -116,7 +115,7 @@ public abstract class TradeProtocol {
                     .arbitrateRequest(arbitrateRequest)
                     .build();
 
-            tradeService.put(arbitratingTrade).subscribe();
+//            tradeService.put(arbitratingTrade).subscribe();
         }
     }
 

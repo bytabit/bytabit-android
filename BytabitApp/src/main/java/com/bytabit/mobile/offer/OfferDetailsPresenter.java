@@ -1,10 +1,15 @@
 package com.bytabit.mobile.offer;
 
+import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
-import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.trade.TradeManager;
+import com.bytabit.mobile.trade.model.BuyRequest;
+import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -20,6 +25,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 
 import javax.inject.Inject;
+import java.math.BigDecimal;
+import java.math.MathContext;
 
 public class OfferDetailsPresenter {
 
@@ -28,14 +35,14 @@ public class OfferDetailsPresenter {
     @Inject
     OfferManager offerManager;
 
-    //    @Inject
-//    TradeManager tradeManager;
-//
     @Inject
     ProfileManager profileManager;
-//
-//    @Inject
-//    WalletManager walletManager;
+
+    @Inject
+    TradeManager tradeManager;
+
+    @Inject
+    WalletManager walletManager;
 
     @FXML
     private View offerDetailsView;
@@ -91,18 +98,15 @@ public class OfferDetailsPresenter {
     @FXML
     private TextField buyBtcAmtTextField;
 
-    private Profile myProfile;
-
-    private SellOffer selectedOffer;
-
     public OfferDetailsPresenter() {
     }
 
     public void initialize() {
 
-        //LOG.debug("initialize offer details presenter");
-
         // setup view components
+
+        buyCurrencyAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
+        buyBtcAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
 
         // setup event observables
 
@@ -112,8 +116,15 @@ public class OfferDetailsPresenter {
         Observable<PresenterEvent> removeOfferButtonPressedEvents = JavaFxObservable.actionEventsOf(removeOfferButton)
                 .map(actionEvent -> new RemoveOfferButtonPressed());
 
+        Observable<PresenterEvent> buyButtonPressedEvents = JavaFxObservable.actionEventsOf(buyBtcButton)
+                .map(actionEvent -> new BuyButtonPressed());
+
+        Observable<PresenterEvent> currencyAmountChangedEvents = JavaFxObservable.changesOf(buyCurrencyAmtTextField.textProperty())
+                .map(change -> change.getNewVal() == null || change.getNewVal().isEmpty() ? "0.00" : change.getNewVal())
+                .map(amt -> new CurrencyAmountChanged(new BigDecimal(amt)));
+
         Observable<PresenterEvent> offerDetailEvents = Observable.merge(viewShowingEvents,
-                removeOfferButtonPressedEvents)
+                removeOfferButtonPressedEvents, buyButtonPressedEvents, currencyAmountChangedEvents)
                 .compose(eventLogger.logEvents()).share();
 
 
@@ -139,6 +150,39 @@ public class OfferDetailsPresenter {
                 .compose(eventLogger.logEvents())
                 .subscribe(a -> offerManager.getActions().onNext(a));
 
+        Observable<WalletManager.GetEscrowPubKey> getEscrowPubKeyActions = offerDetailEvents
+                .ofType(BuyButtonPressed.class)
+                .map(e -> walletManager.new GetEscrowPubKey());
+
+        Observable<WalletManager.GetTradeWalletDepositAddress> getDepositAddressActions = offerDetailEvents
+                .ofType(BuyButtonPressed.class)
+                .map(e -> walletManager.new GetTradeWalletDepositAddress());
+
+        Observable.merge(getEscrowPubKeyActions, getDepositAddressActions)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
+                .subscribe(a -> walletManager.getActions().onNext(a));
+
+        Observable<TradeManager.CreateTrade> createTradeActions = Observable.zip(
+                offerDetailEvents.ofType(BuyButtonPressed.class),
+                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
+                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),
+                walletManager.getWalletResults().ofType(WalletManager.TradeWalletDepositAddress.class),
+                offerManager.getResults().ofType(OfferManager.OfferSelected.class),
+                (a, p, e, d, s) -> {
+                    SellOffer sellOffer = s.getOffer();
+                    BuyRequest buyRequest = createBuyRequest(p.getProfile().getPubKey(), e.getPubKey(), d.getAddress().toBase58());
+                    String escrowAddress = walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
+                    return tradeManager.new CreateTrade(escrowAddress, Trade.Role.BUYER, s.getOffer(), buyRequest);
+                });
+
+        createTradeActions
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
+                .subscribe(tradeManager.getActions());
+
         // handle events
 
         offerDetailEvents.subscribeOn(Schedulers.io())
@@ -146,6 +190,23 @@ public class OfferDetailsPresenter {
                 .ofType(ViewShowing.class)
                 .subscribe(event -> {
                     setAppBar();
+                });
+
+        offerDetailEvents.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(CurrencyAmountChanged.class)
+                .subscribe(event -> {
+                    BigDecimal priceAmount = new BigDecimal(priceLabel.getText());
+                    BigDecimal btcAmount = event.newAmount.divide(priceAmount, MathContext.DECIMAL32)
+                            .setScale(8, BigDecimal.ROUND_UP);
+                    buyBtcAmtTextField.setText(btcAmount.toPlainString());
+                });
+
+        offerDetailEvents.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(BuyButtonPressed.class)
+                .subscribe(event -> {
+                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
                 });
 
         // handle results
@@ -158,10 +219,10 @@ public class OfferDetailsPresenter {
 //                .subscribe(this::showOffer);
 
         Observable<ProfileManager.ProfileLoaded> profileLoadedResults = profileManager.getResults()
-                .ofType(ProfileManager.ProfileLoaded.class);
+                .ofType(ProfileManager.ProfileLoaded.class).share();
 
         Observable<OfferManager.OfferSelected> offerSelectedResults = offerManager.getResults()
-                .ofType(OfferManager.OfferSelected.class);
+                .ofType(OfferManager.OfferSelected.class).share();
 
         Observable<PresenterEvent> showingEvents = Observable.zip(
                 offerSelectedResults, profileLoadedResults, (offer, profile) -> {
@@ -297,13 +358,20 @@ public class OfferDetailsPresenter {
 
         String currencyCode = sellOffer.getCurrencyCode().toString();
         currencyLabel.setText(currencyCode);
-
+        currencyAmtLabel.setText(currencyCode);
         minTradeAmtLabel.setText(sellOffer.getMinAmount().toPlainString());
         minTradeAmtCurrencyLabel.setText(currencyCode);
         maxTradeAmtLabel.setText(sellOffer.getMinAmount().toPlainString());
         maxTradeAmtCurrencyLabel.setText(currencyCode);
         priceLabel.setText(sellOffer.getPrice().toPlainString());
         priceCurrencyLabel.setText(currencyCode);
+    }
+
+    private BuyRequest createBuyRequest(String buyerProfilePubKey, String buyerEscrowPubKey,
+                                        String buyerPayoutAddress) {
+
+        BigDecimal btcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().getValue());
+        return new BuyRequest(buyerEscrowPubKey, btcAmount, buyerProfilePubKey, buyerPayoutAddress);
     }
 
     // Event classes
@@ -318,6 +386,9 @@ public class OfferDetailsPresenter {
     }
 
     private class RemoveOfferButtonPressed implements PresenterEvent {
+    }
+
+    private class BuyButtonPressed implements PresenterEvent {
     }
 
     private class MyOfferSelected implements PresenterEvent {
@@ -343,6 +414,18 @@ public class OfferDetailsPresenter {
 
         public SellOffer getSellOffer() {
             return sellOffer;
+        }
+    }
+
+    private class CurrencyAmountChanged implements PresenterEvent {
+        private final BigDecimal newAmount;
+
+        public CurrencyAmountChanged(BigDecimal newAmount) {
+            this.newAmount = newAmount;
+        }
+
+        public BigDecimal getNewAmount() {
+            return newAmount;
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.bytabit.mobile.trade;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.Event;
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -11,17 +13,18 @@ import com.gluonhq.charm.glisten.control.CharmListView;
 import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.Observable;
+import io.reactivex.rxjavafx.observables.JavaFxObservable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.rxjavafx.sources.Change;
+import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class TradesPresenter {
 
-    private static Logger LOG = LoggerFactory.getLogger(TradesPresenter.class);
-
+    private final EventLogger eventLogger = EventLogger.of(TradesPresenter.class);
 
     @Inject
     TradeManager tradeManager;
@@ -39,6 +42,9 @@ public class TradesPresenter {
     private CharmListView<Trade, String> tradesListView;
 
     public void initialize() {
+
+        // setup view components
+
         tradesListView.setCellFactory((view) -> new CharmListCell<Trade>() {
             @Override
             public void updateItem(Trade t, boolean empty) {
@@ -58,19 +64,67 @@ public class TradesPresenter {
             }
         });
 
-        tradesView.showingProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue) {
+        // setup event observables
 
-                AppBar appBar = MobileApplication.getInstance().getAppBar();
-                appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
-                        MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
-                appBar.setTitleText("Trades");
-                appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
-                        System.out.println("Search")));
-            }
-        });
+        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradesView.showingProperty())
+                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
 
-        tradeManager.initialize();
+        Observable<TradeSelected> tradeSelectedEvents = JavaFxObservable.changesOf(tradesListView.selectedItemProperty())
+                .map(Change::getNewVal).map(TradeSelected::new);
+
+        Observable<PresenterEvent> tradeEvents = Observable.merge(viewShowingEvents,
+                tradeSelectedEvents)
+                .compose(eventLogger.logEvents()).share();
+
+        // transform events to actions
+
+        // handle events
+
+        tradeEvents.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(TradesPresenter.ViewShowing.class)
+                .subscribe(event -> {
+                    setAppBar();
+                    clearSelection();
+                });
+
+        tradeEvents.subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .ofType(TradesPresenter.TradeSelected.class)
+                .subscribe(event -> {
+                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
+                    tradeManager.getActions().onNext(tradeManager.new SelectTrade(event.getTrade()));
+                });
+
+        // handle results
+
+
+        tradeManager.getResults().ofType(TradeManager.TradeLoaded.class)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .map(TradeManager.TradeLoaded::getTrade)
+                .subscribe(trade -> {
+                    int index = tradesListView.itemsProperty().indexOf(trade);
+                    if (index > -1) {
+                        tradesListView.itemsProperty().remove(index);
+                    }
+                    tradesListView.itemsProperty().add(trade);
+                });
+
+
+//        tradesView.showingProperty().addListener((obs, oldValue, newValue) -> {
+//            if (newValue) {
+//
+//                AppBar appBar = MobileApplication.getInstance().getAppBar();
+//                appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
+//                        MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
+//                appBar.setTitleText("Trades");
+//                appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
+//                        System.out.println("Search")));
+//            }
+//        });
+
+//        tradeManager.initialize();
 
 //        tradeManager.watchUpdatedTrades().observeOn(JavaFxScheduler.platform()).forEach(this::updateTradesList);
 
@@ -108,25 +162,25 @@ public class TradesPresenter {
 //            }
 //        });
 
-        tradeManager.getUpdatedTrades().observeOn(JavaFxScheduler.platform())
-                .subscribe(trade -> {
-                    int index = tradesListView.itemsProperty().indexOf(trade);
-                    if (index > -1) {
-                        tradesListView.itemsProperty().set(index, trade);
-                    } else {
-                        tradesListView.itemsProperty().add(trade);
-                    }
-                });
+//        tradeManager.getUpdatedTrades().observeOn(JavaFxScheduler.platform())
+//                .subscribe(trade -> {
+//                    int index = tradesListView.itemsProperty().indexOf(trade);
+//                    if (index > -1) {
+//                        tradesListView.itemsProperty().set(index, trade);
+//                    } else {
+//                        tradesListView.itemsProperty().add(trade);
+//                    }
+//                });
 
 //        tradesListView.itemsProperty().setValue(tradeManager.getTradeEvents());
 
-        tradesListView.selectedItemProperty().addListener((obs, oldValue, trade) -> {
-            if (trade != null) {
-                tradesListView.selectedItemProperty().setValue(null);
-                tradeManager.setSelectedTrade(trade);
-                MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
-            }
-        });
+//        tradesListView.selectedItemProperty().addListener((obs, oldValue, trade) -> {
+//            if (trade != null) {
+//                tradesListView.selectedItemProperty().setValue(null);
+////                tradeManager.setSelectedTrade(trade);
+//                MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
+//            }
+//        });
     }
 
 //    private void updateTradesList(Trade updatedTrade) {
@@ -138,4 +192,53 @@ public class TradesPresenter {
 //            tradesObservableList.set(index, updatedTrade);
 //        }
 //    }
+
+    private void setAppBar() {
+        AppBar appBar = MobileApplication.getInstance().getAppBar();
+        appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
+                MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
+        appBar.setTitleText("Trades");
+        appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
+                System.out.println("Search")));
+    }
+
+    private void clearSelection() {
+        tradesListView.selectedItemProperty().setValue(null);
+    }
+
+    // Event classes
+
+    interface PresenterEvent extends Event {
+    }
+
+    private class ViewShowing implements PresenterEvent {
+    }
+
+    private class ViewNotShowing implements PresenterEvent {
+    }
+
+    private class TradeChanged implements PresenterEvent {
+
+        private final Trade trade;
+
+        public TradeChanged(Trade trade) {
+            this.trade = trade;
+        }
+
+        public Trade getTrade() {
+            return trade;
+        }
+    }
+
+    private class TradeSelected implements PresenterEvent {
+        private final Trade trade;
+
+        public TradeSelected(Trade trade) {
+            this.trade = trade;
+        }
+
+        public Trade getTrade() {
+            return trade;
+        }
+    }
 }

@@ -49,8 +49,8 @@ public class OfferManager extends AbstractManager {
                         errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
                         .toObservable()).map(OffersUpdated::new);
 
-        Observable<OfferResult> offerUpdatedResults = actionObservable.ofType(CreateSellOffer.class).map(e ->
-                sellOfferService.put(e.getOffer()))
+        Observable<OfferResult> offerUpdatedResults = actionObservable.ofType(CreateSellOffer.class)
+                .map(e -> sellOfferService.put(e.getOffer()))
                 .flatMap(Single::toObservable)
                 .map(OfferUpdated::new);
 

@@ -1,10 +1,10 @@
 package com.bytabit.mobile.trade;
 
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Single;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 
@@ -13,7 +13,7 @@ import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
 public class BuyerProtocol extends TradeProtocol {
 
     public BuyerProtocol() {
-        super(LoggerFactory.getLogger(BuyerProtocol.class));
+        super(EventLogger.of(BuyerProtocol.class));
     }
 
     // 1.B: create trade, post created trade

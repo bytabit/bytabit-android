@@ -1,10 +1,10 @@
 package com.bytabit.mobile.trade;
 
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -16,7 +16,7 @@ public class SellerProtocol extends TradeProtocol {
     ProfileManager profileManager;
 
     SellerProtocol() {
-        super(LoggerFactory.getLogger(SellerProtocol.class));
+        super(EventLogger.of(SellerProtocol.class));
     }
 
     // 1.S: seller receives created trade with sell offer + buy request
@@ -42,14 +42,14 @@ public class SellerProtocol extends TradeProtocol {
                     .paymentRequest(paymentRequest)
                     .build();
 
-            tradeService.put(fundedTrade).subscribe();
+//            tradeService.put(fundedTrade).subscribe();
 
 //            } catch (IOException e) {
 //                log.error("Unable to PUT funded trade.", e);
 //                // TODO retry putting payment request
 //            }
         } else {
-            log.error("Unable to fund trade.");
+//            log.error("Unable to fund trade.");
         }
 
         return fundedTrade;

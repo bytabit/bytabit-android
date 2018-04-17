@@ -767,9 +767,9 @@ public class WalletManager {
         return ScriptBuilder.createP2SHOutputScript(redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey)).getToAddress(netParams);
     }
 
-    private String escrowAddress(String arbitratorProfilePubKey,
-                                 String sellerEscrowPubKey,
-                                 String buyerEscrowPubKey) {
+    public String escrowAddress(String arbitratorProfilePubKey,
+                                String sellerEscrowPubKey,
+                                String buyerEscrowPubKey) {
         ECKey apk = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKey));
         ECKey spk = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKey));
         ECKey bpk = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKey));

@@ -21,6 +21,7 @@ public class Trade {
     }
 
     private String escrowAddress;
+    private Role role;
 
     // Sell Offer
     private String sellerEscrowPubKey;
@@ -68,7 +69,7 @@ public class Trade {
         return new TradeBuilder();
     }
 
-    Trade(String escrowAddress, String sellerEscrowPubKey, String sellerProfilePubKey,
+    Trade(String escrowAddress, Role role, String sellerEscrowPubKey, String sellerProfilePubKey,
           String arbitratorProfilePubKey, CurrencyCode currencyCode,
           PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount,
           BigDecimal price, String buyerEscrowPubKey, BigDecimal btcAmount,
@@ -79,6 +80,7 @@ public class Trade {
           PayoutCompleted.Reason payoutReason) {
 
         this.escrowAddress = escrowAddress;
+        this.role = role;
         this.sellerEscrowPubKey = sellerEscrowPubKey;
         this.sellerProfilePubKey = sellerProfilePubKey;
         this.arbitratorProfilePubKey = arbitratorProfilePubKey;
@@ -104,6 +106,10 @@ public class Trade {
 
     public String getEscrowAddress() {
         return escrowAddress;
+    }
+
+    public Role getRole() {
+        return role;
     }
 
     public String getSellerEscrowPubKey() {
@@ -192,6 +198,10 @@ public class Trade {
 
     public void setEscrowAddress(String escrowAddress) {
         this.escrowAddress = escrowAddress;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 
     public void setSellerEscrowPubKey(String sellerEscrowPubKey) {
@@ -377,9 +387,10 @@ public class Trade {
     }
 
     public Role role(String profilePubKey, Boolean isArbitrator) {
-        Role role;
 
-        if (!isArbitrator) {
+        if (role != null) {
+            return role;
+        } else if (!isArbitrator) {
             if (getSellerProfilePubKey().equals(profilePubKey)) {
                 role = SELLER;
             } else if (getBuyerProfilePubKey().equals(profilePubKey)) {
