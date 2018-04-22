@@ -78,6 +78,11 @@ public class TradesPresenter {
 
         // transform events to actions
 
+        Observable<ProfileManager.ProfileAction> profileActions = tradeEvents.ofType(ViewShowing.class)
+                .map(v -> profileManager.new LoadProfile());
+
+        profileActions.subscribe(profileManager.getActions());
+
         // handle events
 
         tradeEvents.subscribeOn(Schedulers.io())
@@ -98,18 +103,27 @@ public class TradesPresenter {
 
         // handle results
 
+        profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class)
+                .map(pl -> tradeManager.new GetTrades(pl.getProfile()))
+                .subscribe(tradeManager.getActions());
 
         tradeManager.getResults().ofType(TradeManager.TradeLoaded.class)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(TradeManager.TradeLoaded::getTrade)
-                .subscribe(trade -> {
-                    int index = tradesListView.itemsProperty().indexOf(trade);
-                    if (index > -1) {
-                        tradesListView.itemsProperty().remove(index);
-                    }
-                    tradesListView.itemsProperty().add(trade);
-                });
+                .subscribe(this::updateTrade);
+
+        tradeManager.getResults().ofType(TradeManager.TradeWritten.class)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .map(TradeManager.TradeWritten::getTrade)
+                .subscribe(this::updateTrade);
+
+        tradeManager.getResults().ofType(TradeManager.TradeUpdated.class)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .map(TradeManager.TradeUpdated::getTrade)
+                .subscribe(this::updateTrade);
 
 
 //        tradesView.showingProperty().addListener((obs, oldValue, newValue) -> {
@@ -204,6 +218,14 @@ public class TradesPresenter {
 
     private void clearSelection() {
         tradesListView.selectedItemProperty().setValue(null);
+    }
+
+    private void updateTrade(Trade trade) {
+        int index = tradesListView.itemsProperty().indexOf(trade);
+        if (index > -1) {
+            tradesListView.itemsProperty().remove(index);
+        }
+        tradesListView.itemsProperty().add(trade);
     }
 
     // Event classes
