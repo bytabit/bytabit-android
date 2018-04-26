@@ -6,6 +6,10 @@ import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
@@ -13,7 +17,28 @@ import static com.bytabit.mobile.trade.model.Trade.Status.*;
 public class Trade {
 
     public enum Status {
-        CREATED, FUNDING, FUNDED, PAID, COMPLETING, COMPLETED, ARBITRATING
+
+        CREATED, FUNDING, FUNDED, PAID, COMPLETING, // happy path
+        CANCELING, ARBITRATING,
+        COMPLETED, CANCELED;
+
+        private List<Status> nextValid;
+
+        static {
+            CREATED.nextValid = Arrays.asList(FUNDING, CANCELED);
+            FUNDING.nextValid = Arrays.asList(FUNDED, CANCELING, ARBITRATING);
+            FUNDED.nextValid = Arrays.asList(PAID, CANCELING, ARBITRATING);
+            PAID.nextValid = Arrays.asList(COMPLETING, ARBITRATING);
+            COMPLETING.nextValid = Arrays.asList(COMPLETED, ARBITRATING);
+            CANCELING.nextValid = Arrays.asList(CANCELED, PAID, ARBITRATING);
+            ARBITRATING.nextValid = Collections.singletonList(COMPLETED);
+            COMPLETED.nextValid = new ArrayList<>();
+            CANCELED.nextValid = new ArrayList<>();
+        }
+
+        public List<Status> nextValid() {
+            return nextValid;
+        }
     }
 
     public enum Role {

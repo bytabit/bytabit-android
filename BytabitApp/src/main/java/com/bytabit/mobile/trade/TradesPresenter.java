@@ -119,10 +119,10 @@ public class TradesPresenter {
                 .map(TradeManager.TradeWritten::getTrade)
                 .subscribe(this::updateTrade);
 
-        tradeManager.getResults().ofType(TradeManager.TradeUpdated.class)
+        tradeManager.getResults().ofType(TradeManager.TradeReceived.class)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .map(TradeManager.TradeUpdated::getTrade)
+                .map(TradeManager.TradeReceived::getReceivedTrade)
                 .subscribe(this::updateTrade);
 
 
