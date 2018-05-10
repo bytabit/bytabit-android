@@ -124,6 +124,9 @@
                     <children>
                         <FlowPane fx:id="tradeButtonsFlowPane" hgap="5.0" vgap="5.0">
                             <children>
+                                <Button fx:id="fundEscrowButton" layoutX="10.0"
+                                        layoutY="10.0" mnemonicParsing="false"
+                                        text="FUND ESCROW"/>
                                 <Button fx:id="paymentSentButton" mnemonicParsing="false"
                                         text="PAYMENT SENT"/>
                                 <Button fx:id="paymentReceivedButton"

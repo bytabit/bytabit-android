@@ -3,20 +3,26 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.common.*;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.BuyRequest;
+import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
@@ -34,14 +40,17 @@ public class TradeManager extends AbstractManager {
 //    @Inject
 //    ArbitratorProtocol arbitratorProtocol;
 
+    @Inject
+    WalletManager walletManager;
+
+    @Inject
+    ProfileManager profileManager;
+
     private final TradeService tradeService;
 
     private final PublishSubject<TradeAction> actions;
 
-    private final Observable<TradeResult> results;
-
-//    @Inject
-//    ProfileManager profileManager;
+    private Observable<TradeResult> results;
 
 //    @Inject
 //    WalletManager walletManager;
@@ -57,21 +66,43 @@ public class TradeManager extends AbstractManager {
     public final static String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
-    @Inject
     public TradeManager() {
-
         tradeService = new TradeService();
-
         actions = PublishSubject.create();
+    }
+
+    @PostConstruct
+    public void initialize() {
+
+        Observable<WalletManager.WalletResult> tradeWalletResults = walletManager.getWalletResults()
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
+                .share();
+
+        Observable<ProfileManager.ProfileResult> profileResults = profileManager.getResults()
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents());
+
+        profileResults.ofType(ProfileManager.ProfilePending.class)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .map(p -> profileManager.new LoadProfile())
+                .subscribe(profileManager.getActions());
+
+        Observable<GetTrades> getTradesObservable = profileResults.ofType(ProfileManager.ProfileLoaded.class)
+                .map(p -> new GetTrades(p.getProfile()));
 
         Observable<TradeAction> actionObservable = actions
                 .compose(eventLogger.logEvents())
                 .startWith(new LoadTrades())
+                .mergeWith(getTradesObservable)
                 .share();
 
-        Observable<TradeReceived> tradesReceived = actionObservable.ofType(GetTrades.class)
+        Observable<TradeReceived> tradesReceivedObservable = actionObservable.ofType(GetTrades.class)
                 .map(GetTrades::getProfile)
-                .flatMap(profile -> Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
+                .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
                         .flatMap(tick -> tradeService.get(profile.getPubKey())
                                 .retryWhen(errors -> errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
                                 .flattenAsObservable(l -> l))
@@ -82,7 +113,12 @@ public class TradeManager extends AbstractManager {
                 // TODO validate and merge trade states
                 // write received trade
                 .flatMap(tr -> writeTrade(tr.getReceivedTrade())
-                        .map(t -> new TradeReceived(tr.getCurrentTrade(), t)));
+                        .map(t -> new TradeReceived(tr.getCurrentTrade(), t))).share();
+
+        Observable<BuyerRequestedTrade> buyerRequestedTradeObservable = tradesReceivedObservable
+                .map(TradeReceived::getReceivedTrade)
+                .filter(t -> t.getRole().equals(Trade.Role.SELLER) && t.status().equals(CREATED))
+                .map(t -> new BuyerRequestedTrade(t.getEscrowAddress(), t.sellOffer(), t.buyRequest()));
 
         Observable<TradeCreated> tradeCreatedObservable = actionObservable.ofType(CreateTrade.class)
                 .map(ct -> new TradeCreated(Trade.builder()
@@ -92,14 +128,31 @@ public class TradeManager extends AbstractManager {
                         .buyRequest(ct.getBuyRequest())
                         .build())).share();
 
-        Observable<TradeWritten> tradeSavedObservable = tradeCreatedObservable
-                .flatMap(tc -> writeTrade(tc.trade)
-                        .map(TradeWritten::new));
+        Observable<TradeUpdated> tradeFundingUpdatesObservable = tradeWalletResults
+                .ofType(WalletManager.EscrowFunding.class)
+                .flatMap(funding -> readTrade(funding.getEscrowAddress())
+                        .map(t -> Trade.builder()
+                                .role(t.getRole())
+                                .escrowAddress(t.getEscrowAddress())
+                                .sellOffer(t.sellOffer())
+                                .buyRequest(t.buyRequest())
+                                .paymentRequest(new PaymentRequest(funding.getTransactionHash(),
+                                        "TBD payment details", funding.getRefundAddress(),
+                                        funding.getRefundTxSignature()))
+                                .build()))
+//                        .map(trade -> trade.fundingTransactionHash(funding.getTransactionHash()))
+//                        .map(trade -> trade.fundingTransactionWithAmt()))
+                .map(TradeUpdated::new).share();
 
-        Observable<TradePut> tradePutObservable = tradeCreatedObservable
-                .flatMap(tc -> tradeService.put(tc.trade)
-                        .map(TradePut::new)
-                        .toObservable());
+        Observable<TradeWritten> tradeWrittenObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
+                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
+                .flatMap(this::writeTrade)
+                .map(TradeWritten::new);
+
+        Observable<TradePut> tradePutObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
+                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
+                .flatMap(t -> tradeService.put(t).toObservable())
+                .map(TradePut::new);
 
         Observable<TradeLoaded> tradeLoadedObservable = actionObservable.ofType(LoadTrades.class)
                 .flatMap(lt -> readTrades())
@@ -109,10 +162,21 @@ public class TradeManager extends AbstractManager {
                 .map(SelectTrade::getTrade)
                 .map(TradeSelected::new);
 
+        // wallet result handlers
+
+        walletManager.getTradeWalletTransactionResults()
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
+                .subscribe();
+
         results = Observable.merge(tradeLoadedObservable, tradeCreatedObservable,
-                tradeSavedObservable, tradePutObservable)
+                tradeFundingUpdatesObservable)
+                .mergeWith(tradeWrittenObservable)
+                .mergeWith(tradePutObservable)
                 .mergeWith(tradeSelectedObservable)
-                .mergeWith(tradesReceived)
+                .mergeWith(tradesReceivedObservable)
+                .mergeWith(buyerRequestedTradeObservable)
                 .compose(eventLogger.logResults())
                 .share();
     }
@@ -480,32 +544,63 @@ public class TradeManager extends AbstractManager {
         });
     }
 
+    private Observable<Trade> readTrade(String escrowAddress) {
+        return Observable.create(source -> {
+            try {
+                File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
+                if (tradeFile.exists()) {
+                    FileReader tradeReader = new FileReader(tradeFile);
+                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
+                    source.onNext(trade);
+                }
+            } catch (IOException ioe) {
+                source.onError(ioe);
+            }
+        });
+    }
+
     private Observable<Trade> readTrades() {
 
-        return Observable.create(source -> {
-
-            // load stored trades
-                    File tradesDir = new File(TRADES_PATH);
+        return Observable.just(new File(TRADES_PATH))
+                .map(tradesDir -> {
                     if (!tradesDir.exists()) {
                         tradesDir.mkdirs();
-                    } else if (tradesDir.list() != null) {
-                        for (String tradeId : tradesDir.list()) {
-                            try {
-                                File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "currentTrade.json");
-                                if (tradeFile.exists()) {
-                                    FileReader tradeReader = new FileReader(tradeFile);
-                                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
-                                    source.onNext(trade);
-                                }
-                            } catch (IOException ioe) {
-                                source.onError(ioe);
-                            }
-                        }
                     }
-                    source.onComplete();
-                }
-        );
+                    return tradesDir;
+                })
+                .flatMapIterable(tradesDir -> {
+                    if (tradesDir.list() != null) {
+                        return Arrays.asList(tradesDir.list());
+                    } else {
+                        return new ArrayList<>();
+                    }
+                })
+                .flatMap(this::readTrade);
     }
+
+//        return Observable.create(source -> {
+//
+//                    // load stored trades
+//                    File tradesDir = new File(TRADES_PATH);
+//                    if (!tradesDir.exists()) {
+//                        tradesDir.mkdirs();
+//                    } else if (tradesDir.list() != null) {
+//                        for (String tradeId : tradesDir.list()) {
+//                            try {
+//                                File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "currentTrade.json");
+//                                if (tradeFile.exists()) {
+//                                    FileReader tradeReader = new FileReader(tradeFile);
+//                                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
+//                                    source.onNext(trade);
+//                                }
+//                            } catch (IOException ioe) {
+//                                source.onError(ioe);
+//                            }
+//                        }
+//                    }
+//                    source.onComplete();
+//                }
+//        );
 
     private Observable<TradeReceived> receiveTrade(Profile profile, Trade receivedTrade) {
 
@@ -551,7 +646,7 @@ public class TradeManager extends AbstractManager {
 //        return createdTradeEvents;
 //    }
 
-    // convert currentTrade into stream of currentTrade events
+// convert currentTrade into stream of currentTrade events
 //    private void emitTradeEvents(ObservableEmitter<TradeEvent> source, Profile profile, Trade currentTrade) {
 //
 //        String escrowAddress = currentTrade.getEscrowAddress();
@@ -572,7 +667,7 @@ public class TradeManager extends AbstractManager {
 //        }
 //    }
 
-    // Trade Action Classes
+// Trade Action Classes
 
     public interface TradeAction extends Event {
     }
@@ -635,7 +730,7 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-    // Trade Result Classes
+// Trade Result Classes
 
     public interface TradeResult extends Result {
     }
@@ -711,6 +806,31 @@ public class TradeManager extends AbstractManager {
         }
     }
 
+    public class BuyerRequestedTrade implements TradeResult {
+
+        private final String escrowAddress;
+        private final SellOffer sellOffer;
+        private final BuyRequest buyRequest;
+
+        public BuyerRequestedTrade(String escrowAddress, SellOffer sellOffer, BuyRequest buyRequest) {
+            this.escrowAddress = escrowAddress;
+            this.sellOffer = sellOffer;
+            this.buyRequest = buyRequest;
+        }
+
+        public String getEscrowAddress() {
+            return escrowAddress;
+        }
+
+        public SellOffer getSellOffer() {
+            return sellOffer;
+        }
+
+        public BuyRequest getBuyRequest() {
+            return buyRequest;
+        }
+    }
+
     public class TradeSelected implements TradeResult {
         private final Trade trade;
 
@@ -723,7 +843,19 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-    // Trade Error Class
+    public class TradeUpdated implements TradeResult {
+        private final Trade trade;
+
+        public TradeUpdated(Trade trade) {
+            this.trade = trade;
+        }
+
+        public Trade getTrade() {
+            return trade;
+        }
+    }
+
+// Trade Error Class
 
     public class TradeError implements TradeResult, ErrorResult {
 

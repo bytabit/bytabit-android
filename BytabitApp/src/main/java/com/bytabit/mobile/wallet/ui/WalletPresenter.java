@@ -2,6 +2,7 @@ package com.bytabit.mobile.wallet.ui;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.Event;
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -15,15 +16,13 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Locale;
 
 public class WalletPresenter {
 
-    private static Logger LOG = LoggerFactory.getLogger(WalletPresenter.class);
+    private final EventLogger eventLogger = EventLogger.of(WalletPresenter.class);
 
     @Inject
     WalletManager walletManager;
@@ -45,10 +44,12 @@ public class WalletPresenter {
     private FloatingActionButton withdrawButton = new FloatingActionButton();
 
     public void initialize() {
-        LOG.debug("initialize wallet presenter");
 
         Observable<WalletManager.BlockDownloadResult> blockDownloadResults =
-                walletManager.getBlockDownloadResults().autoConnect().share();
+                walletManager.getBlockDownloadResults()
+                        .autoConnect(2)
+                        .compose(eventLogger.logEvents())
+                        .share();
 
         blockDownloadResults.subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
@@ -84,6 +85,7 @@ public class WalletPresenter {
 
         walletManager.getTradeWalletTransactionResults().autoConnect()
                 .subscribeOn(Schedulers.io())
+                .compose(eventLogger.logEvents())
                 .observeOn(JavaFxScheduler.platform())
                 .ofType(WalletManager.TradeWalletUpdate.class)
                 .subscribe(tr -> {
@@ -106,8 +108,6 @@ public class WalletPresenter {
 
         walletView.showingProperty().addListener((obs, oldValue, newValue) -> {
             if (newValue) {
-                LOG.debug("Wallet view pending.");
-
                 AppBar appBar = MobileApplication.getInstance().getAppBar();
                 appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
                         MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));

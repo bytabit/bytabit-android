@@ -25,7 +25,7 @@ public class Trade {
         private List<Status> nextValid;
 
         static {
-            CREATED.nextValid = Arrays.asList(FUNDING, CANCELED);
+            CREATED.nextValid = Arrays.asList(FUNDING, CANCELING);
             FUNDING.nextValid = Arrays.asList(FUNDED, CANCELING, ARBITRATING);
             FUNDED.nextValid = Arrays.asList(PAID, CANCELING, ARBITRATING);
             PAID.nextValid = Arrays.asList(COMPLETING, ARBITRATING);
@@ -318,10 +318,10 @@ public class Trade {
         if (escrowAddress != null && hasSellOffer() && hasBuyRequest()) {
             status = CREATED;
         }
-        if (status == CREATED && hasPaymentRequest() && fundingTransactionWithAmt() != null) {
+        if (status == CREATED && hasPaymentRequest()) {
             status = FUNDING;
         }
-        if (status == FUNDING && fundingTransactionWithAmt().getDepth() > 0) {
+        if (status == FUNDING && fundingTransactionWithAmt() != null && fundingTransactionWithAmt().getDepth() > 0) {
             status = FUNDED;
         }
         if (status == FUNDED && hasPayoutRequest()) {
@@ -430,6 +430,11 @@ public class Trade {
         }
 
         return role;
+    }
+
+    public Trade fundingTransactionHash(String fundingTxHash) {
+        this.fundingTxHash = fundingTxHash;
+        return this;
     }
 
     public Trade fundingTransactionWithAmt(TransactionWithAmt transactionWithAmt) {

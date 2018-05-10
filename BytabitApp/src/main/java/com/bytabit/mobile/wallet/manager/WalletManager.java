@@ -34,10 +34,7 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.TradeManager.TRADES_PATH;
@@ -73,9 +70,7 @@ public class WalletManager {
     private final ConnectableObservable<BlockDownloadResult> blockDownloadResults;
 
     private final ConnectableObservable<TransactionResult> tradeWalletTransactionResults;
-
-//    @Getter
-//    private final Observable<TransactionResult> escrowWalletTransactionResults;
+    private final ConnectableObservable<EscrowWalletUpdate> escrowWalletTransactionResults;
 
     ////
 
@@ -103,7 +98,8 @@ public class WalletManager {
 
         Observable<WalletAction> actionObservable = actions
                 .map(a -> a)
-                .compose(eventLogger.logEvents()).share();
+                .compose(eventLogger.logEvents())
+                .share();
 
         // create trade wallet
 
@@ -115,39 +111,35 @@ public class WalletManager {
             }
         }).cache();
 
-        // wallet actions to results
+        // trade wallet actions to results
 
-        Observable<WalletResult> tradeWalletInfoResults = actionObservable.ofType(GetTradeWalletInfo.class)
+        Observable<TradeWalletInfo> tradeWalletInfoResults = actionObservable.ofType(GetTradeWalletInfo.class)
                 .flatMap(e -> tradeWallet.map(tw -> {
                             Context.propagate(btcContext);
                             return new TradeWalletInfo(getSeedWords(tw), getXpubKey(tw), getXprvKey(tw));
                         }
                 ).toObservable());
 
-        Observable<WalletResult> tradeWalletProfilePubKeyResults = actionObservable
+        Observable<ProfilePubKey> tradeWalletProfilePubKeyResults = actionObservable
                 .ofType(GetProfilePubKey.class)
                 .flatMap(a -> tradeWallet
                         .map(this::getFreshBase58AuthPubKey)
                         .map(ProfilePubKey::new).toObservable());
 
-        Observable<WalletResult> tradeWalletEscrowPubKeyResults = actionObservable
+        Observable<EscrowPubKey> tradeWalletEscrowPubKeyResults = actionObservable
                 .ofType(GetEscrowPubKey.class)
                 .flatMap(a -> tradeWallet
                         .map(this::getFreshBase58ReceivePubKey)
                         .map(EscrowPubKey::new).toObservable());
 
-        Observable<WalletResult> tradeWalletDepositAddressResults = actionObservable
+        Observable<TradeWalletDepositAddress> tradeWalletDepositAddressResults = actionObservable
                 .ofType(GetTradeWalletDepositAddress.class)
                 .flatMap(a -> tradeWallet
                         .map(this::getDepositAddress)
                         .map(TradeWalletDepositAddress::new).toObservable());
 
-        walletResults = tradeWalletInfoResults
-                .mergeWith(tradeWalletProfilePubKeyResults)
-                .mergeWith(tradeWalletEscrowPubKeyResults)
-                .mergeWith(tradeWalletDepositAddressResults)
-                .compose(eventLogger.logResults())
-                .subscribeOn(Schedulers.io()).share();
+//        Observable<EscrowFunded> escrowFundedResults = actionObservable
+//                .ofType(FundEscrow.class)
 
         // trade wallet tx updated  events
 
@@ -199,7 +191,7 @@ public class WalletManager {
                 .subscribeOn(Schedulers.io())
                 .replay(15, TimeUnit.MINUTES);
 
-        // create escrow escrowWallets
+        // create escrow wallets
 
         Single<File> tradesDir = Single.just(new File(TRADES_PATH));
 
@@ -217,7 +209,7 @@ public class WalletManager {
                 .flattenAsObservable(escrowAddresses -> escrowAddresses);
 
         Single<List<Wallet>> readEscrowWallets = readEscrowAddresses
-                .map(this::createEscrowWallet).toList().cache();
+                .map(this::createOrLoadEscrowWallet).toList().cache();
 
 //        createdEscrowWallets = PublishSubject.create();
 //        createdEscrowAddresses = PublishSubject.create();
@@ -231,11 +223,11 @@ public class WalletManager {
 //                    });
 //                    break;
 //                case ADD_ESCROW:
-//                    String a = action.getEscrowAddress();
+//                    String a = action.escrowAddress();
 //                    wallets.put(a, createEscrowWallet(a));
 //                    break;
 //                case REMOVE_ESCROW:
-//                    wallets.remove(action.getEscrowAddress());
+//                    wallets.remove(action.escrowAddress());
 //                    break;
 //                default:
 //                    throw new RuntimeException(String.format("Unexpected WalletAction.Type: %s", action.getType()));
@@ -287,6 +279,90 @@ public class WalletManager {
             return pg;
         }).cache();
 
+        Observable<Wallet> createdEscrowWallets = actionObservable.ofType(CreateEscrow.class)
+                .map(CreateEscrow::getEscrowAddress)
+                .flatMap(ea -> Observable.<Wallet>create(source -> source.onNext(createOrLoadEscrowWallet(ea)))
+                        .flatMap(w -> Single.zip(blockChain, peerGroup, (bc, pg) -> {
+                            w.addWatchedAddress(Address.fromBase58(netParams, ea), (DateTime.now().getMillis() / 1000));
+                            bc.addWallet(w);
+                            pg.addWallet(w);
+                            return w;
+                        }).toObservable())
+                ).share();
+
+        Observable<EscrowCreated> escrowCreatedResults = createdEscrowWallets
+                .flatMap(ew -> Observable.create(source -> {
+                    try {
+                        source.onNext(new EscrowCreated(escrowAddress(ew)));
+                    } catch (Exception e) {
+                        source.onError(e);
+                    }
+                }));
+
+        Observable<Wallet> escrowWalletsObservable = readEscrowWallets
+                .flattenAsObservable(ew -> ew)
+                .concatWith(createdEscrowWallets)
+                .observeOn(Schedulers.io()).share();
+
+        Observable<HashMap<String, Wallet>> escrowWalletMapObservable = escrowWalletsObservable
+                .scan(new HashMap<String, Wallet>(), (m, ew) -> {
+                    m.put(escrowAddress(ew), ew);
+                    return m;
+                }).replay(1);
+
+        // change this for escrow payout and refund
+//        Observable<EscrowFunded> escrowFundedResult = Observable.zip(actions.ofType(FundEscrow.class),
+//            tradeWallet.toObservable(), escrowWalletMapObservable, (fe, tw, ewm) -> {
+//                 Wallet ew = ewm.get(fe.escrowAddress);
+//                 if (ew != null) {
+//
+//                 }
+//            });
+
+        Observable<EscrowFunding> escrowFundingResults = actionObservable.ofType(FundEscrow.class)
+                .flatMap(fe -> fundEscrow(fe.getTrade().getEscrowAddress(), fe.getTrade().getBtcAmount())
+                        .flatMap(tx -> tradeWallet
+                                .flatMap(w -> getRefundSignature(fe.getTrade(), tx, getDepositAddress(w))
+                                        .map(sig -> new EscrowFunding(fe.getTrade().getEscrowAddress(),
+                                                tx.getHashAsString(), getDepositAddress(w).toBase58(), sig)))
+                        ).toObservable());
+
+        // escrow wallet tx updated events
+        Observable<EscrowWalletUpdate> escrowWalletUpdateResults = escrowWalletsObservable
+                .flatMap(ew -> Observable.<EscrowWalletUpdate>create(source -> {
+                            TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
+
+                                @Override
+                                public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
+                                    Context.propagate(btcContext);
+                                    TransactionWithAmt txWithAmt = TransactionWithAmt.builder()
+                                            .tx(tx)
+                                            .transactionAmt(tx.getValue(wallet))
+                                            .outputAddress(getWatchedOutputAddress(tx, wallet))
+                                            .inputTxHash(tx.getInput(0).getOutpoint().getHash().toString())
+                                            .walletBalance(ew.getBalance())
+                                            .build();
+                                    try {
+                                        source.onNext(new EscrowWalletUpdate(escrowAddress(ew), txWithAmt));
+                                    } catch (Exception e) {
+                                        source.onError(e);
+                                    }
+                                }
+                            };
+                            ew.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
+
+                            source.setCancellable(() -> {
+                                ew.removeTransactionConfidenceEventListener(listener);
+                            });
+                        }).groupBy(u -> u.transactionWithAmt.getHash())
+                                .flatMap(ug -> ug.throttleLast(1, TimeUnit.SECONDS))
+                );
+
+        escrowWalletTransactionResults = escrowWalletUpdateResults
+                .compose(eventLogger.logResults())
+                .subscribeOn(Schedulers.io())
+                .replay(15, TimeUnit.MINUTES);
+
         // post observable download events
         blockDownloadResults = peerGroup.observeOn(Schedulers.io()).flatMapObservable(pg ->
                 Observable.<BlockDownloadResult>create(source -> {
@@ -315,9 +391,8 @@ public class WalletManager {
                 })).subscribeOn(Schedulers.io())
                 .compose(eventLogger.logResults())
                 .throttleLast(1, TimeUnit.SECONDS)
-                .replay(5);
+                .replay(20);
 
-        // escrow wallet tx updated events
 
 //        escrowTxUpdatedEvents = Observable.zip(peerGroup.toObservable(), blockChain.toObservable(), escrowWallets, (pg, bc, ew) ->
 //
@@ -407,6 +482,15 @@ public class WalletManager {
 //                    .subscribe(Wallet::shutdownAutosaveAndWait);
             //LOG.debug("Shutdown escrowWallets autosave.");
         });
+
+        walletResults = Observable.merge(tradeWalletInfoResults,
+                tradeWalletProfilePubKeyResults,
+                tradeWalletEscrowPubKeyResults,
+                tradeWalletDepositAddressResults)
+                .mergeWith(escrowCreatedResults)
+                .mergeWith(escrowFundingResults)
+                .compose(eventLogger.logResults())
+                .subscribeOn(Schedulers.io()).share();
     }
 
 //    public void start() {
@@ -701,6 +785,21 @@ public class WalletManager {
         //LOG.debug("Backed up wallet to file: {}", walletBackupFile.getName());
     }
 
+    private String escrowAddress(Wallet escrowWallet) {
+
+        if (escrowWallet.getWatchedScripts().size() != 1) {
+            throw new RuntimeException("Escrow wallet does not have single watch script");
+        }
+
+        Address escrowAddress = escrowWallet.getWatchedScripts().get(0).getToAddress(netParams);
+
+        // make sure there is only watched address and it is a P2SH address
+        if (!escrowAddress.isP2SHAddress()) {
+            throw new RuntimeException("Escrow wallet does not have P2SH watch address");
+        }
+        return escrowAddress.toBase58();
+    }
+
 //    public DoubleProperty downloadProgressProperty() {
 //        return downloadProgress;
 //    }
@@ -753,11 +852,13 @@ public class WalletManager {
     }
 
     private Single<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) throws InsufficientMoneyException {
+        Context.propagate(btcContext);
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         return tradeWallet.map(tw -> {
             SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
                     Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
-            return tw.sendCoins(sendRequest).tx;
+            Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
+            return sendResult.tx;
         });
     }
 
@@ -973,7 +1074,7 @@ public class WalletManager {
 //        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
 //
 //        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
+//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
 //
 //        String signature = getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
 //
@@ -993,7 +1094,7 @@ public class WalletManager {
 //        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
 //
 //        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
+//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
 //
 //        String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
 //
@@ -1013,7 +1114,7 @@ public class WalletManager {
 //        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
 //
 //        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
+//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
 //
 //        String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
 //
@@ -1032,7 +1133,7 @@ public class WalletManager {
 //                                List<TransactionSignature> signatures) {
 //
 //        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.getEscrowAddress(), fundingTxHash);
+//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
 //
 //        if (fundingTx != null) {
 //
@@ -1080,7 +1181,7 @@ public class WalletManager {
 //                }
 //            }
 //
-//            escrowWalletEntries.get(trade.getEscrowAddress()).commitTx(payoutTx);
+//            escrowWalletEntries.get(trade.escrowAddress()).commitTx(payoutTx);
 //            peerGroup.broadcastTransaction(payoutTx);
 //            return payoutTx.getHash().toString();
 //        } else {
@@ -1241,6 +1342,31 @@ public class WalletManager {
     public class GetEscrowPubKey implements WalletAction {
     }
 
+    public class CreateEscrow implements WalletAction {
+        private final String escrowAddress;
+
+        public CreateEscrow(String escrowAddress) {
+            this.escrowAddress = escrowAddress;
+        }
+
+        public String getEscrowAddress() {
+            return escrowAddress;
+        }
+    }
+
+    public class FundEscrow implements WalletAction {
+
+        private final Trade trade;
+
+        public FundEscrow(Trade trade) {
+            this.trade = trade;
+        }
+
+        public Trade getTrade() {
+            return trade;
+        }
+    }
+
     // Wallet Result Classes
 
     public interface WalletResult extends Result {
@@ -1303,6 +1429,49 @@ public class WalletManager {
 
         public String getPubKey() {
             return pubKey;
+        }
+    }
+
+    public class EscrowCreated implements WalletResult {
+        public final String escrowAddress;
+
+        public EscrowCreated(String escrowAddress) {
+            this.escrowAddress = escrowAddress;
+        }
+
+        public String getEscrowAddress() {
+            return escrowAddress;
+        }
+    }
+
+    public class EscrowFunding implements WalletResult {
+
+        private final String escrowAddress;
+        private final String transactionHash;
+        private final String refundAddress;
+        private final String refundTxSignature;
+
+        public EscrowFunding(String escrowAddress, String transactionHash, String refundAddress, String refundTxSignature) {
+            this.escrowAddress = escrowAddress;
+            this.transactionHash = transactionHash;
+            this.refundAddress = refundAddress;
+            this.refundTxSignature = refundTxSignature;
+        }
+
+        public String getEscrowAddress() {
+            return escrowAddress;
+        }
+
+        public String getTransactionHash() {
+            return transactionHash;
+        }
+
+        public String getRefundAddress() {
+            return refundAddress;
+        }
+
+        public String getRefundTxSignature() {
+            return refundTxSignature;
         }
     }
 

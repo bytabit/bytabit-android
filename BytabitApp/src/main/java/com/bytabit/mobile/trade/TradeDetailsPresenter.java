@@ -3,8 +3,8 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -30,7 +30,7 @@ public class TradeDetailsPresenter {
     TradeManager tradeManager;
 
     @Inject
-    ProfileManager profileManager;
+    WalletManager walletManager;
 
     @FXML
     View tradeDetailsView;
@@ -67,6 +67,9 @@ public class TradeDetailsPresenter {
 
     @FXML
     Label priceCurrencyLabel;
+
+    @FXML
+    Button fundEscrowButton;
 
     @FXML
     Button paymentSentButton;
@@ -124,8 +127,13 @@ public class TradeDetailsPresenter {
         Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
                 .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
 
-        Observable<PresenterEvent> tradeDetailEvents = viewShowingEvents
-                .compose(eventLogger.logEvents()).share();
+        Observable<FundButtonPressed> fundButtonPressedEvents = JavaFxObservable.actionEventsOf(fundEscrowButton)
+                .map(actionEvent -> new FundButtonPressed());
+
+        Observable<PresenterEvent> tradeDetailEvents = Observable.merge(viewShowingEvents,
+                fundButtonPressedEvents)
+                .compose(eventLogger.logEvents())
+                .share();
 
         // transform events to actions
 
@@ -138,20 +146,50 @@ public class TradeDetailsPresenter {
                     setAppBar();
                 });
 
+        Observable<TradeManager.TradeSelected> tradeSelectedObservable = tradeManager.getResults()
+                .ofType(TradeManager.TradeSelected.class)
+                .replay(1).refCount();
+
+        Observable<TradeManager.TradeUpdated> tradeUpdatedObservable = tradeManager.getResults()
+                .ofType(TradeManager.TradeUpdated.class);
+
+        // events to actions
+
+        tradeDetailEvents.subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .ofType(FundButtonPressed.class)
+                .flatMap(fp -> tradeSelectedObservable.map(ts ->
+                        walletManager.new FundEscrow(ts.getTrade())))
+                .compose(eventLogger.logEvents())
+                .subscribe(fe -> walletManager.getActions().onNext(fe));
+
         // handle results
 
-        tradeManager.getResults().ofType(TradeManager.TradeSelected.class)
+        tradeSelectedObservable
                 .filter(ts -> ts.getTrade().status().compareTo(Trade.Status.CREATED) >= 0)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .map(TradeManager.TradeSelected::getTrade)
                 .subscribe(this::showTrade);
 
-        tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
+        tradeSelectedObservable.flatMap(s -> tradeUpdatedObservable
+                .filter(u -> u.getTrade().getEscrowAddress().equals(s.getTrade().getEscrowAddress())))
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .map(TradeManager.TradeUpdated::getTrade)
+                .subscribe(this::showTrade);
 
-            // remove unusable buttons and disable all usable buttons
-            paymentReferenceField.setDisable(true);
-            paymentReferenceField.setEditable(false);
+        walletManager.getWalletResults()
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .compose(eventLogger.logResults())
+                .subscribe();
+
+//        tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
+//
+//            // remove unusable buttons and disable all usable buttons
+//            paymentReferenceField.setDisable(true);
+//            paymentReferenceField.setEditable(false);
 
 //            profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
 //                if (profile.isArbitrator()) {
@@ -241,7 +279,7 @@ public class TradeDetailsPresenter {
 //                    }
 //                }
 //            });
-        });
+//        });
 
 //        paymentSentButton.setOnAction(e -> {
 //            LOG.debug("paymentSentButton pressed");
@@ -305,6 +343,7 @@ public class TradeDetailsPresenter {
             payoutBuyerButton.setDisable(true);
         } else {
             actionButtonsVBox.getChildren().remove(arbitrateButtonsFlowPane);
+            fundEscrowButton.setDisable(true);
             paymentSentButton.setDisable(true);
             paymentReceivedButton.setDisable(true);
             cancelButton.setDisable(true);
@@ -327,13 +366,31 @@ public class TradeDetailsPresenter {
         arbitrateReasonLabel.textProperty().setValue(null);
         payoutReasonLabel.textProperty().setValue(null);
 
-        if (trade.status().equals(Trade.Status.FUNDED)) {
+        if (trade.status().equals(Trade.Status.CREATED)) {
             paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+            if (trade.getRole() == Trade.Role.BUYER) {
+                cancelButton.setDisable(false);
+            } else if (trade.getRole() == Trade.Role.SELLER) {
+                fundEscrowButton.setDisable(false);
+                cancelButton.setDisable(false);
+            }
+        } else if (trade.status().equals(Trade.Status.FUNDING)) {
+            paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+            cancelButton.setDisable(false);
+            if (trade.getRole() == Trade.Role.BUYER) {
+//                paymentReferenceField.setDisable(false);
+//                paymentReferenceField.setEditable(true);
+//                paymentSentButton.setDisable(false);
+            } else if (trade.getRole() == Trade.Role.SELLER) {
+                arbitrateButton.setDisable(false);
+            }
+        } else if (trade.status().equals(Trade.Status.FUNDED)) {
+            paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+            cancelButton.setDisable(false);
             if (trade.getRole() == Trade.Role.BUYER) {
                 paymentReferenceField.setDisable(false);
                 paymentReferenceField.setEditable(true);
                 paymentSentButton.setDisable(false);
-                cancelButton.setDisable(false);
             } else if (trade.getRole() == Trade.Role.SELLER) {
                 arbitrateButton.setDisable(false);
             }
@@ -381,5 +438,8 @@ public class TradeDetailsPresenter {
     }
 
     private class ViewNotShowing implements PresenterEvent {
+    }
+
+    private class FundButtonPressed implements PresenterEvent {
     }
 }

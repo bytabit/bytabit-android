@@ -30,8 +30,8 @@ public class NavDrawer {
                 String.format("%s (%s)", AppConfig.getVersion(), AppConfig.getBtcNetwork() + config),
                 new ImageView(new Image(NavDrawer.class.getResourceAsStream("/logo42.png"))));
 
-        final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFERS_VIEW);
         final Item tradesItem = new ViewItem("Trades", MaterialDesignIcon.SWAP_VERTICAL_CIRCLE.graphic(), TRADE_VIEW);
+        final Item offersItem = new ViewItem("Offers", MaterialDesignIcon.SHOP.graphic(), OFFERS_VIEW);
         final Item walletItem = new ViewItem("Wallet", MaterialDesignIcon.ACCOUNT_BALANCE_WALLET.graphic(), WALLET_VIEW);
         final Item paymentDetailsItem = new ViewItem("Payment Details", MaterialDesignIcon.ACCOUNT_BALANCE.graphic(), PAYMENT_VIEW);
         final Item profileItem = new ViewItem("Profile", MaterialDesignIcon.ACCOUNT_CIRCLE.graphic(), PROFILE_VIEW);
@@ -39,7 +39,7 @@ public class NavDrawer {
         aboutItem.setDisable(true);
 
         ObservableList<Node> items = FXCollections.observableArrayList();
-        items.addAll(offersItem, tradesItem, walletItem, paymentDetailsItem, profileItem, aboutItem);
+        items.addAll(tradesItem, offersItem, walletItem, paymentDetailsItem, profileItem, aboutItem);
         this.drawer = new NavigationDrawer(header, items);
 
         if (Platform.isDesktop()) {

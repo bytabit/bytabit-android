@@ -9,6 +9,7 @@ import io.reactivex.Observable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
+import javax.annotation.PostConstruct;
 import java.util.Optional;
 
 public class ProfileManager extends AbstractManager {
@@ -26,13 +27,15 @@ public class ProfileManager extends AbstractManager {
 
     private final PublishSubject<ProfileAction> actions;
 
-    private final Observable<ProfileResult> results;
+    private Observable<ProfileResult> results;
 
     public ProfileManager() {
-
         profilesService = new ProfileService();
-
         actions = PublishSubject.create();
+    }
+
+    @PostConstruct
+    public void initialize() {
 
         Observable<ProfileAction> actionObservable = actions
                 .compose(eventLogger.logEvents())

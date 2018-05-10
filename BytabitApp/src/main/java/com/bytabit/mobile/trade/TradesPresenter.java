@@ -52,7 +52,7 @@ public class TradesPresenter {
                 if (t != null && !empty) {
                     ListTile tile = new ListTile();
                     String amount = String.format("%s BTC @ %s %s per BTC", t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
-                    String details = String.format("for %s %s via %s", t.getBtcAmount().multiply(t.getPrice()),
+                    String details = String.format("%s for %s %s via %s", t.status(), t.getBtcAmount().multiply(t.getPrice()),
                             t.getCurrencyCode(), t.getPaymentMethod().displayName());
                     tile.textProperty().addAll(amount, details, t.getEscrowAddress());
                     setText(null);
@@ -74,7 +74,8 @@ public class TradesPresenter {
 
         Observable<PresenterEvent> tradeEvents = Observable.merge(viewShowingEvents,
                 tradeSelectedEvents)
-                .compose(eventLogger.logEvents()).share();
+                .compose(eventLogger.logEvents())
+                .share();
 
         // transform events to actions
 
@@ -107,6 +108,11 @@ public class TradesPresenter {
                 .map(pl -> tradeManager.new GetTrades(pl.getProfile()))
                 .subscribe(tradeManager.getActions());
 
+        profileManager.getResults().ofType(ProfileManager.ProfileNotCreated.class)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(pnc -> MobileApplication.getInstance().switchView(BytabitMobile.PROFILE_VIEW));
+
         tradeManager.getResults().ofType(TradeManager.TradeLoaded.class)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
@@ -125,6 +131,40 @@ public class TradesPresenter {
                 .map(TradeManager.TradeReceived::getReceivedTrade)
                 .subscribe(this::updateTrade);
 
+        tradeManager.getResults().ofType(TradeManager.TradeUpdated.class)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .map(TradeManager.TradeUpdated::getTrade)
+                .subscribe(this::updateTrade);
+
+        tradeManager.getResults().ofType(TradeManager.TradeCreated.class)
+                .subscribeOn(Schedulers.io())
+                .map(tc -> walletManager.new CreateEscrow(tc.getTrade().getEscrowAddress()))
+                .subscribe(walletManager.getActions());
+
+        Observable<WalletManager.BlockDownloadResult> blockDownloadResults =
+                walletManager.getBlockDownloadResults().autoConnect().share();
+
+        blockDownloadResults
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .startWith(walletManager.new BlockDownloadUpdate(0.0))
+                .ofType(WalletManager.BlockDownloadUpdate.class)
+                .compose(eventLogger.logEvents())
+                .subscribe(e -> {
+                    if (e.getPercent() < 1.0) {
+                        tradesListView.setDisable(true);
+                    } else {
+                        tradesListView.setDisable(false);
+                    }
+                });
+
+        blockDownloadResults
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .ofType(WalletManager.BlockDownloadDone.class)
+                .compose(eventLogger.logEvents())
+                .subscribe(e -> tradesListView.setDisable(false));
 
 //        tradesView.showingProperty().addListener((obs, oldValue, newValue) -> {
 //            if (newValue) {
@@ -221,9 +261,14 @@ public class TradesPresenter {
     }
 
     private void updateTrade(Trade trade) {
-        int index = tradesListView.itemsProperty().indexOf(trade);
-        if (index > -1) {
-            tradesListView.itemsProperty().remove(index);
+        Trade tradeToRemove = null;
+        for (Trade aTrade : tradesListView.itemsProperty()) {
+            if (aTrade.getEscrowAddress().equals(trade.getEscrowAddress())) {
+                tradeToRemove = aTrade;
+            }
+        }
+        if (tradeToRemove != null) {
+            tradesListView.itemsProperty().remove(tradeToRemove);
         }
         tradesListView.itemsProperty().add(trade);
     }
