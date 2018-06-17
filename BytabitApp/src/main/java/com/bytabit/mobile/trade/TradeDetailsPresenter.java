@@ -4,7 +4,6 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -28,9 +27,6 @@ public class TradeDetailsPresenter {
 
     @Inject
     TradeManager tradeManager;
-
-    @Inject
-    WalletManager walletManager;
 
     @FXML
     View tradeDetailsView;
@@ -158,10 +154,10 @@ public class TradeDetailsPresenter {
         tradeDetailEvents.subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .ofType(FundButtonPressed.class)
-                .flatMap(fp -> tradeSelectedObservable.map(ts ->
-                        walletManager.new FundEscrow(ts.getTrade())))
+                .flatMap(fp -> tradeSelectedObservable.lastOrError().map(ts ->
+                        tradeManager.new FundTrade(ts.getTrade())).toObservable())
                 .compose(eventLogger.logEvents())
-                .subscribe(fe -> walletManager.getActions().onNext(fe));
+                .subscribe(fe -> tradeManager.getActions().onNext(fe));
 
         // handle results
 
@@ -178,12 +174,6 @@ public class TradeDetailsPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .map(TradeManager.TradeUpdated::getTrade)
                 .subscribe(this::showTrade);
-
-        walletManager.getWalletResults()
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .compose(eventLogger.logResults())
-                .subscribe();
 
 //        tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
 //

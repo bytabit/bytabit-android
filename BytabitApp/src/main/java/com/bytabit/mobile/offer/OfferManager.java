@@ -8,6 +8,7 @@ import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -19,7 +20,7 @@ public class OfferManager extends AbstractManager {
 
     private final PublishSubject<OfferAction> actions;
 
-    private final Observable<OfferResult> results;
+    private Observable<OfferResult> results;
 
 //    @Inject
 //    ProfileManager profileManager;
@@ -34,10 +35,12 @@ public class OfferManager extends AbstractManager {
 //    private final Observable<SellOffer> selectedOffer;
 
     public OfferManager() {
-
         sellOfferService = new SellOfferService();
-
         actions = PublishSubject.create();
+    }
+
+    @PostConstruct
+    public void initialize() {
 
         Observable<OfferAction> actionObservable = actions
                 .compose(eventLogger.logEvents())

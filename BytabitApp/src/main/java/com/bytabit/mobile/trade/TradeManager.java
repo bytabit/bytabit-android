@@ -4,6 +4,7 @@ import com.bytabit.mobile.common.*;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
+import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.PaymentRequest;
@@ -131,17 +132,21 @@ public class TradeManager extends AbstractManager {
         Observable<TradeUpdated> tradeFundingUpdatesObservable = tradeWalletResults
                 .ofType(WalletManager.EscrowFunding.class)
                 .flatMap(funding -> readTrade(funding.getEscrowAddress())
-                        .map(t -> Trade.builder()
-                                .role(t.getRole())
-                                .escrowAddress(t.getEscrowAddress())
-                                .sellOffer(t.sellOffer())
-                                .buyRequest(t.buyRequest())
-                                .paymentRequest(new PaymentRequest(funding.getTransactionHash(),
-                                        "TBD payment details", funding.getRefundAddress(),
-                                        funding.getRefundTxSignature()))
-                                .build()))
-//                        .map(trade -> trade.fundingTransactionHash(funding.getTransactionHash()))
-//                        .map(trade -> trade.fundingTransactionWithAmt()))
+                        .map(t -> {
+                            PaymentDetails paymentDetails = profileManager.getPaymentDetails().autoConnect()
+                                    .filter(d -> d.getCurrencyCode().equals(t.sellOffer().getCurrencyCode()) && d.getPaymentMethod().equals(t.sellOffer().getPaymentMethod()))
+                                    .blockingLast();
+
+                            return Trade.builder()
+                                    .role(t.getRole())
+                                    .escrowAddress(t.getEscrowAddress())
+                                    .sellOffer(t.sellOffer())
+                                    .buyRequest(t.buyRequest())
+                                    .paymentRequest(new PaymentRequest(funding.getTransactionHash(),
+                                            paymentDetails.getPaymentDetails(), funding.getRefundAddress(),
+                                            funding.getRefundTxSignature()))
+                                    .build();
+                        }))
                 .map(TradeUpdated::new).share();
 
         Observable<TradeWritten> tradeWrittenObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
@@ -730,7 +735,19 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-// Trade Result Classes
+    public class FundTrade implements TradeAction {
+        private final Trade trade;
+
+        public FundTrade(Trade trade) {
+            this.trade = trade;
+        }
+
+        public Trade getTrade() {
+            return trade;
+        }
+    }
+
+    // Trade Result Classes
 
     public interface TradeResult extends Result {
     }
@@ -855,7 +872,7 @@ public class TradeManager extends AbstractManager {
         }
     }
 
-// Trade Error Class
+    // Trade Error Class
 
     public class TradeError implements TradeResult, ErrorResult {
 

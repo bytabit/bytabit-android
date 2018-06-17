@@ -40,11 +40,22 @@ public class EventLogger {
                 .map(result -> {
                     String className = result.getClass().getSimpleName();
                     if (result instanceof ErrorResult) {
-                        logger.error("{}, Error: {}", className, ((ErrorResult) result).getError().getMessage());
+                        logger.error("{}, Error: {}", className,
+                                ((ErrorResult) result).getError().getMessage());
                     } else {
                         logger.debug("{}", className);
                     }
                     return result;
+                });
+    }
+
+    public <T> ObservableTransformer<T, T> logObjects(String id) {
+
+        return results -> results.observeOn(Schedulers.io())
+                .map(obj -> {
+                    //String className = obj.getClass().getSimpleName();
+                    logger.debug("{}: {}", id, obj.toString());
+                    return obj;
                 });
     }
 }

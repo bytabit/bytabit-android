@@ -30,6 +30,7 @@ import org.bitcoinj.wallet.*;
 import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
+import javax.annotation.PostConstruct;
 import java.io.*;
 import java.math.BigDecimal;
 import java.net.InetAddress;
@@ -63,18 +64,18 @@ public class WalletManager {
     // rxJava observables
 //    private final Observable<Wallet> tradeWalletObservable;
 
-    private final PublishSubject<WalletAction> actions;
+    final private PublishSubject<WalletAction> actions;
 
-    private final Observable<WalletResult> walletResults;
+    private Observable<WalletResult> walletResults;
 
-    private final ConnectableObservable<BlockDownloadResult> blockDownloadResults;
+    private ConnectableObservable<BlockDownloadResult> blockDownloadResults;
 
-    private final ConnectableObservable<TransactionResult> tradeWalletTransactionResults;
-    private final ConnectableObservable<EscrowWalletUpdate> escrowWalletTransactionResults;
+    private ConnectableObservable<TransactionResult> tradeWalletTransactionResults;
+    private ConnectableObservable<EscrowWalletUpdate> escrowWalletTransactionResults;
 
     ////
 
-    private final Single<Wallet> tradeWallet;
+    private Single<Wallet> tradeWallet;
 //    private final Observable<String> tradeWalletBalance;
 
 //    private final PublishSubject<EscrowWalletAction> escrowWalletActions;
@@ -89,12 +90,14 @@ public class WalletManager {
 //    private Disposable blockDownloadSubscription;
 
     public WalletManager() {
-
         netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
-
         btcContext = Context.getOrCreate(netParams);
-
         actions = PublishSubject.create();
+
+    }
+
+    @PostConstruct
+    public void initialize() {
 
         Observable<WalletAction> actionObservable = actions
                 .map(a -> a)
@@ -490,6 +493,7 @@ public class WalletManager {
                 .mergeWith(escrowCreatedResults)
                 .mergeWith(escrowFundingResults)
                 .compose(eventLogger.logResults())
+                .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io()).share();
     }
 

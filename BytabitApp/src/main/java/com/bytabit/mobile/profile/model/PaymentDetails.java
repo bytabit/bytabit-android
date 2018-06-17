@@ -29,6 +29,16 @@ public class PaymentDetails {
     }
 
     @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer("PaymentDetails{");
+        sb.append("currencyCode=").append(currencyCode);
+        sb.append(", paymentMethod=").append(paymentMethod);
+        sb.append(", paymentDetails='").append(paymentDetails).append('\'');
+        sb.append('}');
+        return sb.toString();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -36,13 +46,15 @@ public class PaymentDetails {
         PaymentDetails that = (PaymentDetails) o;
 
         if (currencyCode != that.currencyCode) return false;
-        return paymentMethod == that.paymentMethod;
+        if (paymentMethod != that.paymentMethod) return false;
+        return paymentDetails != null ? paymentDetails.equals(that.paymentDetails) : that.paymentDetails == null;
     }
 
     @Override
     public int hashCode() {
         int result = currencyCode.hashCode();
         result = 31 * result + paymentMethod.hashCode();
+        result = 31 * result + (paymentDetails != null ? paymentDetails.hashCode() : 0);
         return result;
     }
 }

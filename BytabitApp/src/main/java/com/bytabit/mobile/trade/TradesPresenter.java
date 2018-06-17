@@ -3,9 +3,7 @@ package com.bytabit.mobile.trade;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -28,12 +26,6 @@ public class TradesPresenter {
 
     @Inject
     TradeManager tradeManager;
-
-    @Inject
-    ProfileManager profileManager;
-
-    @Inject
-    WalletManager walletManager;
 
     @FXML
     private View tradesView;
@@ -79,11 +71,6 @@ public class TradesPresenter {
 
         // transform events to actions
 
-        Observable<ProfileManager.ProfileAction> profileActions = tradeEvents.ofType(ViewShowing.class)
-                .map(v -> profileManager.new LoadProfile());
-
-        profileActions.subscribe(profileManager.getActions());
-
         // handle events
 
         tradeEvents.subscribeOn(Schedulers.io())
@@ -104,14 +91,14 @@ public class TradesPresenter {
 
         // handle results
 
-        profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class)
-                .map(pl -> tradeManager.new GetTrades(pl.getProfile()))
-                .subscribe(tradeManager.getActions());
-
-        profileManager.getResults().ofType(ProfileManager.ProfileNotCreated.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(pnc -> MobileApplication.getInstance().switchView(BytabitMobile.PROFILE_VIEW));
+//        profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class)
+//                .map(pl -> tradeManager.new GetTrades(pl.getProfile()))
+//                .subscribe(tradeManager.getActions());
+//
+//        profileManager.getResults().ofType(ProfileManager.ProfileNotCreated.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .subscribe(pnc -> MobileApplication.getInstance().switchView(BytabitMobile.PROFILE_VIEW));
 
         tradeManager.getResults().ofType(TradeManager.TradeLoaded.class)
                 .subscribeOn(Schedulers.io())
@@ -137,34 +124,34 @@ public class TradesPresenter {
                 .map(TradeManager.TradeUpdated::getTrade)
                 .subscribe(this::updateTrade);
 
-        tradeManager.getResults().ofType(TradeManager.TradeCreated.class)
-                .subscribeOn(Schedulers.io())
-                .map(tc -> walletManager.new CreateEscrow(tc.getTrade().getEscrowAddress()))
-                .subscribe(walletManager.getActions());
+//        tradeManager.getResults().ofType(TradeManager.TradeCreated.class)
+//                .subscribeOn(Schedulers.io())
+//                .map(tc -> walletManager.new CreateEscrow(tc.getTrade().getEscrowAddress()))
+//                .subscribe(walletManager.getActions());
 
-        Observable<WalletManager.BlockDownloadResult> blockDownloadResults =
-                walletManager.getBlockDownloadResults().autoConnect().share();
+//        Observable<WalletManager.BlockDownloadResult> blockDownloadResults =
+//                walletManager.getBlockDownloadResults().autoConnect().share();
 
-        blockDownloadResults
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .startWith(walletManager.new BlockDownloadUpdate(0.0))
-                .ofType(WalletManager.BlockDownloadUpdate.class)
-                .compose(eventLogger.logEvents())
-                .subscribe(e -> {
-                    if (e.getPercent() < 1.0) {
-                        tradesListView.setDisable(true);
-                    } else {
-                        tradesListView.setDisable(false);
-                    }
-                });
+//        blockDownloadResults
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .startWith(walletManager.new BlockDownloadUpdate(0.0))
+//                .ofType(WalletManager.BlockDownloadUpdate.class)
+//                .compose(eventLogger.logEvents())
+//                .subscribe(e -> {
+//                    if (e.getPercent() < 1.0) {
+//                        tradesListView.setDisable(true);
+//                    } else {
+//                        tradesListView.setDisable(false);
+//                    }
+//                });
 
-        blockDownloadResults
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .ofType(WalletManager.BlockDownloadDone.class)
-                .compose(eventLogger.logEvents())
-                .subscribe(e -> tradesListView.setDisable(false));
+//        blockDownloadResults
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .ofType(WalletManager.BlockDownloadDone.class)
+//                .compose(eventLogger.logEvents())
+//                .subscribe(e -> tradesListView.setDisable(false));
 
 //        tradesView.showingProperty().addListener((obs, oldValue, newValue) -> {
 //            if (newValue) {

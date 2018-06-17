@@ -1,9 +1,8 @@
 package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.profile.manager.ProfileManager;
+import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -25,7 +24,7 @@ import javax.inject.Inject;
 public class PaymentsPresenter {
 
     @Inject
-    ProfileManager profileManager;
+    PaymentDetailsManager paymentDetailsManager;
 
     @FXML
     private View paymentsView;
@@ -67,79 +66,45 @@ public class PaymentsPresenter {
 
         paymentsView.getLayers().add(addButton.getLayer());
 
-        // setup event observables
+        // subscribe to observables
 
-        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(paymentsView.showingProperty())
-                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
+        JavaFxObservable.changesOf(paymentsView.showingProperty())
+                .filter(Change::getNewVal)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(c -> setAppBar());
 
-        Observable<PresenterEvent> listItemChangedEvents = JavaFxObservable.changesOf(paymentDetailsListView.selectedItemProperty())
-                .map(Change::getNewVal).map(PaymentDetailsChanged::new);
+        JavaFxObservable.changesOf(paymentDetailsListView.selectedItemProperty())
+                .map(Change::getNewVal)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(paymentDetails -> {
+                    MobileApplication.getInstance().switchView(BytabitMobile.ADD_PAYMENT_VIEW);
+                    paymentDetailsManager.setSelectedPaymentDetails(paymentDetails);
+                });
 
-        Observable<PresenterEvent> addButtonEvents = Observable.create(source ->
+        Observable.create(source ->
                 addButton.setOnAction(source::onNext))
-                .map(actionEvent -> new AddButtonPressed());
-
-        Observable<PresenterEvent> paymentDetailsEvents = Observable.merge(viewShowingEvents,
-                listItemChangedEvents, addButtonEvents)
-                .compose(eventLogger.logEvents()).share();
-
-        // transform events to actions
-
-        Observable<ProfileManager.ProfileAction> loadPaymentDetails = paymentDetailsEvents
-                .ofType(ViewShowing.class)
-                .map(e -> profileManager.new LoadPaymentDetails());
-
-//        Observable<ProfileManager.ProfileAction> paymentDetailsActions = paymentDetailsEvents
-//                .filter(e -> e.matches(LIST_VIEW_SHOWING))
-//                .map(event -> {
-//                    switch (event.getType()) {
-//                        case LIST_VIEW_SHOWING:
-//                            return PaymentDetailsAction.load();
-//                        default:
-//                            throw new RuntimeException(String.format("Unexpected PaymentDetailsEvent.Type: %s", event.getType()));
-//                    }
-//                }).startWith(PaymentDetailsAction.load());
-
-        loadPaymentDetails.subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(profileManager.getActions());
-
-        // handle events
-
-        paymentDetailsEvents.ofType(ViewShowing.class)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(event -> setAppBar());
-
-        paymentDetailsEvents.ofType(AddButtonPressed.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(event ->
-                        MobileApplication.getInstance().switchView(BytabitMobile.ADD_PAYMENT_VIEW));
-
-        // handle results
-
-        profileManager.getResults().ofType(ProfileManager.PaymentDetailsPending.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(result -> paymentsView.setDisable(true));
-
-        profileManager.getResults().ofType(ProfileManager.PaymentDetailsLoaded.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(result -> {
-                    paymentsView.setDisable(false);
-                    updatePaymentDetailsList(result.getPaymentDetails());
+                .subscribe(a -> {
+                    MobileApplication.getInstance().switchView(BytabitMobile.ADD_PAYMENT_VIEW);
+                    paymentDetailsManager.setSelectedPaymentDetails(new PaymentDetails(null, null, null));
                 });
 
-        profileManager.getResults().ofType(ProfileManager.PaymentDetailsUpdated.class)
+        Observable.concat(paymentDetailsManager.getLoadedPaymentDetails(),
+                paymentDetailsManager.getUpdatedPaymentDetails())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(result -> {
+                .subscribe(paymentDetails -> {
                     paymentsView.setDisable(false);
-                    updatePaymentDetailsList(result.getPaymentDetails());
+                    updatePaymentDetails(paymentDetails);
                 });
+
+        paymentDetailsManager.getRemovedPaymentDetails()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(this::removePaymentDetails);
 
     }
 
@@ -150,38 +115,24 @@ public class PaymentsPresenter {
         appBar.setTitleText("Payment Details");
     }
 
-    private void updatePaymentDetailsList(PaymentDetails updated) {
+    private void updatePaymentDetails(PaymentDetails updated) {
 
-        int index = paymentDetailsListView.itemsProperty().indexOf(updated);
-        if (index > -1) {
-            paymentDetailsListView.itemsProperty().remove(index);
-        }
+        removePaymentDetails(updated);
         paymentDetailsListView.itemsProperty().add(updated);
     }
 
-    // Event classes
+    private void removePaymentDetails(PaymentDetails updated) {
 
-    interface PresenterEvent extends Event {
-    }
-
-    private class ViewShowing implements PresenterEvent {
-    }
-
-    private class ViewNotShowing implements PresenterEvent {
-    }
-
-    private class PaymentDetailsChanged implements PresenterEvent {
-        private final PaymentDetails paymentDetails;
-
-        public PaymentDetailsChanged(PaymentDetails paymentDetails) {
-            this.paymentDetails = paymentDetails;
+        PaymentDetails found = null;
+        for (PaymentDetails paymentDetails : paymentDetailsListView.itemsProperty()) {
+            if (paymentDetails.getCurrencyCode().equals(updated.getCurrencyCode()) &&
+                    paymentDetails.getPaymentMethod().equals(updated.getPaymentMethod())) {
+                found = paymentDetails;
+                break;
+            }
         }
-
-        public PaymentDetails getPaymentDetails() {
-            return paymentDetails;
+        if (found != null) {
+            paymentDetailsListView.itemsProperty().remove(found);
         }
-    }
-
-    private class AddButtonPressed implements PresenterEvent {
     }
 }

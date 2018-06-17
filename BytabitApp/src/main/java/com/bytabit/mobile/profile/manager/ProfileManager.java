@@ -6,6 +6,7 @@ import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.profile.model.Profile;
 import io.reactivex.Observable;
+import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
@@ -28,6 +29,8 @@ public class ProfileManager extends AbstractManager {
     private final PublishSubject<ProfileAction> actions;
 
     private Observable<ProfileResult> results;
+
+    private ConnectableObservable<PaymentDetails> paymentDetails;
 
     public ProfileManager() {
         profilesService = new ProfileService();
@@ -71,12 +74,12 @@ public class ProfileManager extends AbstractManager {
 
         // payment details actions to results
 
-        Observable<ProfileResult> loadPaymentDetailsResults = actionObservable
+        Observable<PaymentDetailsLoaded> loadPaymentDetailsResults = actionObservable
                 .ofType(LoadPaymentDetails.class)
                 .flatMap(a -> loadPaymentDetails())
                 .map(PaymentDetailsLoaded::new);
 
-        Observable<ProfileResult> updatePaymentDetailsResults = actionObservable
+        Observable<PaymentDetailsUpdated> updatePaymentDetailsResults = actionObservable
                 .ofType(UpdatePaymentDetails.class)
                 .map(a -> a.getPaymentDetails())
                 .flatMap(this::storePaymentDetails)
@@ -97,10 +100,14 @@ public class ProfileManager extends AbstractManager {
                 .mergeWith(loadPaymentDetailsResults)
                 .mergeWith(updatePaymentDetailsResults)
                 .mergeWith(loadArbitratorProfiles)
-                .onErrorReturn(e -> new ProfileError(e))
+                .onErrorReturn(ProfileError::new)
                 .startWith(new ProfilePending())
                 .compose(eventLogger.logResults())
                 .share();
+
+        paymentDetails = loadPaymentDetailsResults.map(PaymentDetailsLoaded::getPaymentDetails)
+                .mergeWith(updatePaymentDetailsResults.map(PaymentDetailsUpdated::getPaymentDetails))
+                .distinct().replay();
     }
 
     // my profile
@@ -175,6 +182,10 @@ public class ProfileManager extends AbstractManager {
 
     public Observable<ProfileResult> getResults() {
         return results;
+    }
+
+    public ConnectableObservable<PaymentDetails> getPaymentDetails() {
+        return paymentDetails;
     }
 
     // Profile Action classes
