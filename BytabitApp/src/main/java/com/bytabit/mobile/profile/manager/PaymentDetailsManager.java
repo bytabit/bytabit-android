@@ -67,15 +67,21 @@ public class PaymentDetailsManager extends AbstractManager {
     }
 
     public Observable<PaymentDetails> getUpdatedPaymentDetails() {
-        return updatedPaymentDetails.compose(eventLogger.logObjects("Updated"));
+        return updatedPaymentDetails
+                .compose(eventLogger.logObjects("Updated"))
+                .share();
     }
 
     public Observable<PaymentDetails> getRemovedPaymentDetails() {
-        return removedPaymentDetails.compose(eventLogger.logObjects("Removed"));
+        return removedPaymentDetails
+                .compose(eventLogger.logObjects("Removed"))
+                .share();
     }
 
     public Observable<PaymentDetails> getSelectedPaymentDetails() {
-        return selectedPaymentDetails.compose(eventLogger.logObjects("Selected"));
+        return selectedPaymentDetails
+                .compose(eventLogger.logObjects("Selected"))
+                .share();
     }
 
     private String paymentDetailsKey(CurrencyCode currencyCode,

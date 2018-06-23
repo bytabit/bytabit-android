@@ -1,7 +1,6 @@
 package com.bytabit.mobile.wallet.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
@@ -11,7 +10,9 @@ import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.Observable;
+import io.reactivex.rxjavafx.observables.JavaFxObservable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
@@ -45,23 +46,6 @@ public class WalletPresenter {
 
     public void initialize() {
 
-        Observable<WalletManager.BlockDownloadResult> blockDownloadResults =
-                walletManager.getBlockDownloadResults()
-                        .autoConnect(2)
-                        .compose(eventLogger.logEvents())
-                        .share();
-
-        blockDownloadResults.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .ofType(WalletManager.BlockDownloadUpdate.class)
-                .subscribe(result ->
-                        downloadProgressBar.progressProperty().setValue(result.getPercent()));
-
-        blockDownloadResults.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .ofType(WalletManager.BlockDownloadDone.class)
-                .subscribe(result -> downloadProgressBar.progressProperty().setValue(1.0));
-
         // setup transaction list view
         transactionListView.setCellFactory((view) -> new CharmListCell<TransactionWithAmt>() {
             @Override
@@ -83,19 +67,24 @@ public class WalletPresenter {
 
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
 
-        walletManager.getTradeWalletTransactionResults().autoConnect()
+        walletManager.getDownloadProgress()
                 .subscribeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
                 .observeOn(JavaFxScheduler.platform())
-                .ofType(WalletManager.TradeWalletUpdate.class)
-                .subscribe(tr -> {
-                    TransactionWithAmt transactionWithAmt = tr.getTransactionWithAmt();
-                    int index = transactionListView.itemsProperty().indexOf(transactionWithAmt);
+                .subscribe(p -> {
+                    downloadProgressBar.progressProperty().setValue(p);
+                });
+
+        Observable.concat(walletManager.loadTradeWalletTx(),
+                walletManager.getUpdatedTradeWalletTx())
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(tx -> {
+                    int index = transactionListView.itemsProperty().indexOf(tx);
                     if (index > -1) {
                         transactionListView.itemsProperty().remove(index);
                     }
-                    transactionListView.itemsProperty().add(transactionWithAmt);
-                    balanceAmountLabel.textProperty().setValue(tr.getTransactionWithAmt().getWalletCoinBalance().toFriendlyString());
+                    transactionListView.itemsProperty().add(tx);
+                    balanceAmountLabel.textProperty().setValue(tx.getWalletCoinBalance().toFriendlyString());
                 });
 
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
@@ -103,32 +92,29 @@ public class WalletPresenter {
 
         walletView.getLayers().add(withdrawButton.getLayer());
 
-        depositButton.setOnAction((e) ->
-                MobileApplication.getInstance().switchView(BytabitMobile.DEPOSIT_VIEW));
+        Observable.create(source -> depositButton.setOnAction(source::onNext))
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(c -> {
+                    MobileApplication.getInstance().switchView(BytabitMobile.DEPOSIT_VIEW);
+                });
 
-        walletView.showingProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue) {
-                AppBar appBar = MobileApplication.getInstance().getAppBar();
-                appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
-                        MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
-                appBar.setTitleText("Wallet");
-                appBar.getActionItems().add(MaterialDesignIcon.RESTORE.button(e ->
-                        MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
-                appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
-                        MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
-            }
-
-        });
+        JavaFxObservable.changesOf(walletView.showingProperty()).subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .filter(Change::getNewVal)
+                .subscribe(c -> {
+                    setAppBar();
+                });
     }
 
-    // Event classes
-
-    private interface PresenterEvent extends Event {
-    }
-
-    private class ViewShowing implements PresenterEvent {
-    }
-
-    private class ViewNotShowing implements PresenterEvent {
+    private void setAppBar() {
+        AppBar appBar = MobileApplication.getInstance().getAppBar();
+        appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
+                MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
+        appBar.setTitleText("Wallet");
+        appBar.getActionItems().add(MaterialDesignIcon.RESTORE.button(e ->
+                MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
+        appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
+                MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
     }
 }

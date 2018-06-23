@@ -8,7 +8,6 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.TradeManager;
 import com.bytabit.mobile.trade.model.BuyRequest;
-import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -130,15 +129,15 @@ public class OfferDetailsPresenter {
 
         // transform events to actions
 
-        Observable<ProfileManager.LoadProfile> loadProfileActions = offerDetailEvents
-                .ofType(ViewShowing.class)
-                .map(o -> profileManager.new LoadProfile());
-
-        loadProfileActions
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(a -> profileManager.getActions().onNext(a));
+//        Observable<ProfileManager.LoadProfile> loadProfileActions = offerDetailEvents
+//                .ofType(ViewShowing.class)
+//                .map(o -> profileManager.new LoadProfile());
+//
+//        loadProfileActions
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .subscribe(a -> profileManager.getActions().onNext(a));
 
         Observable<OfferManager.RemoveOffer> removeOfferActions = offerDetailEvents
                 .ofType(RemoveOfferButtonPressed.class)
@@ -150,38 +149,38 @@ public class OfferDetailsPresenter {
                 .compose(eventLogger.logEvents())
                 .subscribe(a -> offerManager.getActions().onNext(a));
 
-        Observable<WalletManager.GetEscrowPubKey> getEscrowPubKeyActions = offerDetailEvents
-                .ofType(BuyButtonPressed.class)
-                .map(e -> walletManager.new GetEscrowPubKey());
+//        Observable<WalletManager.GetEscrowPubKey> getEscrowPubKeyActions = offerDetailEvents
+//                .ofType(BuyButtonPressed.class)
+//                .map(e -> walletManager.new GetEscrowPubKey());
+//
+//        Observable<WalletManager.GetTradeWalletDepositAddress> getDepositAddressActions = offerDetailEvents
+//                .ofType(BuyButtonPressed.class)
+//                .map(e -> walletManager.new GetTradeWalletDepositAddress());
+//
+//        Observable.merge(getEscrowPubKeyActions, getDepositAddressActions)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .subscribe(a -> walletManager.getActions().onNext(a));
 
-        Observable<WalletManager.GetTradeWalletDepositAddress> getDepositAddressActions = offerDetailEvents
-                .ofType(BuyButtonPressed.class)
-                .map(e -> walletManager.new GetTradeWalletDepositAddress());
+//        Observable<TradeManager.CreateTrade> createTradeActions = Observable.zip(
+//                offerDetailEvents.ofType(BuyButtonPressed.class),
+//                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
+//                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),
+//                walletManager.getWalletResults().ofType(WalletManager.TradeWalletDepositAddress.class),
+//                offerManager.getResults().ofType(OfferManager.OfferSelected.class),
+//                (a, p, e, d, s) -> {
+//                    SellOffer sellOffer = s.getOffer();
+//                    BuyRequest buyRequest = createBuyRequest(p.getProfile().getPubKey(), e.getPubKey(), d.getAddress().toBase58());
+//                    String escrowAddress = walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
+//                    return tradeManager.new CreateTrade(escrowAddress, Trade.Role.BUYER, s.getOffer(), buyRequest);
+//                });
 
-        Observable.merge(getEscrowPubKeyActions, getDepositAddressActions)
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(a -> walletManager.getActions().onNext(a));
-
-        Observable<TradeManager.CreateTrade> createTradeActions = Observable.zip(
-                offerDetailEvents.ofType(BuyButtonPressed.class),
-                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
-                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),
-                walletManager.getWalletResults().ofType(WalletManager.TradeWalletDepositAddress.class),
-                offerManager.getResults().ofType(OfferManager.OfferSelected.class),
-                (a, p, e, d, s) -> {
-                    SellOffer sellOffer = s.getOffer();
-                    BuyRequest buyRequest = createBuyRequest(p.getProfile().getPubKey(), e.getPubKey(), d.getAddress().toBase58());
-                    String escrowAddress = walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
-                    return tradeManager.new CreateTrade(escrowAddress, Trade.Role.BUYER, s.getOffer(), buyRequest);
-                });
-
-        createTradeActions
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(tradeManager.getActions());
+//        createTradeActions
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .subscribe(tradeManager.getActions());
 
         // handle events
 
@@ -218,42 +217,42 @@ public class OfferDetailsPresenter {
 //                .observeOn(JavaFxScheduler.platform())
 //                .subscribe(this::showOffer);
 
-        Observable<ProfileManager.ProfileLoaded> profileLoadedResults = profileManager.getResults()
-                .ofType(ProfileManager.ProfileLoaded.class).share();
+//        Observable<ProfileManager.ProfileLoaded> profileLoadedResults = profileManager.getResults()
+//                .ofType(ProfileManager.ProfileLoaded.class).share();
 
         Observable<OfferManager.OfferSelected> offerSelectedResults = offerManager.getResults()
                 .ofType(OfferManager.OfferSelected.class).share();
 
-        Observable<PresenterEvent> showingEvents = Observable.zip(
-                offerSelectedResults, profileLoadedResults, (offer, profile) -> {
-                    if (offer.getOffer().getSellerProfilePubKey().equals(profile.getProfile().getPubKey())) {
-                        return new MyOfferSelected(offer.getOffer());
-                    } else {
-                        return new OtherOfferSelected(offer.getOffer());
-                    }
-                })
-                .compose(eventLogger.logEvents())
-                .share();
+//        Observable<PresenterEvent> showingEvents = Observable.zip(
+//                offerSelectedResults, profileLoadedResults, (offer, profile) -> {
+//                    if (offer.getOffer().getSellerProfilePubKey().equals(profile.getProfile().getPubKey())) {
+//                        return new MyOfferSelected(offer.getOffer());
+//                    } else {
+//                        return new OtherOfferSelected(offer.getOffer());
+//                    }
+//                })
+//                .compose(eventLogger.logEvents())
+//                .share();
 
-        showingEvents.ofType(MyOfferSelected.class)
-                .map(MyOfferSelected::getSellOffer)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(offer -> {
-                    buyGridPane.setVisible(false);
-                    removeOfferButton.setVisible(true);
-                    showOffer(offer);
-                });
-
-        showingEvents.ofType(OtherOfferSelected.class)
-                .map(OtherOfferSelected::getSellOffer)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(offer -> {
-                    buyGridPane.setVisible(true);
-                    removeOfferButton.setVisible(false);
-                    showOffer(offer);
-                });
+//        showingEvents.ofType(MyOfferSelected.class)
+//                .map(MyOfferSelected::getSellOffer)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .subscribe(offer -> {
+//                    buyGridPane.setVisible(false);
+//                    removeOfferButton.setVisible(true);
+//                    showOffer(offer);
+//                });
+//
+//        showingEvents.ofType(OtherOfferSelected.class)
+//                .map(OtherOfferSelected::getSellOffer)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .subscribe(offer -> {
+//                    buyGridPane.setVisible(true);
+//                    removeOfferButton.setVisible(false);
+//                    showOffer(offer);
+//                });
 
         offerManager.getResults().ofType(OfferManager.OfferRemoved.class)
                 .observeOn(JavaFxScheduler.platform())

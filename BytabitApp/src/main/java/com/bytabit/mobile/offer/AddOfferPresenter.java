@@ -120,46 +120,46 @@ public class AddOfferPresenter {
 
         // transform events to actions
 
-        Observable<ProfileManager.LoadPaymentDetails> loadPaymentDetailsActions = addOfferEvents
-                .ofType(ViewShowing.class)
-                .map(e -> profileManager.new LoadPaymentDetails());
-
-        Observable<ProfileManager.LoadArbitratorProfiles> loadArbitratorProfilesActions = addOfferEvents
-                .ofType(ViewShowing.class)
-                .map(e -> profileManager.new LoadArbitratorProfiles());
-
-        Observable<ProfileManager.LoadProfile> loadProfileActions = addOfferEvents
-                .ofType(AddButtonPressed.class)
-                .map(e -> profileManager.new LoadProfile());
-
-        Observable<WalletManager.GetEscrowPubKey> getEscrowPubKeyActions = addOfferEvents
-                .ofType(AddButtonPressed.class)
-                .map(e -> walletManager.new GetEscrowPubKey());
-
-        Observable<OfferManager.CreateSellOffer> createOfferActions = Observable.zip(
-                addOfferEvents.ofType(AddButtonPressed.class),
-                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
-                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),
-                (a, p, e) -> createOffer(p.getProfile().getPubKey(), e.getPubKey()))
-                .map(e -> offerManager.new CreateSellOffer(e));
-
-        createOfferActions
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(offerManager.getActions());
-
-        Observable.merge(loadPaymentDetailsActions, loadArbitratorProfilesActions, loadProfileActions)
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(profileManager.getActions());
-
-        getEscrowPubKeyActions
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(walletManager.getActions());
+//        Observable<ProfileManager.LoadPaymentDetails> loadPaymentDetailsActions = addOfferEvents
+//                .ofType(ViewShowing.class)
+//                .map(e -> profileManager.new LoadPaymentDetails());
+//
+//        Observable<ProfileManager.LoadArbitratorProfiles> loadArbitratorProfilesActions = addOfferEvents
+//                .ofType(ViewShowing.class)
+//                .map(e -> profileManager.new LoadArbitratorProfiles());
+//
+//        Observable<ProfileManager.LoadProfile> loadProfileActions = addOfferEvents
+//                .ofType(AddButtonPressed.class)
+//                .map(e -> profileManager.new LoadProfile());
+//
+//        Observable<WalletManager.GetEscrowPubKey> getEscrowPubKeyActions = addOfferEvents
+//                .ofType(AddButtonPressed.class)
+//                .map(e -> walletManager.new GetEscrowPubKey());
+//
+//        Observable<OfferManager.CreateSellOffer> createOfferActions = Observable.zip(
+//                addOfferEvents.ofType(AddButtonPressed.class),
+//                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
+//                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),
+//                (a, p, e) -> createOffer(p.getProfile().getPubKey(), e.getPubKey()))
+//                .map(e -> offerManager.new CreateSellOffer(e));
+//
+//        createOfferActions
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .subscribe(offerManager.getActions());
+//
+//        Observable.merge(loadPaymentDetailsActions, loadArbitratorProfilesActions, loadProfileActions)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .subscribe(profileManager.getActions());
+//
+//        getEscrowPubKeyActions
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .subscribe(walletManager.getActions());
 
         // handle events
 
@@ -203,33 +203,33 @@ public class AddOfferPresenter {
 
         // handle results
 
-        profileManager.getResults().ofType(ProfileManager.PaymentDetailsLoaded.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(e -> {
-                    paymentDetails.add(e.getPaymentDetails());
-                    CurrencyCode currencyCode = e.getPaymentDetails().getCurrencyCode();
-                    if (currencyChoiceBox.itemsProperty().getValue().indexOf(currencyCode) == -1) {
-                        currencyChoiceBox.itemsProperty().getValue().add(currencyCode);
-                    }
-                    if (currencyChoiceBox.selectionModelProperty().getValue().isEmpty()) {
-                        currencyChoiceBox.selectionModelProperty().getValue().selectFirst();
-                    }
-                });
-
-        profileManager.getResults().ofType(ProfileManager.ArbitratorProfileLoaded.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(e -> {
-                    arbitrators.add(e.getProfile());
-                    Profile profile = e.getProfile();
-                    if (arbitratorChoiceBox.itemsProperty().getValue().indexOf(profile) == -1) {
-                        arbitratorChoiceBox.itemsProperty().getValue().add(profile);
-                    }
-                    if (arbitratorChoiceBox.selectionModelProperty().getValue().isEmpty()) {
-                        arbitratorChoiceBox.selectionModelProperty().getValue().selectFirst();
-                    }
-                });
+//        profileManager.getResults().ofType(ProfileManager.PaymentDetailsLoaded.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .subscribe(e -> {
+//                    paymentDetails.add(e.getPaymentDetails());
+//                    CurrencyCode currencyCode = e.getPaymentDetails().getCurrencyCode();
+//                    if (currencyChoiceBox.itemsProperty().getValue().indexOf(currencyCode) == -1) {
+//                        currencyChoiceBox.itemsProperty().getValue().add(currencyCode);
+//                    }
+//                    if (currencyChoiceBox.selectionModelProperty().getValue().isEmpty()) {
+//                        currencyChoiceBox.selectionModelProperty().getValue().selectFirst();
+//                    }
+//                });
+//
+//        profileManager.getResults().ofType(ProfileManager.ArbitratorProfileLoaded.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .subscribe(e -> {
+//                    arbitrators.add(e.getProfile());
+//                    Profile profile = e.getProfile();
+//                    if (arbitratorChoiceBox.itemsProperty().getValue().indexOf(profile) == -1) {
+//                        arbitratorChoiceBox.itemsProperty().getValue().add(profile);
+//                    }
+//                    if (arbitratorChoiceBox.selectionModelProperty().getValue().isEmpty()) {
+//                        arbitratorChoiceBox.selectionModelProperty().getValue().selectFirst();
+//                    }
+//                });
     }
 
     private void setAppBar() {

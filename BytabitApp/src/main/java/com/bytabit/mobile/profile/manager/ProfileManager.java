@@ -1,16 +1,14 @@
 package com.bytabit.mobile.profile.manager;
 
-import com.bytabit.mobile.common.*;
-import com.bytabit.mobile.profile.model.CurrencyCode;
-import com.bytabit.mobile.profile.model.PaymentDetails;
-import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.common.AbstractManager;
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import io.reactivex.Observable;
-import io.reactivex.observables.ConnectableObservable;
-import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
-import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import java.util.List;
 import java.util.Optional;
 
 public class ProfileManager extends AbstractManager {
@@ -20,105 +18,31 @@ public class ProfileManager extends AbstractManager {
     private String PROFILE_USERNAME = "profile.name";
     private String PROFILE_PHONENUM = "profile.phoneNum";
 
-    private String PROFILE_PAYMENT_DETAILS = "profile.paymentDetails";
-
     private final ProfileService profilesService;
+
+    @Inject
+    private WalletManager walletManager;
 
     private final EventLogger eventLogger = EventLogger.of(ProfileManager.class);
 
-    private final PublishSubject<ProfileAction> actions;
-
-    private Observable<ProfileResult> results;
-
-    private ConnectableObservable<PaymentDetails> paymentDetails;
+    private final PublishSubject<Profile> updatedProfile = PublishSubject.create();
 
     public ProfileManager() {
         profilesService = new ProfileService();
-        actions = PublishSubject.create();
-    }
-
-    @PostConstruct
-    public void initialize() {
-
-        Observable<ProfileAction> actionObservable = actions
-                .compose(eventLogger.logEvents())
-                .share();
-
-        // profile actions to results
-
-        Observable<ProfileResult> profileLoadedResults = actionObservable
-                .ofType(LoadProfile.class)
-                .filter(a -> retrieve(PROFILE_PUBKEY).isPresent())
-                .flatMap(a -> loadMyProfile().map(ProfileLoaded::new));
-
-        Observable<ProfileResult> profileNotCreatedResults = actionObservable
-                .ofType(LoadProfile.class)
-                .filter(a -> !retrieve(PROFILE_PUBKEY).isPresent())
-                .map(a -> new ProfileNotCreated());
-
-        Observable<ProfileResult> profileCreatedResults = actionObservable
-                .ofType(CreateProfile.class)
-                .map(a -> createMyProfile(a.getPubKey()))
-                .map(this::storeMyProfile)
-                .flatMap(profile -> profilesService.put(profile).toObservable())
-                .map(ProfileCreated::new);
-
-        Observable<ProfileResult> updateProfileResults = actionObservable
-                .ofType(UpdateProfile.class)
-                .flatMap(a -> loadMyProfile()
-                        .map(oldProfile -> updateMyProfile(oldProfile, a.getProfile()))
-                        .map(this::storeMyProfile)
-                        .flatMap(profile -> profilesService.put(profile).toObservable())
-                        .map(ProfileUpdated::new)
-                );
-
-        // payment details actions to results
-
-        Observable<PaymentDetailsLoaded> loadPaymentDetailsResults = actionObservable
-                .ofType(LoadPaymentDetails.class)
-                .flatMap(a -> loadPaymentDetails())
-                .map(PaymentDetailsLoaded::new);
-
-        Observable<PaymentDetailsUpdated> updatePaymentDetailsResults = actionObservable
-                .ofType(UpdatePaymentDetails.class)
-                .map(a -> a.getPaymentDetails())
-                .flatMap(this::storePaymentDetails)
-                .map(PaymentDetailsUpdated::new);
-
-        // arbitrator profile action results
-        Observable<ProfileResult> loadArbitratorProfiles = actionObservable
-                .ofType(LoadArbitratorProfiles.class)
-                .flatMap(a -> profilesService.get().toObservable())
-                .flatMapIterable(l -> l)
-                .filter(Profile::isArbitrator)
-                .map(ArbitratorProfileLoaded::new);
-
-        results = profileLoadedResults
-                .mergeWith(profileNotCreatedResults)
-                .mergeWith(profileCreatedResults)
-                .mergeWith(updateProfileResults)
-                .mergeWith(loadPaymentDetailsResults)
-                .mergeWith(updatePaymentDetailsResults)
-                .mergeWith(loadArbitratorProfiles)
-                .onErrorReturn(ProfileError::new)
-                .startWith(new ProfilePending())
-                .compose(eventLogger.logResults())
-                .share();
-
-        paymentDetails = loadPaymentDetailsResults.map(PaymentDetailsLoaded::getPaymentDetails)
-                .mergeWith(updatePaymentDetailsResults.map(PaymentDetailsUpdated::getPaymentDetails))
-                .distinct().replay();
     }
 
     // my profile
 
-    private Profile updateMyProfile(Profile oldProfile, Profile newProfile) {
-        return Profile.builder()
+    public void updateMyProfile(Profile newProfile) {
+        loadMyProfile().map(oldProfile -> Profile.builder()
                 .pubKey(oldProfile.getPubKey())
                 .arbitrator(newProfile.isArbitrator())
                 .userName(newProfile.getUserName())
                 .phoneNum(newProfile.getPhoneNum())
-                .build();
+                .build())
+                .map(this::storeMyProfile)
+                .flatMap(profile -> profilesService.put(profile).toObservable())
+                .subscribe(updatedProfile::onNext);
     }
 
     private Profile storeMyProfile(Profile profile) {
@@ -130,222 +54,36 @@ public class ProfileManager extends AbstractManager {
         return profile;
     }
 
-    private Profile createMyProfile(String authPubKey) {
-        return Profile.builder()
-                .pubKey(authPubKey)
-                .arbitrator(Boolean.FALSE)
-                .build();
+    public Observable<Profile> loadMyProfile() {
+        Optional<String> profilePubKey = retrieve(PROFILE_PUBKEY);
+
+        if (profilePubKey.isPresent()) {
+            return Observable.just(profilePubKey.get())
+                    .map(this::getProfile);
+        } else {
+            return walletManager.getTradeWalletProfilePubKey()
+                    .map(this::getProfile);
+        }
     }
 
-    private Observable<Profile> loadMyProfile() {
+    public Observable<List<Profile>> loadArbitratorProfiles() {
+        // TODO load, cache and refresh
+        return profilesService.get().toObservable();
+    }
 
-        return Observable.fromCallable(() -> Profile.builder()
-                .pubKey(retrieve(PROFILE_PUBKEY).get())
+
+    private Profile getProfile(String profilePubKey) {
+        return Profile.builder()
+                .pubKey(profilePubKey)
                 .arbitrator(Boolean.valueOf(retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
                 .userName(retrieve(PROFILE_USERNAME).orElse(""))
                 .phoneNum(retrieve(PROFILE_PHONENUM).orElse(""))
-                .build()).subscribeOn(Schedulers.io());
+                .build();
     }
 
-    private Observable<PaymentDetails> storePaymentDetails(PaymentDetails paymentDetails) {
-        return Observable.fromCallable(() -> {
-                    store(paymentDetailsKey(paymentDetails.getCurrencyCode(),
-                            paymentDetails.getPaymentMethod()), paymentDetails.getPaymentDetails());
-                    return paymentDetails;
-                }
-        ).subscribeOn(Schedulers.io());
-    }
-
-    private Observable<PaymentDetails> loadPaymentDetails() {
-
-        return Observable.fromArray(CurrencyCode.values())
-                .flatMap(c -> Observable.fromIterable(c.paymentMethods())
-                        .map(p -> retrieve(paymentDetailsKey(c, p)).map(pd ->
-                                PaymentDetails.builder()
-                                        .currencyCode(c)
-                                        .paymentMethod(p)
-                                        .paymentDetails(pd).build()))
-                        .filter(Optional::isPresent)
-                        .map(Optional::get));
-    }
-
-    private String paymentDetailsKey(CurrencyCode currencyCode,
-                                     PaymentMethod paymentMethod) {
-
-        return String.format("%s.%s.%s", PROFILE_PAYMENT_DETAILS, currencyCode.name(),
-                paymentMethod.displayName());
-    }
-
-    public PublishSubject<ProfileAction> getActions() {
-        return actions;
-    }
-
-    public Observable<ProfileResult> getResults() {
-        return results;
-    }
-
-    public ConnectableObservable<PaymentDetails> getPaymentDetails() {
-        return paymentDetails;
-    }
-
-    // Profile Action classes
-
-    public interface ProfileAction extends Event {
-    }
-
-    public class LoadProfile implements ProfileAction {
-    }
-
-    public class CreateProfile implements ProfileAction {
-        private final String pubKey;
-
-        public CreateProfile(String pubKey) {
-            this.pubKey = pubKey;
-        }
-
-        public String getPubKey() {
-            return pubKey;
-        }
-    }
-
-    public class UpdateProfile implements ProfileAction {
-        private final Profile profile;
-
-        public UpdateProfile(Profile profile) {
-            this.profile = profile;
-        }
-
-        public Profile getProfile() {
-            return profile;
-        }
-    }
-
-    public class LoadPaymentDetails implements ProfileAction {
-    }
-
-    public class UpdatePaymentDetails implements ProfileAction {
-        private final PaymentDetails paymentDetails;
-
-        public UpdatePaymentDetails(PaymentDetails paymentDetails) {
-            this.paymentDetails = paymentDetails;
-        }
-
-        public PaymentDetails getPaymentDetails() {
-            return paymentDetails;
-        }
-    }
-
-    public class LoadArbitratorProfiles implements ProfileAction {
-    }
-
-    // Profile Result classes
-
-    public interface ProfileResult extends Result {
-    }
-
-    public class ProfilePending implements ProfileResult {
-    }
-
-    public class ProfileNotCreated implements ProfileResult {
-    }
-
-    public class ProfileCreated implements ProfileResult {
-        private final Profile profile;
-
-        public ProfileCreated(Profile profile) {
-            this.profile = profile;
-        }
-
-        public Profile getProfile() {
-            return profile;
-        }
-    }
-
-    public class ProfileLoaded implements ProfileResult {
-        private final Profile profile;
-
-        public ProfileLoaded(Profile profile) {
-            this.profile = profile;
-        }
-
-        public Profile getProfile() {
-            return profile;
-        }
-    }
-
-    public class ProfileUpdated implements ProfileResult {
-        private final Profile profile;
-
-        public ProfileUpdated(Profile profile) {
-            this.profile = profile;
-        }
-
-        public Profile getProfile() {
-            return profile;
-        }
-    }
-
-    public class ProfileError implements ProfileResult, ErrorResult {
-        private final Throwable error;
-
-        public ProfileError(Throwable error) {
-            this.error = error;
-        }
-
-        @Override
-        public Throwable getError() {
-            return error;
-        }
-    }
-
-    public class PaymentDetailsPending implements ProfileResult {
-    }
-
-    public class PaymentDetailsLoaded implements ProfileResult {
-        private final PaymentDetails paymentDetails;
-
-        public PaymentDetailsLoaded(PaymentDetails paymentDetails) {
-            this.paymentDetails = paymentDetails;
-        }
-
-        public PaymentDetails getPaymentDetails() {
-            return paymentDetails;
-        }
-    }
-
-    public class PaymentDetailsUpdated implements ProfileResult {
-        private final PaymentDetails paymentDetails;
-
-        public PaymentDetailsUpdated(PaymentDetails paymentDetails) {
-            this.paymentDetails = paymentDetails;
-        }
-
-        public PaymentDetails getPaymentDetails() {
-            return paymentDetails;
-        }
-    }
-
-    public class PaymentDetailsError implements ProfileResult {
-        private final Throwable error;
-
-        public PaymentDetailsError(Throwable error) {
-            this.error = error;
-        }
-
-        public Throwable getError() {
-            return error;
-        }
-    }
-
-    public class ArbitratorProfileLoaded implements ProfileResult {
-        private final Profile profile;
-
-        public ArbitratorProfileLoaded(Profile profile) {
-            this.profile = profile;
-        }
-
-        public Profile getProfile() {
-            return profile;
-        }
+    public Observable<Profile> getUpdatedProfile() {
+        return updatedProfile
+                .compose(eventLogger.logObjects("UpdatedProfile"))
+                .share();
     }
 }

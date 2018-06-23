@@ -4,16 +4,12 @@ import com.bytabit.mobile.common.*;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
-import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.BuyRequest;
-import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
-import io.reactivex.Flowable;
 import io.reactivex.Observable;
-import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
 import javax.annotation.PostConstruct;
@@ -24,7 +20,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
 
@@ -75,115 +70,115 @@ public class TradeManager extends AbstractManager {
     @PostConstruct
     public void initialize() {
 
-        Observable<WalletManager.WalletResult> tradeWalletResults = walletManager.getWalletResults()
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .share();
+//        Observable<WalletManager.WalletResult> tradeWalletResults = walletManager.getWalletResults()
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .share();
+//
+//        Observable<ProfileManager.ProfileResult> profileResults = profileManager.getResults()
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents());
+//
+//        profileResults.ofType(ProfileManager.ProfilePending.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .map(p -> profileManager.new LoadProfile())
+//                .subscribe(profileManager.getActions());
+//
+//        Observable<GetTrades> getTradesObservable = profileResults.ofType(ProfileManager.ProfileLoaded.class)
+//                .map(p -> new GetTrades(p.getProfile()));
 
-        Observable<ProfileManager.ProfileResult> profileResults = profileManager.getResults()
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents());
+//        Observable<TradeAction> actionObservable = actions
+//                .compose(eventLogger.logEvents())
+//                .startWith(new LoadTrades())
+//                .mergeWith(getTradesObservable)
+//                .share();
 
-        profileResults.ofType(ProfileManager.ProfilePending.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .map(p -> profileManager.new LoadProfile())
-                .subscribe(profileManager.getActions());
+//        Observable<TradeReceived> tradesReceivedObservable = actionObservable.ofType(GetTrades.class)
+//                .map(GetTrades::getProfile)
+//                .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
+//                        .flatMap(tick -> tradeService.get(profile.getPubKey())
+//                                .retryWhen(errors -> errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
+//                                .flattenAsObservable(l -> l))
+//                        .flatMap(trade -> receiveTrade(profile, trade)))
+//                // filter to allow only valid received trades
+//                .filter(tr -> (tr.getCurrentTrade() == null && tr.getReceivedTrade().status().equals(CREATED))
+//                        || (tr.getCurrentTrade().status().nextValid().contains(tr.getReceivedTrade().status())))
+//                // TODO validate and merge trade states
+//                // write received trade
+//                .flatMap(tr -> writeTrade(tr.getReceivedTrade())
+//                        .map(t -> new TradeReceived(tr.getCurrentTrade(), t))).share();
 
-        Observable<GetTrades> getTradesObservable = profileResults.ofType(ProfileManager.ProfileLoaded.class)
-                .map(p -> new GetTrades(p.getProfile()));
+//        Observable<BuyerRequestedTrade> buyerRequestedTradeObservable = tradesReceivedObservable
+//                .map(TradeReceived::getReceivedTrade)
+//                .filter(t -> t.getRole().equals(Trade.Role.SELLER) && t.status().equals(CREATED))
+//                .map(t -> new BuyerRequestedTrade(t.getEscrowAddress(), t.sellOffer(), t.buyRequest()));
+//
+//        Observable<TradeCreated> tradeCreatedObservable = actionObservable.ofType(CreateTrade.class)
+//                .map(ct -> new TradeCreated(Trade.builder()
+//                        .escrowAddress(ct.getEscrowAddress())
+//                        .role(ct.getRole())
+//                        .sellOffer(ct.getSellOffer())
+//                        .buyRequest(ct.getBuyRequest())
+//                        .build())).share();
+//
+//        Observable<TradeUpdated> tradeFundingUpdatesObservable = tradeWalletResults
+//                .ofType(WalletManager.EscrowFunding.class)
+//                .flatMap(funding -> readTrade(funding.getEscrowAddress())
+//                        .map(t -> {
+//                            PaymentDetails paymentDetails = profileManager.getPaymentDetails().autoConnect()
+//                                    .filter(d -> d.getCurrencyCode().equals(t.sellOffer().getCurrencyCode()) && d.getPaymentMethod().equals(t.sellOffer().getPaymentMethod()))
+//                                    .blockingLast();
+//
+//                            return Trade.builder()
+//                                    .role(t.getRole())
+//                                    .escrowAddress(t.getEscrowAddress())
+//                                    .sellOffer(t.sellOffer())
+//                                    .buyRequest(t.buyRequest())
+//                                    .paymentRequest(new PaymentRequest(funding.getTransactionHash(),
+//                                            paymentDetails.getPaymentDetails(), funding.getRefundAddress(),
+//                                            funding.getRefundTxSignature()))
+//                                    .build();
+//                        }))
+//                .map(TradeUpdated::new).share();
 
-        Observable<TradeAction> actionObservable = actions
-                .compose(eventLogger.logEvents())
-                .startWith(new LoadTrades())
-                .mergeWith(getTradesObservable)
-                .share();
-
-        Observable<TradeReceived> tradesReceivedObservable = actionObservable.ofType(GetTrades.class)
-                .map(GetTrades::getProfile)
-                .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-                        .flatMap(tick -> tradeService.get(profile.getPubKey())
-                                .retryWhen(errors -> errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-                                .flattenAsObservable(l -> l))
-                        .flatMap(trade -> receiveTrade(profile, trade)))
-                // filter to allow only valid received trades
-                .filter(tr -> (tr.getCurrentTrade() == null && tr.getReceivedTrade().status().equals(CREATED))
-                        || (tr.getCurrentTrade().status().nextValid().contains(tr.getReceivedTrade().status())))
-                // TODO validate and merge trade states
-                // write received trade
-                .flatMap(tr -> writeTrade(tr.getReceivedTrade())
-                        .map(t -> new TradeReceived(tr.getCurrentTrade(), t))).share();
-
-        Observable<BuyerRequestedTrade> buyerRequestedTradeObservable = tradesReceivedObservable
-                .map(TradeReceived::getReceivedTrade)
-                .filter(t -> t.getRole().equals(Trade.Role.SELLER) && t.status().equals(CREATED))
-                .map(t -> new BuyerRequestedTrade(t.getEscrowAddress(), t.sellOffer(), t.buyRequest()));
-
-        Observable<TradeCreated> tradeCreatedObservable = actionObservable.ofType(CreateTrade.class)
-                .map(ct -> new TradeCreated(Trade.builder()
-                        .escrowAddress(ct.getEscrowAddress())
-                        .role(ct.getRole())
-                        .sellOffer(ct.getSellOffer())
-                        .buyRequest(ct.getBuyRequest())
-                        .build())).share();
-
-        Observable<TradeUpdated> tradeFundingUpdatesObservable = tradeWalletResults
-                .ofType(WalletManager.EscrowFunding.class)
-                .flatMap(funding -> readTrade(funding.getEscrowAddress())
-                        .map(t -> {
-                            PaymentDetails paymentDetails = profileManager.getPaymentDetails().autoConnect()
-                                    .filter(d -> d.getCurrencyCode().equals(t.sellOffer().getCurrencyCode()) && d.getPaymentMethod().equals(t.sellOffer().getPaymentMethod()))
-                                    .blockingLast();
-
-                            return Trade.builder()
-                                    .role(t.getRole())
-                                    .escrowAddress(t.getEscrowAddress())
-                                    .sellOffer(t.sellOffer())
-                                    .buyRequest(t.buyRequest())
-                                    .paymentRequest(new PaymentRequest(funding.getTransactionHash(),
-                                            paymentDetails.getPaymentDetails(), funding.getRefundAddress(),
-                                            funding.getRefundTxSignature()))
-                                    .build();
-                        }))
-                .map(TradeUpdated::new).share();
-
-        Observable<TradeWritten> tradeWrittenObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
-                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
-                .flatMap(this::writeTrade)
-                .map(TradeWritten::new);
-
-        Observable<TradePut> tradePutObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
-                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
-                .flatMap(t -> tradeService.put(t).toObservable())
-                .map(TradePut::new);
-
-        Observable<TradeLoaded> tradeLoadedObservable = actionObservable.ofType(LoadTrades.class)
-                .flatMap(lt -> readTrades())
-                .map(TradeLoaded::new);
-
-        Observable<TradeSelected> tradeSelectedObservable = actionObservable.ofType(SelectTrade.class)
-                .map(SelectTrade::getTrade)
-                .map(TradeSelected::new);
+//        Observable<TradeWritten> tradeWrittenObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
+//                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
+//                .flatMap(this::writeTrade)
+//                .map(TradeWritten::new);
+//
+//        Observable<TradePut> tradePutObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
+//                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
+//                .flatMap(t -> tradeService.put(t).toObservable())
+//                .map(TradePut::new);
+//
+//        Observable<TradeLoaded> tradeLoadedObservable = actionObservable.ofType(LoadTrades.class)
+//                .flatMap(lt -> readTrades())
+//                .map(TradeLoaded::new);
+//
+//        Observable<TradeSelected> tradeSelectedObservable = actionObservable.ofType(SelectTrade.class)
+//                .map(SelectTrade::getTrade)
+//                .map(TradeSelected::new);
 
         // wallet result handlers
 
-        walletManager.getTradeWalletTransactionResults()
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe();
-
-        results = Observable.merge(tradeLoadedObservable, tradeCreatedObservable,
-                tradeFundingUpdatesObservable)
-                .mergeWith(tradeWrittenObservable)
-                .mergeWith(tradePutObservable)
-                .mergeWith(tradeSelectedObservable)
-                .mergeWith(tradesReceivedObservable)
-                .mergeWith(buyerRequestedTradeObservable)
-                .compose(eventLogger.logResults())
-                .share();
+//        walletManager.getTradeWalletTransactionResults()
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .compose(eventLogger.logEvents())
+//                .subscribe();
+//
+//        results = Observable.merge(tradeLoadedObservable, tradeCreatedObservable,
+//                tradeFundingUpdatesObservable)
+//                .mergeWith(tradeWrittenObservable)
+//                .mergeWith(tradePutObservable)
+//                .mergeWith(tradeSelectedObservable)
+//                .mergeWith(tradesReceivedObservable)
+//                .mergeWith(buyerRequestedTradeObservable)
+//                .compose(eventLogger.logResults())
+//                .share();
     }
 
     public PublishSubject<TradeAction> getActions() {

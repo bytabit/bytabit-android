@@ -83,8 +83,7 @@ public class PaymentsPresenter {
                     paymentDetailsManager.setSelectedPaymentDetails(paymentDetails);
                 });
 
-        Observable.create(source ->
-                addButton.setOnAction(source::onNext))
+        Observable.create(source -> addButton.setOnAction(source::onNext))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(a -> {

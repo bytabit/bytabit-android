@@ -54,6 +54,17 @@ public class Profile {
     }
 
     @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer("Profile{");
+        sb.append("pubKey='").append(pubKey).append('\'');
+        sb.append(", arbitrator=").append(arbitrator);
+        sb.append(", userName='").append(userName).append('\'');
+        sb.append(", phoneNum='").append(phoneNum).append('\'');
+        sb.append('}');
+        return sb.toString();
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

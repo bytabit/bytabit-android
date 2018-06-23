@@ -1,6 +1,5 @@
 package com.bytabit.mobile.wallet.ui;
 
-import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.down.Platform;
@@ -10,9 +9,9 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import io.reactivex.Observable;
 import io.reactivex.rxjavafx.observables.JavaFxObservable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -22,14 +21,10 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.uri.BitcoinURI;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class DepositPresenter {
-
-    private static Logger LOG = LoggerFactory.getLogger(DepositPresenter.class);
 
     @FXML
     private View depositView;
@@ -50,80 +45,28 @@ public class DepositPresenter {
 
     public void initialize() {
 
-        Observable<PresenterEvent> viewShowingEvents =
-                JavaFxObservable.changesOf(depositView.showingProperty())
-                        .map(showing -> {
-                            if (showing.getNewVal()) {
-                                return new ViewShowing();
-                            } else
-                                return new ViewNotShowing();
-                        });
-
-        Observable<PresenterEvent> depositEvents = viewShowingEvents
-                .compose(eventLogger.logEvents()).share();
-
-        depositEvents.ofType(ViewShowing.class).subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(e -> {
-                    AppBar appBar = MobileApplication.getInstance().getAppBar();
-                    appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(ae -> MobileApplication.getInstance().switchToPreviousView()));
-                    appBar.setTitleText("Deposit");
-                });
-
-        Observable<WalletManager.GetTradeWalletDepositAddress> getTradeWalletDepositAddress = depositEvents
-                .ofType(ViewShowing.class)
-                .map(e -> walletManager.new GetTradeWalletDepositAddress());
-
-        getTradeWalletDepositAddress
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .compose(eventLogger.logEvents())
-                .subscribe(walletManager.getActions());
-
-        Observable<WalletManager.WalletResult> walletResults = walletManager.getWalletResults();
-
-        walletResults.ofType(WalletManager.TradeWalletDepositAddress.class)
+        JavaFxObservable.changesOf(depositView.showingProperty())
+                .filter(Change::getNewVal)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(r -> showDepositAddress(r.getAddress()));
+                .subscribe(showing -> setAppBar());
 
-//        depositView.showingProperty().addListener((observable, oldValue, newValue) -> {
-//            if (newValue) {
-//                AppBar appBar = MobileApplication.getInstance().getAppBar();
-//                appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-//
-//                appBar.setTitleText("Deposit");
-//            }
-//
-//            walletManager.getDepositAddress().observeOn(JavaFxScheduler.platform())
-//                    .subscribe(da -> {
-//                        bitcoinAddressLabel.setText(da.toBase58());
-//                        LOG.debug("deposit address: {}", da.toBase58());
-//
-//                        LOG.debug("Platform is: {}", Platform.getCurrent());
-//
-//                        QRCode qrCode = QRCode.from(depositAddressUri(da));
-//
-//                        // TODO FT-150 Cross platform QR code generator for wallet deposits
-//                        if (Platform.isDesktop()) {
-//                            ByteArrayOutputStream outputStream = qrCode.stream();
-//                            Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
-//                            qrCodeImageView.setImage(img);
-//                        } else {
-//                            copyButton.setText("Share");
-//                        }
-//                        copyButton.visibleProperty().setValue(true);
-//                        copyButton.setOnAction((event) -> copyAddress(da));
-//                    });
-//        });
+        JavaFxObservable.changesOf(depositView.showingProperty())
+                .filter(Change::getNewVal)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .flatMap(showing -> walletManager.getTradeWalletDepositAddress())
+                .subscribe(this::showDepositAddress);
+    }
+
+    private void setAppBar() {
+        AppBar appBar = MobileApplication.getInstance().getAppBar();
+        appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(ae -> MobileApplication.getInstance().switchToPreviousView()));
+        appBar.setTitleText("Deposit");
     }
 
     private void showDepositAddress(Address address) {
         bitcoinAddressLabel.setText(address.toBase58());
-        LOG.debug("deposit address: {}", address.toBase58());
-
-        LOG.debug("Platform is: {}", Platform.getCurrent());
-
         //QRCode qrCode = QRCode.from(depositAddressUri(address));
 
         // TODO FT-150 Cross platform QR code generator for wallet deposits
@@ -175,15 +118,4 @@ public class DepositPresenter {
 //        }
 //        return image;
 //    }
-
-    // Event classes
-
-    interface PresenterEvent extends Event {
-    }
-
-    class ViewShowing implements PresenterEvent {
-    }
-
-    class ViewNotShowing implements PresenterEvent {
-    }
 }

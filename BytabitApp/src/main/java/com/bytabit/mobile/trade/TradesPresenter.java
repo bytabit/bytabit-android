@@ -100,29 +100,29 @@ public class TradesPresenter {
 //                .observeOn(JavaFxScheduler.platform())
 //                .subscribe(pnc -> MobileApplication.getInstance().switchView(BytabitMobile.PROFILE_VIEW));
 
-        tradeManager.getResults().ofType(TradeManager.TradeLoaded.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(TradeManager.TradeLoaded::getTrade)
-                .subscribe(this::updateTrade);
-
-        tradeManager.getResults().ofType(TradeManager.TradeWritten.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(TradeManager.TradeWritten::getTrade)
-                .subscribe(this::updateTrade);
-
-        tradeManager.getResults().ofType(TradeManager.TradeReceived.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(TradeManager.TradeReceived::getReceivedTrade)
-                .subscribe(this::updateTrade);
-
-        tradeManager.getResults().ofType(TradeManager.TradeUpdated.class)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(TradeManager.TradeUpdated::getTrade)
-                .subscribe(this::updateTrade);
+//        tradeManager.getResults().ofType(TradeManager.TradeLoaded.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(TradeManager.TradeLoaded::getTrade)
+//                .subscribe(this::updateTrade);
+//
+//        tradeManager.getResults().ofType(TradeManager.TradeWritten.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(TradeManager.TradeWritten::getTrade)
+//                .subscribe(this::updateTrade);
+//
+//        tradeManager.getResults().ofType(TradeManager.TradeReceived.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(TradeManager.TradeReceived::getReceivedTrade)
+//                .subscribe(this::updateTrade);
+//
+//        tradeManager.getResults().ofType(TradeManager.TradeUpdated.class)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(TradeManager.TradeUpdated::getTrade)
+//                .subscribe(this::updateTrade);
 
 //        tradeManager.getResults().ofType(TradeManager.TradeCreated.class)
 //                .subscribeOn(Schedulers.io())
