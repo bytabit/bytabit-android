@@ -63,7 +63,7 @@ public class PaymentDetailsManager extends AbstractManager {
                                         .paymentDetails(pd).build()))
                         .filter(Optional::isPresent)
                         .map(Optional::get))
-                .compose(eventLogger.logObjects("Loaded"));
+                .compose(eventLogger.logObjects("Loaded")).cache();
     }
 
     public Observable<PaymentDetails> getUpdatedPaymentDetails() {

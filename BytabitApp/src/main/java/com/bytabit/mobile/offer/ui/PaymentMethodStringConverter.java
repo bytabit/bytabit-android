@@ -1,4 +1,4 @@
-package com.bytabit.mobile.offer;
+package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import javafx.util.StringConverter;

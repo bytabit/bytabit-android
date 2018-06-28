@@ -1,8 +1,9 @@
-package com.bytabit.mobile.trade;
+package com.bytabit.mobile.trade.ui;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
+import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -142,38 +143,38 @@ public class TradeDetailsPresenter {
                     setAppBar();
                 });
 
-        Observable<TradeManager.TradeSelected> tradeSelectedObservable = tradeManager.getResults()
-                .ofType(TradeManager.TradeSelected.class)
-                .replay(1).refCount();
-
-        Observable<TradeManager.TradeUpdated> tradeUpdatedObservable = tradeManager.getResults()
-                .ofType(TradeManager.TradeUpdated.class);
+//        Observable<TradeManager.TradeSelected> tradeSelectedObservable = tradeManager.getResults()
+//                .ofType(TradeManager.TradeSelected.class)
+//                .replay(1).refCount();
+//
+//        Observable<TradeManager.TradeUpdated> tradeUpdatedObservable = tradeManager.getResults()
+//                .ofType(TradeManager.TradeUpdated.class);
 
         // events to actions
 
-        tradeDetailEvents.subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .ofType(FundButtonPressed.class)
-                .flatMap(fp -> tradeSelectedObservable.lastOrError().map(ts ->
-                        tradeManager.new FundTrade(ts.getTrade())).toObservable())
-                .compose(eventLogger.logEvents())
-                .subscribe(fe -> tradeManager.getActions().onNext(fe));
+//        tradeDetailEvents.subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .ofType(FundButtonPressed.class)
+//                .flatMap(fp -> tradeSelectedObservable.lastOrError().map(ts ->
+//                        tradeManager.new FundTrade(ts.getTrade())).toObservable())
+//                .compose(eventLogger.logEvents())
+//                .subscribe(fe -> tradeManager.getActions().onNext(fe));
 
         // handle results
 
-        tradeSelectedObservable
-                .filter(ts -> ts.getTrade().status().compareTo(Trade.Status.CREATED) >= 0)
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(TradeManager.TradeSelected::getTrade)
-                .subscribe(this::showTrade);
-
-        tradeSelectedObservable.flatMap(s -> tradeUpdatedObservable
-                .filter(u -> u.getTrade().getEscrowAddress().equals(s.getTrade().getEscrowAddress())))
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .map(TradeManager.TradeUpdated::getTrade)
-                .subscribe(this::showTrade);
+//        tradeSelectedObservable
+//                .filter(ts -> ts.getTrade().status().compareTo(Trade.Status.CREATED) >= 0)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(TradeManager.TradeSelected::getTrade)
+//                .subscribe(this::showTrade);
+//
+//        tradeSelectedObservable.flatMap(s -> tradeUpdatedObservable
+//                .filter(u -> u.getTrade().getEscrowAddress().equals(s.getTrade().getEscrowAddress())))
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .map(TradeManager.TradeUpdated::getTrade)
+//                .subscribe(this::showTrade);
 
 //        tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
 //

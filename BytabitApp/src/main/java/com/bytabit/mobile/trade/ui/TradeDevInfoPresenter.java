@@ -1,5 +1,6 @@
-package com.bytabit.mobile.trade;
+package com.bytabit.mobile.trade.ui;
 
+import com.bytabit.mobile.trade.manager.TradeManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;

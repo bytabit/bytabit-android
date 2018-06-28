@@ -67,7 +67,7 @@ public class ProfileManager extends AbstractManager {
     }
 
     public Observable<List<Profile>> loadArbitratorProfiles() {
-        // TODO load, cache and refresh
+        // TODO refresh values, cache latest results
         return profilesService.get().toObservable();
     }
 

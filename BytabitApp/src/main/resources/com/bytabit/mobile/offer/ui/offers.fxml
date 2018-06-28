@@ -6,7 +6,7 @@
 <View fx:id="offersView" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity"
       minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
       xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.bytabit.mobile.offer.OffersPresenter">
+      fx:controller="com.bytabit.mobile.offer.ui.OffersPresenter">
     <center>
         <CharmListView fx:id="offersListView" BorderPane.alignment="CENTER"/>
     </center>

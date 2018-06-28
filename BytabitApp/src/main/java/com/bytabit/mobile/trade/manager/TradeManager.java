@@ -1,6 +1,7 @@
-package com.bytabit.mobile.trade;
+package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.*;
+import com.bytabit.mobile.common.AbstractManager;
+import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
@@ -11,6 +12,7 @@ import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.fasterxml.jackson.jr.ob.JSON;
 import io.reactivex.Observable;
 import io.reactivex.subjects.PublishSubject;
+import org.bitcoinj.core.Address;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -18,23 +20,13 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
 
 public class TradeManager extends AbstractManager {
 
     private final EventLogger eventLogger = EventLogger.of(TradeManager.class);
-
-//    @Inject
-//    BuyerProtocol buyerProtocol;
-//
-//    @Inject
-//    SellerProtocol sellerProtocol;
-//
-//    @Inject
-//    ArbitratorProtocol arbitratorProtocol;
 
     @Inject
     WalletManager walletManager;
@@ -44,57 +36,19 @@ public class TradeManager extends AbstractManager {
 
     private final TradeService tradeService;
 
-    private final PublishSubject<TradeAction> actions;
+    private final PublishSubject<Trade> updatedTrade = PublishSubject.create();
 
-    private Observable<TradeResult> results;
-
-//    @Inject
-//    WalletManager walletManager;
-
-//    private Observable<TradeEvent> tradeEvents;
-//
-//    private PublishSubject<TradeEvent> createdTradeEvents;
-
-    //private final Observable<Trade> trades;
-
-//    private final ObjectProperty<Trade> selectedTrade = new SimpleObjectProperty<>();
+    private final PublishSubject<Trade> selectedTrade = PublishSubject.create();
 
     public final static String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
     public TradeManager() {
         tradeService = new TradeService();
-        actions = PublishSubject.create();
     }
 
     @PostConstruct
     public void initialize() {
-
-//        Observable<WalletManager.WalletResult> tradeWalletResults = walletManager.getWalletResults()
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.io())
-//                .compose(eventLogger.logEvents())
-//                .share();
-//
-//        Observable<ProfileManager.ProfileResult> profileResults = profileManager.getResults()
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.io())
-//                .compose(eventLogger.logEvents());
-//
-//        profileResults.ofType(ProfileManager.ProfilePending.class)
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.io())
-//                .map(p -> profileManager.new LoadProfile())
-//                .subscribe(profileManager.getActions());
-//
-//        Observable<GetTrades> getTradesObservable = profileResults.ofType(ProfileManager.ProfileLoaded.class)
-//                .map(p -> new GetTrades(p.getProfile()));
-
-//        Observable<TradeAction> actionObservable = actions
-//                .compose(eventLogger.logEvents())
-//                .startWith(new LoadTrades())
-//                .mergeWith(getTradesObservable)
-//                .share();
 
 //        Observable<TradeReceived> tradesReceivedObservable = actionObservable.ofType(GetTrades.class)
 //                .map(GetTrades::getProfile)
@@ -116,13 +70,7 @@ public class TradeManager extends AbstractManager {
 //                .filter(t -> t.getRole().equals(Trade.Role.SELLER) && t.status().equals(CREATED))
 //                .map(t -> new BuyerRequestedTrade(t.getEscrowAddress(), t.sellOffer(), t.buyRequest()));
 //
-//        Observable<TradeCreated> tradeCreatedObservable = actionObservable.ofType(CreateTrade.class)
-//                .map(ct -> new TradeCreated(Trade.builder()
-//                        .escrowAddress(ct.getEscrowAddress())
-//                        .role(ct.getRole())
-//                        .sellOffer(ct.getSellOffer())
-//                        .buyRequest(ct.getBuyRequest())
-//                        .build())).share();
+
 //
 //        Observable<TradeUpdated> tradeFundingUpdatesObservable = tradeWalletResults
 //                .ofType(WalletManager.EscrowFunding.class)
@@ -144,49 +92,20 @@ public class TradeManager extends AbstractManager {
 //                        }))
 //                .map(TradeUpdated::new).share();
 
-//        Observable<TradeWritten> tradeWrittenObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
-//                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
-//                .flatMap(this::writeTrade)
-//                .map(TradeWritten::new);
-//
-//        Observable<TradePut> tradePutObservable = tradeCreatedObservable.map(TradeCreated::getTrade)
-//                .mergeWith(tradeFundingUpdatesObservable.map(TradeUpdated::getTrade))
-//                .flatMap(t -> tradeService.put(t).toObservable())
-//                .map(TradePut::new);
-//
-//        Observable<TradeLoaded> tradeLoadedObservable = actionObservable.ofType(LoadTrades.class)
-//                .flatMap(lt -> readTrades())
-//                .map(TradeLoaded::new);
-//
-//        Observable<TradeSelected> tradeSelectedObservable = actionObservable.ofType(SelectTrade.class)
-//                .map(SelectTrade::getTrade)
-//                .map(TradeSelected::new);
-
-        // wallet result handlers
-
-//        walletManager.getTradeWalletTransactionResults()
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.io())
-//                .compose(eventLogger.logEvents())
-//                .subscribe();
-//
-//        results = Observable.merge(tradeLoadedObservable, tradeCreatedObservable,
-//                tradeFundingUpdatesObservable)
-//                .mergeWith(tradeWrittenObservable)
-//                .mergeWith(tradePutObservable)
-//                .mergeWith(tradeSelectedObservable)
-//                .mergeWith(tradesReceivedObservable)
-//                .mergeWith(buyerRequestedTradeObservable)
-//                .compose(eventLogger.logResults())
-//                .share();
     }
 
-    public PublishSubject<TradeAction> getActions() {
-        return actions;
-    }
+    public Observable<Trade> createBuyOffer(SellOffer sellOffer, BigDecimal btcAmount) {
 
-    public Observable<TradeResult> getResults() {
-        return results;
+        return Observable.zip(walletManager.getTradeWalletEscrowPubKey(),
+                profileManager.loadMyProfile().map(Profile::getPubKey),
+                walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
+                (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
+                        new BuyRequest(buyerEscrowPubKey, btcAmount, buyerProfilePubKey, buyerPayoutAddress))
+                .map(buyRequest -> Trade.builder().sellOffer(sellOffer).buyRequest(buyRequest)
+                        .build())
+                .flatMap(this::writeTrade)
+                // TODO create escrow wallet
+                .flatMap(t -> tradeService.put(t).toObservable());
     }
 
     //    public void initialize() {
@@ -230,26 +149,6 @@ public class TradeManager extends AbstractManager {
 
     // post or patch all created currentTrade events
 
-
-//            tradeEvents = readTrades.concatWith(receivedTrades).mergeWith(createdTradeEvents)
-//                    .distinct().subscribeOn(Schedulers.io()).observeOn(Schedulers.io())
-//                    .replay().autoConnect(3);
-//
-//            tradeEvents.filter(te -> te.getRole().equals(BUYER)).subscribe(te -> {
-//                // buyer protocol
-//                if (te instanceof BuyerCreated) {
-//                    buyerProtocol.handleCreated((BuyerCreated) te);
-//                    LOG.debug("Created currentTrade event: {}", te);
-//                }
-//            });
-
-//            tradeEvents.filter(te -> te.getRole().equals(SELLER)).subscribe(te -> {
-//                // seller protocol
-//            });
-//
-//            tradeEvents.filter(te -> te.getRole().equals(ARBITRATOR)).subscribe(te -> {
-//                // arbitrator protocol
-//            });
 
 //            updatedTrades = tradeEvents.scan(new HashMap<String, Trade>(), (ts, te) -> {
 //                Trade current = ts.get(te.getEscrowAddress());
@@ -602,48 +501,28 @@ public class TradeManager extends AbstractManager {
 //                }
 //        );
 
-    private Observable<TradeReceived> receiveTrade(Profile profile, Trade receivedTrade) {
-
-        return Observable.create(source -> {
-            receivedTrade.role(profile.getPubKey(), profile.isArbitrator());
-            String escrowAddress = receivedTrade.getEscrowAddress();
-                    if (escrowAddress != null) {
-                        try {
-                            File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
-                            if (tradeFile.exists()) {
-                                FileReader tradeReader = new FileReader(tradeFile);
-                                Trade currentTrade = JSON.std.beanFrom(Trade.class, tradeReader);
-                                source.onNext(new TradeReceived(currentTrade, receivedTrade));
-                            } else if (receivedTrade.status().equals(CREATED)) {
-                                source.onNext(new TradeReceived(null, receivedTrade));
-                            }
-                        } catch (IOException ioe) {
-                            source.onError(ioe);
-                        }
-                    }
-                    source.onComplete();
-                }
-        );
-    }
-
-//    public Trade getSelectedTrade() {
-//        return selectedTrade.get();
-//    }
-
-//    public ObjectProperty<Trade> selectedTradeProperty() {
-//        return selectedTrade;
-//    }
-
-//    public Observable<TradeEvent> getTradeEvents() {
-//        return tradeEvents;
-//    }
-
-//    public Observable<Trade> getUpdatedTrades() {
-//        return updatedTrades;
-//    }
-
-//    public PublishSubject<TradeEvent> getCreatedTradeEvents() {
-//        return createdTradeEvents;
+//    private Observable<TradeReceived> receiveTrade(Profile profile, Trade receivedTrade) {
+//
+//        return Observable.create(source -> {
+//                    receivedTrade.role(profile.getPubKey(), profile.isArbitrator());
+//                    String escrowAddress = receivedTrade.getEscrowAddress();
+//                    if (escrowAddress != null) {
+//                        try {
+//                            File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
+//                            if (tradeFile.exists()) {
+//                                FileReader tradeReader = new FileReader(tradeFile);
+//                                Trade currentTrade = JSON.std.beanFrom(Trade.class, tradeReader);
+//                                source.onNext(new TradeReceived(currentTrade, receivedTrade));
+//                            } else if (receivedTrade.status().equals(CREATED)) {
+//                                source.onNext(new TradeReceived(null, receivedTrade));
+//                            }
+//                        } catch (IOException ioe) {
+//                            source.onError(ioe);
+//                        }
+//                    }
+//                    source.onComplete();
+//                }
+//        );
 //    }
 
 // convert currentTrade into stream of currentTrade events
@@ -667,220 +546,6 @@ public class TradeManager extends AbstractManager {
 //        }
 //    }
 
-// Trade Action Classes
-
-    public interface TradeAction extends Event {
-    }
-
-    public class LoadTrades implements TradeAction {
-    }
-
-    public class GetTrades implements TradeAction {
-        private final Profile profile;
-
-        public GetTrades(Profile profile) {
-            this.profile = profile;
-        }
-
-        public Profile getProfile() {
-            return profile;
-        }
-    }
-
-    public class CreateTrade implements TradeAction {
-
-        private final String escrowAddress;
-        private final Trade.Role role;
-        private final SellOffer sellOffer;
-        private final BuyRequest buyRequest;
-
-        public CreateTrade(String escrowAddress, Trade.Role role, SellOffer sellOffer, BuyRequest buyRequest) {
-            this.escrowAddress = escrowAddress;
-            this.role = role;
-            this.sellOffer = sellOffer;
-            this.buyRequest = buyRequest;
-        }
-
-        public String getEscrowAddress() {
-            return escrowAddress;
-        }
-
-        public Trade.Role getRole() {
-            return role;
-        }
-
-        public SellOffer getSellOffer() {
-            return sellOffer;
-        }
-
-        public BuyRequest getBuyRequest() {
-            return buyRequest;
-        }
-    }
-
-    public class SelectTrade implements TradeAction {
-        private final Trade trade;
-
-        public SelectTrade(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    public class FundTrade implements TradeAction {
-        private final Trade trade;
-
-        public FundTrade(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    // Trade Result Classes
-
-    public interface TradeResult extends Result {
-    }
-
-    public class TradeCreated implements TradeResult {
-
-        private final Trade trade;
-
-        public TradeCreated(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    public class TradeWritten implements TradeResult {
-
-        private final Trade trade;
-
-        public TradeWritten(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    public class TradePut implements TradeResult {
-
-        private final Trade trade;
-
-        public TradePut(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    public class TradeLoaded implements TradeResult {
-
-        private final Trade trade;
-
-        public TradeLoaded(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    public class TradeReceived implements TradeResult {
-
-        private final Trade currentTrade;
-        private final Trade receivedTrade;
-
-        public TradeReceived(Trade oldTrade, Trade newTrade) {
-            this.currentTrade = oldTrade;
-            this.receivedTrade = newTrade;
-        }
-
-        public Trade getCurrentTrade() {
-            return currentTrade;
-        }
-
-        public Trade getReceivedTrade() {
-            return receivedTrade;
-        }
-    }
-
-    public class BuyerRequestedTrade implements TradeResult {
-
-        private final String escrowAddress;
-        private final SellOffer sellOffer;
-        private final BuyRequest buyRequest;
-
-        public BuyerRequestedTrade(String escrowAddress, SellOffer sellOffer, BuyRequest buyRequest) {
-            this.escrowAddress = escrowAddress;
-            this.sellOffer = sellOffer;
-            this.buyRequest = buyRequest;
-        }
-
-        public String getEscrowAddress() {
-            return escrowAddress;
-        }
-
-        public SellOffer getSellOffer() {
-            return sellOffer;
-        }
-
-        public BuyRequest getBuyRequest() {
-            return buyRequest;
-        }
-    }
-
-    public class TradeSelected implements TradeResult {
-        private final Trade trade;
-
-        public TradeSelected(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    public class TradeUpdated implements TradeResult {
-        private final Trade trade;
-
-        public TradeUpdated(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    // Trade Error Class
-
-    public class TradeError implements TradeResult, ErrorResult {
-
-        private final Throwable error;
-
-        public TradeError(Throwable error) {
-            this.error = error;
-        }
-
-        public Throwable getError() {
-            return error;
-        }
-    }
 }
 
 //                                // only use valid next status

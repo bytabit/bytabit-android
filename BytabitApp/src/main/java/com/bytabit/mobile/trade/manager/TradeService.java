@@ -1,4 +1,4 @@
-package com.bytabit.mobile.trade;
+package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;

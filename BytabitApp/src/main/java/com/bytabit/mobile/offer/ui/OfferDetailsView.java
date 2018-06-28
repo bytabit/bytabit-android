@@ -1,4 +1,4 @@
-package com.bytabit.mobile.offer;
+package com.bytabit.mobile.offer.ui;
 
 import com.airhacks.afterburner.views.FXMLView;
 

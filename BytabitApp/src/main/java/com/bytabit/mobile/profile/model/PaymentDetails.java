@@ -24,6 +24,10 @@ public class PaymentDetails {
         return paymentDetails;
     }
 
+    public PaymentDetailsKey key() {
+        return new PaymentDetailsKey(this.getCurrencyCode(), this.getPaymentMethod());
+    }
+
     public static PaymentDetailsBuilder builder() {
         return new PaymentDetailsBuilder();
     }

@@ -112,6 +112,7 @@ public class PaymentsPresenter {
         appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
                 MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
         appBar.setTitleText("Payment Details");
+        paymentDetailsListView.selectedItemProperty().setValue(null);
     }
 
     private void updatePaymentDetails(PaymentDetails updated) {

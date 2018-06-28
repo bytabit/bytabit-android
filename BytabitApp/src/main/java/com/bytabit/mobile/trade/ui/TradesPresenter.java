@@ -1,8 +1,9 @@
-package com.bytabit.mobile.trade;
+package com.bytabit.mobile.trade.ui;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.Event;
 import com.bytabit.mobile.common.EventLogger;
+import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -81,13 +82,13 @@ public class TradesPresenter {
                     clearSelection();
                 });
 
-        tradeEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .ofType(TradesPresenter.TradeSelected.class)
-                .subscribe(event -> {
-                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
-                    tradeManager.getActions().onNext(tradeManager.new SelectTrade(event.getTrade()));
-                });
+//        tradeEvents.subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .ofType(TradesPresenter.TradeSelected.class)
+//                .subscribe(event -> {
+//                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
+//                    tradeManager.getActions().onNext(tradeManager.new SelectTrade(event.getTrade()));
+//                });
 
         // handle results
 

@@ -1,4 +1,4 @@
-package com.bytabit.mobile.trade;
+package com.bytabit.mobile.trade.ui;
 
 import com.airhacks.afterburner.views.FXMLView;
 

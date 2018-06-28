@@ -36,7 +36,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.bytabit.mobile.trade.TradeManager.TRADES_PATH;
+import static com.bytabit.mobile.trade.manager.TradeManager.TRADES_PATH;
 import static org.bitcoinj.core.Transaction.REFERENCE_DEFAULT_MIN_TX_FEE;
 
 public class WalletManager {

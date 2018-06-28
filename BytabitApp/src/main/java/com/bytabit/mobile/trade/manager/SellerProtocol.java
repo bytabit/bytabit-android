@@ -1,4 +1,4 @@
-package com.bytabit.mobile.trade;
+package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.ProfileManager;

@@ -1,4 +1,4 @@
-package com.bytabit.mobile.offer;
+package com.bytabit.mobile.offer.manager;
 
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
