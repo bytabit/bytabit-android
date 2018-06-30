@@ -26,6 +26,10 @@ public class OfferManager extends AbstractManager {
 
     private final PublishSubject<SellOffer> selectedOffer = PublishSubject.create();
 
+    private final PublishSubject<SellOffer> createdOffer = PublishSubject.create();
+
+    private final PublishSubject<SellOffer> removedOffer = PublishSubject.create();
+
     private final SellOfferService sellOfferService;
 
     private Observable<List<SellOffer>> offers;
@@ -60,10 +64,10 @@ public class OfferManager extends AbstractManager {
         return offers.share();
     }
 
-    public Observable<SellOffer> createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, String arbitratorProfilePubKey,
-                                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
+    public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, String arbitratorProfilePubKey,
+                            BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        return Observable.zip(profileManager.loadMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
+        Observable.zip(profileManager.loadMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
                 SellOffer.builder()
                         .sellerProfilePubKey(p.getPubKey())
                         .sellerEscrowPubKey(pk)
@@ -74,11 +78,14 @@ public class OfferManager extends AbstractManager {
                         .maxAmount(maxAmount)
                         .price(price)
                         .build()
-        ).flatMap(o -> sellOfferService.put(o).toObservable());
+        )
+                .flatMap(o -> sellOfferService.put(o).toObservable())
+                .subscribe(createdOffer::onNext);
     }
 
-    public Observable<SellOffer> deleteOffer(String sellerEscrowPubKey) {
-        return sellOfferService.delete(sellerEscrowPubKey).toObservable();
+    public void deleteOffer(String sellerEscrowPubKey) {
+        sellOfferService.delete(sellerEscrowPubKey).toObservable()
+                .subscribe(removedOffer::onNext);
     }
 
     public void setSelectedOffer(SellOffer sellOffer) {
@@ -88,6 +95,18 @@ public class OfferManager extends AbstractManager {
     public Observable<SellOffer> getSelectedOffer() {
         return selectedOffer
                 .compose(eventLogger.logObjects("Selected"))
+                .share();
+    }
+
+    public Observable<SellOffer> getCreatedOffer() {
+        return createdOffer
+                .compose(eventLogger.logObjects("Created"))
+                .share();
+    }
+
+    public Observable<SellOffer> getRemovedOffer() {
+        return removedOffer
+                .compose(eventLogger.logObjects("Removed"))
                 .share();
     }
 

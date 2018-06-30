@@ -4,7 +4,6 @@ import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.common.StringBigDecimalConverter;
 import com.bytabit.mobile.offer.manager.OfferManager;
-import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
@@ -76,10 +75,6 @@ public class AddOfferPresenter {
     @FXML
     private Label maxTradeAmtCurrencyLabel;
 
-//    final private Set<PaymentDetails> paymentDetails = new HashSet<>();
-//
-//    final private Set<Profile> arbitrators = new HashSet<>();
-
     public void initialize() {
 
         // setup view components
@@ -109,9 +104,16 @@ public class AddOfferPresenter {
                 addOfferButton.setOnAction(source::onNext))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .map(a -> createOffer())
                 .subscribe(sellOffer -> {
+                    CurrencyCode currencyCode = currencyChoiceBox.selectionModelProperty().getValue().getSelectedItem();
+                    PaymentMethod paymentMethod = paymentMethodChoiceBox.selectionModelProperty().getValue().getSelectedItem();
+                    String arbitratorProfilePubKey = arbitratorChoiceBox.selectionModelProperty().getValue().getSelectedItem().getPubKey();
+                    BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
+                    BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
+                    BigDecimal price = new BigDecimal(btcPriceTextField.getText());
+                    offerManager.createOffer(currencyCode, paymentMethod, arbitratorProfilePubKey, minAmount, maxAmount, price);
                     MobileApplication.getInstance().switchToPreviousView();
+
                 });
 
         JavaFxObservable.changesOf(currencyChoiceBox.getSelectionModel().selectedItemProperty())
@@ -198,27 +200,11 @@ public class AddOfferPresenter {
     }
 
     private void clearForm() {
-//        currencyChoiceBox.getItems().clear();
-//        paymentMethodChoiceBox.getItems().clear();
-//        arbitratorChoiceBox.getItems().clear();
         if (currencyChoiceBox.getSelectionModel().isEmpty()) {
             currencyChoiceBox.getSelectionModel().selectFirst();
         }
         minTradeAmtTextField.clear();
         maxTradeAmtTextField.clear();
         btcPriceTextField.clear();
-    }
-
-    private Observable<SellOffer> createOffer() {
-
-        CurrencyCode currencyCode = currencyChoiceBox.selectionModelProperty().getValue().getSelectedItem();
-        PaymentMethod paymentMethod = paymentMethodChoiceBox.selectionModelProperty().getValue().getSelectedItem();
-        String arbitratorProfilePubKey = arbitratorChoiceBox.selectionModelProperty().getValue().getSelectedItem().getPubKey();
-        BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
-        BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
-        BigDecimal price = new BigDecimal(btcPriceTextField.getText());
-
-        return offerManager.createOffer(currencyCode, paymentMethod, arbitratorProfilePubKey,
-                maxAmount, minAmount, price);
     }
 }

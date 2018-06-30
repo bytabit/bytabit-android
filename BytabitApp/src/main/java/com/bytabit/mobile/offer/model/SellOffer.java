@@ -121,4 +121,19 @@ public class SellOffer {
     public int hashCode() {
         return sellerEscrowPubKey.hashCode();
     }
+
+    @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer("SellOffer{");
+        sb.append("sellerEscrowPubKey='").append(sellerEscrowPubKey).append('\'');
+        sb.append(", sellerProfilePubKey='").append(sellerProfilePubKey).append('\'');
+        sb.append(", arbitratorProfilePubKey='").append(arbitratorProfilePubKey).append('\'');
+        sb.append(", currencyCode=").append(currencyCode);
+        sb.append(", paymentMethod=").append(paymentMethod);
+        sb.append(", minAmount=").append(minAmount);
+        sb.append(", maxAmount=").append(maxAmount);
+        sb.append(", price=").append(price);
+        sb.append('}');
+        return sb.toString();
+    }
 }

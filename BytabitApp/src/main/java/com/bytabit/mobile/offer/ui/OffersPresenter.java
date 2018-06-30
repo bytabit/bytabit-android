@@ -93,6 +93,20 @@ public class OffersPresenter {
                 .subscribe(sellOffers ->
                         offersListView.itemsProperty().setAll(sellOffers)
                 );
+
+        offerManager.getCreatedOffer()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(sellOffer ->
+                        offersListView.itemsProperty().add(sellOffer)
+                );
+
+        offerManager.getRemovedOffer()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(sellOffer ->
+                        offersListView.itemsProperty().remove(sellOffer)
+                );
     }
 
     private void setAppBar() {
