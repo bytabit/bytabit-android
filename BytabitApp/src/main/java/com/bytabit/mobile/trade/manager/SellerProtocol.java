@@ -1,22 +1,17 @@
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.profile.manager.ProfileManager;
-import com.bytabit.mobile.trade.evt.BuyerCreated;
-import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
-
-import javax.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
 
 public class SellerProtocol extends TradeProtocol {
 
-    @Inject
-    ProfileManager profileManager;
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    SellerProtocol() {
-        super(EventLogger.of(SellerProtocol.class));
+    public SellerProtocol() {
+        super();
     }
 
     // 1.S: seller receives created trade with sell offer + buy request
@@ -29,36 +24,36 @@ public class SellerProtocol extends TradeProtocol {
 //        walletManager.createEscrowWallet(createdTrade.getEscrowAddress());
 
         // fund escrow and create paymentRequest
-        PaymentRequest paymentRequest = fundEscrow(createdTrade);
+//        PaymentRequest paymentRequest = fundEscrow(createdTrade);
 
-        if (paymentRequest != null) {
-
-            // 4. put payment request
-//            try {
-            fundedTrade = Trade.builder()
-                    .escrowAddress(createdTrade.getEscrowAddress())
-                    .sellOffer(createdTrade.sellOffer())
-                    .buyRequest(createdTrade.buyRequest())
-                    .paymentRequest(paymentRequest)
-                    .build();
-
-//            tradeService.put(fundedTrade).subscribe();
-
-//            } catch (IOException e) {
-//                log.error("Unable to PUT funded trade.", e);
-//                // TODO retry putting payment request
-//            }
-        } else {
-//            log.error("Unable to fund trade.");
-        }
+//        if (paymentRequest != null) {
+//
+//            // 4. put payment request
+////            try {
+//            fundedTrade = Trade.builder()
+//                    .escrowAddress(createdTrade.getEscrowAddress())
+//                    .sellOffer(createdTrade.sellOffer())
+//                    .buyRequest(createdTrade.buyRequest())
+//                    .paymentRequest(paymentRequest)
+//                    .build();
+//
+////            tradeService.put(fundedTrade).subscribe();
+//
+////            } catch (IOException e) {
+////                log.error("Unable to PUT funded trade.", e);
+////                // TODO retry putting payment request
+////            }
+//        } else {
+////            log.error("Unable to fund trade.");
+//        }
 
         return fundedTrade;
     }
 
     // 2.S: seller fund escrow and post payment request
-    private PaymentRequest fundEscrow(Trade trade) {
-
-        // TODO verify escrow not yet funded ?
+//    private PaymentRequest fundEscrow(Trade trade) {
+//
+//        // TODO verify escrow not yet funded ?
 //        try {
 //            // 1. fund escrow
 //            Transaction fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
@@ -81,13 +76,13 @@ public class SellerProtocol extends TradeProtocol {
 //            // TODO let user know not enough BTC in wallet
 //            return null;
 //        }
-        return null;
-    }
+//        return null;
+//    }
 
-    @Override
-    public Trade handleCreated(BuyerCreated created) {
-        return null;
-    }
+//    @Override
+//    public Trade handleCreated(BuyerCreated created) {
+//        return null;
+//    }
 
     @Override
     public Trade handleFunded(Trade createdTrade, Trade fundedTrade) {
@@ -95,10 +90,10 @@ public class SellerProtocol extends TradeProtocol {
     }
 
     // 3.S: seller payout escrow to buyer and write payout details
-    public Trade confirmPaymentReceived(Trade paidTrade) {
-
-        Trade completedTrade = null;
-
+//    public Trade confirmPaymentReceived(Trade paidTrade) {
+//
+//        Trade completedTrade = null;
+//
 //        if (paidTrade.status().equals(PAID)) {
 //
 //            // 1. sign and broadcast payout tx
@@ -111,14 +106,14 @@ public class SellerProtocol extends TradeProtocol {
 //                // 5. post payout completed
 ////                try {
 //
-//                    completedTrade = Trade.builder()
-//                            .escrowAddress(paidTrade.getEscrowAddress())
-//                            .sellOffer(paidTrade.sellOffer())
-//                            .buyRequest(paidTrade.buyRequest())
-//                            .paymentRequest(paidTrade.paymentRequest())
-//                            .payoutRequest(paidTrade.payoutRequest())
-//                            .payoutCompleted(payoutCompleted)
-//                            .build();
+//                completedTrade = Trade.builder()
+//                        .escrowAddress(paidTrade.getEscrowAddress())
+//                        .sellOffer(paidTrade.sellOffer())
+//                        .buyRequest(paidTrade.buyRequest())
+//                        .paymentRequest(paidTrade.paymentRequest())
+//                        .payoutRequest(paidTrade.payoutRequest())
+//                        .payoutCompleted(payoutCompleted)
+//                        .build();
 //
 //                tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
 //
@@ -131,9 +126,9 @@ public class SellerProtocol extends TradeProtocol {
 //                log.error("Insufficient funds to payout escrow to buyer.");
 //            }
 //        }
-
-        return completedTrade;
-    }
+//
+//        return completedTrade;
+//    }
 
     public void requestArbitrate(Trade currentTrade) {
         super.requestArbitrate(currentTrade, NO_PAYMENT);

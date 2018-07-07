@@ -1,7 +1,6 @@
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.AbstractManager;
-import com.bytabit.mobile.common.EventLogger;
+import com.bytabit.mobile.common.StorageManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
@@ -13,6 +12,8 @@ import com.fasterxml.jackson.jr.ob.JSON;
 import io.reactivex.Observable;
 import io.reactivex.subjects.PublishSubject;
 import org.bitcoinj.core.Address;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -21,12 +22,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Optional;
 
-public class TradeManager extends AbstractManager {
+public class TradeManager {
 
-    private final EventLogger eventLogger = EventLogger.of(TradeManager.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     WalletManager walletManager;
@@ -34,7 +34,21 @@ public class TradeManager extends AbstractManager {
     @Inject
     ProfileManager profileManager;
 
+    @Inject
+    StorageManager storageManager;
+
+//    @Inject
+//    SellerProtocol sellerProtocol;
+//
+//    @Inject
+//    BuyerProtocol buyerProtocol;
+//
+//    @Inject
+//    ArbitratorProtocol arbitratorProtocol;
+
     private final TradeService tradeService;
+
+    private final PublishSubject<Trade> createdTrade = PublishSubject.create();
 
     private final PublishSubject<Trade> updatedTrade = PublishSubject.create();
 
@@ -50,14 +64,18 @@ public class TradeManager extends AbstractManager {
     @PostConstruct
     public void initialize() {
 
-//        Observable<TradeReceived> tradesReceivedObservable = actionObservable.ofType(GetTrades.class)
-//                .map(GetTrades::getProfile)
-//                .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-//                        .flatMap(tick -> tradeService.get(profile.getPubKey())
-//                                .retryWhen(errors -> errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
+//        Observable.zip(Observable.interval(15, TimeUnit.SECONDS, Schedulers.io()),
+//                profileManager.loadOrCreateMyProfile(), (tick, profile) ->
+//                        tradeService.get(profile.getPubKey())
+//                                .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
 //                                .flattenAsObservable(l -> l))
-//                        .flatMap(trade -> receiveTrade(profile, trade)))
-//                // filter to allow only valid received trades
+//                .flatMap(trades -> trades)
+//                .map(this::handleTrade)
+//                .observeOn(Schedulers.io())
+//                .subscribeOn(Schedulers.io())
+//                .subscribe(updatedTrade::onNext);
+
+        // filter to allow only valid received trades
 //                .filter(tr -> (tr.getCurrentTrade() == null && tr.getReceivedTrade().status().equals(CREATED))
 //                        || (tr.getCurrentTrade().status().nextValid().contains(tr.getReceivedTrade().status())))
 //                // TODO validate and merge trade states
@@ -94,25 +112,28 @@ public class TradeManager extends AbstractManager {
 
     }
 
-    public Observable<Trade> createBuyOffer(SellOffer sellOffer, BigDecimal btcAmount) {
+    public void createBuyOffer(SellOffer sellOffer, BigDecimal btcAmount) {
 
-        return Observable.zip(walletManager.getTradeWalletEscrowPubKey(),
-                profileManager.loadMyProfile().map(Profile::getPubKey),
+        Observable.zip(walletManager.getTradeWalletEscrowPubKey().toObservable(),
+                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toObservable(),
                 walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         new BuyRequest(buyerEscrowPubKey, btcAmount, buyerProfilePubKey, buyerPayoutAddress))
-                .map(buyRequest -> Trade.builder().sellOffer(sellOffer).buyRequest(buyRequest)
+                .map(buyRequest -> Trade.builder()
+                        .sellOffer(sellOffer)
+                        .buyRequest(buyRequest)
                         .build())
                 .flatMap(this::writeTrade)
-                // TODO create escrow wallet
-                .flatMap(t -> tradeService.put(t).toObservable());
+                .doOnNext(t -> walletManager.createdEscrowWallet(t.getEscrowAddress()))
+                .flatMap(t -> tradeService.put(t).toObservable())
+                .subscribe(createdTrade::onNext);
     }
 
     //    public void initialize() {
 
 //        if (tradeEvents == null) {
 
-//            Observable<TradeEvent> readTrades = profileManager.loadMyProfile().toObservable()
+//            Observable<TradeEvent> readTrades = profileManager.loadOrCreateMyProfile().toObservable()
 //                    .flatMap(profile -> Observable.create(source -> {
 //                        // load stored tradeEvents
 //                        File tradesDir = new File(TRADES_PATH);
@@ -135,7 +156,7 @@ public class TradeManager extends AbstractManager {
 //                        source.onComplete();
 //                    }));
 //
-//            Observable<TradeEvent> receivedTrades = profileManager.loadMyProfile().toObservable()
+//            Observable<TradeEvent> receivedTrades = profileManager.loadOrCreateMyProfile().toObservable()
 //                    .flatMap(profile -> Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
 //                            .flatMap(tick -> tradeService.get(profile.getPubKey())
 //                                    .retryWhen(errors ->
@@ -222,7 +243,7 @@ public class TradeManager extends AbstractManager {
 //                //LOG.debug(String.format("Writing updated currentTrade: %s", currentTrade.toString()));
 //            });
 
-//            tradeEvents = profileManager.loadMyProfile().toObservable().subscribeOn(Schedulers.io())
+//            tradeEvents = profileManager.loadOrCreateMyProfile().toObservable().subscribeOn(Schedulers.io())
 //                    .flatMap(profile -> readTrades.map(currentTrade -> currentTrade.isLoaded(true))
 //                            .concatWith(receivedTrades).mergeWith(createdTradeEvents)
 //                            .scan(new HashMap<String, Trade>(), (currentTrades, foundTrade) -> {
@@ -274,13 +295,13 @@ public class TradeManager extends AbstractManager {
 //                source.onSuccess(trades);
 //            }).toObservable();
 //
-//            Observable<List<Trade>> watchedTrades = profileManager.loadMyProfile().toObservable()
+//            Observable<List<Trade>> watchedTrades = profileManager.loadOrCreateMyProfile().toObservable()
 //                    .flatMap(profile -> Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
 //                            .flatMap(tick -> tradeService.get(profile.getPubKey()).retry().toObservable()));
 //
 //            createdTradeEvents = PublishSubject.create();
 //
-//            tradeEvents = profileManager.loadMyProfile().toObservable().subscribeOn(Schedulers.io())
+//            tradeEvents = profileManager.loadOrCreateMyProfile().toObservable().subscribeOn(Schedulers.io())
 //                    .flatMap(profile -> storedTrades.concatWith(watchedTrades).mergeWith(createdTradeEvents)
 //                            .scan(new HashMap<String, Trade>(), (currentTrades, foundTrades) -> {
 //                                for (Trade currentTrade : currentTrades.values()) {
@@ -329,7 +350,7 @@ public class TradeManager extends AbstractManager {
 
 //    public void requestArbitrate() {
 
-//        profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
+//        profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
 //            Trade currentTrade = selectedTrade.getValue();
 //
 //            String profilePubKey = profile.getPubKey();
@@ -365,7 +386,7 @@ public class TradeManager extends AbstractManager {
 //        });
 //    }
 
-//    public Single<List<Trade>> singleTrades(String profilePubKey) {
+    //    public Single<List<Trade>> singleTrades(String profilePubKey) {
 //        return tradeService.get(profilePubKey).retry().subscribeOn(Schedulers.io());
 //    }
 //
@@ -443,39 +464,34 @@ public class TradeManager extends AbstractManager {
         });
     }
 
-    private Observable<Trade> readTrade(String escrowAddress) {
-        return Observable.create(source -> {
-            try {
-                File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
-                if (tradeFile.exists()) {
-                    FileReader tradeReader = new FileReader(tradeFile);
-                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
-                    source.onNext(trade);
-                }
-            } catch (IOException ioe) {
-                source.onError(ioe);
-            }
-        });
+    private Optional<Trade> readTrade(String escrowAddress) throws IOException {
+        File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
+        if (tradeFile.exists()) {
+            FileReader tradeReader = new FileReader(tradeFile);
+            return Optional.of(JSON.std.beanFrom(Trade.class, tradeReader));
+        } else {
+            return Optional.empty();
+        }
     }
 
-    private Observable<Trade> readTrades() {
-
-        return Observable.just(new File(TRADES_PATH))
-                .map(tradesDir -> {
-                    if (!tradesDir.exists()) {
-                        tradesDir.mkdirs();
-                    }
-                    return tradesDir;
-                })
-                .flatMapIterable(tradesDir -> {
-                    if (tradesDir.list() != null) {
-                        return Arrays.asList(tradesDir.list());
-                    } else {
-                        return new ArrayList<>();
-                    }
-                })
-                .flatMap(this::readTrade);
-    }
+//    private Observable<Trade> readTrades() {
+//
+//        return Observable.just(new File(TRADES_PATH))
+//                .map(tradesDir -> {
+//                    if (!tradesDir.exists()) {
+//                        tradesDir.mkdirs();
+//                    }
+//                    return tradesDir;
+//                })
+//                .flatMapIterable(tradesDir -> {
+//                    if (tradesDir.list() != null) {
+//                        return Arrays.asList(tradesDir.list());
+//                    } else {
+//                        return new ArrayList<>();
+//                    }
+//                })
+//                .flatMap(this::readTrade);
+//    }
 
 //        return Observable.create(source -> {
 //

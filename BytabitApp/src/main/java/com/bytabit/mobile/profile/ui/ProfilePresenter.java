@@ -1,7 +1,6 @@
 package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -15,6 +14,8 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -38,7 +39,7 @@ public class ProfilePresenter {
     @FXML
     private TextField phoneNumTextField;
 
-    private final EventLogger eventLogger = EventLogger.of(ProfilePresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     public void initialize() {
 
@@ -49,12 +50,13 @@ public class ProfilePresenter {
                 .subscribe(c -> profileManager.updateMyProfile(getProfile()));
 
         JavaFxObservable.changesOf(profileView.showingProperty())
+                .filter(Change::getNewVal)
+                .flatMap(e -> profileManager.loadOrCreateMyProfile().toObservable())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .filter(Change::getNewVal)
-                .subscribe(c -> {
+                .subscribe(profile -> {
                     setAppBar();
-                    profileManager.loadMyProfile().subscribe(this::setProfile);
+                    setProfile(profile);
                 });
 
         profileManager.getUpdatedProfile()

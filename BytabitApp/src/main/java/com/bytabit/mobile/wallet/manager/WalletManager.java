@@ -1,7 +1,6 @@
 package com.bytabit.mobile.wallet.manager;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.bytabit.mobile.trade.model.Trade;
@@ -11,6 +10,7 @@ import com.google.common.collect.ImmutableList;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
+import io.reactivex.subjects.PublishSubject;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
@@ -23,6 +23,8 @@ import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.SPVBlockStore;
 import org.bitcoinj.wallet.*;
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.PostConstruct;
@@ -46,7 +48,7 @@ public class WalletManager {
     private final static String BACKUP_EXT = ".bkp";
     private final static String SAVE_EXT = ".sav";
 
-    private final EventLogger eventLogger = EventLogger.of(WalletManager.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private final NetworkParameters netParams;
 
@@ -55,9 +57,12 @@ public class WalletManager {
     private Single<Wallet> tradeWallet;
 
     private Observable<Double> downloadProgress;
-    private Observable<BigDecimal> tradeWalletBalance;
+    private Observable<String> tradeWalletBalance;
 
     private Observable<TransactionWithAmt> updatedTradeWalletTx;
+
+    private final PublishSubject<Wallet> createdEscrowWallet = PublishSubject.create();
+    private Observable<TransactionWithAmt> updatedEscrowWalletTx;
 
     public WalletManager() {
         netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
@@ -171,6 +176,27 @@ public class WalletManager {
         Single<List<Wallet>> readEscrowWallets = readEscrowAddresses
                 .map(this::createOrLoadEscrowWallet).toList().cache();
 
+        updatedEscrowWalletTx = Observable.concat(readEscrowWallets.flattenAsObservable(ew -> ew), createdEscrowWallet)
+                .flatMap(ew -> Observable.<TransactionWithAmt>create(source -> {
+                    TransactionConfidenceEventListener listener = (wallet, tx) -> {
+                        Context.propagate(btcContext);
+                        TransactionWithAmt txWithAmt = TransactionWithAmt.builder()
+                                .tx(tx)
+                                .transactionAmt(tx.getValue(wallet))
+                                .outputAddress(getWatchedOutputAddress(tx, wallet))
+                                .inputTxHash(tx.getInput(0).getOutpoint().getHash().toString())
+                                .walletBalance(ew.getBalance())
+                                .build();
+                        source.onNext(txWithAmt);
+                    };
+                    ew.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
+
+                    source.setCancellable(() -> {
+                        ew.removeTransactionConfidenceEventListener(listener);
+                    });
+                }).groupBy(TransactionWithAmt::getHash).flatMap(txg ->
+                        txg.throttleLast(1, TimeUnit.SECONDS)));
+
 //        createdEscrowWallets = PublishSubject.create();
 //        createdEscrowAddresses = PublishSubject.create();
 
@@ -238,6 +264,14 @@ public class WalletManager {
             pg.start();
             return pg;
         }).cache();
+
+        createdEscrowWallet
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .forEach(ew -> {
+                    blockChain.subscribe(bc -> bc.addWallet(ew));
+                    peerGroup.subscribe(pg -> pg.addWallet(ew));
+                });
 
         //updatedTradeWalletTx =
 
@@ -344,14 +378,14 @@ public class WalletManager {
                         @Override
                         protected void doneDownload() {
                             super.doneDownload();
-                            source.onNext(100.00);
+                            source.onNext(1.00);
                         }
                     });
 
                     // on un-subscribe stop peer group
                     source.setCancellable(pg::stop);
                 })).subscribeOn(Schedulers.io())
-                .compose(eventLogger.logObjects("DownloadProgress"))
+                .doOnNext(progress -> log.debug("Download progress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
                 .throttleLast(1, TimeUnit.SECONDS)
                 .replay(20).autoConnect();
 
@@ -376,8 +410,11 @@ public class WalletManager {
 //                    ew.addTransactionConfidenceEventListener(listener);
 //                })).flatMap(tue -> tue).share();
 
-//        tradeWalletBalance = tradeWallet.toObservable().flatMap(tw -> tradeWalletTransactionResults
-//                .map(te -> tw.getBalance().toFriendlyString())).share();
+        tradeWalletBalance = tradeWallet.toObservable().flatMap(tw -> updatedTradeWalletTx
+                .map(tx -> {
+                    Context.propagate(btcContext);
+                    return tw.getBalance().toFriendlyString();
+                }));
 
 //        escrowWalletEntries = new HashMap<>();
 //        escrowTxUpdatedEventEntries = new HashMap<>();
@@ -415,7 +452,7 @@ public class WalletManager {
 //
 //                    @Override
 //                    public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
-//                        Context.propagate(btcContext);
+//                       Context .propagate(btcContext);
 //                        source.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
 //                    }
 //                };
@@ -475,7 +512,27 @@ public class WalletManager {
 
     public Observable<TransactionWithAmt> getUpdatedTradeWalletTx() {
         return updatedTradeWalletTx
-                .compose(eventLogger.logObjects("UpdatedTradeWalletTx"))
+                .doOnNext(tx -> log.debug("Updated Trade Wallet Tx: {}", tx))
+                .share();
+    }
+
+    public Observable<String> createdEscrowWallet(String escrowAddress) {
+
+        return Observable.create(source -> {
+            try {
+                Wallet escrowWallet = createOrLoadEscrowWallet(escrowAddress);
+                escrowWallet.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000));
+                createdEscrowWallet.onNext(escrowWallet);
+                source.onNext(escrowAddress);
+            } catch (FileNotFoundException | UnreadableWalletException ex) {
+                source.onError(ex);
+            }
+        });
+    }
+
+    public Observable<TransactionWithAmt> getUpdatedEscrowWalletTx() {
+        return updatedEscrowWalletTx
+                .doOnNext(tx -> log.debug("Updated Escrow Wallet Tx: {}", tx))
                 .share();
     }
 
@@ -490,12 +547,12 @@ public class WalletManager {
                 .build();
     }
 
-    public Observable<String> getTradeWalletProfilePubKey() {
-        return tradeWallet.map(this::getFreshBase58AuthPubKey).toObservable();
+    public Single<String> getTradeWalletProfilePubKey() {
+        return tradeWallet.map(this::getFreshBase58AuthPubKey);
     }
 
-    public Observable<String> getTradeWalletEscrowPubKey() {
-        return tradeWallet.map(this::getFreshBase58ReceivePubKey).toObservable();
+    public Single<String> getTradeWalletEscrowPubKey() {
+        return tradeWallet.map(this::getFreshBase58ReceivePubKey);
     }
 
     public Observable<Address> getTradeWalletDepositAddress() {
@@ -1331,9 +1388,9 @@ public class WalletManager {
 //                .cast(BlockDownloadProgress.class).map(BlockDownloadProgress::getPct);
 //    }
 
-//    public Observable<String> getTradeWalletBalance() {
-//        return tradeWalletBalance;
-//    }
+    public Observable<String> getTradeWalletBalance() {
+        return tradeWalletBalance.share();
+    }
 
 //    public Observable<TransactionResult> getTradeWalletTransactionResults() {
 //        return tradeWalletTransactionResults;

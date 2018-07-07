@@ -1,6 +1,5 @@
 package com.bytabit.mobile.wallet.ui;
 
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -13,12 +12,14 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class WalletBackupPresenter {
 
-    private final EventLogger eventLogger = EventLogger.of(WalletBackupPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     WalletManager walletManager;

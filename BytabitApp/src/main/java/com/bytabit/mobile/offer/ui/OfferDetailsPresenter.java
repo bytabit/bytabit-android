@@ -2,10 +2,10 @@ package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
+import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.BuyRequest;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -20,6 +20,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
@@ -27,13 +29,16 @@ import java.math.MathContext;
 
 public class OfferDetailsPresenter {
 
-    private final EventLogger eventLogger = EventLogger.of(OfferDetailsPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     OfferManager offerManager;
 
     @Inject
     ProfileManager profileManager;
+
+    @Inject
+    TradeManager tradeManager;
 
     @FXML
     private View offerDetailsView;
@@ -115,10 +120,12 @@ public class OfferDetailsPresenter {
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
+
         JavaFxObservable.actionEventsOf(buyBtcButton)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
+                .subscribe(sellOffer -> {
+                    offerManager.createBuyOffer(new BigDecimal(buyBtcAmtTextField.textProperty().getValue()));
                     MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
                 });
 
@@ -134,13 +141,13 @@ public class OfferDetailsPresenter {
                     buyBtcAmtTextField.setText(btcAmount.toPlainString());
                 });
 
-        profileManager.loadMyProfile()
+        offerManager.getSelectedOffer()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .subscribe(myProfile -> offerManager.getSelectedOffer()
+                .subscribe(offer -> profileManager.loadOrCreateMyProfile()
                         .subscribeOn(Schedulers.io())
                         .observeOn(JavaFxScheduler.platform())
-                        .subscribe(offer -> {
+                        .subscribe(myProfile -> {
                             if (myProfile.getPubKey().equals(offer.getSellerProfilePubKey())) {
                                 // my offer
                                 buyGridPane.setVisible(false);
@@ -153,7 +160,7 @@ public class OfferDetailsPresenter {
                             showOffer(offer);
                         }));
 
-//        Observable<TradeManager.CreateTrade> createTradeActions = Observable.zip(
+//        Observable.zip(
 //                offerDetailEvents.ofType(BuyButtonPressed.class),
 //                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
 //                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),

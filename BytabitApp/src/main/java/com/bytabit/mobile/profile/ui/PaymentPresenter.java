@@ -1,6 +1,5 @@
 package com.bytabit.mobile.profile.ui;
 
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
@@ -18,6 +17,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.TextField;
 import javafx.util.StringConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -44,7 +45,7 @@ public class PaymentPresenter {
     @FXML
     private Button removePaymentDetailButton;
 
-    private final EventLogger eventLogger = EventLogger.of(PaymentPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     public void initialize() {
 

@@ -1,30 +1,26 @@
 package com.bytabit.mobile.trade.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.Event;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import io.reactivex.Observable;
-import io.reactivex.rxjavafx.observables.JavaFxObservable;
-import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
-import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class TradeDetailsPresenter {
 
-    private final EventLogger eventLogger = EventLogger.of(TradeDetailsPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     TradeManager tradeManager;
@@ -121,27 +117,27 @@ public class TradeDetailsPresenter {
 
         // setup event observables
 
-        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
-                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
+//        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
+//                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
+//
+//        Observable<FundButtonPressed> fundButtonPressedEvents = JavaFxObservable.actionEventsOf(fundEscrowButton)
+//                .map(actionEvent -> new FundButtonPressed());
 
-        Observable<FundButtonPressed> fundButtonPressedEvents = JavaFxObservable.actionEventsOf(fundEscrowButton)
-                .map(actionEvent -> new FundButtonPressed());
-
-        Observable<PresenterEvent> tradeDetailEvents = Observable.merge(viewShowingEvents,
-                fundButtonPressedEvents)
-                .compose(eventLogger.logEvents())
-                .share();
+//        Observable<PresenterEvent> tradeDetailEvents = Observable.merge(viewShowingEvents,
+//                fundButtonPressedEvents)
+//                .doOnNext(progress -> log.debug("Download progress: {}", progress))
+//                .share();
 
         // transform events to actions
 
         // handle events
 
-        tradeDetailEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .ofType(ViewShowing.class)
-                .subscribe(event -> {
-                    setAppBar();
-                });
+//        tradeDetailEvents.subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .ofType(ViewShowing.class)
+//                .subscribe(event -> {
+//                    setAppBar();
+//                });
 
 //        Observable<TradeManager.TradeSelected> tradeSelectedObservable = tradeManager.getResults()
 //                .ofType(TradeManager.TradeSelected.class)
@@ -182,7 +178,7 @@ public class TradeDetailsPresenter {
 //            paymentReferenceField.setDisable(true);
 //            paymentReferenceField.setEditable(false);
 
-//            profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
+//            profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
 //                if (profile.isArbitrator()) {
 //                    actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
 //                    refundSellerButton.setDisable(true);
@@ -422,15 +418,15 @@ public class TradeDetailsPresenter {
 
     // Event classes
 
-    interface PresenterEvent extends Event {
-    }
+//    interface PresenterEvent extends Event {
+//    }
+//
+//    private class ViewShowing implements PresenterEvent {
+//    }
+//
+//    private class ViewNotShowing implements PresenterEvent {
+//    }
 
-    private class ViewShowing implements PresenterEvent {
-    }
-
-    private class ViewNotShowing implements PresenterEvent {
-    }
-
-    private class FundButtonPressed implements PresenterEvent {
-    }
+//    private class FundButtonPressed implements PresenterEvent {
+//    }
 }

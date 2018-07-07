@@ -1,7 +1,6 @@
 package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -18,6 +17,8 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -32,7 +33,7 @@ public class PaymentsPresenter {
     @FXML
     private CharmListView<PaymentDetails, String> paymentDetailsListView;
 
-    private final EventLogger eventLogger = EventLogger.of(PaymentsPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private FloatingActionButton addButton = new FloatingActionButton();
 

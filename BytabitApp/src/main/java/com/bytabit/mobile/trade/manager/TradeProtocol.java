@@ -1,10 +1,12 @@
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.trade.evt.BuyerCreated;
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.manager.WalletManager;
+
+import javax.inject.Inject;
 
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
 import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
@@ -15,28 +17,22 @@ public abstract class TradeProtocol {
 
 //    protected final Logger log;
 
-    protected final EventLogger eventLogger;
+    @Inject
+    WalletManager walletManager;
 
+    @Inject
+    ProfileManager profileManager;
 
-//    @Inject
-//    protected WalletManager walletManager;
+    protected final TradeService tradeService;
 
-//    @Inject
-//    protected ProfileManager profileManager;
+    protected TradeProtocol() {
 
-//    protected final TradeService tradeService;
-
-    protected TradeProtocol(EventLogger eventLogger) {
-
-        this.eventLogger = eventLogger;
-
-//        tradeService = new TradeService();
+        tradeService = new TradeService();
     }
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-
-    abstract public Trade handleCreated(BuyerCreated created);
+    abstract public Trade handleCreated(Trade createdTrade);
 
     abstract public Trade handleFunded(Trade createdTrade, Trade fundedTrade);
 
@@ -53,7 +49,7 @@ public abstract class TradeProtocol {
     public Trade handleCompleted(Trade currentTrade, Trade completedTrade) {
 
 //        // TODO refactor to use Observable
-//        Profile profile = profileManager.loadMyProfile().observeOn(JavaFxScheduler.platform()).blockingGet();
+//        Profile profile = profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).blockingGet();
 
         Trade verifiedCompletedTrade = null;
 

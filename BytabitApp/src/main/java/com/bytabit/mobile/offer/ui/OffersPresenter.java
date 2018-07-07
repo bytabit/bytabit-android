@@ -1,7 +1,6 @@
 package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -18,12 +17,14 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class OffersPresenter {
 
-    private final EventLogger eventLogger = EventLogger.of(OffersPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     OfferManager offerManager;

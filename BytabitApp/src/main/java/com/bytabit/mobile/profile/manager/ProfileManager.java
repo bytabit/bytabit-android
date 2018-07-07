@@ -1,17 +1,20 @@
 package com.bytabit.mobile.profile.manager;
 
-import com.bytabit.mobile.common.AbstractManager;
-import com.bytabit.mobile.common.EventLogger;
+import com.bytabit.mobile.common.StorageManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import io.reactivex.Observable;
+import io.reactivex.Single;
+import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 
-public class ProfileManager extends AbstractManager {
+public class ProfileManager {
 
     private String PROFILE_PUBKEY = "profile.pubkey";
     private String PROFILE_ISARBITRATOR = "profile.arbitrator";
@@ -21,9 +24,14 @@ public class ProfileManager extends AbstractManager {
     private final ProfileService profilesService;
 
     @Inject
+    private StorageManager storageManager;
+
+    @Inject
     private WalletManager walletManager;
 
-    private final EventLogger eventLogger = EventLogger.of(ProfileManager.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
+
+    //private final EventLogger eventLogger = EventLogger.of(ProfileManager.class);
 
     private final PublishSubject<Profile> updatedProfile = PublishSubject.create();
 
@@ -34,35 +42,41 @@ public class ProfileManager extends AbstractManager {
     // my profile
 
     public void updateMyProfile(Profile newProfile) {
-        loadMyProfile().map(oldProfile -> Profile.builder()
+        loadOrCreateMyProfile().map(oldProfile -> Profile.builder()
                 .pubKey(oldProfile.getPubKey())
                 .arbitrator(newProfile.isArbitrator())
                 .userName(newProfile.getUserName())
                 .phoneNum(newProfile.getPhoneNum())
                 .build())
                 .map(this::storeMyProfile)
-                .flatMap(profile -> profilesService.put(profile).toObservable())
+                .flatMap(profilesService::put)
                 .subscribe(updatedProfile::onNext);
     }
 
     private Profile storeMyProfile(Profile profile) {
 
-        store(PROFILE_PUBKEY, profile.getPubKey());
-        store(PROFILE_ISARBITRATOR, Boolean.valueOf(profile.isArbitrator()).toString());
-        store(PROFILE_USERNAME, profile.getUserName());
-        store(PROFILE_PHONENUM, profile.getPhoneNum());
+        storageManager.store(PROFILE_ISARBITRATOR, Boolean.valueOf(profile.isArbitrator()).toString());
+        storageManager.store(PROFILE_USERNAME, profile.getUserName());
+        storageManager.store(PROFILE_PHONENUM, profile.getPhoneNum());
         return profile;
     }
 
-    public Observable<Profile> loadMyProfile() {
-        Optional<String> profilePubKey = retrieve(PROFILE_PUBKEY);
+    public Single<Profile> loadOrCreateMyProfile() {
+        Optional<String> profilePubKey = storageManager.retrieve(PROFILE_PUBKEY);
 
         if (profilePubKey.isPresent()) {
-            return Observable.just(profilePubKey.get())
-                    .map(this::getProfile);
+            return Single.just(profilePubKey.get())
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(Schedulers.io())
+                    .map(this::getProfile)
+                    .doOnSuccess(p -> log.debug("Load Profile: {}", p));
         } else {
             return walletManager.getTradeWalletProfilePubKey()
-                    .map(this::getProfile);
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(Schedulers.io())
+                    .doOnSuccess(pubKey -> storageManager.store(PROFILE_PUBKEY, pubKey))
+                    .map(this::getProfile)
+                    .doOnSuccess(p -> log.debug("Create Profile: {}", p));
         }
     }
 
@@ -75,15 +89,18 @@ public class ProfileManager extends AbstractManager {
     private Profile getProfile(String profilePubKey) {
         return Profile.builder()
                 .pubKey(profilePubKey)
-                .arbitrator(Boolean.valueOf(retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
-                .userName(retrieve(PROFILE_USERNAME).orElse(""))
-                .phoneNum(retrieve(PROFILE_PHONENUM).orElse(""))
+                .arbitrator(Boolean.valueOf(storageManager.retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
+                .userName(storageManager.retrieve(PROFILE_USERNAME).orElse(""))
+                .phoneNum(storageManager.retrieve(PROFILE_PHONENUM).orElse(""))
                 .build();
     }
 
     public Observable<Profile> getUpdatedProfile() {
         return updatedProfile
-                .compose(eventLogger.logObjects("UpdatedProfile"))
+                .startWith(loadOrCreateMyProfile().toObservable())
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .doOnNext(p -> log.debug("Updated Profile: {}", p))
                 .share();
     }
 }

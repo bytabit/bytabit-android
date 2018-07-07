@@ -1,7 +1,6 @@
 package com.bytabit.mobile.wallet.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -17,13 +16,15 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Locale;
 
 public class WalletPresenter {
 
-    private final EventLogger eventLogger = EventLogger.of(WalletPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     WalletManager walletManager;
@@ -86,6 +87,11 @@ public class WalletPresenter {
                     transactionListView.itemsProperty().add(tx);
                     balanceAmountLabel.textProperty().setValue(tx.getWalletCoinBalance().toFriendlyString());
                 });
+
+        walletManager.getTradeWalletBalance()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(balance -> balanceAmountLabel.setText(balance));
 
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
         depositButton.attachTo(withdrawButton, Side.LEFT);

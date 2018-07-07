@@ -1,6 +1,5 @@
 package com.bytabit.mobile.wallet.ui;
 
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
@@ -21,6 +20,8 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.uri.BitcoinURI;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -41,7 +42,7 @@ public class DepositPresenter {
     @Inject
     WalletManager walletManager;
 
-    private final EventLogger eventLogger = EventLogger.of(DepositPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     public void initialize() {
 

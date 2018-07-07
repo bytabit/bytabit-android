@@ -1,8 +1,6 @@
 package com.bytabit.mobile.trade.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.Event;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -12,18 +10,19 @@ import com.gluonhq.charm.glisten.control.CharmListView;
 import com.gluonhq.charm.glisten.control.ListTile;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
-import io.reactivex.Observable;
 import io.reactivex.rxjavafx.observables.JavaFxObservable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class TradesPresenter {
 
-    private final EventLogger eventLogger = EventLogger.of(TradesPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     TradeManager tradeManager;
@@ -59,28 +58,33 @@ public class TradesPresenter {
 
         // setup event observables
 
-        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradesView.showingProperty())
-                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
+        JavaFxObservable.changesOf(tradesView.showingProperty())
+                .filter(Change::getNewVal)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(c -> setAppBar());
 
-        Observable<TradeSelected> tradeSelectedEvents = JavaFxObservable.changesOf(tradesListView.selectedItemProperty())
-                .map(Change::getNewVal).map(TradeSelected::new);
-
-        Observable<PresenterEvent> tradeEvents = Observable.merge(viewShowingEvents,
-                tradeSelectedEvents)
-                .compose(eventLogger.logEvents())
-                .share();
+//                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
+//
+//        Observable<TradeSelected> tradeSelectedEvents = JavaFxObservable.changesOf(tradesListView.selectedItemProperty())
+//                .map(Change::getNewVal).map(TradeSelected::new);
+//
+//        Observable<PresenterEvent> tradeEvents = Observable.merge(viewShowingEvents,
+//                tradeSelectedEvents)
+//                .compose(eventLogger.logEvents())
+//                .share();
 
         // transform events to actions
 
         // handle events
 
-        tradeEvents.subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .ofType(TradesPresenter.ViewShowing.class)
-                .subscribe(event -> {
-                    setAppBar();
-                    clearSelection();
-                });
+//        tradeEvents.subscribeOn(Schedulers.io())
+//                .observeOn(JavaFxScheduler.platform())
+//                .ofType(TradesPresenter.ViewShowing.class)
+//                .subscribe(event -> {
+//                    setAppBar();
+//                    clearSelection();
+//                });
 
 //        tradeEvents.subscribeOn(Schedulers.io())
 //                .observeOn(JavaFxScheduler.platform())
@@ -263,37 +267,37 @@ public class TradesPresenter {
 
     // Event classes
 
-    interface PresenterEvent extends Event {
-    }
-
-    private class ViewShowing implements PresenterEvent {
-    }
-
-    private class ViewNotShowing implements PresenterEvent {
-    }
-
-    private class TradeChanged implements PresenterEvent {
-
-        private final Trade trade;
-
-        public TradeChanged(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
-
-    private class TradeSelected implements PresenterEvent {
-        private final Trade trade;
-
-        public TradeSelected(Trade trade) {
-            this.trade = trade;
-        }
-
-        public Trade getTrade() {
-            return trade;
-        }
-    }
+//    interface PresenterEvent extends Event {
+//    }
+//
+//    private class ViewShowing implements PresenterEvent {
+//    }
+//
+//    private class ViewNotShowing implements PresenterEvent {
+//    }
+//
+//    private class TradeChanged implements PresenterEvent {
+//
+//        private final Trade trade;
+//
+//        public TradeChanged(Trade trade) {
+//            this.trade = trade;
+//        }
+//
+//        public Trade getTrade() {
+//            return trade;
+//        }
+//    }
+//
+//    private class TradeSelected implements PresenterEvent {
+//        private final Trade trade;
+//
+//        public TradeSelected(Trade trade) {
+//            this.trade = trade;
+//        }
+//
+//        public Trade getTrade() {
+//            return trade;
+//        }
+//    }
 }

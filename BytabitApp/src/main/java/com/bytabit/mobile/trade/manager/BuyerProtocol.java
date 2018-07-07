@@ -1,8 +1,6 @@
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Single;
 
@@ -13,13 +11,13 @@ import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
 public class BuyerProtocol extends TradeProtocol {
 
     public BuyerProtocol() {
-        super(EventLogger.of(BuyerProtocol.class));
+        super();
     }
 
     // 1.B: create trade, post created trade
     public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
 
-//        Single<Trade> createdTrade = Single.zip(profileManager.loadMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
+//        Single<Trade> createdTrade = Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
 //                (buyerProfile, buyerEscrowPubKey, depositAddress) -> {
 //                    String buyerPayoutAddress = depositAddress.toBase58();
 //
@@ -44,13 +42,14 @@ public class BuyerProtocol extends TradeProtocol {
 
     // 1.B: create trade, post created trade
     @Override
-    public Trade handleCreated(BuyerCreated createdTrade) {
-
-        return Trade.builder()
-                .sellOffer(createdTrade.getSellOffer())
-                .escrowAddress(createdTrade.getEscrowAddress())
-                .buyRequest(createdTrade.getBuyRequest())
-                .build();
+    public Trade handleCreated(Trade createdTrade) {
+//
+//        return Trade.builder()
+//                .sellOffer(createdTrade.getSellOffer())
+//                .escrowAddress(createdTrade.getEscrowAddress())
+//                .buyRequest(createdTrade.getBuyRequest())
+//                .build();
+        return null;
     }
 
     // 2.B: buyer receives payment request, confirm funding tx

@@ -1,7 +1,5 @@
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.EventLogger;
-import com.bytabit.mobile.trade.evt.BuyerCreated;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 
@@ -11,7 +9,7 @@ import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_S
 public class ArbitratorProtocol extends TradeProtocol {
 
     public ArbitratorProtocol() {
-        super(EventLogger.of(ArbitratorProtocol.class));
+        super();
     }
 
     //@Override
@@ -19,10 +17,10 @@ public class ArbitratorProtocol extends TradeProtocol {
         return null;
     }
 
-    @Override
-    public Trade handleCreated(BuyerCreated created) {
-        return null;
-    }
+//    @Override
+//    public Trade handleCreated(BuyerCreated created) {
+//        return null;
+//    }
 
     @Override
     public Trade handleFunded(Trade createdTrade, Trade fundedTrade) {

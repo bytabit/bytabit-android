@@ -1,7 +1,6 @@
 package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.common.StringBigDecimalConverter;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
@@ -25,13 +24,15 @@ import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.util.StringConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
 
 public class AddOfferPresenter {
 
-    private final EventLogger eventLogger = EventLogger.of(AddOfferPresenter.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     OfferManager offerManager;
@@ -182,9 +183,10 @@ public class AddOfferPresenter {
         profileManager.loadArbitratorProfiles()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .flatMap(pl -> Observable.fromIterable(pl).filter(Profile::isArbitrator).toList().toObservable())
                 .subscribe(al -> {
-                    Profile selected = arbitratorChoiceBox.getSelectionModel().getSelectedItem();
                     arbitratorChoiceBox.getItems().setAll(al);
+                    Profile selected = arbitratorChoiceBox.getSelectionModel().getSelectedItem();
                     if (selected != null) {
                         arbitratorChoiceBox.getSelectionModel().select(selected);
                     } else {

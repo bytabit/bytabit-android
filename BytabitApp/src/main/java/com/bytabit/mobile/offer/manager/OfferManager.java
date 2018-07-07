@@ -1,18 +1,19 @@
 package com.bytabit.mobile.offer.manager;
 
-import com.bytabit.mobile.common.AbstractManager;
-import com.bytabit.mobile.common.EventLogger;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.trade.manager.TradeManager;
-import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
+import io.reactivex.Single;
+import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -20,11 +21,13 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class OfferManager extends AbstractManager {
+public class OfferManager {
 
-    private final EventLogger eventLogger = EventLogger.of(OfferManager.class);
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private final PublishSubject<SellOffer> selectedOffer = PublishSubject.create();
+
+    private final ConnectableObservable<SellOffer> lastSelectedOffer = selectedOffer.replay(1);
 
     private final PublishSubject<SellOffer> createdOffer = PublishSubject.create();
 
@@ -52,6 +55,9 @@ public class OfferManager extends AbstractManager {
 
         offers = Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
                 .flatMap(tick -> getLoadedOffers());
+
+        lastSelectedOffer.connect();
+
     }
 
     public Observable<List<SellOffer>> getLoadedOffers() {
@@ -67,7 +73,7 @@ public class OfferManager extends AbstractManager {
     public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, String arbitratorProfilePubKey,
                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        Observable.zip(profileManager.loadMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
+        Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
                 SellOffer.builder()
                         .sellerProfilePubKey(p.getPubKey())
                         .sellerEscrowPubKey(pk)
@@ -79,7 +85,7 @@ public class OfferManager extends AbstractManager {
                         .price(price)
                         .build()
         )
-                .flatMap(o -> sellOfferService.put(o).toObservable())
+                .flatMap(sellOfferService::put)
                 .subscribe(createdOffer::onNext);
     }
 
@@ -94,24 +100,29 @@ public class OfferManager extends AbstractManager {
 
     public Observable<SellOffer> getSelectedOffer() {
         return selectedOffer
-                .compose(eventLogger.logObjects("Selected"))
+                .doOnNext(sellOffer -> log.debug("Selected: {}", sellOffer))
                 .share();
+    }
+
+    public ConnectableObservable<SellOffer> getLastSelectedOffer() {
+        return lastSelectedOffer;
     }
 
     public Observable<SellOffer> getCreatedOffer() {
         return createdOffer
-                .compose(eventLogger.logObjects("Created"))
+                .doOnNext(sellOffer -> log.debug("Created: {}", sellOffer))
                 .share();
     }
 
     public Observable<SellOffer> getRemovedOffer() {
         return removedOffer
-                .compose(eventLogger.logObjects("Removed"))
+                .doOnNext(sellOffer -> log.debug("Created: {}", sellOffer))
                 .share();
     }
 
-    public Observable<Trade> createBuyOffer(BigDecimal btcAmount) {
-        return getSelectedOffer().lastOrError().toObservable()
-                .flatMap(sellOffer -> tradeManager.createBuyOffer(sellOffer, btcAmount));
+    public void createBuyOffer(BigDecimal btcAmount) {
+        getLastSelectedOffer()
+                .subscribe(sellOffer -> tradeManager.createBuyOffer(sellOffer, btcAmount))
+                .dispose();
     }
 }
