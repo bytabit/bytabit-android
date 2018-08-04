@@ -1,10 +1,13 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import io.reactivex.Observable;
 
 import javax.inject.Inject;
 
@@ -23,35 +26,53 @@ public abstract class TradeProtocol {
     @Inject
     ProfileManager profileManager;
 
-    protected final TradeService tradeService;
+    @Inject
+    PaymentDetailsManager paymentDetailsManager;
+
+//    protected final TradeService tradeService;
 
     protected TradeProtocol() {
 
-        tradeService = new TradeService();
+//        tradeService = new TradeService();
     }
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-    abstract public Trade handleCreated(Trade createdTrade);
+    abstract public Observable<Trade> handleCreated(Trade createdTrade);
 
-    abstract public Trade handleFunded(Trade createdTrade, Trade fundedTrade);
+    abstract public Observable<Trade> handleFunded(Trade fundedTrade);
 
-    public Trade handlePaid(Trade fundedTrade, Trade paidTrade) {
+    public Observable<Trade> handleUpdatedEscrowTx(Trade currentTrade, TransactionWithAmt transactionWithAmt) {
 
-        // TODO handle unexpected status
-        if (fundedTrade.status().equals(FUNDED)) {
-            return paidTrade;
-        } else {
-            return null;
-        }
+        // if FUNDING transaction updated update trade status
+        Observable<Trade> updatedTradeWithFundingTx = Observable.just(currentTrade)
+                .filter(t -> transactionWithAmt.getHash().equals(t.getFundingTxHash()))
+                .filter(t -> transactionWithAmt.getTransactionBigDecimalAmt().subtract(walletManager.defaultTxFee()).compareTo(t.getBtcAmount()) == 0)
+                .doOnNext(t -> {
+                    if (transactionWithAmt.getDepth() > 0) {
+                        t.fundingTransactionWithAmt(transactionWithAmt);
+                    }
+                });
+
+        return updatedTradeWithFundingTx;
     }
 
-    public Trade handleCompleted(Trade currentTrade, Trade completedTrade) {
+    public Observable<Trade> handlePaid(Trade fundedTrade, Trade paidTrade) {
+
+        //Maybe<Trade> fundedTrade = readTrade(paidTrade.getEscrowAddress());
+
+        // verify current trade is FUNDED, then return received PAID
+        // TODO verify other properties of PAID trade match FUNDED trade
+        return Observable.just(fundedTrade).filter(ft -> ft.status().equals(FUNDED))
+                .map(ft -> paidTrade);
+    }
+
+    public Observable<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
 
 //        // TODO refactor to use Observable
 //        Profile profile = profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).blockingGet();
 
-        Trade verifiedCompletedTrade = null;
+        Observable<Trade> verifiedCompletedTrade = Observable.empty();
 
         // confirm payout tx
         String txHash = completedTrade.getPayoutTxHash();
@@ -115,13 +136,13 @@ public abstract class TradeProtocol {
         }
     }
 
-    public Trade handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
+    public Observable<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
 
         // TODO handle unexpected status
         if (currentTrade.status().equals(FUNDED) || currentTrade.status().equals(PAID)) {
-            return arbitratingTrade;
+            return Observable.just(arbitratingTrade);
         } else {
-            return null;
+            return Observable.empty();
         }
     }
 }

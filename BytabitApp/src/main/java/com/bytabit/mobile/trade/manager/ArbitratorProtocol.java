@@ -2,9 +2,7 @@ package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT;
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
+import io.reactivex.Observable;
 
 public class ArbitratorProtocol extends TradeProtocol {
 
@@ -13,8 +11,8 @@ public class ArbitratorProtocol extends TradeProtocol {
     }
 
     //@Override
-    public Trade handleCreated(Trade createdTrade) {
-        return null;
+    public Observable<Trade> handleCreated(Trade createdTrade) {
+        return Observable.empty();
     }
 
 //    @Override
@@ -23,17 +21,17 @@ public class ArbitratorProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Trade handleFunded(Trade createdTrade, Trade fundedTrade) {
-        return null;
+    public Observable<Trade> handleFunded(Trade fundedTrade) {
+        return Observable.empty();
     }
 
     @Override
-    public Trade handlePaid(Trade fundedTrade, Trade paidTrade) {
-        return null;
+    public Observable<Trade> handlePaid(Trade currentTrade, Trade paidTrade) {
+        return Observable.empty();
     }
 
     @Override
-    public Trade handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
+    public Observable<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
 
         // TODO handle unexpected status
 //        if (currentTrade == null) {
@@ -45,17 +43,22 @@ public class ArbitratorProtocol extends TradeProtocol {
 //        } else {
 //            return null;
 //        }
-        return null;
+        return Observable.empty();
     }
 
     @Override
-    public Trade handleCompleted(Trade currentTrade, Trade completedTrade) {
-        if (completedTrade.getPayoutReason().equals(ARBITRATOR_BUYER_PAYOUT) ||
-                completedTrade.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND)) {
-            return super.handleCompleted(currentTrade, completedTrade);
-        } else {
-            return completedTrade;
-        }
+    public Observable<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
+
+        // TODO don't do this way
+        //Trade currentTrade = readTrade(completedTrade.getEscrowAddress()).blockingGet();
+
+//        if (completedTrade.getPayoutReason().equals(ARBITRATOR_BUYER_PAYOUT) ||
+//                completedTrade.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND)) {
+//            return super.handleCompleted(completedTrade);
+//        } else {
+//            return Observable.just(completedTrade);
+//        }
+        return null;
     }
 
     public void refundSeller(Trade currentTrade) {

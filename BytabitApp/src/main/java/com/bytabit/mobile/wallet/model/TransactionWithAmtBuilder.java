@@ -10,6 +10,7 @@ public class TransactionWithAmtBuilder {
     private String outputAddress;
     private String inputTxHash;
     private Coin walletBalance;
+    private String escrowAddress;
 
     public TransactionWithAmtBuilder tx(Transaction tx) {
         this.tx = tx;
@@ -36,7 +37,12 @@ public class TransactionWithAmtBuilder {
         return this;
     }
 
+    public TransactionWithAmtBuilder escrowAddress(String escrowAddress) {
+        this.escrowAddress = escrowAddress;
+        return this;
+    }
+
     public TransactionWithAmt build() {
-        return new TransactionWithAmt(tx, transactionAmt, outputAddress, inputTxHash, walletBalance);
+        return new TransactionWithAmt(tx, transactionAmt, outputAddress, inputTxHash, walletBalance, escrowAddress);
     }
 }

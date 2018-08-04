@@ -1,8 +1,11 @@
 package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.Trade;
-import io.reactivex.Single;
+import io.reactivex.Observable;
+import org.bitcoinj.core.Address;
 
 import java.math.BigDecimal;
 
@@ -15,7 +18,20 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 1.B: create trade, post created trade
-    public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
+    public Observable<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
+
+        return Observable.zip(walletManager.getTradeWalletEscrowPubKey().toObservable(),
+                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toObservable(),
+                walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
+                (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
+                        Trade.builder()
+                                .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
+                                .sellOffer(sellOffer)
+                                .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
+                                .build())
+                //.flatMap(this::writeTrade)
+                .flatMap(walletManager::createOrLoadEscrowWallet);
+        //.flatMap(t -> tradeService.put(t).toObservable());
 
 //        Single<Trade> createdTrade = Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
 //                (buyerProfile, buyerEscrowPubKey, depositAddress) -> {
@@ -37,26 +53,23 @@ public class BuyerProtocol extends TradeProtocol {
 //                });
 
 //        return createdTrade.flatMap(t -> tradeService.put(t.getEscrowAddress(), t));
-        return null;
+//        return null;
     }
 
     // 1.B: create trade, post created trade
     @Override
-    public Trade handleCreated(Trade createdTrade) {
-//
-//        return Trade.builder()
-//                .sellOffer(createdTrade.getSellOffer())
-//                .escrowAddress(createdTrade.getEscrowAddress())
-//                .buyRequest(createdTrade.getBuyRequest())
-//                .build();
-        return null;
+    public Observable<Trade> handleCreated(Trade createdTrade) {
+
+        return Observable.just(createdTrade);
     }
 
     // 2.B: buyer receives payment request, confirm funding tx
     @Override
-    public Trade handleFunded(Trade createdTrade, Trade fundedTrade) {
+    public Observable<Trade> handleFunded(Trade fundedTrade) {
 
-        Trade verifiedFundedTrade = null;
+        //Maybe<Trade> createdTrade = readTrade(fundedTrade.getEscrowAddress());
+
+        Observable<Trade> verifiedFundedTrade = Observable.empty();
 //        if (createdTrade.status().equals(CREATED)) {
 //            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
 //

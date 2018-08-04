@@ -5,13 +5,17 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
-import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.fasterxml.jackson.jr.ob.JSON;
+import io.reactivex.Flowable;
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
+import io.reactivex.Single;
+import io.reactivex.observables.ConnectableObservable;
+import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
-import org.bitcoinj.core.Address;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +26,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static com.bytabit.mobile.trade.model.Trade.Role.*;
 
 public class TradeManager {
 
@@ -37,22 +45,28 @@ public class TradeManager {
     @Inject
     StorageManager storageManager;
 
-//    @Inject
-//    SellerProtocol sellerProtocol;
-//
-//    @Inject
-//    BuyerProtocol buyerProtocol;
-//
-//    @Inject
-//    ArbitratorProtocol arbitratorProtocol;
+    @Inject
+    SellerProtocol sellerProtocol;
+
+    @Inject
+    BuyerProtocol buyerProtocol;
+
+    @Inject
+    ArbitratorProtocol arbitratorProtocol;
 
     private final TradeService tradeService;
 
-    private final PublishSubject<Trade> createdTrade = PublishSubject.create();
+    private final PublishSubject<Trade> createdTradeSubject = PublishSubject.create();
+
+    private final ConnectableObservable<Trade> createdTrade = createdTradeSubject.replay();
 
     private final PublishSubject<Trade> updatedTrade = PublishSubject.create();
 
-    private final PublishSubject<Trade> selectedTrade = PublishSubject.create();
+    private final PublishSubject<Trade> selectedTradeSubject = PublishSubject.create();
+
+    private final Observable<Trade> selectedTrade = selectedTradeSubject.share();
+
+    private final ConnectableObservable<Trade> lastSelectedTrade = selectedTrade.replay(1);
 
     public final static String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
@@ -64,16 +78,41 @@ public class TradeManager {
     @PostConstruct
     public void initialize() {
 
-//        Observable.zip(Observable.interval(15, TimeUnit.SECONDS, Schedulers.io()),
-//                profileManager.loadOrCreateMyProfile(), (tick, profile) ->
-//                        tradeService.get(profile.getPubKey())
-//                                .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-//                                .flattenAsObservable(l -> l))
-//                .flatMap(trades -> trades)
-//                .map(this::handleTrade)
-//                .observeOn(Schedulers.io())
-//                .subscribeOn(Schedulers.io())
-//                .subscribe(updatedTrade::onNext);
+        createdTrade.connect();
+
+        getStoredTrades().flatMapIterable(t -> t)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .doOnNext(walletManager::createOrLoadEscrowWallet)
+                //.flatMap(t -> tradeService.put(t).toObservable())
+                .subscribe(createdTradeSubject::onNext);
+
+        // get updated trades after download progress is 100% loaded
+        walletManager.getDownloadProgress().filter(p -> p == 1).firstElement()
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .doOnSuccess(p -> profileManager.loadOrCreateMyProfile().toObservable()
+                        .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
+                                .flatMap(t -> tradeService.get(profile.getPubKey())
+                                        .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
+                                        .flattenAsObservable(l -> l))
+                                .flatMap(trade -> handleReceivedTrade(profile, trade)))
+                        // store updated trade
+                        .flatMap(this::writeTrade)
+                        // put updated trade
+                        .flatMap(ft -> tradeService.put(ft).toObservable())
+                        .observeOn(Schedulers.io())
+                        .subscribeOn(Schedulers.io())
+                        .subscribe(updatedTrade::onNext))
+                .subscribe();
+
+        // get update escrow transactions
+        profileManager.loadOrCreateMyProfile().toObservable()
+                .subscribe(profile -> walletManager.getUpdatedEscrowWalletTx()
+                        .flatMap(tx -> handleUpdatedEscrowTx(profile, tx))
+                        .observeOn(Schedulers.io())
+                        .subscribeOn(Schedulers.io())
+                        .subscribe(updatedTrade::onNext));
 
         // filter to allow only valid received trades
 //                .filter(tr -> (tr.getCurrentTrade() == null && tr.getReceivedTrade().status().equals(CREATED))
@@ -112,21 +151,43 @@ public class TradeManager {
 
     }
 
-    public void createBuyOffer(SellOffer sellOffer, BigDecimal btcAmount) {
+    public void createTrade(SellOffer sellOffer, BigDecimal btcAmount) {
 
-        Observable.zip(walletManager.getTradeWalletEscrowPubKey().toObservable(),
-                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toObservable(),
-                walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
-                (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
-                        new BuyRequest(buyerEscrowPubKey, btcAmount, buyerProfilePubKey, buyerPayoutAddress))
-                .map(buyRequest -> Trade.builder()
-                        .sellOffer(sellOffer)
-                        .buyRequest(buyRequest)
-                        .build())
+//        Observable.zip(walletManager.getTradeWalletEscrowPubKey().toObservable(),
+//                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toObservable(),
+//                walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
+//                (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
+//                        Trade.builder()
+//                                .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
+//                                .sellOffer(sellOffer)
+//                                .buyRequest(new BuyRequest(buyerEscrowPubKey, btcAmount, buyerProfilePubKey, buyerPayoutAddress))
+//                                .build())
+
+        buyerProtocol.createTrade(sellOffer, btcAmount)
                 .flatMap(this::writeTrade)
-                .doOnNext(t -> walletManager.createdEscrowWallet(t.getEscrowAddress()))
                 .flatMap(t -> tradeService.put(t).toObservable())
-                .subscribe(createdTrade::onNext);
+                .subscribe(createdTradeSubject::onNext);
+    }
+
+    public Observable<Trade> getCreatedTrade() {
+        return createdTrade;
+    }
+
+    public Observable<Trade> getUpdatedTrade() {
+        return updatedTrade.share();
+    }
+
+    public void setSelectedTrade(Trade trade) {
+        selectedTradeSubject.onNext(trade);
+    }
+
+    public Observable<Trade> getSelectedTrade() {
+        return selectedTrade
+                .doOnNext(trade -> log.debug("Selected: {}", trade));
+    }
+
+    public ConnectableObservable<Trade> getLastSelectedTrade() {
+        return lastSelectedTrade;
     }
 
     //    public void initialize() {
@@ -256,7 +317,7 @@ public class TradeManager {
 //                                    foundTrade.isUpdated(true);
 //                                    currentTrades.put(foundTrade.getEscrowAddress(), foundTrade);
 //                                } else {
-//                                    Trade receivedTrade = handleTrade(currentTrade, profile, foundTrade);
+//                                    Trade receivedTrade = handleReceivedTrade(currentTrade, profile, foundTrade);
 //                                    if (receivedTrade != null) {
 //                                        receivedTrade.isUpdated(true);
 //                                        currentTrades.put(receivedTrade.getEscrowAddress(), receivedTrade);
@@ -269,31 +330,33 @@ public class TradeManager {
 
 //            tradeEvents.observeOn(Schedulers.io()).subscribe(this::writeTrade);
 
-//            Observable<List<Trade>> storedTrades = Single.<List<Trade>>create(source -> {
-//                // load stored tradeEvents
-//                List<Trade> trades = new ArrayList<>();
-//                File tradesDir = new File(TRADES_PATH);
-//                if (!tradesDir.exists()) {
-//                    tradesDir.mkdirs();
-//                }
-//                if (tradesDir.list() != null) {
-//                    for (String tradeId : tradesDir.list()) {
-//                        try {
-//                            File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "currentTrade.json");
-//                            if (tradeFile.exists()) {
-//                                FileReader tradeReader = new FileReader(tradeFile);
-//                                Trade currentTrade = JSON.std.beanFrom(Trade.class, tradeReader);
-//                                trades.add(currentTrade);
-//                            }
-//                        } catch (IOException ioe) {
-//                            source.onError(ioe);
-//                        }
-//                    }
-//                } else {
-//                    tradesDir.mkdirs();
-//                }
-//                source.onSuccess(trades);
-//            }).toObservable();
+    private Observable<List<Trade>> getStoredTrades() {
+        return Single.<List<Trade>>create(source -> {
+            // load stored trades
+            List<Trade> trades = new ArrayList<>();
+            File tradesDir = new File(TRADES_PATH);
+            if (!tradesDir.exists()) {
+                tradesDir.mkdirs();
+            }
+            if (tradesDir.list() != null) {
+                for (String tradeId : tradesDir.list()) {
+                    try {
+                        File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "currentTrade.json");
+                        if (tradeFile.exists()) {
+                            FileReader tradeReader = new FileReader(tradeFile);
+                            Trade currentTrade = JSON.std.beanFrom(Trade.class, tradeReader);
+                            trades.add(currentTrade);
+                        }
+                    } catch (IOException ioe) {
+                        source.onError(ioe);
+                    }
+                }
+            } else {
+                tradesDir.mkdirs();
+            }
+            source.onSuccess(trades);
+        }).toObservable();
+    }
 //
 //            Observable<List<Trade>> watchedTrades = profileManager.loadOrCreateMyProfile().toObservable()
 //                    .flatMap(profile -> Observable.interval(10, TimeUnit.SECONDS, Schedulers.io())
@@ -308,7 +371,7 @@ public class TradeManager {
 //                                    currentTrade.isUpdated(false);
 //                                }
 //                                for (Trade foundTrade : foundTrades) {
-//                                    Trade receivedTrade = handleTrade(currentTrades, profile, foundTrade);
+//                                    Trade receivedTrade = handleReceivedTrade(currentTrades, profile, foundTrade);
 //                                    if (receivedTrade != null) {
 //                                        receivedTrade.isUpdated(true);
 //                                        currentTrades.put(receivedTrade.getEscrowAddress(), receivedTrade);
@@ -390,89 +453,137 @@ public class TradeManager {
 //        return tradeService.get(profilePubKey).retry().subscribeOn(Schedulers.io());
 //    }
 //
-//    private Trade handleTrade(Trade currentTrade, Profile profile, Trade foundTrade) {
-//
-////        Trade currentTrade = currentTrades.get(foundTrade.getEscrowAddress());
-//        Trade receivedTrade = null;
-//
-//        if (currentTrade == null || !currentTrade.status().equals(foundTrade.status())) {
-//
-//            String profilePubKey = profile.getPubKey();
-//            Boolean profileIsArbitrator = profile.isArbitrator();
-//
-//            Trade.Role role = foundTrade.role(profilePubKey, profileIsArbitrator);
-//            TradeProtocol tradeProtocol;
-//
-//            if (role.equals(SELLER)) {
-//                tradeProtocol = sellerProtocol;
-//            } else if (role.equals(BUYER)) {
-//                tradeProtocol = buyerProtocol;
-//            } else if (role.equals(ARBITRATOR)) {
-//                tradeProtocol = arbitratorProtocol;
-//            } else {
-//                throw new RuntimeException("Unable to determine currentTrade protocol.");
-//            }
-//
-//            switch (foundTrade.status()) {
-//
-//                case CREATED:
-//                    //receivedTrade = currentTrade == null ? tradeProtocol.handleCreated(foundTrade) : null;
-//                    break;
-//
+    private Observable<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
+
+        Maybe<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress());
+
+        TradeProtocol tradeProtocol = getProtocol(profile, receivedTrade);
+
+        Observable<Trade> updatedTrade = Observable.empty();
+
+        switch (receivedTrade.status()) {
+
+            case CREATED:
+                updatedTrade = tradeProtocol.handleCreated(receivedTrade);
+                break;
+
 //                case FUNDED:
-//                    receivedTrade = currentTrade != null ? tradeProtocol.handleFunded(currentTrade, foundTrade) : foundTrade;
+//                    handledTrade = currentTrade != null ? tradeProtocol.handleFunded(currentTrade, receivedTrade) : receivedTrade;
 //                    break;
 //
 //                case PAID:
-//                    receivedTrade = currentTrade != null ? tradeProtocol.handlePaid(currentTrade, foundTrade) : foundTrade;
+//                    handledTrade = currentTrade != null ? tradeProtocol.handlePaid(currentTrade, receivedTrade) : receivedTrade;
 //                    break;
 //
 //                case COMPLETED:
-//                    receivedTrade = currentTrade != null ? tradeProtocol.handleCompleted(currentTrade, foundTrade) : foundTrade;
+//                    handledTrade = currentTrade != null ? tradeProtocol.handleCompleted(currentTrade, receivedTrade) : receivedTrade;
 //                    break;
 //
 //                case ARBITRATING:
-//                    receivedTrade = currentTrade != null ? tradeProtocol.handleArbitrating(currentTrade, foundTrade) : foundTrade;
+//                    handledTrade = currentTrade != null ? tradeProtocol.handleArbitrating(currentTrade, receivedTrade) : receivedTrade;
 //                    break;
-//            }
-//        }
-//
-//        return receivedTrade;
-//    }
+        }
 
-    private Observable<Trade> writeTrade(Trade trade) {
-
-        return Observable.create(source -> {
-            String tradePath = TRADES_PATH + trade.getEscrowAddress() + File.separator + "currentTrade.json";
-
-            try {
-                File dir = new File(TRADES_PATH + trade.getEscrowAddress());
-                if (!dir.exists()) {
-                    dir.mkdirs();
-                }
-                FileWriter tradeWriter = new FileWriter(tradePath);
-                tradeWriter.write(JSON.std.asString(trade));
-                tradeWriter.flush();
-
-                //LOG.debug("Wrote local currentTrade: {}", currentTrade);
-
-            } catch (IOException ioe) {
-                //LOG.error(ioe.getMessage());
-                source.onError(ioe);
-            }
-            source.onNext(trade);
-        });
+        return updatedTrade;
     }
 
-    private Optional<Trade> readTrade(String escrowAddress) throws IOException {
-        File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
-        if (tradeFile.exists()) {
-            FileReader tradeReader = new FileReader(tradeFile);
-            return Optional.of(JSON.std.beanFrom(Trade.class, tradeReader));
+    private Observable<Trade> handleUpdatedEscrowTx(Profile profile, TransactionWithAmt transactionWithAmt) {
+
+        Maybe<Trade> currentTrade = readTrade(transactionWithAmt.getEscrowAddress());
+
+        return currentTrade.toObservable().flatMap(ct -> {
+
+            TradeProtocol tradeProtocol = getProtocol(profile, ct);
+
+            //Observable<Trade> updatedTrade = Observable.empty();
+
+            return tradeProtocol.handleUpdatedEscrowTx(ct, transactionWithAmt);
+        });
+
+//        // if FUNDING transaction updated update trade status
+//        Observable<Trade> updatedTradeWithFundingTx = currentTrade
+//                .filter(t -> t.getFundingTxHash().equals(transactionWithAmt.getHash()))
+//                .filter(t -> t.getBtcAmount().compareTo(transactionWithAmt.getTransactionBigDecimalAmt()) == 0)
+//                .toObservable()
+//                .flatMap(t -> {
+//                    Trade.Status oldStatus = t.status();
+//                    t.fundingTransactionWithAmt(transactionWithAmt);
+//                    if (oldStatus.compareTo(t.status()) < 0 && transactionWithAmt.getDepth() > 0) {
+//                        return writeTrade(t);
+//                    } else {
+//                        return Observable.just(t);
+//                    }
+//                });
+//
+//        return updatedTradeWithFundingTx;
+    }
+
+    TradeProtocol getProtocol(Profile profile, Trade trade) {
+
+        String profilePubKey = profile.getPubKey();
+        Boolean profileIsArbitrator = profile.isArbitrator();
+
+        Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
+
+        if (role.equals(SELLER)) {
+            return sellerProtocol;
+        } else if (role.equals(BUYER)) {
+            return buyerProtocol;
+        } else if (role.equals(ARBITRATOR)) {
+            return arbitratorProtocol;
         } else {
-            return Optional.empty();
+            throw new RuntimeException("Unable to determine currentTrade protocol.");
         }
     }
+
+//    private Observable<Trade> writeTrade(Trade trade) {
+//
+//        return Observable.create(source -> {
+//            String tradePath = TRADES_PATH + trade.getEscrowAddress() + File.separator + "currentTrade.json";
+//
+//            try {
+//                File dir = new File(TRADES_PATH + trade.getEscrowAddress());
+//                if (!dir.exists()) {
+//                    dir.mkdirs();
+//                }
+//                FileWriter tradeWriter = new FileWriter(tradePath);
+//                tradeWriter.write(JSON.std.asString(trade));
+//                tradeWriter.flush();
+//
+//                //LOG.debug("Wrote local currentTrade: {}", currentTrade);
+//
+//            } catch (IOException ioe) {
+//                //LOG.error(ioe.getMessage());
+//                source.onError(ioe);
+//            }
+//            source.onNext(trade);
+//        });
+//    }
+//
+//    private Maybe<Trade> readTrade(String escrowAddress) {
+//
+//        return Maybe.create(source -> {
+//            try {
+//                File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
+//                if (tradeFile.exists()) {
+//                    FileReader tradeReader = new FileReader(tradeFile);
+//                    source.onSuccess(JSON.std.beanFrom(Trade.class, tradeReader));
+//                } else {
+//                    source.onComplete();
+//                }
+//            } catch (Exception ex) {
+//                source.onError(ex);
+//            }
+//        });
+//    }
+//    File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
+//        if (tradeFile.exists()) {
+//            FileReader tradeReader = new FileReader(tradeFile);
+//            return Maybe.just(JSON.std.beanFrom(Trade.class, tradeReader));
+//        } else {
+//            return Maybe.empty();
+//        }
+//    }
 
 //    private Observable<Trade> readTrades() {
 //
@@ -561,6 +672,49 @@ public class TradeManager {
 //            source.onNext(new Completed(escrowAddress, role, currentTrade.payoutCompleted(), currentTrade.payoutTransactionWithAmt()));
 //        }
 //    }
+
+    protected Observable<Trade> writeTrade(Trade trade) {
+
+        return Observable.create(source -> {
+            String tradePath = TRADES_PATH + trade.getEscrowAddress() + File.separator + "currentTrade.json";
+
+            try {
+                File dir = new File(TRADES_PATH + trade.getEscrowAddress());
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+                FileWriter tradeWriter = new FileWriter(tradePath);
+                tradeWriter.write(JSON.std.asString(trade));
+                tradeWriter.flush();
+
+                //LOG.debug("Wrote local currentTrade: {}", currentTrade);
+
+            } catch (IOException ioe) {
+                //LOG.error(ioe.getMessage());
+                source.onError(ioe);
+            }
+            source.onNext(trade);
+        });
+    }
+
+    protected Maybe<Trade> readTrade(String escrowAddress) {
+
+        return Maybe.create(source -> {
+            try {
+                File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
+                if (tradeFile.exists()) {
+                    FileReader tradeReader = new FileReader(tradeFile);
+                    source.onSuccess(JSON.std.beanFrom(Trade.class, tradeReader));
+                } else {
+                    File tradeDir = new File(TRADES_PATH + escrowAddress);
+                    tradeDir.mkdirs();
+                    source.onComplete();
+                }
+            } catch (Exception ex) {
+                source.onError(ex);
+            }
+        });
+    }
 
 }
 

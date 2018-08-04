@@ -125,7 +125,7 @@ public class OfferDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(sellOffer -> {
-                    offerManager.createBuyOffer(new BigDecimal(buyBtcAmtTextField.textProperty().getValue()));
+                    offerManager.createTrade(new BigDecimal(buyBtcAmtTextField.textProperty().getValue()));
                     MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
                 });
 

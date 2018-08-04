@@ -18,6 +18,7 @@ public class TransactionWithAmt {
     private String outputAddress;
     private String inputTxHash;
     private Coin walletBalance;
+    private String escrowAddress;
 
     public TransactionWithAmt() {
     }
@@ -36,6 +37,11 @@ public class TransactionWithAmt {
         this.outputAddress = outputAddress;
         this.inputTxHash = inputTxHash;
         this.walletBalance = walletBalance;
+    }
+
+    TransactionWithAmt(Transaction tx, Coin transactionAmt, String outputAddress, String inputTxHash, Coin walletBalance, String escrowAddress) {
+        this(tx, transactionAmt, outputAddress, inputTxHash, walletBalance);
+        this.escrowAddress = escrowAddress;
     }
 
     public String getHash() {
@@ -80,6 +86,10 @@ public class TransactionWithAmt {
 
     public String getInputTxHash() {
         return inputTxHash;
+    }
+
+    public String getEscrowAddress() {
+        return escrowAddress;
     }
 
     @Override

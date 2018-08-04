@@ -64,6 +64,28 @@ public class TradesPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(c -> setAppBar());
 
+        tradeManager.getCreatedTrade()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(trade -> tradesListView.itemsProperty().add(trade));
+
+        tradeManager.getUpdatedTrade()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(updatedTrade -> {
+                    int index = 0;
+                    for (Trade existingTrade : tradesListView.itemsProperty()) {
+                        if (existingTrade.getEscrowAddress().equals(updatedTrade.getEscrowAddress())) {
+                            break;
+                        }
+                        index++;
+                    }
+                    if (index > -1) {
+                        tradesListView.itemsProperty().remove(index);
+                    }
+                    tradesListView.itemsProperty().add(updatedTrade);
+                });
+
 //                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
 //
 //        Observable<TradeSelected> tradeSelectedEvents = JavaFxObservable.changesOf(tradesListView.selectedItemProperty())
@@ -264,40 +286,4 @@ public class TradesPresenter {
         }
         tradesListView.itemsProperty().add(trade);
     }
-
-    // Event classes
-
-//    interface PresenterEvent extends Event {
-//    }
-//
-//    private class ViewShowing implements PresenterEvent {
-//    }
-//
-//    private class ViewNotShowing implements PresenterEvent {
-//    }
-//
-//    private class TradeChanged implements PresenterEvent {
-//
-//        private final Trade trade;
-//
-//        public TradeChanged(Trade trade) {
-//            this.trade = trade;
-//        }
-//
-//        public Trade getTrade() {
-//            return trade;
-//        }
-//    }
-//
-//    private class TradeSelected implements PresenterEvent {
-//        private final Trade trade;
-//
-//        public TradeSelected(Trade trade) {
-//            this.trade = trade;
-//        }
-//
-//        public Trade getTrade() {
-//            return trade;
-//        }
-//    }
 }

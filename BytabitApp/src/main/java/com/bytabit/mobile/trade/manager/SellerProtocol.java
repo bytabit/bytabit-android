@@ -1,6 +1,13 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.profile.model.PaymentDetails;
+import com.bytabit.mobile.profile.model.Profile;
+import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
+import io.reactivex.Observable;
+import io.reactivex.Single;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,69 +22,58 @@ public class SellerProtocol extends TradeProtocol {
     }
 
     // 1.S: seller receives created trade with sell offer + buy request
-    //@Override
-    public Trade handleCreated(Trade createdTrade) {
+    @Override
+    public Observable<Trade> handleCreated(Trade createdTrade) {
 
-        Trade fundedTrade = null;
+        //Maybe<Trade> currentTrade = readTrade(createdTrade.getEscrowAddress());
 
-        // watch trade escrow address
-//        walletManager.createEscrowWallet(createdTrade.getEscrowAddress());
-
-        // fund escrow and create paymentRequest
-//        PaymentRequest paymentRequest = fundEscrow(createdTrade);
-
-//        if (paymentRequest != null) {
-//
-//            // 4. put payment request
-////            try {
-//            fundedTrade = Trade.builder()
-//                    .escrowAddress(createdTrade.getEscrowAddress())
-//                    .sellOffer(createdTrade.sellOffer())
-//                    .buyRequest(createdTrade.buyRequest())
-//                    .paymentRequest(paymentRequest)
-//                    .build();
-//
-////            tradeService.put(fundedTrade).subscribe();
-//
-////            } catch (IOException e) {
-////                log.error("Unable to PUT funded trade.", e);
-////                // TODO retry putting payment request
-////            }
-//        } else {
-////            log.error("Unable to fund trade.");
-//        }
-
-        return fundedTrade;
+        // TODO verify no current trade for this escrowAddress
+        return walletManager.createOrLoadEscrowWallet(createdTrade)
+                // fund escrow and create paymentRequest
+                .flatMap(this::fundEscrow)
+                // create funded trade from created trade and payment request
+                .map(pr -> Trade.builder()
+                        .escrowAddress(createdTrade.getEscrowAddress())
+                        .sellOffer(createdTrade.sellOffer())
+                        .buyRequest(createdTrade.buyRequest())
+                        .paymentRequest(pr)
+                        .build()
+                );
+        // store funded trade
+        //.flatMap(this::writeTrade)
+        // put funded trade
+        //.flatMap(ft -> tradeService.put(ft).toObservable());
     }
 
     // 2.S: seller fund escrow and post payment request
-//    private PaymentRequest fundEscrow(Trade trade) {
-//
-//        // TODO verify escrow not yet funded ?
-//        try {
-//            // 1. fund escrow
-//            Transaction fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
-//                    trade.getBtcAmount());
-//
-//            // 2. create refund tx address and signature
-//
-//            Address refundTxAddress = walletManager.getDepositAddress();
-//            String refundTxSignature = walletManager.getRefundSignature(trade, fundingTx, refundTxAddress);
-//
-//            // 3. create payment request
-//            String paymentDetails = profileManager.getPaymentDetails(
-//                    trade.getCurrencyCode(),
-//                    trade.getPaymentMethod()).blockingGet();
-//
-//            return new PaymentRequest(fundingTx.getHashAsString(), paymentDetails, refundTxAddress.toBase58(), refundTxSignature);
-//
-//        } catch (InsufficientMoneyException e) {
-//            log.error("Insufficient BTC to fund trade escrow.");
-//            // TODO let user know not enough BTC in wallet
-//            return null;
-//        }
-//        return null;
-//    }
+    private Observable<PaymentRequest> fundEscrow(Trade trade) {
+
+        // TODO verify escrow not yet funded ?
+
+        // 1. fund escrow
+        Observable<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
+                trade.getBtcAmount());
+
+        // 2. create refund tx address and signature
+
+        Observable<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress();
+
+        Observable<Profile> profile = profileManager.loadOrCreateMyProfile().toObservable();
+
+        Single<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
+                .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
+                .singleOrError();
+
+        return Observable.zip(fundingTx, refundTxAddress, profile, (ftx, ra, p) -> {
+
+            Observable<String> refundTxSignature = walletManager.getRefundSignature(trade, ftx, ra);
+
+            // 3. create payment request
+            return Observable.zip(refundTxSignature, paymentDetails.toObservable(), (rs, pd) ->
+                    new PaymentRequest(ftx.getHashAsString(), pd.getPaymentDetails(), ra.toBase58(), rs));
+
+        }).flatMap(pr -> pr);
+    }
 
 //    @Override
 //    public Trade handleCreated(BuyerCreated created) {
@@ -85,8 +81,8 @@ public class SellerProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Trade handleFunded(Trade createdTrade, Trade fundedTrade) {
-        return null;
+    public Observable<Trade> handleFunded(Trade fundedTrade) {
+        return Observable.empty();
     }
 
     // 3.S: seller payout escrow to buyer and write payout details

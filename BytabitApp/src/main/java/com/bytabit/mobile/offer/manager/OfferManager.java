@@ -25,7 +25,9 @@ public class OfferManager {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final PublishSubject<SellOffer> selectedOffer = PublishSubject.create();
+    private final PublishSubject<SellOffer> selectedOfferSubject = PublishSubject.create();
+
+    private final Observable<SellOffer> selectedOffer = selectedOfferSubject.share();
 
     private final ConnectableObservable<SellOffer> lastSelectedOffer = selectedOffer.replay(1);
 
@@ -55,6 +57,7 @@ public class OfferManager {
 
         offers = Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
                 .flatMap(tick -> getLoadedOffers());
+
 
         lastSelectedOffer.connect();
 
@@ -95,13 +98,12 @@ public class OfferManager {
     }
 
     public void setSelectedOffer(SellOffer sellOffer) {
-        selectedOffer.onNext(sellOffer);
+        selectedOfferSubject.onNext(sellOffer);
     }
 
     public Observable<SellOffer> getSelectedOffer() {
         return selectedOffer
-                .doOnNext(sellOffer -> log.debug("Selected: {}", sellOffer))
-                .share();
+                .doOnNext(sellOffer -> log.debug("Selected: {}", sellOffer));
     }
 
     public ConnectableObservable<SellOffer> getLastSelectedOffer() {
@@ -120,9 +122,9 @@ public class OfferManager {
                 .share();
     }
 
-    public void createBuyOffer(BigDecimal btcAmount) {
+    public void createTrade(BigDecimal btcAmount) {
         getLastSelectedOffer()
-                .subscribe(sellOffer -> tradeManager.createBuyOffer(sellOffer, btcAmount))
+                .subscribe(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount))
                 .dispose();
     }
 }

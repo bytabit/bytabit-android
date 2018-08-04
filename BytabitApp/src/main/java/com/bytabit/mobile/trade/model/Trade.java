@@ -413,9 +413,7 @@ public class Trade {
 
     public Role role(String profilePubKey, Boolean isArbitrator) {
 
-        if (role != null) {
-            return role;
-        } else if (!isArbitrator) {
+        if (!isArbitrator) {
             if (getSellerProfilePubKey().equals(profilePubKey)) {
                 role = SELLER;
             } else if (getBuyerProfilePubKey().equals(profilePubKey)) {
@@ -438,7 +436,7 @@ public class Trade {
     }
 
     public Trade fundingTransactionWithAmt(TransactionWithAmt transactionWithAmt) {
-        this.fundingTransactionWithAmt = fundingTransactionWithAmt;
+        this.fundingTransactionWithAmt = transactionWithAmt;
         return this;
     }
 

@@ -46,7 +46,7 @@ public class WalletManager {
     private final static String TRADE_WALLET_FILE_NAME = "trade.wallet";
     private final static String ESCROW_WALLET_FILE_NAME = "escrow.wallet";
     private final static String BACKUP_EXT = ".bkp";
-    private final static String SAVE_EXT = ".sav";
+    //private final static String SAVE_EXT = ".sav";
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
@@ -61,7 +61,7 @@ public class WalletManager {
 
     private Observable<TransactionWithAmt> updatedTradeWalletTx;
 
-    private final PublishSubject<Wallet> createdEscrowWallet = PublishSubject.create();
+    private final PublishSubject<Wallet> updatedEscrowWallet = PublishSubject.create();
     private Observable<TransactionWithAmt> updatedEscrowWalletTx;
 
     public WalletManager() {
@@ -176,16 +176,18 @@ public class WalletManager {
         Single<List<Wallet>> readEscrowWallets = readEscrowAddresses
                 .map(this::createOrLoadEscrowWallet).toList().cache();
 
-        updatedEscrowWalletTx = Observable.concat(readEscrowWallets.flattenAsObservable(ew -> ew), createdEscrowWallet)
+        updatedEscrowWalletTx = Observable.concat(readEscrowWallets.flattenAsObservable(ew -> ew), updatedEscrowWallet)
                 .flatMap(ew -> Observable.<TransactionWithAmt>create(source -> {
                     TransactionConfidenceEventListener listener = (wallet, tx) -> {
                         Context.propagate(btcContext);
+                        String watchedEscrowAddress = wallet.getWatchedScripts().get(0).getToAddress(netParams).toBase58();
                         TransactionWithAmt txWithAmt = TransactionWithAmt.builder()
                                 .tx(tx)
                                 .transactionAmt(tx.getValue(wallet))
                                 .outputAddress(getWatchedOutputAddress(tx, wallet))
                                 .inputTxHash(tx.getInput(0).getOutpoint().getHash().toString())
                                 .walletBalance(ew.getBalance())
+                                .escrowAddress(watchedEscrowAddress)
                                 .build();
                         source.onNext(txWithAmt);
                     };
@@ -265,10 +267,10 @@ public class WalletManager {
             return pg;
         }).cache();
 
-        createdEscrowWallet
+        updatedEscrowWallet
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
-                .forEach(ew -> {
+                .subscribe(ew -> {
                     blockChain.subscribe(bc -> bc.addWallet(ew));
                     peerGroup.subscribe(pg -> pg.addWallet(ew));
                 });
@@ -516,14 +518,15 @@ public class WalletManager {
                 .share();
     }
 
-    public Observable<String> createdEscrowWallet(String escrowAddress) {
+    public Observable<Trade> createOrLoadEscrowWallet(Trade trade) {
 
         return Observable.create(source -> {
             try {
-                Wallet escrowWallet = createOrLoadEscrowWallet(escrowAddress);
-                escrowWallet.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000));
-                createdEscrowWallet.onNext(escrowWallet);
-                source.onNext(escrowAddress);
+                Context.propagate(btcContext);
+                Wallet escrowWallet = createOrLoadEscrowWallet(trade.getEscrowAddress());
+                escrowWallet.addWatchedAddress(Address.fromBase58(netParams, trade.getEscrowAddress()), (DateTime.now().getMillis() / 1000));
+                updatedEscrowWallet.onNext(escrowWallet);
+                source.onNext(trade);
             } catch (FileNotFoundException | UnreadableWalletException ex) {
                 source.onError(ex);
             }
@@ -721,6 +724,10 @@ public class WalletManager {
 
     private Wallet createOrLoadEscrowWallet(String escrowAddress)
             throws FileNotFoundException, UnreadableWalletException {
+        File tradeDir = new File(TRADES_PATH + escrowAddress);
+        if (!tradeDir.exists()) {
+            tradeDir.mkdirs();
+        }
         File escrowWalletFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME);
         File escrowWalletBackupFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + BACKUP_EXT);
         return createOrLoadWallet(escrowWalletFile, escrowWalletBackupFile);
@@ -914,7 +921,7 @@ public class WalletManager {
 //        return tradeWallet.map(Wallet::getBalance);
 //    }
 
-    private BigDecimal defaultTxFee() {
+    public BigDecimal defaultTxFee() {
         return new BigDecimal(defaultTxFeeCoin().toPlainString());
     }
 
@@ -922,15 +929,22 @@ public class WalletManager {
         return REFERENCE_DEFAULT_MIN_TX_FEE;
     }
 
-    private Single<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) throws InsufficientMoneyException {
+    public Observable<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
         Context.propagate(btcContext);
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
-        return tradeWallet.map(tw -> {
-            SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
-                    Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
-            Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
-            return sendResult.tx;
-        });
+        return tradeWallet.flatMapObservable(tw -> Observable.create(source -> {
+                    try {
+                        SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
+                                Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
+                        Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
+                        source.onNext(sendResult.tx);
+                    } catch (InsufficientMoneyException ex) {
+                        log.error("Insufficient BTC to fund trade escrow.");
+                        // TODO let user know not enough BTC in wallet
+                        source.onError(ex);
+                    }
+                })
+        );
     }
 
     private Address escrowAddress(ECKey arbitratorProfilePubKey,
@@ -1060,16 +1074,16 @@ public class WalletManager {
 //        return tx;
 //    }
 
-    private Single<String> getPayoutSignature(Trade trade, Transaction fundingTx) {
+    public Observable<String> getPayoutSignature(Trade trade, Transaction fundingTx) {
         Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
         return getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
     }
 
-    private Single<String> getRefundSignature(Trade trade, Transaction fundingTx, Address sellerRefundAddress) {
+    public Observable<String> getRefundSignature(Trade trade, Transaction fundingTx, Address sellerRefundAddress) {
         return getPayoutSignature(trade, fundingTx, sellerRefundAddress);
     }
 
-    private Single<String> getPayoutSignature(Trade trade, Transaction fundingTx, Address payoutAddress) {
+    private Observable<String> getPayoutSignature(Trade trade, Transaction fundingTx, Address payoutAddress) {
         Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
@@ -1079,7 +1093,7 @@ public class WalletManager {
                 arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
                 payoutAddress);
 
-        return signature.map(sig -> Base58.encode(sig.encodeToBitcoin()));
+        return signature.map(sig -> Base58.encode(sig.encodeToBitcoin())).toObservable();
     }
 
     private Single<TransactionSignature> getPayoutSignature(Coin payoutAmount,
@@ -1267,60 +1281,60 @@ public class WalletManager {
 //        return tx.getHashAsString();
 //    }
 
-    private Wallet createEscrowWallet(String escrowAddress)
-            throws FileNotFoundException, UnreadableWalletException {
-
-        Context.propagate(btcContext);
-        Address address = Address.fromBase58(getNetParams(), escrowAddress);
-//        if (escrowTxUpdatedEventEntries.containsKey(escrowAddress)) {
-//            if (!escrowWalletEntries.containsKey(escrowAddress)) {
-
-        File tradeDir = new File(TRADES_PATH + escrowAddress);
-        if (!tradeDir.exists()) {
-            tradeDir.mkdirs();
-//            LOG.debug("Created new trade dir: {}", tradeDir);
-        }
-        final File escrowWalletFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME);
-        final File escrowWalletBackupFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + BACKUP_EXT);
-//                final File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
-
-        Wallet escrowWallet = createOrLoadWallet(escrowWalletFile, escrowWalletBackupFile);
-        escrowWallet.addWatchedAddress(address, (DateTime.now().getMillis() / 1000));
-        return escrowWallet;
-
-        //                escrowWalletEntries.put(escrowAddress, escrowWallet);
-
-//                Observable<TransactionUpdatedEvent> escrowWalletTxObservable = Observable.<TransactionUpdatedEvent>create(source -> {
-//                    TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
+//    private Wallet createEscrowWallet(String escrowAddress)
+//            throws FileNotFoundException, UnreadableWalletException {
 //
-//                        @Override
-//                        public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
-//                            Context.propagate(btcContext);
-//                            source.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
-//                        }
-//                    };
-//                    escrowWallet.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
+//        Context.propagate(btcContext);
+//        Address address = Address.fromBase58(getNetParams(), escrowAddress);
+////        if (escrowTxUpdatedEventEntries.containsKey(escrowAddress)) {
+////            if (!escrowWalletEntries.containsKey(escrowAddress)) {
 //
-//                    source.setCancellable(() -> escrowWallet.removeTransactionConfidenceEventListener(listener));
-//                }).share();
-
-//                escrowTxUpdatedEventEntries.put(escrowAddress, escrowWalletTxObservable);
-//                escrowWalletTxObservable.observeOn(Schedulers.io())
-//                        .subscribe(e -> {
-//                            LOG.debug("escrow {} transaction updated event : {}", escrowAddress, e);
-//                        });
-//
-//                blockChain.addWallet(escrowWallet);
-//                peerGroup.addWallet(escrowWallet);
-//            }
-//        if (escrowWalletEntries.get(escrowAddress).addWatchedAddress(address, (DateTime.now().getMillis() / 1000))) {
-//            LOG.debug("Added watched address: {}", address.toBase58());
-//        } else {
-//            LOG.warn("Failed to add watch address: {}", address.toBase58());
+//        File tradeDir = new File(TRADES_PATH + escrowAddress);
+//        if (!tradeDir.exists()) {
+//            tradeDir.mkdirs();
+////            LOG.debug("Created new trade dir: {}", tradeDir);
 //        }
-//        }
-//        return escrowTxUpdatedEventEntries.get(escrowAddress);
-    }
+//        final File escrowWalletFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME);
+//        final File escrowWalletBackupFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + BACKUP_EXT);
+////                final File blockStoreFile = new File(AppConfig.getPrivateStorage(), "bytabit.spvchain");
+//
+//        Wallet escrowWallet = createOrLoadWallet(escrowWalletFile, escrowWalletBackupFile);
+//        escrowWallet.addWatchedAddress(address, (DateTime.now().getMillis() / 1000));
+//        return escrowWallet;
+//
+//        //                escrowWalletEntries.put(escrowAddress, escrowWallet);
+//
+////                Observable<TransactionUpdatedEvent> escrowWalletTxObservable = Observable.<TransactionUpdatedEvent>create(source -> {
+////                    TransactionConfidenceEventListener listener = new TransactionConfidenceEventListener() {
+////
+////                        @Override
+////                        public void onTransactionConfidenceChanged(Wallet wallet, Transaction tx) {
+////                            Context.propagate(btcContext);
+////                            source.onNext(new TransactionUpdatedEventBuilder().tx(tx).wallet(wallet).build());
+////                        }
+////                    };
+////                    escrowWallet.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
+////
+////                    source.setCancellable(() -> escrowWallet.removeTransactionConfidenceEventListener(listener));
+////                }).share();
+//
+////                escrowTxUpdatedEventEntries.put(escrowAddress, escrowWalletTxObservable);
+////                escrowWalletTxObservable.observeOn(Schedulers.io())
+////                        .subscribe(e -> {
+////                            LOG.debug("escrow {} transaction updated event : {}", escrowAddress, e);
+////                        });
+////
+////                blockChain.addWallet(escrowWallet);
+////                peerGroup.addWallet(escrowWallet);
+////            }
+////        if (escrowWalletEntries.get(escrowAddress).addWatchedAddress(address, (DateTime.now().getMillis() / 1000))) {
+////            LOG.debug("Added watched address: {}", address.toBase58());
+////        } else {
+////            LOG.warn("Failed to add watch address: {}", address.toBase58());
+////        }
+////        }
+////        return escrowTxUpdatedEventEntries.get(escrowAddress);
+//    }
 
     //    public void removeWatchedEscrowAddress(String escrowAddress) {
 //        Address address = Address.fromBase58(getNetParams(), escrowAddress);
