@@ -38,9 +38,9 @@ public abstract class TradeProtocol {
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-    abstract public Observable<Trade> handleCreated(Trade createdTrade);
+    abstract public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade);
 
-    abstract public Observable<Trade> handleFunded(Trade fundedTrade);
+    abstract public Observable<Trade> handleFunding(Trade currentTrade, Trade fundedTrade);
 
     public Observable<Trade> handleUpdatedEscrowTx(Trade currentTrade, TransactionWithAmt transactionWithAmt) {
 

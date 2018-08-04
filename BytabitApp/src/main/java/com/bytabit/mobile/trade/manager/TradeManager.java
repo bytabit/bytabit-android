@@ -455,7 +455,8 @@ public class TradeManager {
 //
     private Observable<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
 
-        Maybe<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress());
+        Maybe<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress())
+                .defaultIfEmpty(receivedTrade);
 
         TradeProtocol tradeProtocol = getProtocol(profile, receivedTrade);
 
@@ -464,13 +465,17 @@ public class TradeManager {
         switch (receivedTrade.status()) {
 
             case CREATED:
-                updatedTrade = tradeProtocol.handleCreated(receivedTrade);
+                updatedTrade = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handleCreated(ct, receivedTrade));
                 break;
 
-//                case FUNDED:
-//                    handledTrade = currentTrade != null ? tradeProtocol.handleFunded(currentTrade, receivedTrade) : receivedTrade;
-//                    break;
-//
+            case FUNDING:
+                updatedTrade = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handleFunding(ct, receivedTrade));
+                break;
+
+//            case FUNDED:
+//                updatedTrade = currentTrade != null ? tradeProtocol.handleFunding(currentTrade, receivedTrade) : receivedTrade;
+//                break;
+
 //                case PAID:
 //                    handledTrade = currentTrade != null ? tradeProtocol.handlePaid(currentTrade, receivedTrade) : receivedTrade;
 //                    break;

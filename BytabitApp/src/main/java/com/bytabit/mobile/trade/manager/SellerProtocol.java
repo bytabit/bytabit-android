@@ -23,7 +23,7 @@ public class SellerProtocol extends TradeProtocol {
 
     // 1.S: seller receives created trade with sell offer + buy request
     @Override
-    public Observable<Trade> handleCreated(Trade createdTrade) {
+    public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
 
         //Maybe<Trade> currentTrade = readTrade(createdTrade.getEscrowAddress());
 
@@ -81,7 +81,7 @@ public class SellerProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Observable<Trade> handleFunded(Trade fundedTrade) {
+    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundedTrade) {
         return Observable.empty();
     }
 

@@ -10,6 +10,7 @@ import org.bitcoinj.core.Address;
 import java.math.BigDecimal;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
+import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
 
 public class BuyerProtocol extends TradeProtocol {
 
@@ -58,33 +59,28 @@ public class BuyerProtocol extends TradeProtocol {
 
     // 1.B: create trade, post created trade
     @Override
-    public Observable<Trade> handleCreated(Trade createdTrade) {
+    public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
 
         return Observable.just(createdTrade);
     }
 
     // 2.B: buyer receives payment request, confirm funding tx
     @Override
-    public Observable<Trade> handleFunded(Trade fundedTrade) {
+    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
 
         //Maybe<Trade> createdTrade = readTrade(fundedTrade.getEscrowAddress());
 
-        Observable<Trade> verifiedFundedTrade = Observable.empty();
-//        if (createdTrade.status().equals(CREATED)) {
-//            TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
-//
-//            if (tx != null) {
-//                if (fundedTrade.getBtcAmount().add(walletManager.defaultTxFee()).compareTo(tx.getTransactionBigDecimalAmt()) == 0) {
-//                    verifiedFundedTrade = fundedTrade;
-//                } else {
-//                    log.error("Trade not found for payment request or funding tx btc amount doesn't match buy offer btc amount.");
-//                }
-//            } else {
-//                log.error("Tx not found for payment request.");
-//            }
-//        }
+        Observable<Trade> verifiedFundingTrade = Observable.empty();
 
-        return verifiedFundedTrade;
+        if (currentTrade.status().equals(CREATED)) {
+            //TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
+
+            // TODO validate all details match currentTrade
+            // TODO update currentTrade with payment details from received trade
+            verifiedFundingTrade = Observable.just(fundingTrade);
+        }
+
+        return verifiedFundingTrade;
     }
 
     // 3.B: buyer sends payment to seller and post payout request

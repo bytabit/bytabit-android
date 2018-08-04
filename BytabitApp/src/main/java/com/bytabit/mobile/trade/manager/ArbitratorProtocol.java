@@ -10,8 +10,8 @@ public class ArbitratorProtocol extends TradeProtocol {
         super();
     }
 
-    //@Override
-    public Observable<Trade> handleCreated(Trade createdTrade) {
+    @Override
+    public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
         return Observable.empty();
     }
 
@@ -21,7 +21,7 @@ public class ArbitratorProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Observable<Trade> handleFunded(Trade fundedTrade) {
+    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundedTrade) {
         return Observable.empty();
     }
 
