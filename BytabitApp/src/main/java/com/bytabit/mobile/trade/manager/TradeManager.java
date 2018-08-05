@@ -1,6 +1,5 @@
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.StorageManager;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
@@ -43,9 +42,6 @@ public class TradeManager {
     ProfileManager profileManager;
 
     @Inject
-    StorageManager storageManager;
-
-    @Inject
     SellerProtocol sellerProtocol;
 
     @Inject
@@ -79,6 +75,7 @@ public class TradeManager {
     public void initialize() {
 
         createdTrade.connect();
+        lastSelectedTrade.connect();
 
         getStoredTrades().flatMapIterable(t -> t)
                 .subscribeOn(Schedulers.io())

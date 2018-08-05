@@ -62,7 +62,10 @@ public class TradesPresenter {
                 .filter(Change::getNewVal)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> setAppBar());
+                .subscribe(c -> {
+                    setAppBar();
+                    clearSelection();
+                });
 
         tradeManager.getCreatedTrade()
                 .subscribeOn(Schedulers.io())
@@ -86,15 +89,12 @@ public class TradesPresenter {
                     tradesListView.itemsProperty().add(updatedTrade);
                 });
 
-//                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
-//
-//        Observable<TradeSelected> tradeSelectedEvents = JavaFxObservable.changesOf(tradesListView.selectedItemProperty())
-//                .map(Change::getNewVal).map(TradeSelected::new);
-//
-//        Observable<PresenterEvent> tradeEvents = Observable.merge(viewShowingEvents,
-//                tradeSelectedEvents)
-//                .compose(eventLogger.logEvents())
-//                .share();
+        JavaFxObservable.changesOf(tradesListView.selectedItemProperty())
+                .map(Change::getNewVal)
+                .subscribe(sellOffer -> {
+                    MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DETAILS_VIEW);
+                    tradeManager.setSelectedTrade(sellOffer);
+                });
 
         // transform events to actions
 

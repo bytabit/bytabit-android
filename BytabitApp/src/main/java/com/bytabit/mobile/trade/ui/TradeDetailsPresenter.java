@@ -7,12 +7,17 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.rxjavafx.observables.JavaFxObservable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.rxjavafx.sources.Change;
+import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,28 +99,37 @@ public class TradeDetailsPresenter {
     @FXML
     FlowPane arbitrateButtonsFlowPane;
 
-//    private final StringConverter<Trade.Status> statusStringConverter;
-//
-//    public TradeDetailsPresenter() {
-//        this.statusStringConverter = new StringConverter<Trade.Status>() {
-//
-//            @Override
-//            public String toString(Trade.Status status) {
-//                return status.toString();
-//            }
-//
-//            @Override
-//            public Trade.Status fromString(String statusStr) {
-//                return Trade.Status.valueOf(statusStr);
-//            }
-//        };
-//    }
+    private StringConverter<Trade.Status> statusStringConverter;
 
     public void initialize() {
 
         // setup view components
 
+        this.statusStringConverter = new StringConverter<Trade.Status>() {
+
+            @Override
+            public String toString(Trade.Status status) {
+                return status.toString();
+            }
+
+            @Override
+            public Trade.Status fromString(String statusStr) {
+                return Trade.Status.valueOf(statusStr);
+            }
+        };
+
         // setup event observables
+
+        JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
+                .filter(Change::getNewVal)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(c -> setAppBar());
+
+        tradeManager.getSelectedTrade()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(this::showTrade);
 
 //        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
 //                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
@@ -415,18 +429,4 @@ public class TradeDetailsPresenter {
             }
         }
     }
-
-    // Event classes
-
-//    interface PresenterEvent extends Event {
-//    }
-//
-//    private class ViewShowing implements PresenterEvent {
-//    }
-//
-//    private class ViewNotShowing implements PresenterEvent {
-//    }
-
-//    private class FundButtonPressed implements PresenterEvent {
-//    }
 }
