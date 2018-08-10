@@ -63,8 +63,7 @@ public abstract class TradeProtocol {
 
         // verify current trade is FUNDED, then return received PAID
         // TODO verify other properties of PAID trade match FUNDED trade
-        return Observable.just(fundedTrade).filter(ft -> ft.status().equals(FUNDED))
-                .map(ft -> paidTrade);
+        return Observable.just(paidTrade);
     }
 
     public Observable<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {

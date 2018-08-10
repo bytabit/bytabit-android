@@ -56,7 +56,9 @@ public class TradeManager {
 
     private final ConnectableObservable<Trade> createdTrade = createdTradeSubject.replay();
 
-    private final PublishSubject<Trade> updatedTrade = PublishSubject.create();
+    private final PublishSubject<Trade> updatedTradeSubject = PublishSubject.create();
+
+    private final Observable<Trade> updatedTrade = updatedTradeSubject.share();
 
     private final PublishSubject<Trade> selectedTradeSubject = PublishSubject.create();
 
@@ -95,12 +97,12 @@ public class TradeManager {
                                         .flattenAsObservable(l -> l))
                                 .flatMap(trade -> handleReceivedTrade(profile, trade)))
                         // store updated trade
-                        .flatMap(this::writeTrade)
+                        .doOnNext(this::writeTrade)
                         // put updated trade
-                        .flatMap(ft -> tradeService.put(ft).toObservable())
+                        .doOnNext(ft -> tradeService.put(ft).toObservable())
                         .observeOn(Schedulers.io())
                         .subscribeOn(Schedulers.io())
-                        .subscribe(updatedTrade::onNext))
+                        .subscribe(updatedTradeSubject::onNext))
                 .subscribe();
 
         // get update escrow transactions
@@ -109,7 +111,7 @@ public class TradeManager {
                         .flatMap(tx -> handleUpdatedEscrowTx(profile, tx))
                         .observeOn(Schedulers.io())
                         .subscribeOn(Schedulers.io())
-                        .subscribe(updatedTrade::onNext));
+                        .subscribe(updatedTradeSubject::onNext));
 
         // filter to allow only valid received trades
 //                .filter(tr -> (tr.getCurrentTrade() == null && tr.getReceivedTrade().status().equals(CREATED))
@@ -171,7 +173,7 @@ public class TradeManager {
     }
 
     public Observable<Trade> getUpdatedTrade() {
-        return updatedTrade.share();
+        return updatedTrade;
     }
 
     public void setSelectedTrade(Trade trade) {
@@ -400,9 +402,15 @@ public class TradeManager {
 //        return buyerProtocol.buyerCreateTrade(sellOffer, buyBtcAmount, buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress);
 //    }
 
-//    public void buyerSendPayment(String paymentReference) {
-//        buyerProtocol.sendPayment(selectedTrade.getValue(), paymentReference);
-//    }
+    public void buyerSendPayment(String paymentReference) {
+        lastSelectedTrade.autoConnect()
+                .flatMap(selectedTrade -> buyerProtocol.sendPayment(selectedTrade, paymentReference))
+                .flatMap(this::writeTrade)
+                .flatMap(ft -> tradeService.put(ft).toObservable())
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(updatedTradeSubject::onNext);
+    }
 //
 //    public void sellerConfirmPaymentReceived() {
 //        sellerProtocol.confirmPaymentReceived(selectedTrade.getValue());
@@ -450,10 +458,16 @@ public class TradeManager {
 //        return tradeService.get(profilePubKey).retry().subscribeOn(Schedulers.io());
 //    }
 //
-    private Observable<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
+    private Observable<Trade> handleReceivedTrade(Profile profile, Trade
+            receivedTrade) {
 
         Maybe<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress())
                 .defaultIfEmpty(receivedTrade);
+
+        walletManager.getEscrowTransactionWithAmt(receivedTrade.getEscrowAddress(), receivedTrade.getFundingTxHash())
+                .subscribe(receivedTrade::fundingTransactionWithAmt);
+
+        receivedTrade.role(profile.getPubKey(), profile.isArbitrator());
 
         TradeProtocol tradeProtocol = getProtocol(profile, receivedTrade);
 
@@ -470,13 +484,13 @@ public class TradeManager {
                 break;
 
 //            case FUNDED:
-//                updatedTrade = currentTrade != null ? tradeProtocol.handleFunding(currentTrade, receivedTrade) : receivedTrade;
+//                updatedTradeSubject = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handleFunded(ct, receivedTrade));
 //                break;
 
-//                case PAID:
-//                    handledTrade = currentTrade != null ? tradeProtocol.handlePaid(currentTrade, receivedTrade) : receivedTrade;
-//                    break;
-//
+            case PAID:
+                updatedTrade = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handlePaid(ct, receivedTrade));
+                break;
+
 //                case COMPLETED:
 //                    handledTrade = currentTrade != null ? tradeProtocol.handleCompleted(currentTrade, receivedTrade) : receivedTrade;
 //                    break;
@@ -489,7 +503,8 @@ public class TradeManager {
         return updatedTrade;
     }
 
-    private Observable<Trade> handleUpdatedEscrowTx(Profile profile, TransactionWithAmt transactionWithAmt) {
+    private Observable<Trade> handleUpdatedEscrowTx(Profile
+                                                            profile, TransactionWithAmt transactionWithAmt) {
 
         Maybe<Trade> currentTrade = readTrade(transactionWithAmt.getEscrowAddress());
 
@@ -497,7 +512,7 @@ public class TradeManager {
 
             TradeProtocol tradeProtocol = getProtocol(profile, ct);
 
-            //Observable<Trade> updatedTrade = Observable.empty();
+            //Observable<Trade> updatedTradeSubject = Observable.empty();
 
             return tradeProtocol.handleUpdatedEscrowTx(ct, transactionWithAmt);
         });

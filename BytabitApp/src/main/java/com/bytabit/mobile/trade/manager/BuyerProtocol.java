@@ -3,8 +3,12 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.BuyRequest;
+import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
+import io.reactivex.schedulers.Schedulers;
 import org.bitcoinj.core.Address;
 
 import java.math.BigDecimal;
@@ -73,8 +77,8 @@ public class BuyerProtocol extends TradeProtocol {
         Observable<Trade> verifiedFundingTrade = Observable.empty();
 
         if (currentTrade.status().equals(CREATED)) {
-            //TransactionWithAmt tx = walletManager.getEscrowTransactionWithAmt(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
-
+            Maybe<TransactionWithAmt> tx = walletManager.getEscrowTransactionWithAmt(fundingTrade.getEscrowAddress(), fundingTrade.getFundingTxHash());
+            
             // TODO validate all details match currentTrade
             // TODO update currentTrade with payment details from received trade
             verifiedFundingTrade = Observable.just(fundingTrade);
@@ -84,36 +88,46 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 3.B: buyer sends payment to seller and post payout request
-    public void sendPayment(Trade fundedTrade, String paymentReference) {
+    public Observable<Trade> sendPayment(Trade fundedTrade, String paymentReference) {
 
-//        if (fundedTrade.status().equals(FUNDED)) {
+        Observable<Trade> paidTrade = Observable.empty();
 
-//            // 1. create payout request with buyer payout signature
-//            Transaction fundingTx = walletManager.getEscrowTransaction(fundedTrade.getEscrowAddress(), fundedTrade.getFundingTxHash());
-//
-//            if (fundingTx != null) {
-//                String payoutSignature = walletManager.getPayoutSignature(fundedTrade, fundingTx);
-//                PayoutRequest payoutRequest = new PayoutRequest(paymentReference, payoutSignature);
-//
-//                // 3. post payout request to server
-////                try {
-//                Trade paidTrade = Trade.builder()
-//                        .escrowAddress(fundedTrade.getEscrowAddress())
-//                        .sellOffer(fundedTrade.sellOffer())
-//                        .buyRequest(fundedTrade.buyRequest())
-//                        .paymentRequest(fundedTrade.paymentRequest())
-//                        .payoutRequest(payoutRequest)
-//                        .build();
-//
-//                tradeService.put(paidTrade.getEscrowAddress(), paidTrade).subscribe();
-//
-////                } catch (IOException e) {
-////                    log.error("Can't put paid trade to server.");
-////                }
-//            } else {
-//                log.error("Funding transaction not found for payout request.");
-//            }
-//        }
+        if (Trade.Status.FUNDED.equals(fundedTrade.status())) {
+
+            // 1. create payout request with buyer payout signature
+            //Transaction fundingTx = fundedTrade.fundingTransactionWithAmt().
+
+            if (fundedTrade.fundingTransactionWithAmt() != null) {
+                paidTrade = walletManager.getPayoutSignature(fundedTrade)
+                        .observeOn(Schedulers.io())
+                        .subscribeOn(Schedulers.io())
+                        .map(payoutSignature -> {
+                            PayoutRequest payoutRequest = new PayoutRequest(paymentReference, payoutSignature);
+
+                            // 3. post payout request to server
+//                try {
+                            return Trade.builder()
+                                    .escrowAddress(fundedTrade.getEscrowAddress())
+                                    .sellOffer(fundedTrade.sellOffer())
+                                    .buyRequest(fundedTrade.buyRequest())
+                                    .paymentRequest(fundedTrade.paymentRequest())
+                                    .payoutRequest(payoutRequest)
+                                    .build();
+                        });
+
+                //tradeService.put(paidTrade.getEscrowAddress(), paidTrade).subscribe();
+
+//                } catch (IOException e) {
+//                    log.error("Can't put paid trade to server.");
+//                }
+            } else {
+                //log.error("Funding transaction not found for payout request.");
+                //return Observable.empty();
+            }
+
+        }
+
+        return paidTrade;
     }
 
     public void cancelTrade(Trade fundedTrade) {

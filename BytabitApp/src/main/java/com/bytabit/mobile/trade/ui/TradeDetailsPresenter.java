@@ -126,10 +126,17 @@ public class TradeDetailsPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(c -> setAppBar());
 
-        tradeManager.getSelectedTrade()
+        tradeManager.getLastSelectedTrade().autoConnect()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(this::showTrade);
+
+        JavaFxObservable.actionEventsOf(paymentSentButton)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(actionEvent -> {
+                    tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get());
+                });
 
 //        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
 //                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());

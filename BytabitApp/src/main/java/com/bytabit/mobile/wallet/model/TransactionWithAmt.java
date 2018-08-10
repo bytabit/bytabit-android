@@ -9,6 +9,7 @@ import java.math.MathContext;
 
 public class TransactionWithAmt {
 
+    private Transaction transaction;
     private String hash;
     private String confidenceType;
     private Integer depth;
@@ -28,6 +29,7 @@ public class TransactionWithAmt {
     }
 
     TransactionWithAmt(Transaction tx, Coin transactionAmt, String outputAddress, String inputTxHash, Coin walletBalance) {
+        this.transaction = tx;
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
         this.depth = tx.getConfidence().getDepthInBlocks();
@@ -90,6 +92,10 @@ public class TransactionWithAmt {
 
     public String getEscrowAddress() {
         return escrowAddress;
+    }
+
+    public Transaction getTransaction() {
+        return transaction;
     }
 
     @Override

@@ -53,11 +53,6 @@ public class TradeDevInfoPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(this::showTrade);
-
-//        tradeManager.getSelectedTrade()
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .subscribe(this::showTrade);
     }
 
     private void setAppBar() {

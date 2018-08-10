@@ -81,8 +81,12 @@ public class SellerProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundedTrade) {
-        return Observable.empty();
+    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
+//        Maybe<TransactionWithAmt> tx = walletManager.getEscrowTransactionWithAmt(fundingTrade.getEscrowAddress(), fundingTrade.getFundingTxHash());
+//        tx.subscribeOn(Schedulers.io())
+//                .observeOn(Schedulers.io())
+//                .subscribe(t -> log.debug(t.getDepth().toString()));
+        return Observable.just(fundingTrade);
     }
 
     // 3.S: seller payout escrow to buyer and write payout details

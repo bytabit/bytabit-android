@@ -7,8 +7,10 @@ import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
+import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import org.bitcoinj.core.*;
@@ -61,8 +63,10 @@ public class WalletManager {
 
     private Observable<TransactionWithAmt> updatedTradeWalletTx;
 
-    private final PublishSubject<Wallet> updatedEscrowWallet = PublishSubject.create();
+    private final PublishSubject<Wallet> createdEscrowWalletSubject = PublishSubject.create();
+    private final Observable<Wallet> createdEscrowWallet = createdEscrowWalletSubject.share();
     private Observable<TransactionWithAmt> updatedEscrowWalletTx;
+    private ConnectableObservable<Wallet> allEscrowWallets;
 
     public WalletManager() {
         netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
@@ -176,7 +180,10 @@ public class WalletManager {
         Single<List<Wallet>> readEscrowWallets = readEscrowAddresses
                 .map(this::createOrLoadEscrowWallet).toList().cache();
 
-        updatedEscrowWalletTx = Observable.concat(readEscrowWallets.flattenAsObservable(ew -> ew), updatedEscrowWallet)
+        allEscrowWallets = readEscrowWallets.flattenAsObservable(w -> w)
+                .concatWith(createdEscrowWallet).replay();
+
+        updatedEscrowWalletTx = allEscrowWallets.autoConnect()
                 .flatMap(ew -> Observable.<TransactionWithAmt>create(source -> {
                     TransactionConfidenceEventListener listener = (wallet, tx) -> {
                         Context.propagate(btcContext);
@@ -267,7 +274,7 @@ public class WalletManager {
             return pg;
         }).cache();
 
-        updatedEscrowWallet
+        createdEscrowWallet
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(ew -> {
@@ -493,6 +500,8 @@ public class WalletManager {
 //                .compose(eventLogger.logResults())
 //                .observeOn(Schedulers.io())
 //                .subscribeOn(Schedulers.io()).share();
+
+        allEscrowWallets.subscribe(w -> log.debug("escrow wallets: " + w.toString()));
     }
 
     public Observable<Double> getDownloadProgress() {
@@ -525,7 +534,7 @@ public class WalletManager {
                 Context.propagate(btcContext);
                 Wallet escrowWallet = createOrLoadEscrowWallet(trade.getEscrowAddress());
                 escrowWallet.addWatchedAddress(Address.fromBase58(netParams, trade.getEscrowAddress()), (DateTime.now().getMillis() / 1000));
-                updatedEscrowWallet.onNext(escrowWallet);
+                //createdEscrowWalletSubject.onNext(escrowWallet);
                 source.onNext(trade);
             } catch (FileNotFoundException | UnreadableWalletException ex) {
                 source.onError(ex);
@@ -858,6 +867,13 @@ public class WalletManager {
         //LOG.debug("Backed up wallet to file: {}", walletBackupFile.getName());
     }
 
+    private Maybe<Wallet> getEscrowWallet(String escrowAddress) {
+
+        return allEscrowWallets.autoConnect()
+                .filter(w -> escrowAddress.equals(escrowAddress(w)))
+                .firstElement();
+    }
+
     private String escrowAddress(Wallet escrowWallet) {
 
         if (escrowWallet.getWatchedScripts().size() != 1) {
@@ -1036,15 +1052,14 @@ public class WalletManager {
 //        });
 //    }
 
-//    public TransactionWithAmt getEscrowTransactionWithAmt(String escrowAddress, String txHash) {
-//        Transaction tx = getEscrowTransaction(escrowAddress, txHash);
-//        if (tx != null) {
-//            TransactionUpdatedEvent txe = TransactionUpdatedEvent.builder().tx(tx).wallet(escrowWalletEntries.get(escrowAddress)).build();
-//            return new TransactionWithAmtBuilder().tx(tx).transactionAmt(txe.getAmt()).outputAddress(getWatchedOutputAddress(tx)).inputTxHash(tx.getInput(0).getOutpoint().getHash().toString()).build();
-//        } else {
-//            return null;
-//        }
-//}
+    public Maybe<TransactionWithAmt> getEscrowTransactionWithAmt(String escrowAddress, String txHash) {
+
+        return getEscrowWallet(escrowAddress).flatMap(w -> {
+            Transaction tx = w.getTransaction(Sha256Hash.wrap(txHash));
+            Maybe<Transaction> maybeTx = tx == null ? Maybe.empty() : Maybe.just(tx);
+            return maybeTx.map(t -> createTransactionWithAmt(w, t));
+        });
+    }
 
 //    public TransactionWithAmt getTradeTransactionWithAmt(String txHash) {
 //        Transaction tx = getTradeTransaction(txHash);
@@ -1052,16 +1067,6 @@ public class WalletManager {
 //            TransactionUpdatedEvent txe = new TransactionUpdatedEventBuilder().tx(tx).wallet(tradeWallet).build();
 //            return new TransactionWithAmtBuilder().tx(tx).transactionAmt(txe.getAmt()).outputAddress(getWatchedOutputAddress(tx)).inputTxHash(tx.getInput(0).getOutpoint().getHash().toString()).build();
 //        } else return null;
-//    }
-
-//    public Transaction getEscrowTransaction(String escrowAddress, String txHash) {
-//        Sha256Hash hash = Sha256Hash.wrap(txHash);
-//        Transaction tx = escrowWalletEntries.get(escrowAddress).getTransaction(hash);
-//        if (tx == null) {
-//            //throw new RuntimeException("Can't find escrow Tx with hash: " + txHash);
-//            LOG.error("Can't find escrow Tx with hash to: {}", txHash);
-//        }
-//        return tx;
 //    }
 
 //    public Transaction getTradeTransaction(String txHash) {
@@ -1074,9 +1079,9 @@ public class WalletManager {
 //        return tx;
 //    }
 
-    public Observable<String> getPayoutSignature(Trade trade, Transaction fundingTx) {
-        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
-        return getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
+    public Observable<String> getPayoutSignature(Trade fundedTrade) {
+        Address buyerPayoutAddress = Address.fromBase58(netParams, fundedTrade.getBuyerPayoutAddress());
+        return getPayoutSignature(fundedTrade, fundedTrade.fundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
     }
 
     public Observable<String> getRefundSignature(Trade trade, Transaction fundingTx, Address sellerRefundAddress) {
