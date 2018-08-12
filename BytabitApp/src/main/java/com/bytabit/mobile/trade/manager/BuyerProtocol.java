@@ -7,7 +7,7 @@ import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import io.reactivex.Maybe;
-import io.reactivex.Observable;
+import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.bitcoinj.core.Address;
 
@@ -23,10 +23,10 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 1.B: create trade, post created trade
-    public Observable<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
+    public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
 
-        return Observable.zip(walletManager.getTradeWalletEscrowPubKey().toObservable(),
-                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toObservable(),
+        return Single.zip(walletManager.getTradeWalletEscrowPubKey(),
+                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey),
                 walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         Trade.builder()
@@ -63,34 +63,34 @@ public class BuyerProtocol extends TradeProtocol {
 
     // 1.B: create trade, post created trade
     @Override
-    public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
+    public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
 
-        return Observable.just(createdTrade);
+        return Maybe.just(createdTrade);
     }
 
     // 2.B: buyer receives payment request, confirm funding tx
     @Override
-    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
+    public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
 
         //Maybe<Trade> createdTrade = readTrade(fundedTrade.getEscrowAddress());
 
-        Observable<Trade> verifiedFundingTrade = Observable.empty();
+        Maybe<Trade> verifiedFundingTrade = Maybe.empty();
 
         if (currentTrade.status().equals(CREATED)) {
             Maybe<TransactionWithAmt> tx = walletManager.getEscrowTransactionWithAmt(fundingTrade.getEscrowAddress(), fundingTrade.getFundingTxHash());
-            
+
             // TODO validate all details match currentTrade
             // TODO update currentTrade with payment details from received trade
-            verifiedFundingTrade = Observable.just(fundingTrade);
+            verifiedFundingTrade = Maybe.just(fundingTrade);
         }
 
         return verifiedFundingTrade;
     }
 
     // 3.B: buyer sends payment to seller and post payout request
-    public Observable<Trade> sendPayment(Trade fundedTrade, String paymentReference) {
+    public Maybe<Trade> sendPayment(Trade fundedTrade, String paymentReference) {
 
-        Observable<Trade> paidTrade = Observable.empty();
+        Maybe<Trade> paidTrade = Maybe.empty();
 
         if (Trade.Status.FUNDED.equals(fundedTrade.status())) {
 
@@ -113,7 +113,7 @@ public class BuyerProtocol extends TradeProtocol {
                                     .paymentRequest(fundedTrade.paymentRequest())
                                     .payoutRequest(payoutRequest)
                                     .build();
-                        });
+                        }).toMaybe();
 
                 //tradeService.put(paidTrade.getEscrowAddress(), paidTrade).subscribe();
 

@@ -7,7 +7,7 @@ import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import io.reactivex.Observable;
+import io.reactivex.Maybe;
 
 import javax.inject.Inject;
 
@@ -38,40 +38,38 @@ public abstract class TradeProtocol {
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-    abstract public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade);
+    abstract public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade);
 
-    abstract public Observable<Trade> handleFunding(Trade currentTrade, Trade fundedTrade);
+    abstract public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundedTrade);
 
-    public Observable<Trade> handleUpdatedEscrowTx(Trade currentTrade, TransactionWithAmt transactionWithAmt) {
+    public Maybe<Trade> handleUpdatedEscrowTx(Trade currentTrade, TransactionWithAmt transactionWithAmt) {
 
         // if FUNDING transaction updated update trade status
-        Observable<Trade> updatedTradeWithFundingTx = Observable.just(currentTrade)
+        return Maybe.just(currentTrade)
                 .filter(t -> transactionWithAmt.getHash().equals(t.getFundingTxHash()))
                 .filter(t -> transactionWithAmt.getTransactionBigDecimalAmt().subtract(walletManager.defaultTxFee()).compareTo(t.getBtcAmount()) == 0)
-                .doOnNext(t -> {
+                .doOnSuccess(t -> {
                     if (transactionWithAmt.getDepth() > 0) {
                         t.fundingTransactionWithAmt(transactionWithAmt);
                     }
                 });
-
-        return updatedTradeWithFundingTx;
     }
 
-    public Observable<Trade> handlePaid(Trade fundedTrade, Trade paidTrade) {
+    public Maybe<Trade> handlePaid(Trade fundedTrade, Trade paidTrade) {
 
         //Maybe<Trade> fundedTrade = readTrade(paidTrade.getEscrowAddress());
 
         // verify current trade is FUNDED, then return received PAID
         // TODO verify other properties of PAID trade match FUNDED trade
-        return Observable.just(paidTrade);
+        return Maybe.just(paidTrade);
     }
 
-    public Observable<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
+    public Maybe<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
 
 //        // TODO refactor to use Observable
 //        Profile profile = profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).blockingGet();
 
-        Observable<Trade> verifiedCompletedTrade = Observable.empty();
+        Maybe<Trade> verifiedCompletedTrade = Maybe.empty();
 
         // confirm payout tx
         String txHash = completedTrade.getPayoutTxHash();
@@ -135,13 +133,13 @@ public abstract class TradeProtocol {
         }
     }
 
-    public Observable<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
+    public Maybe<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
 
         // TODO handle unexpected status
         if (currentTrade.status().equals(FUNDED) || currentTrade.status().equals(PAID)) {
-            return Observable.just(arbitratingTrade);
+            return Maybe.just(arbitratingTrade);
         } else {
-            return Observable.empty();
+            return Maybe.empty();
         }
     }
 }

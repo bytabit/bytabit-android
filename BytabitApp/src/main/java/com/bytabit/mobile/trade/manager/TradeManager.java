@@ -83,7 +83,6 @@ public class TradeManager {
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .doOnNext(walletManager::createOrLoadEscrowWallet)
-                //.flatMap(t -> tradeService.put(t).toObservable())
                 .subscribe(createdTradeSubject::onNext);
 
         // get updated trades after download progress is 100% loaded
@@ -95,7 +94,7 @@ public class TradeManager {
                                 .flatMap(t -> tradeService.get(profile.getPubKey())
                                         .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
                                         .flattenAsObservable(l -> l))
-                                .flatMap(trade -> handleReceivedTrade(profile, trade)))
+                                .flatMapMaybe(trade -> handleReceivedTrade(profile, trade)))
                         // store updated trade
                         .doOnNext(this::writeTrade)
                         // put updated trade
@@ -108,7 +107,7 @@ public class TradeManager {
         // get update escrow transactions
         profileManager.loadOrCreateMyProfile().toObservable()
                 .subscribe(profile -> walletManager.getUpdatedEscrowWalletTx()
-                        .flatMap(tx -> handleUpdatedEscrowTx(profile, tx))
+                        .flatMapMaybe(tx -> handleUpdatedEscrowTx(profile, tx))
                         .observeOn(Schedulers.io())
                         .subscribeOn(Schedulers.io())
                         .subscribe(updatedTradeSubject::onNext));
@@ -164,7 +163,7 @@ public class TradeManager {
 
         buyerProtocol.createTrade(sellOffer, btcAmount)
                 .flatMap(this::writeTrade)
-                .flatMap(t -> tradeService.put(t).toObservable())
+                .flatMap(tradeService::put)
                 .subscribe(createdTradeSubject::onNext);
     }
 
@@ -404,9 +403,9 @@ public class TradeManager {
 
     public void buyerSendPayment(String paymentReference) {
         lastSelectedTrade.autoConnect()
-                .flatMap(selectedTrade -> buyerProtocol.sendPayment(selectedTrade, paymentReference))
-                .flatMap(this::writeTrade)
-                .flatMap(ft -> tradeService.put(ft).toObservable())
+                .flatMapMaybe(selectedTrade -> buyerProtocol.sendPayment(selectedTrade, paymentReference))
+                .doOnNext(this::writeTrade)
+                .doOnNext(tradeService::put)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(updatedTradeSubject::onNext);
@@ -458,7 +457,7 @@ public class TradeManager {
 //        return tradeService.get(profilePubKey).retry().subscribeOn(Schedulers.io());
 //    }
 //
-    private Observable<Trade> handleReceivedTrade(Profile profile, Trade
+    private Maybe<Trade> handleReceivedTrade(Profile profile, Trade
             receivedTrade) {
 
         Maybe<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress())
@@ -471,16 +470,16 @@ public class TradeManager {
 
         TradeProtocol tradeProtocol = getProtocol(profile, receivedTrade);
 
-        Observable<Trade> updatedTrade = Observable.empty();
+        Maybe<Trade> updatedTrade = Maybe.empty();
 
         switch (receivedTrade.status()) {
 
             case CREATED:
-                updatedTrade = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handleCreated(ct, receivedTrade));
+                updatedTrade = currentTrade.flatMap(ct -> tradeProtocol.handleCreated(ct, receivedTrade));
                 break;
 
             case FUNDING:
-                updatedTrade = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handleFunding(ct, receivedTrade));
+                updatedTrade = currentTrade.flatMap(ct -> tradeProtocol.handleFunding(ct, receivedTrade));
                 break;
 
 //            case FUNDED:
@@ -488,7 +487,7 @@ public class TradeManager {
 //                break;
 
             case PAID:
-                updatedTrade = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handlePaid(ct, receivedTrade));
+                updatedTrade = currentTrade.flatMap(ct -> tradeProtocol.handlePaid(ct, receivedTrade));
                 break;
 
 //                case COMPLETED:
@@ -503,12 +502,12 @@ public class TradeManager {
         return updatedTrade;
     }
 
-    private Observable<Trade> handleUpdatedEscrowTx(Profile
-                                                            profile, TransactionWithAmt transactionWithAmt) {
+    private Maybe<Trade> handleUpdatedEscrowTx(Profile
+                                                       profile, TransactionWithAmt transactionWithAmt) {
 
         Maybe<Trade> currentTrade = readTrade(transactionWithAmt.getEscrowAddress());
 
-        return currentTrade.toObservable().flatMap(ct -> {
+        return currentTrade.flatMap(ct -> {
 
             TradeProtocol tradeProtocol = getProtocol(profile, ct);
 
@@ -690,9 +689,9 @@ public class TradeManager {
 //        }
 //    }
 
-    protected Observable<Trade> writeTrade(Trade trade) {
+    protected Single<Trade> writeTrade(Trade trade) {
 
-        return Observable.create(source -> {
+        return Single.create(source -> {
             String tradePath = TRADES_PATH + trade.getEscrowAddress() + File.separator + "currentTrade.json";
 
             try {
@@ -710,7 +709,7 @@ public class TradeManager {
                 //LOG.error(ioe.getMessage());
                 source.onError(ioe);
             }
-            source.onNext(trade);
+            source.onSuccess(trade);
         });
     }
 

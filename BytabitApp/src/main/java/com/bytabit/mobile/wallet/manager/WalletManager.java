@@ -57,6 +57,7 @@ public class WalletManager {
     private final Context btcContext;
 
     private Single<Wallet> tradeWallet;
+    private Single<PeerGroup> peerGroup;
 
     private Observable<Double> downloadProgress;
     private Observable<String> tradeWalletBalance;
@@ -267,7 +268,7 @@ public class WalletManager {
         // create peer group
         // on error delete and re-create blockstore, reset escrowWallets?
 
-        Single<PeerGroup> peerGroup = Single.zip(blockChain, tradeWallet, readEscrowWallets, (bc, tw, rew) -> {
+        peerGroup = Single.zip(blockChain, tradeWallet, readEscrowWallets, (bc, tw, rew) -> {
             Context.propagate(btcContext);
             PeerGroup pg = createPeerGroup(bc, tw, rew);
             pg.start();
@@ -527,15 +528,23 @@ public class WalletManager {
                 .share();
     }
 
-    public Observable<Trade> createOrLoadEscrowWallet(Trade trade) {
+    public Single<Trade> createOrLoadEscrowWallet(Trade trade) {
 
-        return Observable.create(source -> {
+        return Single.create(source -> {
             try {
                 Context.propagate(btcContext);
                 Wallet escrowWallet = createOrLoadEscrowWallet(trade.getEscrowAddress());
                 escrowWallet.addWatchedAddress(Address.fromBase58(netParams, trade.getEscrowAddress()), (DateTime.now().getMillis() / 1000));
                 //createdEscrowWalletSubject.onNext(escrowWallet);
-                source.onNext(trade);
+                if (trade.getFundingTxHash() != null) {
+                    getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getFundingTxHash())
+                            .doOnSuccess(trade::fundingTransactionWithAmt);
+                }
+                if (trade.getPayoutTxHash() != null) {
+                    getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getPayoutTxHash())
+                            .doOnSuccess(trade::payoutTransactionWithAmt);
+                }
+                source.onSuccess(trade);
             } catch (FileNotFoundException | UnreadableWalletException ex) {
                 source.onError(ex);
             }
@@ -567,8 +576,8 @@ public class WalletManager {
         return tradeWallet.map(this::getFreshBase58ReceivePubKey);
     }
 
-    public Observable<Address> getTradeWalletDepositAddress() {
-        return tradeWallet.map(this::getDepositAddress).toObservable();
+    public Single<Address> getTradeWalletDepositAddress() {
+        return tradeWallet.map(this::getDepositAddress);
     }
 
 //    public void start() {
@@ -945,15 +954,15 @@ public class WalletManager {
         return REFERENCE_DEFAULT_MIN_TX_FEE;
     }
 
-    public Observable<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
+    public Single<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
         Context.propagate(btcContext);
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
-        return tradeWallet.flatMapObservable(tw -> Observable.create(source -> {
+        return tradeWallet.flatMap(tw -> Single.create(source -> {
                     try {
                         SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
                                 Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
                         Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
-                        source.onNext(sendResult.tx);
+                        source.onSuccess(sendResult.tx);
                     } catch (InsufficientMoneyException ex) {
                         log.error("Insufficient BTC to fund trade escrow.");
                         // TODO let user know not enough BTC in wallet
@@ -1061,6 +1070,7 @@ public class WalletManager {
         });
     }
 
+
 //    public TransactionWithAmt getTradeTransactionWithAmt(String txHash) {
 //        Transaction tx = getTradeTransaction(txHash);
 //        if (tx != null) {
@@ -1079,16 +1089,16 @@ public class WalletManager {
 //        return tx;
 //    }
 
-    public Observable<String> getPayoutSignature(Trade fundedTrade) {
+    public Single<String> getPayoutSignature(Trade fundedTrade) {
         Address buyerPayoutAddress = Address.fromBase58(netParams, fundedTrade.getBuyerPayoutAddress());
         return getPayoutSignature(fundedTrade, fundedTrade.fundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
     }
 
-    public Observable<String> getRefundSignature(Trade trade, Transaction fundingTx, Address sellerRefundAddress) {
+    public Single<String> getRefundSignature(Trade trade, Transaction fundingTx, Address sellerRefundAddress) {
         return getPayoutSignature(trade, fundingTx, sellerRefundAddress);
     }
 
-    private Observable<String> getPayoutSignature(Trade trade, Transaction fundingTx, Address payoutAddress) {
+    private Single<String> getPayoutSignature(Trade trade, Transaction fundingTx, Address payoutAddress) {
         Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
@@ -1098,7 +1108,7 @@ public class WalletManager {
                 arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
                 payoutAddress);
 
-        return signature.map(sig -> Base58.encode(sig.encodeToBitcoin())).toObservable();
+        return signature.map(sig -> Base58.encode(sig.encodeToBitcoin()));
     }
 
     private Single<TransactionSignature> getPayoutSignature(Coin payoutAmount,
@@ -1159,34 +1169,33 @@ public class WalletManager {
         return ScriptBuilder.createMultiSigOutputScript(2, ImmutableList.of(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey));
     }
 
-//    public Single<String> payoutEscrowToBuyer(Trade trade) throws InsufficientMoneyException {
-//
-//        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
-//
-//        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
-//
-//        String signature = getPayoutSignature(trade, fundingTx, buyerPayoutAddress);
-//
-//        TransactionSignature sellerSignature = TransactionSignature
-//                .decodeFromBitcoin(Base58.decode(signature), true, true);
-//
-//        TransactionSignature buyerSignature = TransactionSignature
-//                .decodeFromBitcoin(Base58.decode(trade.getPayoutTxSignature()), true, true);
-//
-//        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
-//
-//        return payoutEscrow(trade, buyerPayoutAddress, signatures);
-//    }
-//
+    // TODO make sure trades always have funding tx with amount added when loaded
+    // TODO handle InsufficientMoneyException
+    public Maybe<String> payoutEscrowToBuyer(Trade trade) {
+
+        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
+
+        Single<String> signature = getPayoutSignature(trade, trade.fundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
+
+        Single<TransactionSignature> sellerSignature = signature.map(s -> TransactionSignature
+                .decodeFromBitcoin(Base58.decode(s), true, true));
+
+        Single<TransactionSignature> buyerSignature = Single.just(TransactionSignature
+                .decodeFromBitcoin(Base58.decode(trade.getPayoutTxSignature()), true, true));
+
+        Single<List<TransactionSignature>> signatures = sellerSignature.concatWith(buyerSignature).toList();
+
+        return signatures.flatMapMaybe(sl -> payoutEscrow(trade, buyerPayoutAddress, sl));
+    }
+
 //    public String refundEscrowToSeller(Trade trade) throws InsufficientMoneyException {
 //
 //        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
 //
 //        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
+//        Maybe<TransactionWithAmt> fundingTx = getEscrowTransactionWithAmt(trade.getEscrowAddress(), fundingTxHash);
 //
-//        String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
+//        Single<String> signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
 //
 //        TransactionSignature arbitratorSignature = TransactionSignature
 //                .decodeFromBitcoin(Base58.decode(signature), true, true);
@@ -1206,7 +1215,7 @@ public class WalletManager {
 //        String fundingTxHash = trade.getFundingTxHash();
 //        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
 //
-//        String signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
+//        Single<String> signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
 //
 //        TransactionSignature sellerSignature = TransactionSignature
 //                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true);
@@ -1218,68 +1227,71 @@ public class WalletManager {
 //
 //        return payoutEscrow(trade, sellerRefundAddress, signatures);
 //    }
-//
-//    private String payoutEscrow(Trade trade, Address payoutAddress,
-//                                List<TransactionSignature> signatures) {
-//
-//        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
-//
-//        if (fundingTx != null) {
-//
-//            Transaction payoutTx = new Transaction(netParams);
-//            payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
-//            Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
-//
-//            ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
-//            ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
-//            ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
-//
-//            Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
-//            Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
-//
-//            // add input to payout tx from single matching funding tx output
-//            for (TransactionOutput txo : fundingTx.getOutputs()) {
-//                Address outputAddress = txo.getAddressFromP2SH(netParams);
-//                Coin outputAmount = payoutAmount.plus(defaultTxFeeCoin());
-//
-//                // verify output from fundingTx exists and equals required payout amounts
-//                if (outputAddress != null && outputAddress.equals(escrowAddress)
-//                        && txo.getValue().equals(outputAmount)) {
-//
-//                    // post payout input and funding output with signed unlock script
-//                    TransactionInput input = payoutTx.addInput(txo);
-//                    Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
-//                    input.setScriptSig(signedUnlockScript);
-//                    break;
-//                }
-//            }
-//
-//            // add output to payout tx
-//            payoutTx.addOutput(payoutAmount, payoutAddress);
-//
-//            LOG.debug("Validate inputs for payoutTx: {}", payoutTx.toString());
-//            for (TransactionInput input : payoutTx.getInputs()) {
-//                LOG.debug("Validating input for payoutTx: {}", input.toString());
-//                try {
-//                    input.verify(input.getConnectedOutput());
-//                    LOG.debug("Input valid for payoutTx: {}", input.toString());
-//                } catch (VerificationException ve) {
-//                    LOG.error("Input not valid for payoutTx, {}", ve.getMessage());
-//                } catch (NullPointerException npe) {
-//                    LOG.error("Null connectedOutput for payoutTx");
-//                }
-//            }
-//
-//            escrowWalletEntries.get(trade.escrowAddress()).commitTx(payoutTx);
-//            peerGroup.broadcastTransaction(payoutTx);
-//            return payoutTx.getHash().toString();
+
+    private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
+                                       List<TransactionSignature> signatures) {
+
+        Transaction fundingTx = trade.fundingTransactionWithAmt().getTransaction();
+
+        //if (fundingTx != null) {
+
+        Transaction payoutTx = new Transaction(netParams);
+        payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
+        Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
+
+        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
+        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
+        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
+
+        Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+        Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
+
+        // add input to payout tx from single matching funding tx output
+        for (TransactionOutput txo : fundingTx.getOutputs()) {
+            Address outputAddress = txo.getAddressFromP2SH(netParams);
+            Coin outputAmount = payoutAmount.plus(defaultTxFeeCoin());
+
+            // verify output from fundingTx exists and equals required payout amounts
+            if (outputAddress != null && outputAddress.equals(escrowAddress)
+                    && txo.getValue().equals(outputAmount)) {
+
+                // post payout input and funding output with signed unlock script
+                TransactionInput input = payoutTx.addInput(txo);
+                Script signedUnlockScript = ScriptBuilder.createP2SHMultiSigInputScript(signatures, redeemScript);
+                input.setScriptSig(signedUnlockScript);
+                break;
+            }
+        }
+
+        // add output to payout tx
+        payoutTx.addOutput(payoutAmount, payoutAddress);
+
+        //LOG.debug("Validate inputs for payoutTx: {}", payoutTx.toString());
+        for (TransactionInput input : payoutTx.getInputs()) {
+            //LOG.debug("Validating input for payoutTx: {}", input.toString());
+            try {
+                input.verify(input.getConnectedOutput());
+                //LOG.debug("Input valid for payoutTx: {}", input.toString());
+            } catch (VerificationException ve) {
+                //LOG.error("Input not valid for payoutTx, {}", ve.getMessage());
+            } catch (NullPointerException npe) {
+                //LOG.error("Null connectedOutput for payoutTx");
+            }
+        }
+
+        return getEscrowWallet(trade.getEscrowAddress())
+                .zipWith(peerGroup.toMaybe(), (ew, pg) -> {
+                    ew.commitTx(payoutTx);
+                    pg.broadcastTransaction(payoutTx);
+                    return payoutTx.getHash().toString();
+                });
+
 //        } else {
 //            // TODO reset blockchain and reload, then retry...
-//            LOG.error("No funding tx found for payout tx.");
+//            //LOG.error("No funding tx found for payout tx.");
 //            throw new RuntimeException("No funding tx found for payout tx.");
 //        }
-//    }
+    }
 //
 //    public String sendCoins(SendRequest sendRequest) throws InsufficientMoneyException {
 //        Transaction tx = tradeWallet.sendCoins(sendRequest).tx;

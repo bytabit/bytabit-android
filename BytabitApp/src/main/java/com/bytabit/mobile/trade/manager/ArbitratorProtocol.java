@@ -2,7 +2,7 @@ package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-import io.reactivex.Observable;
+import io.reactivex.Maybe;
 
 public class ArbitratorProtocol extends TradeProtocol {
 
@@ -11,8 +11,8 @@ public class ArbitratorProtocol extends TradeProtocol {
     }
 
     @Override
-    public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
-        return Observable.empty();
+    public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
+        return Maybe.empty();
     }
 
 //    @Override
@@ -21,17 +21,17 @@ public class ArbitratorProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundedTrade) {
-        return Observable.empty();
+    public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundedTrade) {
+        return Maybe.empty();
     }
 
     @Override
-    public Observable<Trade> handlePaid(Trade currentTrade, Trade paidTrade) {
-        return Observable.empty();
+    public Maybe<Trade> handlePaid(Trade currentTrade, Trade paidTrade) {
+        return Maybe.empty();
     }
 
     @Override
-    public Observable<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
+    public Maybe<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
 
         // TODO handle unexpected status
 //        if (currentTrade == null) {
@@ -43,11 +43,11 @@ public class ArbitratorProtocol extends TradeProtocol {
 //        } else {
 //            return null;
 //        }
-        return Observable.empty();
+        return Maybe.empty();
     }
 
     @Override
-    public Observable<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
+    public Maybe<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
 
         // TODO don't do this way
         //Trade currentTrade = readTrade(completedTrade.getEscrowAddress()).blockingGet();
@@ -58,7 +58,7 @@ public class ArbitratorProtocol extends TradeProtocol {
 //        } else {
 //            return Observable.just(completedTrade);
 //        }
-        return null;
+        return Maybe.empty();
     }
 
     public void refundSeller(Trade currentTrade) {

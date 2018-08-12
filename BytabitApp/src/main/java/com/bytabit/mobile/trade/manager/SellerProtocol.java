@@ -4,7 +4,7 @@ import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.Trade;
-import io.reactivex.Observable;
+import io.reactivex.Maybe;
 import io.reactivex.Single;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Transaction;
@@ -23,14 +23,14 @@ public class SellerProtocol extends TradeProtocol {
 
     // 1.S: seller receives created trade with sell offer + buy request
     @Override
-    public Observable<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
+    public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
 
         //Maybe<Trade> currentTrade = readTrade(createdTrade.getEscrowAddress());
 
         // TODO verify no current trade for this escrowAddress
         return walletManager.createOrLoadEscrowWallet(createdTrade)
                 // fund escrow and create paymentRequest
-                .flatMap(this::fundEscrow)
+                .flatMapMaybe(this::fundEscrow)
                 // create funded trade from created trade and payment request
                 .map(pr -> Trade.builder()
                         .escrowAddress(createdTrade.getEscrowAddress())
@@ -39,6 +39,7 @@ public class SellerProtocol extends TradeProtocol {
                         .paymentRequest(pr)
                         .build()
                 );
+
         // store funded trade
         //.flatMap(this::writeTrade)
         // put funded trade
@@ -46,33 +47,33 @@ public class SellerProtocol extends TradeProtocol {
     }
 
     // 2.S: seller fund escrow and post payment request
-    private Observable<PaymentRequest> fundEscrow(Trade trade) {
+    private Maybe<PaymentRequest> fundEscrow(Trade trade) {
 
         // TODO verify escrow not yet funded ?
 
         // 1. fund escrow
-        Observable<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
+        Single<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
                 trade.getBtcAmount());
 
         // 2. create refund tx address and signature
 
-        Observable<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress();
+        Single<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress();
 
-        Observable<Profile> profile = profileManager.loadOrCreateMyProfile().toObservable();
+        Single<Profile> profile = profileManager.loadOrCreateMyProfile();
 
         Single<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
                 .singleOrError();
 
-        return Observable.zip(fundingTx, refundTxAddress, profile, (ftx, ra, p) -> {
+        return Single.zip(fundingTx, refundTxAddress, profile, (ftx, ra, p) -> {
 
-            Observable<String> refundTxSignature = walletManager.getRefundSignature(trade, ftx, ra);
+            Single<String> refundTxSignature = walletManager.getRefundSignature(trade, ftx, ra);
 
             // 3. create payment request
-            return Observable.zip(refundTxSignature, paymentDetails.toObservable(), (rs, pd) ->
+            return Single.zip(refundTxSignature, paymentDetails, (rs, pd) ->
                     new PaymentRequest(ftx.getHashAsString(), pd.getPaymentDetails(), ra.toBase58(), rs));
 
-        }).flatMap(pr -> pr);
+        }).flatMapMaybe(Single::toMaybe);
     }
 
 //    @Override
@@ -81,12 +82,12 @@ public class SellerProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Observable<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
+    public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
 //        Maybe<TransactionWithAmt> tx = walletManager.getEscrowTransactionWithAmt(fundingTrade.getEscrowAddress(), fundingTrade.getFundingTxHash());
 //        tx.subscribeOn(Schedulers.io())
 //                .observeOn(Schedulers.io())
 //                .subscribe(t -> log.debug(t.getDepth().toString()));
-        return Observable.just(fundingTrade);
+        return Maybe.just(fundingTrade);
     }
 
     // 3.S: seller payout escrow to buyer and write payout details
