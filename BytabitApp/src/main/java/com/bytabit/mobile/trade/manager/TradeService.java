@@ -6,7 +6,6 @@ import com.gluonhq.connect.provider.ListDataReader;
 import com.gluonhq.connect.provider.ObjectDataWriter;
 import com.gluonhq.connect.provider.RestClient;
 import io.reactivex.Single;
-import io.reactivex.SingleEmitter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,7 +50,7 @@ public class TradeService {
 
     public Single<Trade> put(Trade trade) {
 
-        return Single.create((SingleEmitter<Trade> source) -> {
+        return Single.create(source -> {
 
             RestClient putRestClient = RestClient.create()
                     .host(AppConfig.getBaseUrl())
@@ -62,7 +61,8 @@ public class TradeService {
             ObjectDataWriter<Trade> dataWriter = putRestClient.createObjectDataWriter(Trade.class);
 
             try {
-                dataWriter.writeObject(trade).ifPresent(source::onSuccess);
+                // write trade and return original trade object
+                dataWriter.writeObject(trade).ifPresent(wt -> source.onSuccess(trade));
             } catch (Exception e) {
                 source.onError(e);
             }

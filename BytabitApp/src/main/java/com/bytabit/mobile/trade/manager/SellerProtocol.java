@@ -3,6 +3,7 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.PaymentRequest;
+import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
+import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
 public class SellerProtocol extends TradeProtocol {
 
@@ -28,9 +30,9 @@ public class SellerProtocol extends TradeProtocol {
         //Maybe<Trade> currentTrade = readTrade(createdTrade.getEscrowAddress());
 
         // TODO verify no current trade for this escrowAddress
-        return walletManager.createOrLoadEscrowWallet(createdTrade)
+        return walletManager.createEscrowWallet(createdTrade.getEscrowAddress())
                 // fund escrow and create paymentRequest
-                .flatMapMaybe(this::fundEscrow)
+                .flatMap(ea -> fundEscrow(createdTrade))
                 // create funded trade from created trade and payment request
                 .map(pr -> Trade.builder()
                         .escrowAddress(createdTrade.getEscrowAddress())
@@ -91,45 +93,46 @@ public class SellerProtocol extends TradeProtocol {
     }
 
     // 3.S: seller payout escrow to buyer and write payout details
-//    public Trade confirmPaymentReceived(Trade paidTrade) {
-//
-//        Trade completedTrade = null;
-//
-//        if (paidTrade.status().equals(PAID)) {
-//
-//            // 1. sign and broadcast payout tx
-//            try {
-//                String payoutTxHash = walletManager.payoutEscrowToBuyer(paidTrade);
-//
-//                // 2. confirm payout tx and create payout completed
-//                PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT);
-//
-//                // 5. post payout completed
-////                try {
-//
-//                completedTrade = Trade.builder()
-//                        .escrowAddress(paidTrade.getEscrowAddress())
-//                        .sellOffer(paidTrade.sellOffer())
-//                        .buyRequest(paidTrade.buyRequest())
-//                        .paymentRequest(paidTrade.paymentRequest())
-//                        .payoutRequest(paidTrade.payoutRequest())
-//                        .payoutCompleted(payoutCompleted)
-//                        .build();
-//
-//                tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
-//
-////                } catch (IOException e) {
-////                    log.error("Can't post payout completed to server.");
-////                }
-//
+    public Maybe<Trade> confirmPaymentReceived(Trade paidTrade) {
+
+        Maybe<Trade> completedTrade = Maybe.empty();
+
+        if (paidTrade.status().equals(PAID)) {
+
+            // 1. sign and broadcast payout tx
+            //try {
+            Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(paidTrade);
+
+            // 2. confirm payout tx and create payout completed
+            Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT));
+
+            // 5. post payout completed
+//                try {
+
+            completedTrade = payoutCompleted.map(pc -> Trade.builder()
+                    .escrowAddress(paidTrade.getEscrowAddress())
+                    .sellOffer(paidTrade.sellOffer())
+                    .buyRequest(paidTrade.buyRequest())
+                    .paymentRequest(paidTrade.paymentRequest())
+                    .payoutRequest(paidTrade.payoutRequest())
+                    .payoutCompleted(pc)
+                    .build());
+
+            //tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
+
+//                } catch (IOException e) {
+//                    log.error("Can't post payout completed to server.");
+//                }
+
+            // TODO handle InsufficientMoneyException
 //            } catch (InsufficientMoneyException e) {
 //                // TODO notify user
 //                log.error("Insufficient funds to payout escrow to buyer.");
 //            }
-//        }
-//
-//        return completedTrade;
-//    }
+        }
+
+        return completedTrade;
+    }
 
     public void requestArbitrate(Trade currentTrade) {
         super.requestArbitrate(currentTrade, NO_PAYMENT);

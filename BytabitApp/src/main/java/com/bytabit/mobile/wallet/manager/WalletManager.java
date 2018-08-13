@@ -528,28 +528,28 @@ public class WalletManager {
                 .share();
     }
 
-    public Single<Trade> createOrLoadEscrowWallet(Trade trade) {
-
-        return Single.create(source -> {
-            try {
-                Context.propagate(btcContext);
-                Wallet escrowWallet = createOrLoadEscrowWallet(trade.getEscrowAddress());
-                escrowWallet.addWatchedAddress(Address.fromBase58(netParams, trade.getEscrowAddress()), (DateTime.now().getMillis() / 1000));
-                //createdEscrowWalletSubject.onNext(escrowWallet);
-                if (trade.getFundingTxHash() != null) {
-                    getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getFundingTxHash())
-                            .doOnSuccess(trade::fundingTransactionWithAmt);
-                }
-                if (trade.getPayoutTxHash() != null) {
-                    getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getPayoutTxHash())
-                            .doOnSuccess(trade::payoutTransactionWithAmt);
-                }
-                source.onSuccess(trade);
-            } catch (FileNotFoundException | UnreadableWalletException ex) {
-                source.onError(ex);
-            }
-        });
-    }
+//    public Single<Trade> createOrLoadEscrowWallet(Trade trade) {
+//
+//        return Single.create(source -> {
+//            try {
+//                Context.propagate(btcContext);
+//                Wallet escrowWallet = createOrLoadEscrowWallet(trade.getEscrowAddress());
+//                escrowWallet.addWatchedAddress(Address.fromBase58(netParams, trade.getEscrowAddress()), (DateTime.now().getMillis() / 1000));
+//                //createdEscrowWalletSubject.onNext(escrowWallet);
+//                if (trade.getFundingTxHash() != null) {
+//                    getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getFundingTxHash())
+//                            .doOnSuccess(trade::fundingTransactionWithAmt);
+//                }
+//                if (trade.getPayoutTxHash() != null) {
+//                    getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getPayoutTxHash())
+//                            .doOnSuccess(trade::payoutTransactionWithAmt);
+//                }
+//                source.onSuccess(trade);
+//            } catch (FileNotFoundException | UnreadableWalletException ex) {
+//                source.onError(ex);
+//            }
+//        });
+//    }
 
     public Observable<TransactionWithAmt> getUpdatedEscrowWalletTx() {
         return updatedEscrowWalletTx
@@ -740,8 +740,22 @@ public class WalletManager {
         return createOrLoadWallet(walletFile, walletBackupFile);
     }
 
+    public Maybe<String> createEscrowWallet(String escrowAddress) {
+
+        return Maybe.create(source -> {
+            try {
+                Wallet escrowWallet = createOrLoadEscrowWallet(escrowAddress);
+                escrowWallet.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000));
+                source.onSuccess(escrowAddress);
+            } catch (FileNotFoundException | UnreadableWalletException ex) {
+                source.onError(ex);
+            }
+        });
+    }
+
     private Wallet createOrLoadEscrowWallet(String escrowAddress)
             throws FileNotFoundException, UnreadableWalletException {
+        Context.propagate(btcContext);
         File tradeDir = new File(TRADES_PATH + escrowAddress);
         if (!tradeDir.exists()) {
             tradeDir.mkdirs();
@@ -1064,7 +1078,7 @@ public class WalletManager {
     public Maybe<TransactionWithAmt> getEscrowTransactionWithAmt(String escrowAddress, String txHash) {
 
         return getEscrowWallet(escrowAddress).flatMap(w -> {
-            Transaction tx = w.getTransaction(Sha256Hash.wrap(txHash));
+            Transaction tx = txHash != null ? w.getTransaction(Sha256Hash.wrap(txHash)) : null;
             Maybe<Transaction> maybeTx = tx == null ? Maybe.empty() : Maybe.just(tx);
             return maybeTx.map(t -> createTransactionWithAmt(w, t));
         });
@@ -1266,16 +1280,16 @@ public class WalletManager {
         // add output to payout tx
         payoutTx.addOutput(payoutAmount, payoutAddress);
 
-        //LOG.debug("Validate inputs for payoutTx: {}", payoutTx.toString());
+        log.debug("Validate inputs for payoutTx: {}", payoutTx.toString());
         for (TransactionInput input : payoutTx.getInputs()) {
-            //LOG.debug("Validating input for payoutTx: {}", input.toString());
+            log.debug("Validating input for payoutTx: {}", input.toString());
             try {
                 input.verify(input.getConnectedOutput());
-                //LOG.debug("Input valid for payoutTx: {}", input.toString());
+                log.debug("Input valid for payoutTx: {}", input.toString());
             } catch (VerificationException ve) {
-                //LOG.error("Input not valid for payoutTx, {}", ve.getMessage());
+                log.error("Input not valid for payoutTx, {}", ve.getMessage());
             } catch (NullPointerException npe) {
-                //LOG.error("Null connectedOutput for payoutTx");
+                log.error("Null connectedOutput for payoutTx");
             }
         }
 

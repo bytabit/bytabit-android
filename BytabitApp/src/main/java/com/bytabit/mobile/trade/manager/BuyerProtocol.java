@@ -34,8 +34,8 @@ public class BuyerProtocol extends TradeProtocol {
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
-                //.flatMap(this::writeTrade)
-                .flatMap(walletManager::createOrLoadEscrowWallet);
+                .doOnSuccess(t -> walletManager.createEscrowWallet(t.getEscrowAddress()).subscribe().dispose());
+
         //.flatMap(t -> tradeService.put(t).toObservable());
 
 //        Single<Trade> createdTrade = Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),

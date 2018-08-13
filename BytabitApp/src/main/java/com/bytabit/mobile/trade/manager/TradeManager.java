@@ -79,30 +79,44 @@ public class TradeManager {
         createdTrade.connect();
         lastSelectedTrade.connect();
 
-        getStoredTrades().flatMapIterable(t -> t)
+        Maybe<Double> walletSynced = walletManager.getDownloadProgress()
+                .filter(p -> p == 1)
+                .firstElement()
+                .observeOn(Schedulers.io())
+                .cache();
+
+        // get stored trades after download progress is 100% loaded
+        walletSynced.subscribe(p -> getStoredTrades()
+                .flatMapIterable(t -> t)
+                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getEscrowAddress(), t.getFundingTxHash())
+                        .map(txa -> {
+                            t.fundingTransactionWithAmt(txa);
+                            return t;
+                        }))
+                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getEscrowAddress(), t.getPayoutTxHash())
+                        .map(txa -> {
+                            t.payoutTransactionWithAmt(txa);
+                            return t;
+                        }))
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .doOnNext(walletManager::createOrLoadEscrowWallet)
-                .subscribe(createdTradeSubject::onNext);
+                //.doOnNext(walletManager::createOrLoadEscrowWallet)
+                .subscribe(createdTradeSubject::onNext));
 
         // get updated trades after download progress is 100% loaded
-        walletManager.getDownloadProgress().filter(p -> p == 1).firstElement()
+        walletSynced.subscribe(p -> profileManager.loadOrCreateMyProfile().toObservable()
+                .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
+                        .flatMap(t -> tradeService.get(profile.getPubKey())
+                                .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
+                                .flattenAsObservable(l -> l))
+                        .flatMapMaybe(trade -> handleReceivedTrade(profile, trade)))
+                // store updated trade
+                .flatMapSingle(this::writeTrade)
+                // put updated trade
+                .flatMapSingle(tradeService::put)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
-                .doOnSuccess(p -> profileManager.loadOrCreateMyProfile().toObservable()
-                        .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-                                .flatMap(t -> tradeService.get(profile.getPubKey())
-                                        .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-                                        .flattenAsObservable(l -> l))
-                                .flatMapMaybe(trade -> handleReceivedTrade(profile, trade)))
-                        // store updated trade
-                        .doOnNext(this::writeTrade)
-                        // put updated trade
-                        .doOnNext(ft -> tradeService.put(ft).toObservable())
-                        .observeOn(Schedulers.io())
-                        .subscribeOn(Schedulers.io())
-                        .subscribe(updatedTradeSubject::onNext))
-                .subscribe();
+                .subscribe(updatedTradeSubject::onNext));
 
         // get update escrow transactions
         profileManager.loadOrCreateMyProfile().toObservable()
@@ -404,16 +418,20 @@ public class TradeManager {
     public void buyerSendPayment(String paymentReference) {
         lastSelectedTrade.autoConnect()
                 .flatMapMaybe(selectedTrade -> buyerProtocol.sendPayment(selectedTrade, paymentReference))
-                .doOnNext(this::writeTrade)
-                .doOnNext(tradeService::put)
+                .flatMapSingle(this::writeTrade)
+                .flatMapSingle(tradeService::put)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(updatedTradeSubject::onNext);
     }
-//
-//    public void sellerConfirmPaymentReceived() {
-//        sellerProtocol.confirmPaymentReceived(selectedTrade.getValue());
-//    }
+
+    public void sellerConfirmPaymentReceived() {
+        getLastSelectedTrade().autoConnect()
+                .firstElement().flatMap(st -> sellerProtocol.confirmPaymentReceived(st))
+                .flatMapSingle(this::writeTrade)
+                .doOnSuccess(tradeService::put)
+                .subscribe().dispose();
+    }
 
 //    public void requestArbitrate() {
 
@@ -463,8 +481,13 @@ public class TradeManager {
         Maybe<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress())
                 .defaultIfEmpty(receivedTrade);
 
+        // TODO this should be done as part of stream, this isn't the right way
         walletManager.getEscrowTransactionWithAmt(receivedTrade.getEscrowAddress(), receivedTrade.getFundingTxHash())
-                .subscribe(receivedTrade::fundingTransactionWithAmt);
+                .subscribe(receivedTrade::fundingTransactionWithAmt).dispose();
+
+        // TODO this should be done as part of stream, this isn't the right way
+        walletManager.getEscrowTransactionWithAmt(receivedTrade.getEscrowAddress(), receivedTrade.getPayoutTxHash())
+                .subscribe(receivedTrade::payoutTransactionWithAmt).dispose();
 
         receivedTrade.role(profile.getPubKey(), profile.isArbitrator());
 

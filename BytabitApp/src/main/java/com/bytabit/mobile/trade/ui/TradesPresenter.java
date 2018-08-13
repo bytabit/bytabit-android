@@ -77,13 +77,14 @@ public class TradesPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(updatedTrade -> {
                     int index = 0;
+                    boolean found = false;
                     for (Trade existingTrade : tradesListView.itemsProperty()) {
                         if (existingTrade.getEscrowAddress().equals(updatedTrade.getEscrowAddress())) {
+                            found = true;
                             break;
                         }
-                        index++;
                     }
-                    if (index > -1) {
+                    if (found) {
                         tradesListView.itemsProperty().remove(index);
                     }
                     tradesListView.itemsProperty().add(updatedTrade);
