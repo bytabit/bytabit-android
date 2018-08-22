@@ -746,6 +746,7 @@ public class WalletManager {
             try {
                 Wallet escrowWallet = createOrLoadEscrowWallet(escrowAddress);
                 escrowWallet.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000));
+                createdEscrowWalletSubject.onNext(escrowWallet);
                 source.onSuccess(escrowAddress);
             } catch (FileNotFoundException | UnreadableWalletException ex) {
                 source.onError(ex);
@@ -892,7 +893,7 @@ public class WalletManager {
 
     private Maybe<Wallet> getEscrowWallet(String escrowAddress) {
 
-        return allEscrowWallets.autoConnect()
+        return allEscrowWallets.autoConnect().take(2, TimeUnit.SECONDS)
                 .filter(w -> escrowAddress.equals(escrowAddress(w)))
                 .firstElement();
     }
@@ -964,14 +965,19 @@ public class WalletManager {
         return new BigDecimal(defaultTxFeeCoin().toPlainString());
     }
 
+    // .005
     private Coin defaultTxFeeCoin() {
-        return REFERENCE_DEFAULT_MIN_TX_FEE;
+        return REFERENCE_DEFAULT_MIN_TX_FEE.multiply(100);
     }
 
-    public Single<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
+    public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
         Context.propagate(btcContext);
+
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
-        return tradeWallet.flatMap(tw -> Single.create(source -> {
+        return getEscrowWallet(escrowAddress)
+                .filter(ew -> ew.getBalance(Wallet.BalanceType.ESTIMATED).compareTo(Coin.ZERO) == 0)
+                .flatMap(ew -> tradeWallet.toMaybe())
+                .flatMap(tw -> Maybe.create(source -> {
                     try {
                         SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
                                 Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
@@ -982,8 +988,7 @@ public class WalletManager {
                         // TODO let user know not enough BTC in wallet
                         source.onError(ex);
                     }
-                })
-        );
+                }));
     }
 
     private Address escrowAddress(ECKey arbitratorProfilePubKey,
@@ -1079,7 +1084,7 @@ public class WalletManager {
 
         return getEscrowWallet(escrowAddress).flatMap(w -> {
             Transaction tx = txHash != null ? w.getTransaction(Sha256Hash.wrap(txHash)) : null;
-            Maybe<Transaction> maybeTx = tx == null ? Maybe.empty() : Maybe.just(tx);
+            Maybe<Transaction> maybeTx = tx != null ? Maybe.just(tx) : Maybe.empty();
             return maybeTx.map(t -> createTransactionWithAmt(w, t));
         });
     }

@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
+import static com.bytabit.mobile.trade.model.Trade.Status.FUNDED;
+import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
 public class TradeManager {
 
@@ -75,6 +77,8 @@ public class TradeManager {
 
     @PostConstruct
     public void initialize() {
+
+        createTradesDir();
 
         createdTrade.connect();
         lastSelectedTrade.connect();
@@ -417,6 +421,7 @@ public class TradeManager {
 
     public void buyerSendPayment(String paymentReference) {
         lastSelectedTrade.autoConnect()
+                .filter(trade -> trade.status().equals(FUNDED))
                 .flatMapMaybe(selectedTrade -> buyerProtocol.sendPayment(selectedTrade, paymentReference))
                 .flatMapSingle(this::writeTrade)
                 .flatMapSingle(tradeService::put)
@@ -427,6 +432,7 @@ public class TradeManager {
 
     public void sellerConfirmPaymentReceived() {
         getLastSelectedTrade().autoConnect()
+                .filter(trade -> PAID.equals(trade.status()))
                 .firstElement().flatMap(st -> sellerProtocol.confirmPaymentReceived(st))
                 .flatMapSingle(this::writeTrade)
                 .doOnSuccess(tradeService::put)
@@ -475,68 +481,137 @@ public class TradeManager {
 //        return tradeService.get(profilePubKey).retry().subscribeOn(Schedulers.io());
 //    }
 //
-    private Maybe<Trade> handleReceivedTrade(Profile profile, Trade
-            receivedTrade) {
+    private Maybe<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
 
-        Maybe<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress())
-                .defaultIfEmpty(receivedTrade);
+        Single<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress())
+                .toSingle(createdFromReceivedTrade(receivedTrade));
 
-        // TODO this should be done as part of stream, this isn't the right way
-        walletManager.getEscrowTransactionWithAmt(receivedTrade.getEscrowAddress(), receivedTrade.getFundingTxHash())
-                .subscribe(receivedTrade::fundingTransactionWithAmt).dispose();
+        Single<Trade> currentTradeWithRole = currentTrade
+                .map(ct -> setRole(ct, profile.getPubKey(), profile.isArbitrator()));
 
-        // TODO this should be done as part of stream, this isn't the right way
-        walletManager.getEscrowTransactionWithAmt(receivedTrade.getEscrowAddress(), receivedTrade.getPayoutTxHash())
-                .subscribe(receivedTrade::payoutTransactionWithAmt).dispose();
+        Single<Trade> currentTradeWithTx = currentTradeWithRole
+                .flatMap(this::updateTradeTx);
 
-        receivedTrade.role(profile.getPubKey(), profile.isArbitrator());
+        Maybe<Trade> updatedTrade = currentTradeWithTx
+                .flatMapMaybe(ct -> updateTrade(ct, receivedTrade));
 
-        TradeProtocol tradeProtocol = getProtocol(profile, receivedTrade);
+        return updatedTrade;
+    }
+
+    private Trade createdFromReceivedTrade(Trade receivedTrade) {
+
+        // TODO validate escrowAddress, sellOffer, buyRequest
+        String escrowAddress = walletManager.escrowAddress(receivedTrade.getArbitratorProfilePubKey(),
+                receivedTrade.getSellerEscrowPubKey(),
+                receivedTrade.getBuyerEscrowPubKey());
+
+        return Trade.builder()
+                .escrowAddress(escrowAddress)
+                .sellOffer(receivedTrade.sellOffer())
+                .buyRequest(receivedTrade.buyRequest())
+                .build();
+    }
+
+    private void createTradesDir() {
+
+        File tradesDir = new File(TRADES_PATH);
+        if (!tradesDir.exists()) {
+            tradesDir.mkdirs();
+        }
+    }
+
+    private Single<Trade> updateTradeTx(Trade trade) {
+
+        return walletManager.getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getFundingTxHash())
+                .map(trade::fundingTransactionWithAmt)
+                .toSingle(trade)
+                .flatMap(t -> walletManager.getEscrowTransactionWithAmt(t.getEscrowAddress(), t.getPayoutTxHash())
+                        .map(t::payoutTransactionWithAmt)
+                        .toSingle(t));
+    }
+
+    private Maybe<Trade> updateTrade(Trade trade, Trade receivedTrade) {
+
+        TradeProtocol tradeProtocol = getProtocol(trade);
 
         Maybe<Trade> updatedTrade = Maybe.empty();
 
-        switch (receivedTrade.status()) {
+        switch (trade.status()) {
 
             case CREATED:
-                updatedTrade = currentTrade.flatMap(ct -> tradeProtocol.handleCreated(ct, receivedTrade));
+                updatedTrade = tradeProtocol.handleCreated(trade, receivedTrade);
                 break;
 
             case FUNDING:
-                updatedTrade = currentTrade.flatMap(ct -> tradeProtocol.handleFunding(ct, receivedTrade));
+                updatedTrade = tradeProtocol.handleFunded(trade, receivedTrade);
                 break;
 
-//            case FUNDED:
-//                updatedTradeSubject = currentTrade.toObservable().flatMap(ct -> tradeProtocol.handleFunded(ct, receivedTrade));
-//                break;
+            case FUNDED:
+                updatedTrade = tradeProtocol.handleFunded(trade, receivedTrade);
+                break;
+
+            case CANCELING:
+                updatedTrade = Maybe.just(trade);
+                break;
+
+            case CANCELED:
+                updatedTrade = Maybe.just(trade);
+                break;
 
             case PAID:
-                updatedTrade = currentTrade.flatMap(ct -> tradeProtocol.handlePaid(ct, receivedTrade));
+                updatedTrade = tradeProtocol.handlePaid(trade, receivedTrade);
                 break;
 
-//                case COMPLETED:
-//                    handledTrade = currentTrade != null ? tradeProtocol.handleCompleted(currentTrade, receivedTrade) : receivedTrade;
-//                    break;
-//
-//                case ARBITRATING:
-//                    handledTrade = currentTrade != null ? tradeProtocol.handleArbitrating(currentTrade, receivedTrade) : receivedTrade;
-//                    break;
+            case ARBITRATING:
+                updatedTrade = tradeProtocol.handleArbitrating(trade, receivedTrade);
+                break;
+
+            case COMPLETING:
+                updatedTrade = Maybe.empty();
+                break;
+
+            case COMPLETED:
+                updatedTrade = Maybe.empty();
+                break;
         }
 
         return updatedTrade;
     }
 
-    private Maybe<Trade> handleUpdatedEscrowTx(Profile
-                                                       profile, TransactionWithAmt transactionWithAmt) {
+    private Trade setRole(Trade trade, String profilePubKey, Boolean isArbitrator) {
+
+        if (!isArbitrator) {
+            if (trade.getSellerProfilePubKey().equals(profilePubKey)) {
+                trade.setRole(SELLER);
+            } else if (trade.getBuyerProfilePubKey().equals(profilePubKey)) {
+                trade.setRole(BUYER);
+            } else {
+                throw new RuntimeException("Unable to determine trader role.");
+            }
+        } else if (trade.getArbitratorProfilePubKey().equals(profilePubKey)) {
+            trade.setRole(ARBITRATOR);
+        } else {
+            throw new RuntimeException("Unable to determine arbitrator role.");
+        }
+        return trade;
+    }
+
+    private Maybe<Trade> handleUpdatedEscrowTx(Profile profile, TransactionWithAmt transactionWithAmt) {
 
         Maybe<Trade> currentTrade = readTrade(transactionWithAmt.getEscrowAddress());
 
-        return currentTrade.flatMap(ct -> {
+        return currentTrade.flatMap(trade -> {
 
-            TradeProtocol tradeProtocol = getProtocol(profile, ct);
+            String profilePubKey = profile.getPubKey();
+            Boolean profileIsArbitrator = profile.isArbitrator();
+
+            Trade tradeWithRole = setRole(trade, profilePubKey, profileIsArbitrator);
+
+            TradeProtocol tradeProtocol = getProtocol(tradeWithRole);
 
             //Observable<Trade> updatedTradeSubject = Observable.empty();
 
-            return tradeProtocol.handleUpdatedEscrowTx(ct, transactionWithAmt);
+            return tradeProtocol.handleUpdatedEscrowTx(trade, transactionWithAmt);
         });
 
 //        // if FUNDING transaction updated update trade status
@@ -557,12 +632,9 @@ public class TradeManager {
 //        return updatedTradeWithFundingTx;
     }
 
-    TradeProtocol getProtocol(Profile profile, Trade trade) {
+    TradeProtocol getProtocol(Trade trade) {
 
-        String profilePubKey = profile.getPubKey();
-        Boolean profileIsArbitrator = profile.isArbitrator();
-
-        Trade.Role role = trade.role(profilePubKey, profileIsArbitrator);
+        Trade.Role role = trade.getRole();
 
         if (role.equals(SELLER)) {
             return sellerProtocol;
@@ -571,7 +643,7 @@ public class TradeManager {
         } else if (role.equals(ARBITRATOR)) {
             return arbitratorProtocol;
         } else {
-            throw new RuntimeException("Unable to determine currentTrade protocol.");
+            throw new RuntimeException("Unable to determine trade protocol.");
         }
     }
 
@@ -745,8 +817,6 @@ public class TradeManager {
                     FileReader tradeReader = new FileReader(tradeFile);
                     source.onSuccess(JSON.std.beanFrom(Trade.class, tradeReader));
                 } else {
-                    File tradeDir = new File(TRADES_PATH + escrowAddress);
-                    tradeDir.mkdirs();
                     source.onComplete();
                 }
             } catch (Exception ex) {

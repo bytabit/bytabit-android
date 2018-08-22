@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
-import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
 
 public class SellerProtocol extends TradeProtocol {
 
@@ -25,27 +24,14 @@ public class SellerProtocol extends TradeProtocol {
 
     // 1.S: seller receives created trade with sell offer + buy request
     @Override
-    public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
+    public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        //Maybe<Trade> currentTrade = readTrade(createdTrade.getEscrowAddress());
-
-        // TODO verify no current trade for this escrowAddress
-        return walletManager.createEscrowWallet(createdTrade.getEscrowAddress())
+        // TODO verify no escrow wallet created or trade already funded
+        return walletManager.createEscrowWallet(trade.getEscrowAddress())
                 // fund escrow and create paymentRequest
-                .flatMap(ea -> fundEscrow(createdTrade))
+                .flatMap(ea -> fundEscrow(trade))
                 // create funded trade from created trade and payment request
-                .map(pr -> Trade.builder()
-                        .escrowAddress(createdTrade.getEscrowAddress())
-                        .sellOffer(createdTrade.sellOffer())
-                        .buyRequest(createdTrade.buyRequest())
-                        .paymentRequest(pr)
-                        .build()
-                );
-
-        // store funded trade
-        //.flatMap(this::writeTrade)
-        // put funded trade
-        //.flatMap(ft -> tradeService.put(ft).toObservable());
+                .map(trade::paymentRequest);
     }
 
     // 2.S: seller fund escrow and post payment request
@@ -54,7 +40,7 @@ public class SellerProtocol extends TradeProtocol {
         // TODO verify escrow not yet funded ?
 
         // 1. fund escrow
-        Single<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
+        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
                 trade.getBtcAmount());
 
         // 2. create refund tx address and signature
@@ -67,7 +53,7 @@ public class SellerProtocol extends TradeProtocol {
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
                 .singleOrError();
 
-        return Single.zip(fundingTx, refundTxAddress, profile, (ftx, ra, p) -> {
+        return Maybe.zip(fundingTx, refundTxAddress.toMaybe(), profile.toMaybe(), (ftx, ra, p) -> {
 
             Single<String> refundTxSignature = walletManager.getRefundSignature(trade, ftx, ra);
 
@@ -75,63 +61,44 @@ public class SellerProtocol extends TradeProtocol {
             return Single.zip(refundTxSignature, paymentDetails, (rs, pd) ->
                     new PaymentRequest(ftx.getHashAsString(), pd.getPaymentDetails(), ra.toBase58(), rs));
 
-        }).flatMapMaybe(Single::toMaybe);
+        }).flatMap(Single::toMaybe);
     }
 
-//    @Override
-//    public Trade handleCreated(BuyerCreated created) {
-//        return null;
-//    }
-
     @Override
-    public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
-//        Maybe<TransactionWithAmt> tx = walletManager.getEscrowTransactionWithAmt(fundingTrade.getEscrowAddress(), fundingTrade.getFundingTxHash());
-//        tx.subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.io())
-//                .subscribe(t -> log.debug(t.getDepth().toString()));
-        return Maybe.just(fundingTrade);
+    public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
+
+        Maybe<Trade> updatedTrade = Maybe.empty();
+
+        if (receivedTrade.hasPayoutRequest()) {
+            trade.payoutRequest(receivedTrade.payoutRequest());
+            updatedTrade = Maybe.just(trade);
+        }
+
+        if (receivedTrade.hasPayoutCompleted() && receivedTrade.payoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
+            trade.payoutCompleted(receivedTrade.payoutCompleted());
+            updatedTrade = Maybe.just(trade);
+        }
+
+        if (receivedTrade.hasArbitrateRequest()) {
+            trade.arbitrateRequest(receivedTrade.arbitrateRequest());
+            updatedTrade = Maybe.just(trade);
+        }
+
+        return updatedTrade;
     }
 
     // 3.S: seller payout escrow to buyer and write payout details
-    public Maybe<Trade> confirmPaymentReceived(Trade paidTrade) {
+    public Maybe<Trade> confirmPaymentReceived(Trade trade) {
 
-        Maybe<Trade> completedTrade = Maybe.empty();
+        // 1. sign and broadcast payout tx
+        //try {
+        Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade);
 
-        if (paidTrade.status().equals(PAID)) {
+        // 2. confirm payout tx and create payout completed
+        Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT));
 
-            // 1. sign and broadcast payout tx
-            //try {
-            Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(paidTrade);
-
-            // 2. confirm payout tx and create payout completed
-            Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT));
-
-            // 5. post payout completed
-//                try {
-
-            completedTrade = payoutCompleted.map(pc -> Trade.builder()
-                    .escrowAddress(paidTrade.getEscrowAddress())
-                    .sellOffer(paidTrade.sellOffer())
-                    .buyRequest(paidTrade.buyRequest())
-                    .paymentRequest(paidTrade.paymentRequest())
-                    .payoutRequest(paidTrade.payoutRequest())
-                    .payoutCompleted(pc)
-                    .build());
-
-            //tradeService.put(completedTrade.getEscrowAddress(), completedTrade).subscribe();
-
-//                } catch (IOException e) {
-//                    log.error("Can't post payout completed to server.");
-//                }
-
-            // TODO handle InsufficientMoneyException
-//            } catch (InsufficientMoneyException e) {
-//                // TODO notify user
-//                log.error("Insufficient funds to payout escrow to buyer.");
-//            }
-        }
-
-        return completedTrade;
+        // 5. post payout completed
+        return payoutCompleted.map(trade::payoutCompleted);
     }
 
     public void requestArbitrate(Trade currentTrade) {

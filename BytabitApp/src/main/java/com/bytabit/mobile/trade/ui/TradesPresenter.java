@@ -83,6 +83,7 @@ public class TradesPresenter {
                             found = true;
                             break;
                         }
+                        index = index + 1;
                     }
                     if (found) {
                         tradesListView.itemsProperty().remove(index);

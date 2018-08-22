@@ -3,7 +3,6 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
-import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
@@ -11,14 +10,7 @@ import io.reactivex.Maybe;
 
 import javax.inject.Inject;
 
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND;
-import static com.bytabit.mobile.trade.model.PayoutCompleted.Reason.BUYER_SELLER_REFUND;
-import static com.bytabit.mobile.trade.model.Trade.Status.FUNDED;
-import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
-
 public abstract class TradeProtocol {
-
-//    protected final Logger log;
 
     @Inject
     WalletManager walletManager;
@@ -29,60 +21,82 @@ public abstract class TradeProtocol {
     @Inject
     PaymentDetailsManager paymentDetailsManager;
 
-//    protected final TradeService tradeService;
-
-    protected TradeProtocol() {
-
-//        tradeService = new TradeService();
-    }
-
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-    abstract public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade);
+    abstract public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
 
-    abstract public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundedTrade);
+    abstract public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade);
 
-    public Maybe<Trade> handleUpdatedEscrowTx(Trade currentTrade, TransactionWithAmt transactionWithAmt) {
+    public Maybe<Trade> handleUpdatedEscrowTx(Trade trade, TransactionWithAmt transactionWithAmt) {
 
-        // if FUNDING transaction updated update trade status
-        return Maybe.just(currentTrade)
-                .filter(t -> transactionWithAmt.getHash().equals(t.getFundingTxHash()))
-                .filter(t -> transactionWithAmt.getTransactionBigDecimalAmt().subtract(walletManager.defaultTxFee()).compareTo(t.getBtcAmount()) == 0)
-                .doOnSuccess(t -> {
-                    if (transactionWithAmt.getDepth() > 0) {
-                        t.fundingTransactionWithAmt(transactionWithAmt);
-                    }
-                });
+        if (trade.getFundingTxHash() != null && trade.getFundingTxHash().equals(transactionWithAmt.getHash())) {
+
+            return Maybe.just(trade)
+                    .filter(t -> transactionWithAmt.getTransactionBigDecimalAmt().subtract(walletManager.defaultTxFee()).compareTo(t.getBtcAmount()) == 0)
+                    .doOnSuccess(t -> {
+                        if (transactionWithAmt.getDepth() > 0) {
+                            t.fundingTransactionWithAmt(transactionWithAmt);
+                        }
+                    });
+        } else if (trade.getPayoutTxHash() != null && trade.getPayoutTxHash().equals(transactionWithAmt.getHash())) {
+
+            return Maybe.just(trade)
+                    .filter(t -> transactionWithAmt.getTransactionBigDecimalAmt().compareTo(t.getBtcAmount()) == 0)
+                    .doOnSuccess(t -> {
+                        if (transactionWithAmt.getDepth() > 0) {
+                            t.payoutTransactionWithAmt(transactionWithAmt);
+                        }
+                    });
+        } else {
+            return Maybe.empty();
+        }
     }
 
-    public Maybe<Trade> handlePaid(Trade fundedTrade, Trade paidTrade) {
+    public Maybe<Trade> handlePaid(Trade trade, Trade receivedTrade) {
 
-        //Maybe<Trade> fundedTrade = readTrade(paidTrade.getEscrowAddress());
+        Maybe<Trade> updatedTrade = Maybe.empty();
 
-        // verify current trade is FUNDED, then return received PAID
-        // TODO verify other properties of PAID trade match FUNDED trade
-        return Maybe.just(paidTrade);
+        if (receivedTrade.hasArbitrateRequest()) {
+            trade.arbitrateRequest(receivedTrade.arbitrateRequest());
+            updatedTrade = Maybe.just(trade);
+        }
+
+        if (receivedTrade.hasPayoutCompleted()) {
+            trade.payoutCompleted(receivedTrade.payoutCompleted());
+            updatedTrade = Maybe.just(trade);
+        }
+
+        return updatedTrade;
     }
 
-    public Maybe<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
+//    public Maybe<Trade> handleCompleting(Trade currentTrade, Trade completing) {
+//
+//        return Maybe.just(currentTrade)
+//                .filter(t -> transactionWithAmt.getHash().equals(t.getFundingTxHash()))
+//                .filter(t -> transactionWithAmt.getTransactionBigDecimalAmt().subtract(walletManager.defaultTxFee()).compareTo(t.getBtcAmount()) == 0)
+//                .doOnSuccess(t -> {
+//                    if (transactionWithAmt.getDepth() > 0) {
+//                        t.fundingTransactionWithAmt(transactionWithAmt);
+//                    }
+//                });
 
 //        // TODO refactor to use Observable
 //        Profile profile = profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).blockingGet();
 
-        Maybe<Trade> verifiedCompletedTrade = Maybe.empty();
+//        Maybe<Trade> verifiedCompletedTrade = Maybe.empty();
 
-        // confirm payout tx
-        String txHash = completedTrade.getPayoutTxHash();
-        String toAddress = completedTrade.getBuyerPayoutAddress();
+    // confirm payout tx
+//        String txHash = completing.getPayoutTxHash();
+//        String toAddress = completing.getBuyerPayoutAddress();
+//
+//        // if arbitrated refund to seller, verify outputs to refund address
+//        if (completing.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND) ||
+//                completing.getPayoutReason().equals(BUYER_SELLER_REFUND)) {
+//            toAddress = completing.getRefundAddress();
+//        }
 
-        // if arbitrated refund to seller, verify outputs to refund address
-        if (completedTrade.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND) ||
-                completedTrade.getPayoutReason().equals(BUYER_SELLER_REFUND)) {
-            toAddress = completedTrade.getRefundAddress();
-        }
-
-        Boolean zeroConfOK = false;
-        PayoutCompleted.Reason payoutReason = completedTrade.getPayoutReason();
+//        Boolean zeroConfOK = false;
+//        PayoutCompleted.Reason payoutReason = completing.getPayoutReason();
 //        Trade.Role tradeRole = completedTrade.role(profile.getPubKey(), profile.isArbitrator());
 //        if ((payoutReason.equals(SELLER_BUYER_PAYOUT) && tradeRole.equals(Trade.Role.SELLER)) ||
 //                (payoutReason.equals(BUYER_SELLER_REFUND) && tradeRole.equals(Trade.Role.BUYER)) ||
@@ -111,35 +125,35 @@ public abstract class TradeProtocol {
 //            log.error("Tx not found for PayoutCompleted.");
 //        }
 
-        return verifiedCompletedTrade;
-    }
+//        return verifiedCompletedTrade;
+//    }
 
-    protected void requestArbitrate(Trade currentTrade, ArbitrateRequest.Reason reason) {
+    protected void requestArbitrate(Trade trade, ArbitrateRequest.Reason reason) {
 
-        if (currentTrade.status().equals(FUNDED) || currentTrade.status().equals(PAID)) {
+//        if (trade.status().equals(FUNDED) || trade.status().equals(PAID)) {
 
-            ArbitrateRequest arbitrateRequest = new ArbitrateRequest(reason);
+        ArbitrateRequest arbitrateRequest = new ArbitrateRequest(reason);
 
-            Trade arbitratingTrade = Trade.builder()
-                    .escrowAddress(currentTrade.getEscrowAddress())
-                    .sellOffer(currentTrade.sellOffer())
-                    .buyRequest(currentTrade.buyRequest())
-                    .paymentRequest(currentTrade.paymentRequest())
-                    .payoutRequest(currentTrade.payoutRequest())
-                    .arbitrateRequest(arbitrateRequest)
-                    .build();
+        Trade arbitratingTrade = Trade.builder()
+                .escrowAddress(trade.getEscrowAddress())
+                .sellOffer(trade.sellOffer())
+                .buyRequest(trade.buyRequest())
+                .paymentRequest(trade.paymentRequest())
+                .payoutRequest(trade.payoutRequest())
+                .arbitrateRequest(arbitrateRequest)
+                .build();
 
 //            tradeService.put(arbitratingTrade).subscribe();
-        }
+//        }
     }
 
-    public Maybe<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
+    public Maybe<Trade> handleArbitrating(Trade trade, Trade receivedTrade) {
 
         // TODO handle unexpected status
-        if (currentTrade.status().equals(FUNDED) || currentTrade.status().equals(PAID)) {
-            return Maybe.just(arbitratingTrade);
-        } else {
-            return Maybe.empty();
-        }
+//        if (trade.status().equals(FUNDED) || trade.status().equals(PAID)) {
+//            return Maybe.just(receivedTrade);
+//        } else {
+        return Maybe.just(trade);
+//        }
     }
 }

@@ -5,7 +5,6 @@ import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
@@ -14,7 +13,6 @@ import org.bitcoinj.core.Address;
 import java.math.BigDecimal;
 
 import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
-import static com.bytabit.mobile.trade.model.Trade.Status.CREATED;
 
 public class BuyerProtocol extends TradeProtocol {
 
@@ -35,99 +33,46 @@ public class BuyerProtocol extends TradeProtocol {
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
                 .doOnSuccess(t -> walletManager.createEscrowWallet(t.getEscrowAddress()).subscribe().dispose());
-
-        //.flatMap(t -> tradeService.put(t).toObservable());
-
-//        Single<Trade> createdTrade = Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getFreshBase58AuthPubKey(), walletManager.getDepositAddress(),
-//                (buyerProfile, buyerEscrowPubKey, depositAddress) -> {
-//                    String buyerPayoutAddress = depositAddress.toBase58();
-//
-//                    // TODO input validation
-//                    BuyRequest buyRequest = new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfile.getPubKey(), buyerPayoutAddress);
-//
-//                    // create escrow address
-//                    String tradeEscrowAddress = WalletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(),
-//                            sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey);
-//
-//                    // create trade
-//                    return Trade.builder()
-//                            .sellOffer(sellOffer)
-//                            .escrowAddress(tradeEscrowAddress)
-//                            .buyRequest(buyRequest)
-//                            .build();
-//                });
-
-//        return createdTrade.flatMap(t -> tradeService.put(t.getEscrowAddress(), t));
-//        return null;
     }
 
     // 1.B: create trade, post created trade
     @Override
-    public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
+    public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        return Maybe.just(createdTrade);
+        // TODO handle seller canceling created trade
+        Maybe<Trade> updatedTrade = Maybe.empty();
+
+        if (receivedTrade.hasPaymentRequest()) {
+            trade.paymentRequest(receivedTrade.paymentRequest());
+            updatedTrade = Maybe.just(trade);
+        }
+        return updatedTrade;
     }
 
     // 2.B: buyer receives payment request, confirm funding tx
     @Override
-    public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundingTrade) {
+    public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
 
-        //Maybe<Trade> createdTrade = readTrade(fundedTrade.getEscrowAddress());
+        Maybe<Trade> updatedTrade = Maybe.empty();
 
-        Maybe<Trade> verifiedFundingTrade = Maybe.empty();
-
-        if (currentTrade.status().equals(CREATED)) {
-            Maybe<TransactionWithAmt> tx = walletManager.getEscrowTransactionWithAmt(fundingTrade.getEscrowAddress(), fundingTrade.getFundingTxHash());
-
-            // TODO validate all details match currentTrade
-            // TODO update currentTrade with payment details from received trade
-            verifiedFundingTrade = Maybe.just(fundingTrade);
+        if (receivedTrade.hasArbitrateRequest()) {
+            trade.arbitrateRequest(receivedTrade.arbitrateRequest());
+            updatedTrade = Maybe.just(trade);
         }
 
-        return verifiedFundingTrade;
+        return updatedTrade;
     }
 
     // 3.B: buyer sends payment to seller and post payout request
-    public Maybe<Trade> sendPayment(Trade fundedTrade, String paymentReference) {
+    public Maybe<Trade> sendPayment(Trade trade, String paymentReference) {
 
-        Maybe<Trade> paidTrade = Maybe.empty();
+        // 1. create payout request with buyer payout signature
 
-        if (Trade.Status.FUNDED.equals(fundedTrade.status())) {
-
-            // 1. create payout request with buyer payout signature
-            //Transaction fundingTx = fundedTrade.fundingTransactionWithAmt().
-
-            if (fundedTrade.fundingTransactionWithAmt() != null) {
-                paidTrade = walletManager.getPayoutSignature(fundedTrade)
-                        .observeOn(Schedulers.io())
-                        .subscribeOn(Schedulers.io())
-                        .map(payoutSignature -> {
-                            PayoutRequest payoutRequest = new PayoutRequest(paymentReference, payoutSignature);
-
-                            // 3. post payout request to server
-//                try {
-                            return Trade.builder()
-                                    .escrowAddress(fundedTrade.getEscrowAddress())
-                                    .sellOffer(fundedTrade.sellOffer())
-                                    .buyRequest(fundedTrade.buyRequest())
-                                    .paymentRequest(fundedTrade.paymentRequest())
-                                    .payoutRequest(payoutRequest)
-                                    .build();
-                        }).toMaybe();
-
-                //tradeService.put(paidTrade.getEscrowAddress(), paidTrade).subscribe();
-
-//                } catch (IOException e) {
-//                    log.error("Can't put paid trade to server.");
-//                }
-            } else {
-                //log.error("Funding transaction not found for payout request.");
-                //return Observable.empty();
-            }
-
-        }
-
-        return paidTrade;
+        return walletManager.getPayoutSignature(trade)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .map(payoutSignature -> new PayoutRequest(paymentReference, payoutSignature))
+                .map(trade::payoutRequest).toMaybe();
     }
 
     public void cancelTrade(Trade fundedTrade) {

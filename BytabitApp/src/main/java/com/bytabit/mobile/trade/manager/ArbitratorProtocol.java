@@ -11,7 +11,7 @@ public class ArbitratorProtocol extends TradeProtocol {
     }
 
     @Override
-    public Maybe<Trade> handleCreated(Trade currentTrade, Trade createdTrade) {
+    public Maybe<Trade> handleCreated(Trade currentTrade, Trade receivedTrade) {
         return Maybe.empty();
     }
 
@@ -21,7 +21,7 @@ public class ArbitratorProtocol extends TradeProtocol {
 //    }
 
     @Override
-    public Maybe<Trade> handleFunding(Trade currentTrade, Trade fundedTrade) {
+    public Maybe<Trade> handleFunded(Trade currentTrade, Trade fundedTrade) {
         return Maybe.empty();
     }
 
@@ -31,7 +31,7 @@ public class ArbitratorProtocol extends TradeProtocol {
     }
 
     @Override
-    public Maybe<Trade> handleArbitrating(Trade currentTrade, Trade arbitratingTrade) {
+    public Maybe<Trade> handleArbitrating(Trade trade, Trade receivedTrade) {
 
         // TODO handle unexpected status
 //        if (currentTrade == null) {
@@ -46,20 +46,20 @@ public class ArbitratorProtocol extends TradeProtocol {
         return Maybe.empty();
     }
 
-    @Override
-    public Maybe<Trade> handleCompleted(Trade currentTrade, Trade completedTrade) {
-
-        // TODO don't do this way
-        //Trade currentTrade = readTrade(completedTrade.getEscrowAddress()).blockingGet();
-
-//        if (completedTrade.getPayoutReason().equals(ARBITRATOR_BUYER_PAYOUT) ||
-//                completedTrade.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND)) {
-//            return super.handleCompleted(completedTrade);
-//        } else {
-//            return Observable.just(completedTrade);
-//        }
-        return Maybe.empty();
-    }
+//    @Override
+//    public Maybe<Trade> handleCompleting(Trade currentTrade, Trade completing) {
+//
+//        // TODO don't do this way
+//        //Trade currentTrade = readTrade(completedTrade.getEscrowAddress()).blockingGet();
+//
+////        if (completedTrade.getPayoutReason().equals(ARBITRATOR_BUYER_PAYOUT) ||
+////                completedTrade.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND)) {
+////            return super.handleCompleting(completedTrade);
+////        } else {
+////            return Observable.just(completedTrade);
+////        }
+//        return Maybe.empty();
+//    }
 
     public void refundSeller(Trade currentTrade) {
 
