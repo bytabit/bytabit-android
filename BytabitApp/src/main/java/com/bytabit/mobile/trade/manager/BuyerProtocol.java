@@ -32,7 +32,7 @@ public class BuyerProtocol extends TradeProtocol {
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
-                .doOnSuccess(t -> walletManager.createEscrowWallet(t.getEscrowAddress()).subscribe().dispose());
+                .doOnSuccess(t -> walletManager.createEscrowWallet(t.getEscrowAddress()).subscribe());
     }
 
     // 1.B: create trade, post created trade
@@ -46,6 +46,7 @@ public class BuyerProtocol extends TradeProtocol {
             trade.paymentRequest(receivedTrade.paymentRequest());
             updatedTrade = Maybe.just(trade);
         }
+
         return updatedTrade;
     }
 
@@ -53,7 +54,7 @@ public class BuyerProtocol extends TradeProtocol {
     @Override
     public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
 
-        Maybe<Trade> updatedTrade = Maybe.empty();
+        Maybe<Trade> updatedTrade = Maybe.just(trade);
 
         if (receivedTrade.hasArbitrateRequest()) {
             trade.arbitrateRequest(receivedTrade.arbitrateRequest());

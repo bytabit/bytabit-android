@@ -93,7 +93,7 @@ public class OfferManager {
     }
 
     public void deleteOffer(String sellerEscrowPubKey) {
-        sellOfferService.delete(sellerEscrowPubKey).toObservable()
+        sellOfferService.delete(sellerEscrowPubKey)
                 .subscribe(removedOffer::onNext);
     }
 
@@ -124,7 +124,6 @@ public class OfferManager {
 
     public void createTrade(BigDecimal btcAmount) {
         getLastSelectedOffer()
-                .subscribe(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount))
-                .dispose();
+                .subscribe(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount));
     }
 }

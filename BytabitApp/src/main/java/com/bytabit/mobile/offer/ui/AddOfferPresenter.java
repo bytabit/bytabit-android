@@ -114,7 +114,6 @@ public class AddOfferPresenter {
                     BigDecimal price = new BigDecimal(btcPriceTextField.getText());
                     offerManager.createOffer(currencyCode, paymentMethod, arbitratorProfilePubKey, minAmount, maxAmount, price);
                     MobileApplication.getInstance().switchToPreviousView();
-
                 });
 
         JavaFxObservable.changesOf(currencyChoiceBox.getSelectionModel().selectedItemProperty())

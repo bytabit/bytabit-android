@@ -1,6 +1,5 @@
 package com.bytabit.mobile.profile.ui;
 
-import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -12,6 +11,7 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
 import org.slf4j.Logger;
@@ -39,15 +39,18 @@ public class ProfilePresenter {
     @FXML
     private TextField phoneNumTextField;
 
+    @FXML
+    private Button saveProfileButton;
+
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     public void initialize() {
 
-        JavaFxObservable.changesOf(profileView.showingProperty())
+        JavaFxObservable.actionEventsOf(saveProfileButton)
+                .doOnNext(a -> profileManager.updateMyProfile(getProfile()))
                 .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .filter(c -> !c.getNewVal())
-                .subscribe(c -> profileManager.updateMyProfile(getProfile()));
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(a -> MobileApplication.getInstance().switchToPreviousView());
 
         JavaFxObservable.changesOf(profileView.showingProperty())
                 .filter(Change::getNewVal)
@@ -67,7 +70,7 @@ public class ProfilePresenter {
 
     private void setAppBar() {
         AppBar appBar = MobileApplication.getInstance().getAppBar();
-        appBar.setNavIcon(MaterialDesignIcon.MENU.button(e -> MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
+        appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
         appBar.setTitleText("Profile");
     }
 

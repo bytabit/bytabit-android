@@ -26,7 +26,6 @@ public class SellerProtocol extends TradeProtocol {
     @Override
     public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        // TODO verify no escrow wallet created or trade already funded
         return walletManager.createEscrowWallet(trade.getEscrowAddress())
                 // fund escrow and create paymentRequest
                 .flatMap(ea -> fundEscrow(trade))
@@ -36,8 +35,6 @@ public class SellerProtocol extends TradeProtocol {
 
     // 2.S: seller fund escrow and post payment request
     private Maybe<PaymentRequest> fundEscrow(Trade trade) {
-
-        // TODO verify escrow not yet funded ?
 
         // 1. fund escrow
         Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
@@ -67,7 +64,7 @@ public class SellerProtocol extends TradeProtocol {
     @Override
     public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
 
-        Maybe<Trade> updatedTrade = Maybe.empty();
+        Maybe<Trade> updatedTrade = Maybe.just(trade);
 
         if (receivedTrade.hasPayoutRequest()) {
             trade.payoutRequest(receivedTrade.payoutRequest());
@@ -91,7 +88,6 @@ public class SellerProtocol extends TradeProtocol {
     public Maybe<Trade> confirmPaymentReceived(Trade trade) {
 
         // 1. sign and broadcast payout tx
-        //try {
         Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade);
 
         // 2. confirm payout tx and create payout completed

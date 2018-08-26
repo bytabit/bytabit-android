@@ -57,6 +57,8 @@ public class WalletManager {
     private final Context btcContext;
 
     private Single<Wallet> tradeWallet;
+    private Single<File> blockStoreFile;
+    private Single<BlockStore> blockStore;
     private Single<PeerGroup> peerGroup;
 
     private Observable<Double> downloadProgress;
@@ -76,6 +78,10 @@ public class WalletManager {
 
     @PostConstruct
     public void initialize() {
+
+        // block store file checked during trade wallet creation
+
+        blockStoreFile = Single.just(new File(AppConfig.getPrivateStorage(), "bytabit.spvchain")).cache();
 
         // create trade wallet
 
@@ -245,9 +251,7 @@ public class WalletManager {
 
         // create block store
 
-        Single<File> blockStoreFile = Single.just(new File(AppConfig.getPrivateStorage(), "bytabit.spvchain"));
-
-        Single<BlockStore> blockStore = blockStoreFile.map(bsf -> {
+        blockStore = blockStoreFile.map(bsf -> {
             BlockStore bs = new SPVBlockStore(netParams, bsf);
             bs.getChainHead(); // detect corruptions as early as possible
             return bs;
@@ -502,7 +506,7 @@ public class WalletManager {
 //                .observeOn(Schedulers.io())
 //                .subscribeOn(Schedulers.io()).share();
 
-        allEscrowWallets.subscribe(w -> log.debug("escrow wallets: " + w.toString()));
+        allEscrowWallets.subscribe();//w -> log.debug("escrow wallets: " + w.toString()));
     }
 
     public Observable<Double> getDownloadProgress() {
@@ -553,7 +557,7 @@ public class WalletManager {
 
     public Observable<TransactionWithAmt> getUpdatedEscrowWalletTx() {
         return updatedEscrowWalletTx
-                .doOnNext(tx -> log.debug("Updated Escrow Wallet Tx: {}", tx))
+                .doOnNext(tx -> log.debug("Updated Escrow Wallet Tx: {}", tx.toString()))
                 .share();
     }
 
@@ -773,25 +777,29 @@ public class WalletManager {
         if (walletFile.exists()) {
             try {
                 wallet = loadWallet(walletFile);
-//                if (!blockStoreFileExists) {
-//                    wallet.reset();
-//                }
+                // TODO don't use blockingGet
+                if (!blockStoreFile.blockingGet().exists()) {
+                    wallet.reset();
+                }
             } catch (FileNotFoundException | UnreadableWalletException e) {
-//                try {
-                wallet = loadWallet(walletBackupFile);
-                wallet.reset();
-                saveWallet(wallet, walletFile);
-                // have to remove blockstore file so wallet will be reloaded
-//                    if (blockStoreFileExists) {
-//                        LOG.debug("Removed blockstore file: {}", blockStoreFile.getName());
-//                        blockStoreFile.delete();
-//                    }
-//                } catch (FileNotFoundException | UnreadableWalletException e1) {
-//                    LOG.error("Unable to load backup wallet: {}", walletBackupFile.getName());
-//                    throw new RuntimeException(e1);
-//                }
+                try {
+                    wallet = loadWallet(walletBackupFile);
+                    wallet.reset();
+                    log.debug("Restore wallet from backup (" + e.getMessage() + "): " + walletBackupFile.toString());
+                    saveWallet(wallet, walletFile);
+                    // have to remove blockstore file so wallet will be reloaded
+                    if (blockStoreFile.blockingGet().exists()) {
+                        log.debug("Removed blockstore file: {}", blockStoreFile.blockingGet().getName());
+                        blockStoreFile.blockingGet().delete();
+                    }
+                } catch (FileNotFoundException | UnreadableWalletException e1) {
+                    log.error("Unable to load backup wallet: {}", walletBackupFile.getName());
+                    throw new RuntimeException(e1);
+                }
             }
+//        }
         } else {
+            log.debug("Create new wallet: " + walletFile.toString());
             // create new wallet
             wallet = new Wallet(netParams);
             // save new wallet
@@ -954,6 +962,7 @@ public class WalletManager {
 //    }
 
     private String getFreshBase58ReceivePubKey(Wallet wallet) {
+        Context.propagate(btcContext);
         return Base58.encode(wallet.freshKey(KeyChain.KeyPurpose.RECEIVE_FUNDS).getPubKey());
     }
 
@@ -1035,10 +1044,19 @@ public class WalletManager {
 
     private String getWatchedOutputAddress(Transaction tx, Wallet wallet) {
 
+        Address address = null;
+        // TODO find a more elegant way to determine if this is a funding or payout escrow transaction
+        if (tx.getOutputs().size() == 1) {
+            TransactionOutput output = tx.getOutputs().get(0);
+            address = output.getAddressFromP2PKHScript(netParams);
+            if (address != null) {
+                return address.toBase58();
+            }
+        }
         List<String> watchedOutputAddresses = new ArrayList<>();
         for (TransactionOutput output : tx.getOutputs()) {
             Script script = new Script(output.getScriptBytes());
-            Address address = output.getAddressFromP2PKHScript(netParams);
+            address = output.getAddressFromP2PKHScript(netParams);
             if (address != null && wallet.isWatchedScript(script)) {
                 watchedOutputAddresses.add(address.toBase58());
             } else {
@@ -1113,11 +1131,13 @@ public class WalletManager {
         return getPayoutSignature(fundedTrade, fundedTrade.fundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
     }
 
-    public Single<String> getRefundSignature(Trade trade, Transaction fundingTx, Address sellerRefundAddress) {
+    public Single<String> getRefundSignature(Trade trade, Transaction
+            fundingTx, Address sellerRefundAddress) {
         return getPayoutSignature(trade, fundingTx, sellerRefundAddress);
     }
 
-    private Single<String> getPayoutSignature(Trade trade, Transaction fundingTx, Address payoutAddress) {
+    private Single<String> getPayoutSignature(Trade trade, Transaction
+            fundingTx, Address payoutAddress) {
         Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
@@ -1300,6 +1320,7 @@ public class WalletManager {
 
         return getEscrowWallet(trade.getEscrowAddress())
                 .zipWith(peerGroup.toMaybe(), (ew, pg) -> {
+                    Context.propagate(btcContext);
                     ew.commitTx(payoutTx);
                     pg.broadcastTransaction(payoutTx);
                     return payoutTx.getHash().toString();
@@ -1446,7 +1467,7 @@ public class WalletManager {
 //        return tradeWalletTransactionResults;
 //    }
 
-    // Wallet Action classes
+// Wallet Action classes
 
     //    public interface WalletAction extends Event {
 //    }

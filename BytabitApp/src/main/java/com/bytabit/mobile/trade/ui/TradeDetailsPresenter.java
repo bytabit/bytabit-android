@@ -134,14 +134,18 @@ public class TradeDetailsPresenter {
         JavaFxObservable.actionEventsOf(paymentSentButton)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
+                .subscribe(ae -> {
                     tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get());
+                    MobileApplication.getInstance().switchToPreviousView();
                 });
 
         JavaFxObservable.actionEventsOf(paymentReceivedButton)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> tradeManager.sellerConfirmPaymentReceived());
+                .subscribe(actionEvent -> {
+                    tradeManager.sellerConfirmPaymentReceived();
+                    MobileApplication.getInstance().switchToPreviousView();
+                });
 
 //        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
 //                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
