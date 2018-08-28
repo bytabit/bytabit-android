@@ -55,7 +55,7 @@ processResources {
 dependencies {
     compile 'com.gluonhq:charm:4.3.7'
     compile 'com.gluonhq:glisten-afterburner:1.2.1'
-    compile "org.bitcoinj:bitcoinj-core:0.14.4"
+    compile "org.bitcoinj:bitcoinj-core:0.14.7"
     compile "com.madgag.spongycastle:prov:1.51.0.0"
     compile "joda-time:joda-time:2.9.1"
     compile 'io.reactivex.rxjava2:rxjavafx:2.2.0'
