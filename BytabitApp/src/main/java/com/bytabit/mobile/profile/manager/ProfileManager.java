@@ -44,7 +44,7 @@ public class ProfileManager {
     public void updateMyProfile(Profile newProfile) {
         loadOrCreateMyProfile().map(oldProfile -> Profile.builder()
                 .pubKey(oldProfile.getPubKey())
-                .arbitrator(newProfile.isArbitrator())
+                .arbitrator(newProfile.getIsArbitrator())
                 .userName(newProfile.getUserName())
                 .phoneNum(newProfile.getPhoneNum())
                 .build())
@@ -55,7 +55,7 @@ public class ProfileManager {
 
     private Profile storeMyProfile(Profile profile) {
 
-        storageManager.store(PROFILE_ISARBITRATOR, Boolean.valueOf(profile.isArbitrator()).toString());
+        storageManager.store(PROFILE_ISARBITRATOR, Boolean.valueOf(profile.getIsArbitrator()).toString());
         storageManager.store(PROFILE_USERNAME, profile.getUserName());
         storageManager.store(PROFILE_PHONENUM, profile.getPhoneNum());
         return profile;
@@ -71,7 +71,7 @@ public class ProfileManager {
                     .map(this::getProfile)
                     .doOnSuccess(p -> log.debug("Load Profile: {}", p));
         } else {
-            return walletManager.getTradeWalletProfilePubKey()
+            return walletManager.getTradeWalletProfilePubKey().toSingle()
                     .subscribeOn(Schedulers.io())
                     .observeOn(Schedulers.io())
                     .doOnSuccess(pubKey -> storageManager.store(PROFILE_PUBKEY, pubKey))

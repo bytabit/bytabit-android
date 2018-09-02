@@ -15,11 +15,6 @@ public class ArbitratorProtocol extends TradeProtocol {
         return Maybe.empty();
     }
 
-//    @Override
-//    public Trade handleCreated(BuyerCreated created) {
-//        return null;
-//    }
-
     @Override
     public Maybe<Trade> handleFunded(Trade currentTrade, Trade fundedTrade) {
         return Maybe.empty();

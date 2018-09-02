@@ -23,9 +23,9 @@ public class BuyerProtocol extends TradeProtocol {
     // 1.B: create trade, post created trade
     public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
 
-        return Single.zip(walletManager.getTradeWalletEscrowPubKey(),
+        return Single.zip(walletManager.getTradeWalletEscrowPubKey().toSingle(),
                 profileManager.loadOrCreateMyProfile().map(Profile::getPubKey),
-                walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
+                walletManager.getTradeWalletDepositAddress().map(Address::toBase58).toSingle(),
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         Trade.builder()
                                 .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
@@ -73,7 +73,7 @@ public class BuyerProtocol extends TradeProtocol {
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .map(payoutSignature -> new PayoutRequest(paymentReference, payoutSignature))
-                .map(trade::payoutRequest).toMaybe();
+                .map(trade::payoutRequest);
     }
 
     public void cancelTrade(Trade fundedTrade) {

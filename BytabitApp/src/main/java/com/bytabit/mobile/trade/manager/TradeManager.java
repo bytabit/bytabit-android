@@ -53,25 +53,51 @@ public class TradeManager {
 
     private final TradeService tradeService;
 
-    private final PublishSubject<Trade> createdTradeSubject = PublishSubject.create();
+    private final PublishSubject<Trade> createdTradeSubject;
 
-    private final ConnectableObservable<Trade> createdTrade = createdTradeSubject.replay();
+    private final ConnectableObservable<Trade> createdTrade;
 
-    private final PublishSubject<Trade> updatedTradeSubject = PublishSubject.create();
+    private final PublishSubject<Trade> updatedTradeSubject;
 
-    private final Observable<Trade> updatedTrade = updatedTradeSubject.share();
+    private final Observable<Trade> updatedTrade;
 
-    private final PublishSubject<Trade> selectedTradeSubject = PublishSubject.create();
+    private final PublishSubject<Trade> selectedTradeSubject;
 
-    private final Observable<Trade> selectedTrade = selectedTradeSubject.share();
+    private final Observable<Trade> selectedTrade;
 
-    private final ConnectableObservable<Trade> lastSelectedTrade = selectedTrade.replay(1);
+    private final ConnectableObservable<Trade> lastSelectedTrade;
 
     public final static String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
     public TradeManager() {
         tradeService = new TradeService();
+
+        createdTradeSubject = PublishSubject.create();
+
+        createdTrade = createdTradeSubject
+                .doOnSubscribe(d -> log.debug("createdTrade: subscribe"))
+                .doOnNext(ct -> log.debug("createdTrade: {}", ct))
+                .replay();
+
+        updatedTradeSubject = PublishSubject.create();
+
+        updatedTrade = updatedTradeSubject
+                .doOnSubscribe(d -> log.debug("updatedTrade: subscribe"))
+                .doOnNext(ut -> log.debug("updatedTrade: {}", ut))
+                .share();
+
+        selectedTradeSubject = PublishSubject.create();
+
+        selectedTrade = selectedTradeSubject
+                .doOnSubscribe(d -> log.debug("selectedTrade: subscribe"))
+                .doOnNext(st -> log.debug("selectedTrade: {}", st))
+                .share();
+
+        lastSelectedTrade = selectedTrade
+                .doOnSubscribe(d -> log.debug("lastSelectedTrade: subscribe"))
+                .doOnNext(ct -> log.debug("lastSelectedTrade: {}", ct))
+                .replay(1);
     }
 
     @PostConstruct
@@ -82,10 +108,12 @@ public class TradeManager {
         createdTrade.connect();
         lastSelectedTrade.connect();
 
-        Maybe<Double> walletSynced = walletManager.getDownloadProgress()
+        Maybe<Double> walletSynced = walletManager.getDownloadProgress().autoConnect()
                 .filter(p -> p == 1)
                 .firstElement()
                 .observeOn(Schedulers.io())
+                .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
+                .doOnSuccess(p -> log.debug("walletSynced: {}", p))
                 .cache();
 
         // get stored trades after download progress is 100% loaded
@@ -449,7 +477,7 @@ public class TradeManager {
 //            Trade currentTrade = selectedTrade.getValue();
 //
 //            String profilePubKey = profile.getPubKey();
-//            Boolean profileIsArbitrator = profile.isArbitrator();
+//            Boolean profileIsArbitrator = profile.getIsArbitrator();
 //
 //            Trade.Role role = currentTrade.role(profilePubKey, profileIsArbitrator);
 //            if (role.equals(SELLER)) {
@@ -491,7 +519,7 @@ public class TradeManager {
                 .toSingle(createdFromReceivedTrade(receivedTrade));
 
         Single<Trade> currentTradeWithRole = currentTrade
-                .map(ct -> setRole(ct, profile.getPubKey(), profile.isArbitrator()));
+                .map(ct -> setRole(ct, profile.getPubKey(), profile.getIsArbitrator()));
 
         Single<Trade> currentTradeWithTx = currentTradeWithRole
                 .flatMap(this::updateTradeTx);
@@ -607,7 +635,7 @@ public class TradeManager {
 //        return currentTrade.flatMap(trade -> {
 //
 //            String profilePubKey = profile.getPubKey();
-//            Boolean profileIsArbitrator = profile.isArbitrator();
+//            Boolean profileIsArbitrator = profile.getIsArbitrator();
 //
 //            Trade tradeWithRole = setRole(trade, profilePubKey, profileIsArbitrator);
 //
@@ -617,7 +645,7 @@ public class TradeManager {
 //
 //            return tradeProtocol.handleUpdatedEscrowTx(trade, transactionWithAmt);
 //        });
-
+//
 //        // if FUNDING transaction updated update trade status
 //        Observable<Trade> updatedTradeWithFundingTx = currentTrade
 //                .filter(t -> t.getFundingTxHash().equals(transactionWithAmt.getHash()))
@@ -746,7 +774,7 @@ public class TradeManager {
 //    private Observable<TradeReceived> receiveTrade(Profile profile, Trade receivedTrade) {
 //
 //        return Observable.create(source -> {
-//                    receivedTrade.role(profile.getPubKey(), profile.isArbitrator());
+//                    receivedTrade.role(profile.getPubKey(), profile.getIsArbitrator());
 //                    String escrowAddress = receivedTrade.getEscrowAddress();
 //                    if (escrowAddress != null) {
 //                        try {
@@ -771,7 +799,7 @@ public class TradeManager {
 //    private void emitTradeEvents(ObservableEmitter<TradeEvent> source, Profile profile, Trade currentTrade) {
 //
 //        String escrowAddress = currentTrade.getEscrowAddress();
-//        Trade.Role role = currentTrade.role(profile.getPubKey(), profile.isArbitrator());
+//        Trade.Role role = currentTrade.role(profile.getPubKey(), profile.getIsArbitrator());
 //
 //        source.onNext(new com.bytabit.mobile.currentTrade.evt.BuyerCreated(escrowAddress, role, currentTrade.sellOffer(), currentTrade.buyRequest()));
 //        if (currentTrade.status().compareTo(Trade.Status.FUNDING) >= 0) {

@@ -462,9 +462,9 @@ public class Trade {
         return new PayoutCompleted(this.payoutTxHash, this.payoutReason);
     }
 
-//    public Trade role(String profilePubKey, Boolean isArbitrator) {
+//    public Trade role(String profilePubKey, Boolean getIsArbitrator) {
 //
-//        if (!isArbitrator) {
+//        if (!getIsArbitrator) {
 //            if (getSellerProfilePubKey().equals(profilePubKey)) {
 //                this.role = SELLER;
 //            } else if (getBuyerProfilePubKey().equals(profilePubKey)) {

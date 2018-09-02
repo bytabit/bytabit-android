@@ -112,4 +112,21 @@ public class TransactionWithAmt {
     public int hashCode() {
         return hash != null ? hash.hashCode() : 0;
     }
+
+    @Override
+    public String toString() {
+        final StringBuffer sb = new StringBuffer("TransactionWithAmt{");
+        sb.append("hash='").append(hash).append('\'');
+        sb.append(", confidenceType='").append(confidenceType).append('\'');
+        sb.append(", depth=").append(depth);
+        sb.append(", date=").append(date);
+        sb.append(", memo='").append(memo).append('\'');
+        sb.append(", transactionAmt=").append(transactionAmt);
+        sb.append(", outputAddress='").append(outputAddress).append('\'');
+        sb.append(", inputTxHash='").append(inputTxHash).append('\'');
+        sb.append(", walletBalance=").append(walletBalance);
+        sb.append(", escrowAddress='").append(escrowAddress).append('\'');
+        sb.append('}');
+        return sb.toString();
+    }
 }

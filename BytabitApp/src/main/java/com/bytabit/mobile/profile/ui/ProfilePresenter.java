@@ -84,7 +84,7 @@ public class ProfilePresenter {
 
     private void setProfile(Profile profile) {
         pubKeyTextField.setText(profile.getPubKey());
-        arbitratorCheckbox.setSelected(profile.isArbitrator());
+        arbitratorCheckbox.setSelected(profile.getIsArbitrator());
         userNameTextField.setText(profile.getUserName());
         phoneNumTextField.setText(profile.getPhoneNum());
     }

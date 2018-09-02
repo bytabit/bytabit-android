@@ -182,7 +182,7 @@ public class AddOfferPresenter {
         profileManager.loadArbitratorProfiles()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .flatMap(pl -> Observable.fromIterable(pl).filter(Profile::isArbitrator).toList().toObservable())
+                .flatMap(pl -> Observable.fromIterable(pl).filter(Profile::getIsArbitrator).toList().toObservable())
                 .subscribe(al -> {
                     arbitratorChoiceBox.getItems().setAll(al);
                     Profile selected = arbitratorChoiceBox.getSelectionModel().getSelectedItem();

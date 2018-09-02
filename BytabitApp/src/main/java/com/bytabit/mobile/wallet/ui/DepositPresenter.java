@@ -56,7 +56,7 @@ public class DepositPresenter {
                 .filter(Change::getNewVal)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .flatMapSingle(showing -> walletManager.getTradeWalletDepositAddress())
+                .flatMapMaybe(showing -> walletManager.getTradeWalletDepositAddress())
                 .subscribe(this::showDepositAddress);
     }
 

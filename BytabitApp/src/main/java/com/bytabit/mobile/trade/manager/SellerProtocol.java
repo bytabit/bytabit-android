@@ -42,7 +42,7 @@ public class SellerProtocol extends TradeProtocol {
 
         // 2. create refund tx address and signature
 
-        Single<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress();
+        Single<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress().toSingle();
 
         Single<Profile> profile = profileManager.loadOrCreateMyProfile();
 
@@ -52,7 +52,7 @@ public class SellerProtocol extends TradeProtocol {
 
         return Maybe.zip(fundingTx, refundTxAddress.toMaybe(), profile.toMaybe(), (ftx, ra, p) -> {
 
-            Single<String> refundTxSignature = walletManager.getRefundSignature(trade, ftx, ra);
+            Single<String> refundTxSignature = walletManager.getRefundSignature(trade, ftx, ra).toSingle();
 
             // 3. create payment request
             return Single.zip(refundTxSignature, paymentDetails, (rs, pd) ->
