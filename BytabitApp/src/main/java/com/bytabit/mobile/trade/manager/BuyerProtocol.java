@@ -3,16 +3,16 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.BuyRequest;
+import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.bitcoinj.core.Address;
+import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
-
-import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_BTC;
 
 public class BuyerProtocol extends TradeProtocol {
 
@@ -28,11 +28,13 @@ public class BuyerProtocol extends TradeProtocol {
                 walletManager.getTradeWalletDepositAddress().map(Address::toBase58).toSingle(),
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         Trade.builder()
+                                .role(Trade.Role.BUYER)
                                 .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
+                                .createdTimestamp(LocalDateTime.now())
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
-                .doOnSuccess(t -> walletManager.createEscrowWallet(t.getEscrowAddress()).subscribe());
+                .doOnSuccess(t -> walletManager.createEscrowWallet(t.getEscrowAddress(), false).subscribe());
     }
 
     // 1.B: create trade, post created trade
@@ -76,40 +78,15 @@ public class BuyerProtocol extends TradeProtocol {
                 .map(trade::payoutRequest);
     }
 
-    public void cancelTrade(Trade fundedTrade) {
+    public Maybe<Trade> refundTrade(Trade trade) {
 
-//        if (fundedTrade.status().equals(FUNDED)) {
-//
-//            // 1. sign and broadcast refund tx
-//            try {
-//                String refundTxHash = walletManager.cancelEscrowToSeller(fundedTrade);
-//
-//                // 2. confirm refund tx and create payout completed
-//                PayoutCompleted payoutCompleted = new PayoutCompleted(refundTxHash, BUYER_SELLER_REFUND);
-//
-////                try {
-//                Trade canceledTrade = Trade.builder()
-//                        .escrowAddress(fundedTrade.getEscrowAddress())
-//                        .sellOffer(fundedTrade.sellOffer())
-//                        .buyRequest(fundedTrade.buyRequest())
-//                        .paymentRequest(fundedTrade.paymentRequest())
-//                        .payoutCompleted(payoutCompleted)
-//                        .build();
-//
-//                tradeService.put(canceledTrade.getEscrowAddress(), canceledTrade).subscribe();
-//
-////                } catch (IOException e) {
-////                    log.error("Can't post payout completed to server.", e);
-////                }
-//
-//            } catch (InsufficientMoneyException e) {
-//                // TODO notify user
-//                log.error("Insufficient funds to cancel escrow to seller.");
-//            }
-//        }
-    }
+        // 1. sign and broadcast payout tx
+        Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade);
 
-    public void requestArbitrate(Trade currentTrade) {
-        super.requestArbitrate(currentTrade, NO_BTC);
+        // 2. confirm refund tx and create payout completed
+        Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.BUYER_SELLER_REFUND));
+
+        // 5. post payout completed
+        return payoutCompleted.map(trade::payoutCompleted);
     }
 }

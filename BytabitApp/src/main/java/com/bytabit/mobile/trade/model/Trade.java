@@ -4,6 +4,7 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public class Trade {
 
     private String escrowAddress;
     private Role role;
+    private LocalDateTime createdTimestamp;
 
     // Sell Offer
     private String sellerEscrowPubKey;
@@ -93,7 +95,8 @@ public class Trade {
         return new TradeBuilder();
     }
 
-    Trade(String escrowAddress, Role role, String sellerEscrowPubKey, String sellerProfilePubKey,
+    Trade(String escrowAddress, Role role, LocalDateTime createdTimestamp,
+          String sellerEscrowPubKey, String sellerProfilePubKey,
           String arbitratorProfilePubKey, CurrencyCode currencyCode,
           PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount,
           BigDecimal price, String buyerEscrowPubKey, BigDecimal btcAmount,
@@ -105,6 +108,7 @@ public class Trade {
 
         this.escrowAddress = escrowAddress;
         this.role = role;
+        this.createdTimestamp = createdTimestamp;
         this.sellerEscrowPubKey = sellerEscrowPubKey;
         this.sellerProfilePubKey = sellerProfilePubKey;
         this.arbitratorProfilePubKey = arbitratorProfilePubKey;
@@ -134,6 +138,14 @@ public class Trade {
 
     public Role getRole() {
         return role;
+    }
+
+    public LocalDateTime createdTimestamp() {
+        return createdTimestamp;
+    }
+
+    public String getCreatedTimestamp() {
+        return createdTimestamp.toString();
     }
 
     public String getSellerEscrowPubKey() {
@@ -173,7 +185,7 @@ public class Trade {
     }
 
     public BigDecimal getBtcAmount() {
-        return btcAmount;
+        return btcAmount.stripTrailingZeros();
     }
 
     public String getBuyerProfilePubKey() {
@@ -226,6 +238,14 @@ public class Trade {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public void createdTimestamp(LocalDateTime createdTimestamp) {
+        this.createdTimestamp = createdTimestamp;
+    }
+
+    public void setCreatedTimestamp(String createdTimestamp) {
+        this.createdTimestamp = LocalDateTime.parse(createdTimestamp);
     }
 
     public void setSellerEscrowPubKey(String sellerEscrowPubKey) {
@@ -333,7 +353,7 @@ public class Trade {
         if (this.hasArbitrateRequest()) {
             status = ARBITRATING;
         }
-        if (status == PAID && this.getPayoutTxHash() != null) {
+        if ((status == PAID || status == ARBITRATING || status == CANCELING) && this.getPayoutTxHash() != null) {
             status = COMPLETING;
         }
         if (status == COMPLETING && this.payoutTransactionWithAmt() != null && this.payoutTransactionWithAmt().getDepth() > 0) {

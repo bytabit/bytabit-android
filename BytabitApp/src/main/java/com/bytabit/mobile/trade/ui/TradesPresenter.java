@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.Comparator;
 
 public class TradesPresenter {
 
@@ -43,7 +44,7 @@ public class TradesPresenter {
                 super.updateItem(t, empty);
                 if (t != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC @ %s %s per BTC", t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
+                    String amount = String.format("%s %s BTC @ %s %s", t.getRole(), t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
                     String details = String.format("%s for %s %s via %s", t.status(), t.getBtcAmount().multiply(t.getPrice()),
                             t.getCurrencyCode(), t.getPaymentMethod().displayName());
                     tile.textProperty().addAll(amount, details, t.getEscrowAddress());
@@ -55,6 +56,8 @@ public class TradesPresenter {
                 }
             }
         });
+
+        tradesListView.setComparator(Comparator.comparing(Trade::createdTimestamp));
 
         // setup event observables
 

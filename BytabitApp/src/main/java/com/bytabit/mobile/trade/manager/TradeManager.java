@@ -14,6 +14,7 @@ import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
+import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,8 +30,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
-import static com.bytabit.mobile.trade.model.Trade.Status.FUNDED;
-import static com.bytabit.mobile.trade.model.Trade.Status.PAID;
+import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
 public class TradeManager {
 
@@ -77,26 +77,26 @@ public class TradeManager {
 
         createdTrade = createdTradeSubject
                 .doOnSubscribe(d -> log.debug("createdTrade: subscribe"))
-                .doOnNext(ct -> log.debug("createdTrade: {}", ct))
+                .doOnNext(ct -> log.debug("createdTrade: {}", ct.getEscrowAddress()))
                 .replay();
 
         updatedTradeSubject = PublishSubject.create();
 
         updatedTrade = updatedTradeSubject
                 .doOnSubscribe(d -> log.debug("updatedTrade: subscribe"))
-                .doOnNext(ut -> log.debug("updatedTrade: {}", ut))
+                .doOnNext(ut -> log.debug("updatedTrade: {}", ut.getEscrowAddress()))
                 .share();
 
         selectedTradeSubject = PublishSubject.create();
 
         selectedTrade = selectedTradeSubject
                 .doOnSubscribe(d -> log.debug("selectedTrade: subscribe"))
-                .doOnNext(st -> log.debug("selectedTrade: {}", st))
+                .doOnNext(st -> log.debug("selectedTrade: {}", st.getEscrowAddress()))
                 .share();
 
         lastSelectedTrade = selectedTrade
                 .doOnSubscribe(d -> log.debug("lastSelectedTrade: subscribe"))
-                .doOnNext(ct -> log.debug("lastSelectedTrade: {}", ct))
+                .doOnNext(ct -> log.debug("lastSelectedTrade: {}", ct.getEscrowAddress()))
                 .replay(1);
     }
 
@@ -228,7 +228,7 @@ public class TradeManager {
 
     public Observable<Trade> getSelectedTrade() {
         return selectedTrade
-                .doOnNext(trade -> log.debug("Selected: {}", trade));
+                .doOnNext(trade -> log.debug("Selected: {}", trade.getEscrowAddress()));
     }
 
     public ConnectableObservable<Trade> getLastSelectedTrade() {
@@ -471,48 +471,56 @@ public class TradeManager {
                 .subscribe(updatedTradeSubject::onNext);
     }
 
-//    public void requestArbitrate() {
+    public void requestArbitrate() {
 
-//        profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
-//            Trade currentTrade = selectedTrade.getValue();
-//
-//            String profilePubKey = profile.getPubKey();
-//            Boolean profileIsArbitrator = profile.getIsArbitrator();
-//
-//            Trade.Role role = currentTrade.role(profilePubKey, profileIsArbitrator);
-//            if (role.equals(SELLER)) {
-//                sellerProtocol.requestArbitrate(currentTrade);
-//            } else if (role.equals(BUYER)) {
-//                buyerProtocol.requestArbitrate(currentTrade);
-//            }
-//        });
-//    }
+        getLastSelectedTrade().autoConnect()
+                .filter(trade -> trade.getRole().compareTo(ARBITRATOR) != 0)
+                .filter(trade -> trade.status().compareTo(CREATED) > 0)
+                .filter(trade -> trade.status().compareTo(ARBITRATING) < 0)
+                .firstElement().flatMap(trade -> getProtocol(trade).requestArbitrate(trade))
+                .flatMapSingle(this::writeTrade)
+                .flatMap(tradeService::put)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(updatedTradeSubject::onNext);
+    }
 
-//    public void arbitratorRefundSeller() {
-//        Trade currentTrade = selectedTrade.getValue();
-//        arbitratorProtocol.refundSeller(currentTrade);
-//    }
-//
-//    public void arbitratorPayoutBuyer() {
-//        Trade currentTrade = selectedTrade.getValue();
-//        arbitratorProtocol.payoutBuyer(currentTrade);
-//    }
-//
-//    public void buyerCancel() {
-//        Trade currentTrade = selectedTrade.getValue();
-//        buyerProtocol.cancelTrade(currentTrade);
-//    }
-//
-//    public void setSelectedTrade(Trade currentTrade) {
-//        Platform.runLater(() -> {
-//            selectedTrade.setValue(currentTrade);
-//        });
-//    }
+    public void arbitratorRefundSeller() {
+        getLastSelectedTrade().autoConnect()
+                .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
+                .filter(trade -> trade.status().compareTo(ARBITRATING) == 0)
+                .firstElement().flatMap(trade -> arbitratorProtocol.refundSeller(trade))
+                .flatMapSingle(this::writeTrade)
+                .flatMap(tradeService::put)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(updatedTradeSubject::onNext);
+    }
 
-    //    public Single<List<Trade>> singleTrades(String profilePubKey) {
-//        return tradeService.get(profilePubKey).retry().subscribeOn(Schedulers.io());
-//    }
-//
+    public void arbitratorPayoutBuyer() {
+        getLastSelectedTrade().autoConnect()
+                .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
+                .filter(trade -> trade.status().compareTo(ARBITRATING) == 0)
+                .firstElement().flatMap(trade -> arbitratorProtocol.payoutBuyer(trade))
+                .flatMapSingle(this::writeTrade)
+                .flatMap(tradeService::put)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(updatedTradeSubject::onNext);
+    }
+
+    public void cancelAndRefundSeller() {
+        getLastSelectedTrade().autoConnect()
+                .filter(trade -> trade.getRole().compareTo(BUYER) == 0)
+                .filter(trade -> trade.status().compareTo(FUNDED) == 0)
+                .firstElement().flatMap(trade -> buyerProtocol.refundTrade(trade))
+                .flatMapSingle(this::writeTrade)
+                .flatMap(tradeService::put)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(updatedTradeSubject::onNext);
+    }
+
     private Maybe<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
 
         Single<Trade> currentTrade = readTrade(receivedTrade.getEscrowAddress())
@@ -539,6 +547,7 @@ public class TradeManager {
 
         return Trade.builder()
                 .escrowAddress(escrowAddress)
+                .createdTimestamp(LocalDateTime.now())
                 .sellOffer(receivedTrade.sellOffer())
                 .buyRequest(receivedTrade.buyRequest())
                 .build();
@@ -628,42 +637,6 @@ public class TradeManager {
         return trade;
     }
 
-//    private Maybe<Trade> handleUpdatedEscrowTx(Profile profile, TransactionWithAmt transactionWithAmt) {
-//
-//        Maybe<Trade> currentTrade = readTrade(transactionWithAmt.getEscrowAddress());
-//
-//        return currentTrade.flatMap(trade -> {
-//
-//            String profilePubKey = profile.getPubKey();
-//            Boolean profileIsArbitrator = profile.getIsArbitrator();
-//
-//            Trade tradeWithRole = setRole(trade, profilePubKey, profileIsArbitrator);
-//
-//            TradeProtocol tradeProtocol = getProtocol(tradeWithRole);
-//
-//            //Observable<Trade> updatedTradeSubject = Observable.empty();
-//
-//            return tradeProtocol.handleUpdatedEscrowTx(trade, transactionWithAmt);
-//        });
-//
-//        // if FUNDING transaction updated update trade status
-//        Observable<Trade> updatedTradeWithFundingTx = currentTrade
-//                .filter(t -> t.getFundingTxHash().equals(transactionWithAmt.getHash()))
-//                .filter(t -> t.getBtcAmount().compareTo(transactionWithAmt.getTransactionBigDecimalAmt()) == 0)
-//                .toObservable()
-//                .flatMap(t -> {
-//                    Trade.Status oldStatus = t.status();
-//                    t.fundingTransactionWithAmt(transactionWithAmt);
-//                    if (oldStatus.compareTo(t.status()) < 0 && transactionWithAmt.getDepth() > 0) {
-//                        return writeTrade(t);
-//                    } else {
-//                        return Observable.just(t);
-//                    }
-//                });
-//
-//        return updatedTradeWithFundingTx;
-//    }
-
     TradeProtocol getProtocol(Trade trade) {
 
         Trade.Role role = trade.getRole();
@@ -678,143 +651,6 @@ public class TradeManager {
             throw new RuntimeException("Unable to determine trade protocol.");
         }
     }
-
-//    private Observable<Trade> writeTrade(Trade trade) {
-//
-//        return Observable.create(source -> {
-//            String tradePath = TRADES_PATH + trade.getEscrowAddress() + File.separator + "currentTrade.json";
-//
-//            try {
-//                File dir = new File(TRADES_PATH + trade.getEscrowAddress());
-//                if (!dir.exists()) {
-//                    dir.mkdirs();
-//                }
-//                FileWriter tradeWriter = new FileWriter(tradePath);
-//                tradeWriter.write(JSON.std.asString(trade));
-//                tradeWriter.flush();
-//
-//                //LOG.debug("Wrote local currentTrade: {}", currentTrade);
-//
-//            } catch (IOException ioe) {
-//                //LOG.error(ioe.getMessage());
-//                source.onError(ioe);
-//            }
-//            source.onNext(trade);
-//        });
-//    }
-//
-//    private Maybe<Trade> readTrade(String escrowAddress) {
-//
-//        return Maybe.create(source -> {
-//            try {
-//                File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
-//                if (tradeFile.exists()) {
-//                    FileReader tradeReader = new FileReader(tradeFile);
-//                    source.onSuccess(JSON.std.beanFrom(Trade.class, tradeReader));
-//                } else {
-//                    source.onComplete();
-//                }
-//            } catch (Exception ex) {
-//                source.onError(ex);
-//            }
-//        });
-//    }
-//    File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
-//        if (tradeFile.exists()) {
-//            FileReader tradeReader = new FileReader(tradeFile);
-//            return Maybe.just(JSON.std.beanFrom(Trade.class, tradeReader));
-//        } else {
-//            return Maybe.empty();
-//        }
-//    }
-
-//    private Observable<Trade> readTrades() {
-//
-//        return Observable.just(new File(TRADES_PATH))
-//                .map(tradesDir -> {
-//                    if (!tradesDir.exists()) {
-//                        tradesDir.mkdirs();
-//                    }
-//                    return tradesDir;
-//                })
-//                .flatMapIterable(tradesDir -> {
-//                    if (tradesDir.list() != null) {
-//                        return Arrays.asList(tradesDir.list());
-//                    } else {
-//                        return new ArrayList<>();
-//                    }
-//                })
-//                .flatMap(this::readTrade);
-//    }
-
-//        return Observable.create(source -> {
-//
-//                    // load stored trades
-//                    File tradesDir = new File(TRADES_PATH);
-//                    if (!tradesDir.exists()) {
-//                        tradesDir.mkdirs();
-//                    } else if (tradesDir.list() != null) {
-//                        for (String tradeId : tradesDir.list()) {
-//                            try {
-//                                File tradeFile = new File(TRADES_PATH + tradeId + File.separator + "currentTrade.json");
-//                                if (tradeFile.exists()) {
-//                                    FileReader tradeReader = new FileReader(tradeFile);
-//                                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
-//                                    source.onNext(trade);
-//                                }
-//                            } catch (IOException ioe) {
-//                                source.onError(ioe);
-//                            }
-//                        }
-//                    }
-//                    source.onComplete();
-//                }
-//        );
-
-//    private Observable<TradeReceived> receiveTrade(Profile profile, Trade receivedTrade) {
-//
-//        return Observable.create(source -> {
-//                    receivedTrade.role(profile.getPubKey(), profile.getIsArbitrator());
-//                    String escrowAddress = receivedTrade.getEscrowAddress();
-//                    if (escrowAddress != null) {
-//                        try {
-//                            File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
-//                            if (tradeFile.exists()) {
-//                                FileReader tradeReader = new FileReader(tradeFile);
-//                                Trade currentTrade = JSON.std.beanFrom(Trade.class, tradeReader);
-//                                source.onNext(new TradeReceived(currentTrade, receivedTrade));
-//                            } else if (receivedTrade.status().equals(CREATED)) {
-//                                source.onNext(new TradeReceived(null, receivedTrade));
-//                            }
-//                        } catch (IOException ioe) {
-//                            source.onError(ioe);
-//                        }
-//                    }
-//                    source.onComplete();
-//                }
-//        );
-//    }
-
-// convert currentTrade into stream of currentTrade events
-//    private void emitTradeEvents(ObservableEmitter<TradeEvent> source, Profile profile, Trade currentTrade) {
-//
-//        String escrowAddress = currentTrade.getEscrowAddress();
-//        Trade.Role role = currentTrade.role(profile.getPubKey(), profile.getIsArbitrator());
-//
-//        source.onNext(new com.bytabit.mobile.currentTrade.evt.BuyerCreated(escrowAddress, role, currentTrade.sellOffer(), currentTrade.buyRequest()));
-//        if (currentTrade.status().compareTo(Trade.Status.FUNDING) >= 0) {
-//            source.onNext(new Funded(escrowAddress, role, currentTrade.paymentRequest(), currentTrade.fundingTransactionWithAmt()));
-//        }
-//        if (currentTrade.status().compareTo(Trade.Status.PAID) >= 0) {
-//            source.onNext(new Paid(escrowAddress, role, currentTrade.payoutRequest()));
-//        }
-//        if (currentTrade.status().compareTo(Trade.Status.ARBITRATING) == 0) {
-//            source.onNext(new Arbitrating(escrowAddress, role, currentTrade.arbitrateRequest()));
-//        }
-//        if (currentTrade.status().compareTo(Trade.Status.COMPLETING) >= 0) {
-//            source.onNext(new Completed(escrowAddress, role, currentTrade.payoutCompleted(), currentTrade.payoutTransactionWithAmt()));
-//        }
-//    }
 
     protected Single<Trade> writeTrade(Trade trade) {
 
@@ -847,7 +683,8 @@ public class TradeManager {
                 File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + "currentTrade.json");
                 if (tradeFile.exists()) {
                     FileReader tradeReader = new FileReader(tradeFile);
-                    source.onSuccess(JSON.std.beanFrom(Trade.class, tradeReader));
+                    Trade trade = JSON.std.beanFrom(Trade.class, tradeReader);
+                    source.onSuccess(trade);
                 } else {
                     source.onComplete();
                 }
@@ -858,45 +695,3 @@ public class TradeManager {
     }
 
 }
-
-//                                // only use valid next status
-//                                if (currentTrade.status().nextValid().contains(receivedTrade.status())) {
-//
-//                                    // only use status from updated trade based on role
-//                                    if (currentTrade.getRole().equals(SELLER)) {
-//                                        switch (receivedTrade.status()) {
-//                                            case FUNDING:
-//                                                break;
-//                                            case FUNDED:
-//                                                break;
-//                                            case PAID:
-//                                                break;
-//                                            case COMPLETING:
-//                                                break;
-//                                            case COMPLETED:
-//                                                break;
-//                                            case ARBITRATING:
-//                                                break;
-//                                        }
-//                                    } else if (currentTrade.getRole().equals(BUYER)) {
-//                                        switch (receivedTrade.status()) {
-//                                            case FUNDING:
-//                                                break;
-//                                            case FUNDED:
-//                                                break;
-//                                            case PAID:
-//                                                break;
-//                                            case COMPLETING:
-//                                                break;
-//                                            case COMPLETED:
-//                                                break;
-//                                            case ARBITRATING:
-//                                                break;
-//                                        }
-//                                    } else if (currentTrade.getRole().equals(ARBITRATOR)) {
-//
-//                                    } else {
-//                                        // ERROR
-//                                    }
-//
-//                                    Trade receivedTrade = new Trade();

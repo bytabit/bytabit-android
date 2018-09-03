@@ -4,6 +4,7 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
 
@@ -11,6 +12,7 @@ public class TradeBuilder {
 
     private String escrowAddress;
     private Trade.Role role;
+    private LocalDateTime createdTimestamp;
 
     // Sell Offer
     private String sellerEscrowPubKey;
@@ -58,6 +60,11 @@ public class TradeBuilder {
 
     public TradeBuilder role(Trade.Role role) {
         this.role = role;
+        return this;
+    }
+
+    public TradeBuilder createdTimestamp(LocalDateTime createdTimestamp) {
+        this.createdTimestamp = createdTimestamp;
         return this;
     }
 
@@ -133,7 +140,7 @@ public class TradeBuilder {
     }
 
     public Trade build() {
-        return new Trade(escrowAddress, role, sellerEscrowPubKey, sellerProfilePubKey,
+        return new Trade(escrowAddress, role, createdTimestamp, sellerEscrowPubKey, sellerProfilePubKey,
                 arbitratorProfilePubKey, currencyCode,
                 paymentMethod, minAmount, maxAmount,
                 price, buyerEscrowPubKey, btcAmount,

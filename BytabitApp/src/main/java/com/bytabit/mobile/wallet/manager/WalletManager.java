@@ -112,12 +112,13 @@ public class WalletManager {
                     tw.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
 
                     source.setCancellable(() -> {
+                        log.debug("updatedTradeWalletTx: removeTransactionConfidenceEventListener");
                         tw.removeTransactionConfidenceEventListener(listener);
                     });
                 }).groupBy(TransactionWithAmt::getHash).flatMap(txg ->
                         txg.throttleLast(1, TimeUnit.SECONDS)))
                 .doOnSubscribe(d -> log.debug("updatedTradeWalletTx: subscribe"))
-                .doOnNext(tx -> log.debug("updatedTradeWalletTx: {}", tx))
+                .doOnNext(tx -> log.debug("updatedTradeWalletTx: {}", tx.getHash()))
                 .replay(20, TimeUnit.MINUTES);
 
 //        updatedEscrowWalletTx = managedWallets.autoConnect()
@@ -188,9 +189,9 @@ public class WalletManager {
 
         // create trade wallet
 
-        Single<Wallet> tradeWallet = Single.<Wallet>create(source -> {
+        Observable<Wallet> tradeWallet = Observable.<Wallet>create(source -> {
             try {
-                source.onSuccess(createOrLoadTradeWallet());
+                source.onNext(createOrLoadTradeWallet());
             } catch (IOException | UnreadableWalletException e) {
                 source.onError(e);
             }
@@ -211,7 +212,7 @@ public class WalletManager {
 
         Single<File> blockStoreFile = Single.just(new File(AppConfig.getPrivateStorage(), "bytabit.spvchain"));
 
-        Single<BlockStore> blockStore = blockStoreFile.map(bsf -> {
+        Observable<BlockStore> blockStore = blockStoreFile.toObservable().map(bsf -> {
             Context.propagate(btcContext);
             if (deleteBlockstore && bsf.exists()) {
                 bsf.delete();
@@ -225,7 +226,7 @@ public class WalletManager {
 
         // create block chain
 
-        Single<BlockChain> blockChain = Single.zip(tradeWallet, escrowWallets.toList(), blockStore, (tw, ew, bs) -> {
+        Observable<BlockChain> blockChain = Observable.zip(tradeWallet, escrowWallets.toList().toObservable(), blockStore, (tw, ew, bs) -> {
             Context.propagate(btcContext);
             List<Wallet> wallets = new ArrayList<>();
             wallets.add(tw);
@@ -235,20 +236,20 @@ public class WalletManager {
 
         // create peer group
 
-        Single<PeerGroup> peerGroup = Single.zip(tradeWallet, escrowWallets.toList(), blockChain, (tw, ew, bc) -> {
+        Observable<PeerGroup> peerGroup = Observable.zip(tradeWallet, escrowWallets.toList().toObservable(), blockChain, (tw, ew, bc) -> {
             Context.propagate(btcContext);
             PeerGroup pg = createPeerGroup(bc, tw, ew);
             pg.start();
             return pg;
         });
 
-        return Single.zip(tradeWallet, escrowWallets.toList(), peerGroup, ManagedWallets::new)
+        return Observable.zip(tradeWallet, escrowWallets.toList().toObservable(), peerGroup, ManagedWallets::new)
                 .doOnDispose(() -> {
+                    log.debug("createManagedWallets: dispose");
                     tradeWallet.doOnDispose(() -> log.debug("disposed trade wallet")).subscribe(Wallet::shutdownAutosaveAndWait);
                     escrowWallets.doOnDispose(() -> log.debug("disposed escrow wallet")).subscribe(Wallet::shutdownAutosaveAndWait);
                     peerGroup.doOnDispose(() -> log.debug("disposed peer group")).subscribe(PeerGroup::stop);
-                })
-                .toObservable();
+                });
     }
 
     public ConnectableObservable<Double> getDownloadProgress() {
@@ -329,13 +330,16 @@ public class WalletManager {
         return createOrLoadWallet(walletFile, walletBackupFile);
     }
 
-    public Maybe<String> createEscrowWallet(String escrowAddress) {
+    public Maybe<String> createEscrowWallet(String escrowAddress, boolean resetBlockchain) {
 
         return Maybe.create(source -> {
             try {
                 createOrLoadEscrowWallet(escrowAddress);
-                //escrowWallet.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000));
-                commandSubject.onNext(START);
+                if (resetBlockchain) {
+                    commandSubject.onNext(RESET);
+                } else {
+                    commandSubject.onNext(START);
+                }
                 source.onSuccess(escrowAddress);
             } catch (FileNotFoundException | UnreadableWalletException ex) {
                 source.onError(ex);
@@ -722,69 +726,45 @@ public class WalletManager {
 
     // TODO make sure trades always have funding tx with amount added when loaded
     // TODO handle InsufficientMoneyException
+
     public Maybe<String> payoutEscrowToBuyer(Trade trade) {
 
         Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
 
         Maybe<String> signature = getPayoutSignature(trade, trade.fundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
 
-        Maybe<TransactionSignature> sellerSignature = signature.map(s -> TransactionSignature
+        Maybe<TransactionSignature> mySignature = signature.map(s -> TransactionSignature
                 .decodeFromBitcoin(Base58.decode(s), true, true));
 
         Maybe<TransactionSignature> buyerSignature = Maybe.just(TransactionSignature
                 .decodeFromBitcoin(Base58.decode(trade.getPayoutTxSignature()), true, true));
 
-        Single<List<TransactionSignature>> signatures = sellerSignature.concatWith(buyerSignature).toList();
+        Single<List<TransactionSignature>> signatures = mySignature.concatWith(buyerSignature).toList();
 
         return signatures.flatMapMaybe(sl -> payoutEscrow(trade, buyerPayoutAddress, sl));
     }
 
-//    public String refundEscrowToSeller(Trade trade) throws InsufficientMoneyException {
-//
-//        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
-//
-//        String fundingTxHash = trade.getFundingTxHash();
-//        Maybe<TransactionWithAmt> fundingTx = getEscrowTransactionWithAmt(trade.getEscrowAddress(), fundingTxHash);
-//
-//        Single<String> signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
-//
-//        TransactionSignature arbitratorSignature = TransactionSignature
-//                .decodeFromBitcoin(Base58.decode(signature), true, true);
-//
-//        TransactionSignature sellerSignature = TransactionSignature
-//                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true);
-//
-//        List<TransactionSignature> signatures = ImmutableList.of(arbitratorSignature, sellerSignature);
-//
-//        return payoutEscrow(trade, sellerRefundAddress, signatures);
-//    }
-//
-//    public String cancelEscrowToSeller(Trade trade) throws InsufficientMoneyException {
-//
-//        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
-//
-//        String fundingTxHash = trade.getFundingTxHash();
-//        Transaction fundingTx = getEscrowTransaction(trade.escrowAddress(), fundingTxHash);
-//
-//        Single<String> signature = getPayoutSignature(trade, fundingTx, sellerRefundAddress);
-//
-//        TransactionSignature sellerSignature = TransactionSignature
-//                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true);
-//
-//        TransactionSignature buyerSignature = TransactionSignature
-//                .decodeFromBitcoin(Base58.decode(signature), true, true);
-//
-//        List<TransactionSignature> signatures = ImmutableList.of(sellerSignature, buyerSignature);
-//
-//        return payoutEscrow(trade, sellerRefundAddress, signatures);
-//    }
+    public Maybe<String> refundEscrowToSeller(Trade trade) {
+
+        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
+
+        Maybe<String> signature = getPayoutSignature(trade, trade.fundingTransactionWithAmt().getTransaction(), sellerRefundAddress);
+
+        Maybe<TransactionSignature> mySignature = signature.map(s -> TransactionSignature
+                .decodeFromBitcoin(Base58.decode(s), true, true));
+
+        Maybe<TransactionSignature> sellerSignature = Maybe.just(TransactionSignature
+                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true));
+
+        Single<List<TransactionSignature>> signatures = mySignature.concatWith(sellerSignature).toList();
+
+        return signatures.flatMapMaybe(sl -> payoutEscrow(trade, sellerRefundAddress, sl));
+    }
 
     private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
                                        List<TransactionSignature> signatures) {
 
         Transaction fundingTx = trade.fundingTransactionWithAmt().getTransaction();
-
-        //if (fundingTx != null) {
 
         Transaction payoutTx = new Transaction(netParams);
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
@@ -834,7 +814,7 @@ public class WalletManager {
                 .zipWith(getPeerGroup(), (ew, pg) -> {
                     Context.propagate(btcContext);
                     ew.commitTx(payoutTx);
-                    pg.broadcastTransaction(payoutTx); // TODO can I remove this??
+                    pg.broadcastTransaction(payoutTx);
                     return payoutTx.getHash().toString();
                 });
     }

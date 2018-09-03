@@ -12,8 +12,6 @@ import org.bitcoinj.core.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.bytabit.mobile.trade.model.ArbitrateRequest.Reason.NO_PAYMENT;
-
 public class SellerProtocol extends TradeProtocol {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
@@ -26,7 +24,7 @@ public class SellerProtocol extends TradeProtocol {
     @Override
     public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        return walletManager.createEscrowWallet(trade.getEscrowAddress())
+        return walletManager.createEscrowWallet(trade.getEscrowAddress(), false)
                 // fund escrow and create paymentRequest
                 .flatMap(ea -> fundEscrow(trade))
                 // create funded trade from created trade and payment request
@@ -95,9 +93,5 @@ public class SellerProtocol extends TradeProtocol {
 
         // 5. post payout completed
         return payoutCompleted.map(trade::payoutCompleted);
-    }
-
-    public void requestArbitrate(Trade currentTrade) {
-        super.requestArbitrate(currentTrade, NO_PAYMENT);
     }
 }

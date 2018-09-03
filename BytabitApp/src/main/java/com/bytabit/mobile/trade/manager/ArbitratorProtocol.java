@@ -11,106 +11,55 @@ public class ArbitratorProtocol extends TradeProtocol {
     }
 
     @Override
-    public Maybe<Trade> handleCreated(Trade currentTrade, Trade receivedTrade) {
-        return Maybe.empty();
-    }
+    public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-    @Override
-    public Maybe<Trade> handleFunded(Trade currentTrade, Trade fundedTrade) {
-        return Maybe.empty();
-    }
+        Maybe<Trade> updatedTrade = Maybe.empty();
 
-    @Override
-    public Maybe<Trade> handlePaid(Trade currentTrade, Trade paidTrade) {
-        return Maybe.empty();
-    }
+        if (receivedTrade.hasArbitrateRequest()) {
 
-    @Override
-    public Maybe<Trade> handleArbitrating(Trade trade, Trade receivedTrade) {
+            if (receivedTrade.hasPaymentRequest()) {
+                trade.paymentRequest(receivedTrade.paymentRequest());
+            }
 
-        // TODO handle unexpected status
-//        if (currentTrade == null) {
-//
-//            walletManager.createEscrowWallet(arbitratingTrade.getEscrowAddress());
-//            walletManager.resetBlockchain();
-//
-//            return arbitratingTrade;
-//        } else {
-//            return null;
-//        }
-        return Maybe.empty();
-    }
+            if (receivedTrade.hasPayoutRequest()) {
+                trade.payoutRequest(receivedTrade.payoutRequest());
+            }
 
-//    @Override
-//    public Maybe<Trade> handleCompleting(Trade currentTrade, Trade completing) {
-//
-//        // TODO don't do this way
-//        //Trade currentTrade = readTrade(completedTrade.getEscrowAddress()).blockingGet();
-//
-////        if (completedTrade.getPayoutReason().equals(ARBITRATOR_BUYER_PAYOUT) ||
-////                completedTrade.getPayoutReason().equals(ARBITRATOR_SELLER_REFUND)) {
-////            return super.handleCompleting(completedTrade);
-////        } else {
-////            return Observable.just(completedTrade);
-////        }
-//        return Maybe.empty();
-//    }
-
-    public void refundSeller(Trade currentTrade) {
-
-//        if (currentTrade.status().equals(ARBITRATING)) {
-//
-//            String payoutTxHash = null;
-//            try {
-//                payoutTxHash = walletManager.refundEscrowToSeller(currentTrade);
-//                completeTrade(currentTrade, payoutTxHash, ARBITRATOR_SELLER_REFUND);
-//
-//            } catch (InsufficientMoneyException e) {
-//                // TODO notify user
-//                log.error("Insufficient funds to refund escrow to seller.", e);
-//            }
-//        }
-    }
-
-    public void payoutBuyer(Trade currentTrade) {
-
-//        if (currentTrade.status().equals(ARBITRATING)) {
-//
-//            String payoutTxHash = null;
-//            try {
-//                payoutTxHash = walletManager.payoutEscrowToBuyer(currentTrade);
-//                completeTrade(currentTrade, payoutTxHash, ARBITRATOR_BUYER_PAYOUT);
-//
-//            } catch (InsufficientMoneyException e) {
-//                // TODO notify user
-//                log.error("Insufficient funds to refund escrow to seller.", e);
-//            }
-//        }
-    }
-
-    private void completeTrade(Trade arbitratingTrade, String payoutTxHash, PayoutCompleted.Reason reason) {
-
-        if (payoutTxHash != null) {
-
-            // 2. confirm refund tx and create payout completed
-            PayoutCompleted payoutCompleted = new PayoutCompleted(payoutTxHash, reason);
-
-//            try {
-
-            Trade completedTrade = Trade.builder()
-                    .escrowAddress(arbitratingTrade.getEscrowAddress())
-                    .sellOffer(arbitratingTrade.sellOffer())
-                    .buyRequest(arbitratingTrade.buyRequest())
-                    .paymentRequest(arbitratingTrade.paymentRequest())
-                    .payoutRequest(arbitratingTrade.payoutRequest())
-                    .payoutCompleted(payoutCompleted)
-                    .build();
-
-//            tradeService.put(completedTrade).subscribe();
-
-//            } catch (IOException e) {
-//                log.error("Unable to put completed arbitrated trade.", e);
-//            }
+            updatedTrade = walletManager.createEscrowWallet(trade.getEscrowAddress(), true)
+                    .map(ea -> receivedTrade.arbitrateRequest())
+                    // create arbitrating trade from trade and arbitrate request
+                    .map(trade::arbitrateRequest);
         }
+
+        return updatedTrade;
+    }
+
+    @Override
+    public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
+        return Maybe.empty();
+    }
+
+    public Maybe<Trade> refundSeller(Trade trade) {
+
+        // 1. sign and broadcast payout tx
+        Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade);
+
+        // 2. confirm refund tx and create payout completed
+        Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND));
+
+        // 5. post payout completed
+        return payoutCompleted.map(trade::payoutCompleted);
+    }
+
+    public Maybe<Trade> payoutBuyer(Trade trade) {
+
+        // 1. sign and broadcast payout tx
+        Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade);
+
+        // 2. confirm refund tx and create payout completed
+        Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT));
+
+        // 5. post payout completed
+        return payoutCompleted.map(trade::payoutCompleted);
     }
 }

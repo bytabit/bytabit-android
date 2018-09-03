@@ -147,197 +147,37 @@ public class TradeDetailsPresenter {
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
-//        Observable<PresenterEvent> viewShowingEvents = JavaFxObservable.changesOf(tradeDetailsView.showingProperty())
-//                .map(showing -> showing.getNewVal() ? new ViewShowing() : new ViewNotShowing());
-//
-//        Observable<FundButtonPressed> fundButtonPressedEvents = JavaFxObservable.actionEventsOf(fundEscrowButton)
-//                .map(actionEvent -> new FundButtonPressed());
+        JavaFxObservable.actionEventsOf(arbitrateButton)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(actionEvent -> {
+                    tradeManager.requestArbitrate();
+                    MobileApplication.getInstance().switchToPreviousView();
+                });
 
-//        Observable<PresenterEvent> tradeDetailEvents = Observable.merge(viewShowingEvents,
-//                fundButtonPressedEvents)
-//                .doOnNext(progress -> log.debug("Download progress: {}", progress))
-//                .share();
+        JavaFxObservable.actionEventsOf(refundSellerButton)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(actionEvent -> {
+                    tradeManager.arbitratorRefundSeller();
+                    MobileApplication.getInstance().switchToPreviousView();
+                });
 
-        // transform events to actions
+        JavaFxObservable.actionEventsOf(payoutBuyerButton)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(actionEvent -> {
+                    tradeManager.arbitratorPayoutBuyer();
+                    MobileApplication.getInstance().switchToPreviousView();
+                });
 
-        // handle events
-
-//        tradeDetailEvents.subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .ofType(ViewShowing.class)
-//                .subscribe(event -> {
-//                    setAppBar();
-//                });
-
-//        Observable<TradeManager.TradeSelected> tradeSelectedObservable = tradeManager.getResults()
-//                .ofType(TradeManager.TradeSelected.class)
-//                .replay(1).refCount();
-//
-//        Observable<TradeManager.TradeUpdated> tradeUpdatedObservable = tradeManager.getResults()
-//                .ofType(TradeManager.TradeUpdated.class);
-
-        // events to actions
-
-//        tradeDetailEvents.subscribeOn(Schedulers.io())
-//                .observeOn(Schedulers.io())
-//                .ofType(FundButtonPressed.class)
-//                .flatMap(fp -> tradeSelectedObservable.lastOrError().map(ts ->
-//                        tradeManager.new FundTrade(ts.getTrade())).toObservable())
-//                .compose(eventLogger.logEvents())
-//                .subscribe(fe -> tradeManager.getActions().onNext(fe));
-
-        // handle results
-
-//        tradeSelectedObservable
-//                .filter(ts -> ts.getTrade().status().compareTo(Trade.Status.CREATED) >= 0)
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .map(TradeManager.TradeSelected::getTrade)
-//                .subscribe(this::showTrade);
-//
-//        tradeSelectedObservable.flatMap(s -> tradeUpdatedObservable
-//                .filter(u -> u.getTrade().getEscrowAddress().equals(s.getTrade().getEscrowAddress())))
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .map(TradeManager.TradeUpdated::getTrade)
-//                .subscribe(this::showTrade);
-
-//        tradeDetailsView.showingProperty().addListener((observable, oldValue, newValue) -> {
-//
-//            // remove unusable buttons and disable all usable buttons
-//            paymentReferenceField.setDisable(true);
-//            paymentReferenceField.setEditable(false);
-
-//            profileManager.loadOrCreateMyProfile().observeOn(JavaFxScheduler.platform()).subscribe(profile -> {
-//                if (profile.getIsArbitrator()) {
-//                    actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
-//                    refundSellerButton.setDisable(true);
-//                    payoutBuyerButton.setDisable(true);
-//                } else {
-//                    actionButtonsVBox.getChildren().remove(arbitrateButtonsFlowPane);
-//                    paymentSentButton.setDisable(true);
-//                    paymentReceivedButton.setDisable(true);
-//                    cancelButton.setDisable(true);
-//                    arbitrateButton.setDisable(true);
-//                }
-//
-//                if (newValue) {
-//                    AppBar appBar = MobileApplication.getInstance().getAppBar();
-//                    appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-//                    appBar.setTitleText("Trade Details");
-//                    appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
-//                            MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DEV_INFO_VIEW)));
-//
-//                    Trade trade = tradeManager.getSelectedTrade();
-//                    BigDecimal price = trade.getPrice();
-//                    BigDecimal amount = trade.getBtcAmount();
-//                    BigDecimal paymentAmount = price.multiply(amount);
-////                String profilePubKey = profileManager.getPubKeyProperty().getValue();
-////                Boolean arbitrator = profileManager.getIsArbitratorProperty().getValue();
-//                    Trade.Role tradeRole = trade.role(profile.getPubKey(), profile.getIsArbitrator());
-//
-//                    //tradeStatusLabel.textProperty().bindBidirectional(trade.statusProperty(), statusStringConverter);
-//                    tradeStatusLabel.textProperty().setValue(trade.status().toString());
-//                    tradeRoleLabel.textProperty().setValue(tradeRole.toString());
-//                    paymentMethodLabel.textProperty().setValue(trade.getCurrencyCode().toString() + " via " + trade.getPaymentMethod().displayName());
-//                    paymentAmountLabel.textProperty().setValue(paymentAmount.toPlainString());
-//                    paymentAmountCurrencyLabel.textProperty().setValue(trade.getCurrencyCode().toString());
-//                    purchasedAmountLabel.textProperty().setValue(amount.toPlainString());
-//                    priceLabel.textProperty().setValue(price.toPlainString());
-//                    priceCurrencyLabel.textProperty().setValue(trade.getCurrencyCode().toString());
-//                    paymentDetailsLabel.textProperty().setValue(null);
-//                    paymentReferenceField.textProperty().setValue(null);
-//                    arbitrateReasonLabel.textProperty().setValue(null);
-//                    payoutReasonLabel.textProperty().setValue(null);
-//                    tradeStatusLabel.textProperty().setValue(trade.status().toString());
-//
-//                    if (trade.status().equals(Trade.Status.FUNDED)) {
-//                        paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-//                        if (tradeRole == Trade.Role.BUYER) {
-//                            paymentReferenceField.setDisable(false);
-//                            paymentReferenceField.setEditable(true);
-//                            paymentSentButton.setDisable(false);
-//                            cancelButton.setDisable(false);
-//                        } else if (tradeRole == Trade.Role.SELLER) {
-//                            arbitrateButton.setDisable(false);
-//                        }
-//                    } else if (trade.status().equals(Trade.Status.PAID)) {
-//                        paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-//                        paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-//                        arbitrateButton.setDisable(false);
-//                        if (tradeRole == Trade.Role.BUYER) {
-//                            paymentReceivedButton.setDisable(true);
-//                        } else if (tradeRole == Trade.Role.SELLER) {
-//                            paymentReceivedButton.setDisable(false);
-//                        }
-//                    } else if (trade.status().equals(Trade.Status.COMPLETED)) {
-//                        paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-//                        if (trade.hasPayoutRequest()) {
-//                            paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-//                        }
-//                        if (trade.hasArbitrateRequest()) {
-//                            arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
-//                        }
-//                        if (trade.hasPayoutCompleted()) {
-//                            payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
-//                        }
-//                    } else if (trade.status().equals(Trade.Status.ARBITRATING)) {
-//                        paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-//                        if (trade.hasPayoutRequest()) {
-//                            paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-//                        }
-//                        arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
-//                        if (tradeRole == Trade.Role.ARBITRATOR) {
-//                            refundSellerButton.setDisable(false);
-//                            if (trade.hasPayoutRequest()) {
-//                                payoutBuyerButton.setDisable(false);
-//                            }
-//                        }
-//                    }
-//                }
-//            });
-//        });
-
-//        paymentSentButton.setOnAction(e -> {
-//            LOG.debug("paymentSentButton pressed");
-//            if (paymentReferenceField.getText() != null && !paymentReferenceField.getText().isEmpty()) {
-////                tradeManager.buyerSendPayment(paymentReferenceField.getText());
-//                MobileApplication.getInstance().switchToPreviousView();
-//            } else {
-//                LOG.debug("No payment reference provided, skipped buyerSendPayment.");
-//                // TODO notify user and/or don't enable paymentSentButton unless payment reference given
-//            }
-//        });
-
-//        paymentReceivedButton.setOnAction(e -> {
-//            LOG.debug("paymentReceivedButton pressed");
-////            tradeManager.sellerConfirmPaymentReceived();
-//            MobileApplication.getInstance().switchToPreviousView();
-//        });
-
-//        arbitrateButton.setOnAction(e -> {
-//            LOG.debug("arbitrateButton pressed");
-////            tradeManager.requestArbitrate();
-//            MobileApplication.getInstance().switchToPreviousView();
-//        });
-
-//        refundSellerButton.setOnAction(e -> {
-//            LOG.debug("refundSellerButton pressed");
-////            tradeManager.arbitratorRefundSeller();
-//            MobileApplication.getInstance().switchToPreviousView();
-//        });
-
-//        payoutBuyerButton.setOnAction(e -> {
-//            LOG.debug("payoutBuyerButton pressed");
-////            tradeManager.arbitratorPayoutBuyer();
-//            MobileApplication.getInstance().switchToPreviousView();
-//        });
-
-//        cancelButton.setOnAction(e -> {
-//            LOG.debug("cancelButton pressed");
-////            tradeManager.buyerCancel();
-//            MobileApplication.getInstance().switchToPreviousView();
-//        });
+        JavaFxObservable.actionEventsOf(cancelButton)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(actionEvent -> {
+                    tradeManager.cancelAndRefundSeller();
+                    MobileApplication.getInstance().switchToPreviousView();
+                });
     }
 
     private void setAppBar() {
