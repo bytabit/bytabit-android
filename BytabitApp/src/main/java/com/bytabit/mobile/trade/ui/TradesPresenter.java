@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.Comparator;
 
 public class TradesPresenter {
 
@@ -57,7 +56,7 @@ public class TradesPresenter {
             }
         });
 
-        tradesListView.setComparator(Comparator.comparing(Trade::createdTimestamp));
+        tradesListView.setComparator((t1, t2) -> t2.createdTimestamp().compareTo(t1.createdTimestamp()));
 
         // setup event observables
 

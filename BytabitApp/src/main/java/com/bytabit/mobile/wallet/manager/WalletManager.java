@@ -94,6 +94,8 @@ public class WalletManager {
                         return Observable.empty();
                     }
                 })
+                .doOnTerminate(() -> log.debug("managedWallets: terminate"))
+                .doOnDispose(() -> log.debug("managedWallets: dispose"))
                 .doOnSubscribe(d -> log.debug("managedWallets: subscribe"))
                 .doOnNext(mw -> log.debug("managedWallets: {}", mw))
                 .replay(1);
@@ -761,6 +763,23 @@ public class WalletManager {
         return signatures.flatMapMaybe(sl -> payoutEscrow(trade, sellerRefundAddress, sl));
     }
 
+    public Maybe<String> cancelEscrowToSeller(Trade trade) {
+
+        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
+
+        Maybe<String> signature = getPayoutSignature(trade, trade.fundingTransactionWithAmt().getTransaction(), sellerRefundAddress);
+
+        Maybe<TransactionSignature> mySignature = signature.map(s -> TransactionSignature
+                .decodeFromBitcoin(Base58.decode(s), true, true));
+
+        Maybe<TransactionSignature> sellerSignature = Maybe.just(TransactionSignature
+                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true));
+
+        Single<List<TransactionSignature>> signatures = sellerSignature.concatWith(mySignature).toList();
+
+        return signatures.flatMapMaybe(sl -> payoutEscrow(trade, sellerRefundAddress, sl));
+    }
+
     private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
                                        List<TransactionSignature> signatures) {
 
@@ -813,7 +832,7 @@ public class WalletManager {
         return getEscrowWallet(trade.getEscrowAddress())
                 .zipWith(getPeerGroup(), (ew, pg) -> {
                     Context.propagate(btcContext);
-                    ew.commitTx(payoutTx);
+                    //ew.commitTx(payoutTx);
                     pg.broadcastTransaction(payoutTx);
                     return payoutTx.getHash().toString();
                 });
