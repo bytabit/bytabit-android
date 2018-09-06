@@ -84,7 +84,7 @@ public class TradeManager {
 
         updatedTrade = updatedTradeSubject
                 .doOnSubscribe(d -> log.debug("updatedTrade: subscribe"))
-                .doOnNext(ut -> log.debug("updatedTrade: {}", ut.getEscrowAddress()))
+                //.doOnNext(ut -> log.debug("updatedTrade: {}", ut.getEscrowAddress()))
                 .share();
 
         selectedTradeSubject = PublishSubject.create();
@@ -119,12 +119,12 @@ public class TradeManager {
         // get stored trades after download progress is 100% loaded
         walletSynced.subscribe(p -> getStoredTrades()
                 .flatMapIterable(t -> t)
-                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getEscrowAddress(), t.getFundingTxHash())
+                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
                         .map(txa -> {
                             t.fundingTransactionWithAmt(txa);
                             return t;
                         }).defaultIfEmpty(t))
-                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getEscrowAddress(), t.getPayoutTxHash())
+                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
                         .map(txa -> {
                             t.payoutTransactionWithAmt(txa);
                             return t;
@@ -194,7 +194,7 @@ public class TradeManager {
 
     }
 
-    public void createTrade(SellOffer sellOffer, BigDecimal btcAmount) {
+    public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal btcAmount) {
 
 //        Observable.zip(walletManager.getTradeWalletEscrowPubKey().toObservable(),
 //                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toObservable(),
@@ -206,12 +206,12 @@ public class TradeManager {
 //                                .buyRequest(new BuyRequest(buyerEscrowPubKey, btcAmount, buyerProfilePubKey, buyerPayoutAddress))
 //                                .build())
 
-        buyerProtocol.createTrade(sellOffer, btcAmount)
+        return buyerProtocol.createTrade(sellOffer, btcAmount)
                 .flatMap(this::writeTrade)
                 .flatMap(tradeService::put)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
-                .subscribe(createdTradeSubject::onNext);
+                .doOnSuccess(createdTradeSubject::onNext);
     }
 
     public Observable<Trade> getCreatedTrade() {
@@ -563,10 +563,10 @@ public class TradeManager {
 
     private Single<Trade> updateTradeTx(Trade trade) {
 
-        return walletManager.getEscrowTransactionWithAmt(trade.getEscrowAddress(), trade.getFundingTxHash())
+        return walletManager.getEscrowTransactionWithAmt(trade.getFundingTxHash())
                 .map(trade::fundingTransactionWithAmt)
                 .toSingle(trade)
-                .flatMap(t -> walletManager.getEscrowTransactionWithAmt(t.getEscrowAddress(), t.getPayoutTxHash())
+                .flatMap(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
                         .map(t::payoutTransactionWithAmt)
                         .toSingle(t));
     }

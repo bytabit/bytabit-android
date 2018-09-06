@@ -3,17 +3,15 @@ package com.bytabit.mobile.wallet.model;
 import org.bitcoinj.core.PeerGroup;
 import org.bitcoinj.wallet.Wallet;
 
-import java.util.List;
-
 public class ManagedWallets {
 
     final private Wallet tradeWallet;
-    final private List<Wallet> escrowWallets;
+    final private Wallet escrowWallet;
     final private PeerGroup peerGroup;
 
-    public ManagedWallets(Wallet tradeWallet, List<Wallet> escrowWallets, PeerGroup peerGroup) {
+    public ManagedWallets(Wallet tradeWallet, Wallet escrowWallet, PeerGroup peerGroup) {
         this.tradeWallet = tradeWallet;
-        this.escrowWallets = escrowWallets;
+        this.escrowWallet = escrowWallet;
         this.peerGroup = peerGroup;
     }
 
@@ -21,8 +19,8 @@ public class ManagedWallets {
         return tradeWallet;
     }
 
-    public List<Wallet> getEscrowWallets() {
-        return escrowWallets;
+    public Wallet getEscrowWallet() {
+        return escrowWallet;
     }
 
     public PeerGroup getPeerGroup() {
@@ -33,7 +31,7 @@ public class ManagedWallets {
     public String toString() {
         final StringBuffer sb = new StringBuffer("ManagedWallets{");
         sb.append("tradeWallet balance=").append(tradeWallet.getBalance());
-        sb.append(", escrowWallets size=").append(escrowWallets.size());
+        sb.append(", escrowWallet watched scripts=").append(escrowWallet.getWatchedScripts().size());
         sb.append(", peerGroup isRunning=").append(peerGroup.isRunning());
         sb.append('}');
         return sb.toString();

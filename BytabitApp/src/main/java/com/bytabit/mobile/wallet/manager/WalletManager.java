@@ -37,12 +37,10 @@ import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.bytabit.mobile.trade.manager.TradeManager.TRADES_PATH;
 import static com.bytabit.mobile.wallet.manager.WalletManager.Command.*;
 import static org.bitcoinj.core.Transaction.REFERENCE_DEFAULT_MIN_TX_FEE;
 
@@ -56,6 +54,7 @@ public class WalletManager {
 
     final static String TRADE_WALLET_FILE_NAME = "trade.wallet";
     final static String ESCROW_WALLET_FILE_NAME = "escrow.wallet";
+
     final static String BACKUP_EXT = ".bkp";
     //private final static String SAVE_EXT = ".sav";
 
@@ -199,16 +198,15 @@ public class WalletManager {
             }
         }).cache();
 
-        // create escrow wallets
+        // create escrow wallet
 
-        Single<File> tradesDir = Single.just(new File(TRADES_PATH));
-
-        Observable<String> readEscrowAddresses = tradesDir
-                .map(td -> Arrays.asList(td != null && td.list() != null ? td.list() : new String[0]))
-                .flattenAsObservable(escrowAddresses -> escrowAddresses);
-
-        Observable<Wallet> escrowWallets = readEscrowAddresses
-                .map(this::createOrLoadEscrowWallet).cache();
+        Observable<Wallet> escrowWallet = Observable.<Wallet>create(source -> {
+            try {
+                source.onNext(createOrLoadEscrowWallet());
+            } catch (IOException | UnreadableWalletException e) {
+                source.onError(e);
+            }
+        }).cache();
 
         // create block store
 
@@ -228,30 +226,20 @@ public class WalletManager {
 
         // create block chain
 
-        Observable<BlockChain> blockChain = Observable.zip(tradeWallet, escrowWallets.toList().toObservable(), blockStore, (tw, ew, bs) -> {
+        Observable<BlockChain> blockChain = Observable.zip(tradeWallet, escrowWallet, blockStore, (tw, ew, bs) -> {
             Context.propagate(btcContext);
             List<Wallet> wallets = new ArrayList<>();
             wallets.add(tw);
-            wallets.addAll(ew);
+            wallets.add(ew);
             return new BlockChain(netParams, wallets, bs);
         });
 
         // create peer group
 
-        Observable<PeerGroup> peerGroup = Observable.zip(tradeWallet, escrowWallets.toList().toObservable(), blockChain, (tw, ew, bc) -> {
-            Context.propagate(btcContext);
-            PeerGroup pg = createPeerGroup(bc, tw, ew);
-            pg.start();
-            return pg;
-        });
+        Observable<PeerGroup> peerGroup = Observable.zip(tradeWallet, escrowWallet, blockChain, (tw, ew, bc) -> createPeerGroup(bc, tw, ew))
+                .doOnNext(PeerGroup::start);
 
-        return Observable.zip(tradeWallet, escrowWallets.toList().toObservable(), peerGroup, ManagedWallets::new)
-                .doOnDispose(() -> {
-                    log.debug("createManagedWallets: dispose");
-                    tradeWallet.doOnDispose(() -> log.debug("disposed trade wallet")).subscribe(Wallet::shutdownAutosaveAndWait);
-                    escrowWallets.doOnDispose(() -> log.debug("disposed escrow wallet")).subscribe(Wallet::shutdownAutosaveAndWait);
-                    peerGroup.doOnDispose(() -> log.debug("disposed peer group")).subscribe(PeerGroup::stop);
-                });
+        return Observable.zip(tradeWallet, escrowWallet, peerGroup, ManagedWallets::new);
     }
 
     public ConnectableObservable<Double> getDownloadProgress() {
@@ -297,11 +285,12 @@ public class WalletManager {
                 .map(ManagedWallets::getTradeWallet).map(this::getDepositAddress);
     }
 
-    private PeerGroup createPeerGroup(BlockChain blockChain, Wallet tradeWallet, List<Wallet> readEscrowWallets) throws UnknownHostException {
+    private PeerGroup createPeerGroup(BlockChain blockChain, Wallet tradeWallet, Wallet escrowWallet) throws UnknownHostException {
+        Context.propagate(btcContext);
 
         List<Wallet> wallets = new ArrayList<>();
         wallets.add(tradeWallet);
-        wallets.addAll(readEscrowWallets);
+        wallets.add(escrowWallet);
 
         PeerGroup peerGroup = new PeerGroup(netParams, blockChain);
         peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
@@ -332,33 +321,48 @@ public class WalletManager {
         return createOrLoadWallet(walletFile, walletBackupFile);
     }
 
-    public Maybe<String> createEscrowWallet(String escrowAddress, boolean resetBlockchain) {
+    public Maybe<String> watchEscrowAddressAndResetBlockchain(String escrowAddress) {
 
-        return Maybe.create(source -> {
-            try {
-                createOrLoadEscrowWallet(escrowAddress);
-                if (resetBlockchain) {
-                    commandSubject.onNext(RESET);
-                } else {
-                    commandSubject.onNext(START);
-                }
-                source.onSuccess(escrowAddress);
-            } catch (FileNotFoundException | UnreadableWalletException ex) {
-                source.onError(ex);
-            }
-        });
+        return watchEscrowAddress(escrowAddress)
+                .doOnSuccess(ea -> commandSubject.onNext(RESET));
     }
 
-    private Wallet createOrLoadEscrowWallet(String escrowAddress)
+    public Maybe<String> watchEscrowAddress(String escrowAddress) {
+
+        return managedWallets.autoConnect().firstElement()
+                .map(ManagedWallets::getEscrowWallet)
+                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000)))
+                .filter(s -> s.equals(true))
+                .map(s -> escrowAddress);
+    }
+
+//    public Maybe<String> createEscrowWallet(String escrowAddress, boolean resetBlockchain) {
+//
+//        return Maybe.create(source -> {
+//            try {
+//                Wallet wallet = createOrLoadEscrowWallet(escrowAddress);
+//                if (resetBlockchain) {
+//                    commandSubject.onNext(RESET);
+//                    source.onSuccess(escrowAddress);
+//                } else {
+//                    managedWallets.autoConnect().firstElement()
+//                            .map(ManagedWallets::getEscrowWallets)
+//                            .doOnSuccess(ew -> ew.add(wallet))
+//                            .subscribe(ew -> source.onSuccess(escrowAddress));
+//
+//                }
+//
+//            } catch (FileNotFoundException | UnreadableWalletException ex) {
+//                source.onError(ex);
+//            }
+//        });
+//    }
+
+    private Wallet createOrLoadEscrowWallet()
             throws IOException, UnreadableWalletException {
-        Context.propagate(btcContext);
-        File tradeDir = new File(TRADES_PATH + escrowAddress);
-        if (!tradeDir.exists()) {
-            tradeDir.mkdirs();
-        }
-        File escrowWalletFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME);
-        File escrowWalletBackupFile = new File(TRADES_PATH + escrowAddress + File.separator + ESCROW_WALLET_FILE_NAME + BACKUP_EXT);
-        return createOrLoadWallet(escrowWalletFile, escrowWalletBackupFile, escrowAddress);
+        final File walletFile = new File(AppConfig.getPrivateStorage(), ESCROW_WALLET_FILE_NAME);
+        final File walletBackupFile = new File(AppConfig.getPrivateStorage(), ESCROW_WALLET_FILE_NAME + BACKUP_EXT);
+        return createOrLoadWallet(walletFile, walletBackupFile);
     }
 
     Wallet createOrLoadWallet(File walletFile, File walletBackupFile)
@@ -486,12 +490,10 @@ public class WalletManager {
                 .map(ManagedWallets::getTradeWallet);
     }
 
-    private Maybe<Wallet> getEscrowWallet(String escrowAddress) {
+    private Maybe<Wallet> getEscrowWallet() {
 
         return managedWallets.autoConnect().firstElement()
-                .flattenAsObservable(ManagedWallets::getEscrowWallets)
-                .filter(ew -> escrowAddress.equals(escrowAddress(ew)))
-                .firstElement();
+                .map(ManagedWallets::getEscrowWallet);
     }
 
     private Maybe<PeerGroup> getPeerGroup() {
@@ -550,22 +552,31 @@ public class WalletManager {
     public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
         Context.propagate(btcContext);
 
+        Address address = Address.fromBase58(netParams, escrowAddress);
+
+        // verify no outputs to escrow address already created
+        Maybe<Wallet> notFundedWallet = getTradeWallet().flattenAsObservable(tw -> tw.getTransactions(false))
+                .flatMapIterable(Transaction::getOutputs)
+                .any(txo -> {
+                    Address outputAddress = txo.getAddressFromP2SH(netParams);
+                    return outputAddress != null && outputAddress.equals(address);
+                })
+                .filter(f -> f.equals(false))
+                .flatMap(f -> getTradeWallet());
+
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
-        return getEscrowWallet(escrowAddress)
-                .filter(ew -> ew.getBalance(Wallet.BalanceType.ESTIMATED).compareTo(Coin.ZERO) == 0)
-                .flatMap(ew -> getTradeWallet())
-                .flatMap(tw -> Maybe.create(source -> {
-                    try {
-                        SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
-                                Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
-                        Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
-                        source.onSuccess(sendResult.tx);
-                    } catch (InsufficientMoneyException ex) {
-                        log.error("Insufficient BTC to fund trade escrow.");
-                        // TODO let user know not enough BTC in wallet
-                        source.onError(ex);
-                    }
-                }));
+        return notFundedWallet.flatMap(tw -> Maybe.create(source -> {
+            try {
+                SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
+                        Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
+                Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
+                source.onSuccess(sendResult.tx);
+            } catch (InsufficientMoneyException ex) {
+                log.error("Insufficient BTC to fund trade escrow.");
+                // TODO let user know not enough BTC in wallet
+                source.onError(ex);
+            }
+        }));
     }
 
     private Address escrowAddress(ECKey arbitratorProfilePubKey,
@@ -635,9 +646,9 @@ public class WalletManager {
         return watchedOutputAddresses.size() > 0 ? watchedOutputAddresses.get(0) : null;
     }
 
-    public Maybe<TransactionWithAmt> getEscrowTransactionWithAmt(String escrowAddress, String txHash) {
+    public Maybe<TransactionWithAmt> getEscrowTransactionWithAmt(String txHash) {
 
-        return getEscrowWallet(escrowAddress).flatMap(w -> {
+        return getEscrowWallet().flatMap(w -> {
             Transaction tx = txHash != null ? w.getTransaction(Sha256Hash.wrap(txHash)) : null;
             Maybe<Transaction> maybeTx = tx != null ? Maybe.just(tx) : Maybe.empty();
             return maybeTx.map(t -> createTransactionWithAmt(w, t));
@@ -829,9 +840,10 @@ public class WalletManager {
             }
         }
 
-        return getEscrowWallet(trade.getEscrowAddress())
+        return getEscrowWallet()
                 .zipWith(getPeerGroup(), (ew, pg) -> {
                     Context.propagate(btcContext);
+                    // TODO clone payoutTX and commit different copies to escrow and trade wallets
                     //ew.commitTx(payoutTx);
                     pg.broadcastTransaction(payoutTx);
                     return payoutTx.getHash().toString();

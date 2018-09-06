@@ -25,15 +25,15 @@ public class OfferManager {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final PublishSubject<SellOffer> selectedOfferSubject = PublishSubject.create();
+    private final PublishSubject<SellOffer> selectedOfferSubject;
 
-    private final Observable<SellOffer> selectedOffer = selectedOfferSubject.share();
+    private final Observable<SellOffer> selectedOffer;
 
-    private final ConnectableObservable<SellOffer> lastSelectedOffer = selectedOffer.replay(1);
+    private final ConnectableObservable<SellOffer> lastSelectedOffer;
 
-    private final PublishSubject<SellOffer> createdOffer = PublishSubject.create();
+    private final PublishSubject<SellOffer> createdOffer;
 
-    private final PublishSubject<SellOffer> removedOffer = PublishSubject.create();
+    private final PublishSubject<SellOffer> removedOffer;
 
     private final SellOfferService sellOfferService;
 
@@ -49,7 +49,18 @@ public class OfferManager {
     TradeManager tradeManager;
 
     public OfferManager() {
+
         sellOfferService = new SellOfferService();
+
+        selectedOfferSubject = PublishSubject.create();
+
+        selectedOffer = selectedOfferSubject.share();
+
+        lastSelectedOffer = selectedOffer.replay(1);
+
+        createdOffer = PublishSubject.create();
+
+        removedOffer = PublishSubject.create();
     }
 
     @PostConstruct
@@ -57,10 +68,6 @@ public class OfferManager {
 
         offers = Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
                 .flatMap(tick -> getLoadedOffers());
-
-
-        lastSelectedOffer.connect();
-
     }
 
     public Observable<List<SellOffer>> getLoadedOffers() {
@@ -123,7 +130,10 @@ public class OfferManager {
     }
 
     public void createTrade(BigDecimal btcAmount) {
-        getLastSelectedOffer()
-                .subscribe(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount));
+        getLastSelectedOffer().autoConnect().lastOrError()
+                .flatMap(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount))
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe();
     }
 }

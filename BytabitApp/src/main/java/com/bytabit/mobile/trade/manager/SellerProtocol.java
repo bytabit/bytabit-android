@@ -24,7 +24,7 @@ public class SellerProtocol extends TradeProtocol {
     @Override
     public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        return walletManager.createEscrowWallet(trade.getEscrowAddress(), false)
+        return walletManager.watchEscrowAddress(trade.getEscrowAddress())
                 // fund escrow and create paymentRequest
                 .flatMap(ea -> fundEscrow(trade))
                 // create funded trade from created trade and payment request

@@ -34,7 +34,7 @@ public class BuyerProtocol extends TradeProtocol {
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
-                .doOnSuccess(t -> walletManager.createEscrowWallet(t.getEscrowAddress(), false).subscribe());
+                .doOnSuccess(t -> walletManager.watchEscrowAddress(t.getEscrowAddress()).subscribe());
     }
 
     // 1.B: create trade, post created trade

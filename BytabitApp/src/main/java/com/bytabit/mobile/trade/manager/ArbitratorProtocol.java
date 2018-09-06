@@ -25,7 +25,7 @@ public class ArbitratorProtocol extends TradeProtocol {
                 trade.payoutRequest(receivedTrade.payoutRequest());
             }
 
-            updatedTrade = walletManager.createEscrowWallet(trade.getEscrowAddress(), true)
+            updatedTrade = walletManager.watchEscrowAddressAndResetBlockchain(trade.getEscrowAddress())
                     .map(ea -> receivedTrade.arbitrateRequest())
                     // create arbitrating trade from trade and arbitrate request
                     .map(trade::arbitrateRequest);
