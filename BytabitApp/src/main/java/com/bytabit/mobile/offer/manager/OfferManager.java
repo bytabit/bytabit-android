@@ -130,8 +130,8 @@ public class OfferManager {
     }
 
     public void createTrade(BigDecimal btcAmount) {
-        getLastSelectedOffer().autoConnect().lastOrError()
-                .flatMap(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount))
+        getLastSelectedOffer().autoConnect().take(1)
+                .flatMapSingle(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount))
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe();

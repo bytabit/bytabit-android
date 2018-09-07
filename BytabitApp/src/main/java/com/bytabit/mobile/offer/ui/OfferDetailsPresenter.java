@@ -141,7 +141,7 @@ public class OfferDetailsPresenter {
                     buyBtcAmtTextField.setText(btcAmount.toPlainString());
                 });
 
-        offerManager.getSelectedOffer()
+        offerManager.getLastSelectedOffer().autoConnect()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .subscribe(offer -> profileManager.loadOrCreateMyProfile()
