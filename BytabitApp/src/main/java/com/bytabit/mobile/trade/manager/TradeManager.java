@@ -527,7 +527,7 @@ public class TradeManager {
                 .toSingle(createdFromReceivedTrade(receivedTrade));
 
         Single<Trade> currentTradeWithRole = currentTrade
-                .map(ct -> setRole(ct, profile.getPubKey(), profile.getIsArbitrator()));
+                .map(ct -> setRole(ct, profile.getPubKey()));
 
         Single<Trade> currentTradeWithTx = currentTradeWithRole
                 .flatMap(this::updateTradeTx);
@@ -619,20 +619,17 @@ public class TradeManager {
         return updatedTrade;
     }
 
-    private Trade setRole(Trade trade, String profilePubKey, Boolean isArbitrator) {
+    private Trade setRole(Trade trade, String profilePubKey) {
 
-        if (!isArbitrator) {
-            if (trade.getSellerProfilePubKey().equals(profilePubKey)) {
-                trade.setRole(SELLER);
-            } else if (trade.getBuyerProfilePubKey().equals(profilePubKey)) {
-                trade.setRole(BUYER);
-            } else {
-                throw new RuntimeException("Unable to determine trader role.");
-            }
+
+        if (trade.getSellerProfilePubKey().equals(profilePubKey)) {
+            trade.setRole(SELLER);
+        } else if (trade.getBuyerProfilePubKey().equals(profilePubKey)) {
+            trade.setRole(BUYER);
         } else if (trade.getArbitratorProfilePubKey().equals(profilePubKey)) {
             trade.setRole(ARBITRATOR);
         } else {
-            throw new RuntimeException("Unable to determine arbitrator role.");
+            throw new RuntimeException("Unable to determine trade role.");
         }
         return trade;
     }

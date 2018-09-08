@@ -188,6 +188,10 @@ public class WalletManager {
 
     private Observable<ManagedWallets> createManagedWallets(boolean deleteBlockstore) {
 
+        // block store file
+
+        Single<File> blockStoreFile = Single.just(new File(AppConfig.getPrivateStorage(), "bytabit.spvchain"));
+
         // create trade wallet
 
         Observable<Wallet> tradeWallet = Observable.<Wallet>create(source -> {
@@ -196,7 +200,10 @@ public class WalletManager {
             } catch (IOException | UnreadableWalletException e) {
                 source.onError(e);
             }
-        }).cache();
+        }).doOnError(t -> {
+            log.debug("tradeWallet: delete blockstore");
+            blockStoreFile.subscribe(File::delete);
+        }).retry(1).cache();
 
         // create escrow wallet
 
@@ -206,11 +213,12 @@ public class WalletManager {
             } catch (IOException | UnreadableWalletException e) {
                 source.onError(e);
             }
-        }).cache();
+        }).doOnError(t -> {
+            log.debug("escrowWallet: delete blockstore");
+            blockStoreFile.subscribe(File::delete);
+        }).retry(1).cache();
 
         // create block store
-
-        Single<File> blockStoreFile = Single.just(new File(AppConfig.getPrivateStorage(), "bytabit.spvchain"));
 
         Observable<BlockStore> blockStore = blockStoreFile.toObservable().map(bsf -> {
             Context.propagate(btcContext);
@@ -221,6 +229,7 @@ public class WalletManager {
             bs.getChainHead(); // detect corruptions as early as possible
             return bs;
         }).doOnError(t -> {
+            log.debug("blockStore: delete blockstore");
             blockStoreFile.subscribe(File::delete);
         }).retry(1);
 
@@ -288,16 +297,11 @@ public class WalletManager {
     private PeerGroup createPeerGroup(BlockChain blockChain, Wallet tradeWallet, Wallet escrowWallet) throws UnknownHostException {
         Context.propagate(btcContext);
 
-        List<Wallet> wallets = new ArrayList<>();
-        wallets.add(tradeWallet);
-        wallets.add(escrowWallet);
-
         PeerGroup peerGroup = new PeerGroup(netParams, blockChain);
         peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
 
-        for (Wallet wallet : wallets) {
-            peerGroup.addWallet(wallet);
-        }
+        peerGroup.addWallet(tradeWallet);
+        peerGroup.addWallet(escrowWallet);
 
         if (netParams.equals(RegTestParams.get())) {
             peerGroup.setMaxConnections(1);
@@ -382,18 +386,11 @@ public class WalletManager {
 
             } catch (FileNotFoundException | UnreadableWalletException e1) {
 
-                try {
-                    wallet = loadWallet(walletBackupFile);
-                    wallet.reset();
-                    log.debug("restoreWallet (" + e1.getMessage() + "): " + walletBackupFile.getPath());
-                    saveWallet(wallet, walletFile);
-
-                    // TODO reset wallets and delete and reload block store file
-
-                } catch (IOException | UnreadableWalletException e2) {
-                    log.error("Unable to load backup wallet: {}", walletBackupFile.getPath());
-                    throw e2;
-                }
+                wallet = loadWallet(walletBackupFile);
+                wallet.reset();
+                log.debug("restoreWallet (" + e1.getMessage() + "): " + walletBackupFile.getPath());
+                saveWallet(wallet, walletFile);
+                throw e1;
             }
         } else {
             log.debug("createWallet: " + walletFile.getPath());
@@ -791,6 +788,11 @@ public class WalletManager {
         return signatures.flatMapMaybe(sl -> payoutEscrow(trade, sellerRefundAddress, sl));
     }
 
+    private Transaction clone(Transaction transaction) {
+
+        return new Transaction(netParams, transaction.bitcoinSerialize());
+    }
+
     private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
                                        List<TransactionSignature> signatures) {
 
@@ -840,14 +842,13 @@ public class WalletManager {
             }
         }
 
-        return getEscrowWallet()
-                .zipWith(getPeerGroup(), (ew, pg) -> {
-                    Context.propagate(btcContext);
-                    // TODO clone payoutTX and commit different copies to escrow and trade wallets
-                    //ew.commitTx(payoutTx);
-                    pg.broadcastTransaction(payoutTx);
-                    return payoutTx.getHash().toString();
-                });
+        return Maybe.zip(getEscrowWallet(), getTradeWallet(), getPeerGroup(), (tw, ew, pg) -> {
+            Context.propagate(btcContext);
+            tw.commitTx(new Transaction(netParams, payoutTx.bitcoinSerialize()));
+            ew.commitTx(new Transaction(netParams, payoutTx.bitcoinSerialize()));
+            pg.broadcastTransaction(new Transaction(netParams, payoutTx.bitcoinSerialize()));
+            return payoutTx.getHash().toString();
+        });
     }
 
     private String getSeedWords(Wallet wallet) {
