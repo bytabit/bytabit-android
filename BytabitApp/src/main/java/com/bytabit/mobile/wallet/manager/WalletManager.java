@@ -842,10 +842,9 @@ public class WalletManager {
             }
         }
 
-        return Maybe.zip(getEscrowWallet(), getTradeWallet(), getPeerGroup(), (tw, ew, pg) -> {
+        return Maybe.zip(getEscrowWallet(), getPeerGroup(), (ew, pg) -> {
             Context.propagate(btcContext);
-            tw.commitTx(new Transaction(netParams, payoutTx.bitcoinSerialize()));
-            ew.commitTx(new Transaction(netParams, payoutTx.bitcoinSerialize()));
+            ew.commitTx(payoutTx);
             pg.broadcastTransaction(new Transaction(netParams, payoutTx.bitcoinSerialize()));
             return payoutTx.getHash().toString();
         });
