@@ -108,8 +108,10 @@ public class TradeManager {
         createdTrade.connect();
         lastSelectedTrade.connect();
 
-        Maybe<Double> walletSynced = walletManager.getDownloadProgress().autoConnect()
-                .filter(p -> p == 1)
+        Maybe<Boolean> walletsSynced = Observable.zip(walletManager.getTradeDownloadProgress().autoConnect(),
+                walletManager.getEscrowDownloadProgress().autoConnect(), (tp, ep) -> tp == 1 && ep == 1)
+                .filter(p -> p)
+                .map(p -> true)
                 .firstElement()
                 .observeOn(Schedulers.io())
                 .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
@@ -117,7 +119,7 @@ public class TradeManager {
                 .cache();
 
         // get stored trades after download progress is 100% loaded
-        walletSynced.subscribe(p -> getStoredTrades()
+        walletsSynced.subscribe(p -> getStoredTrades()
                 .flatMapIterable(t -> t)
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
                         .map(txa -> {
@@ -135,7 +137,7 @@ public class TradeManager {
                 .subscribe(createdTradeSubject::onNext));
 
         // get updated trades after download progress is 100% loaded
-        walletSynced.subscribe(p -> profileManager.loadOrCreateMyProfile().toObservable()
+        walletsSynced.subscribe(p -> profileManager.loadOrCreateMyProfile().toObservable()
                 .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
                         .flatMap(t -> tradeService.get(profile.getPubKey())
                                 .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
@@ -143,8 +145,10 @@ public class TradeManager {
                         .flatMapMaybe(trade -> handleReceivedTrade(profile, trade)))
                 // store updated trade
                 .flatMapSingle(this::writeTrade)
+                .doOnError(t -> log.error("writeTrade: error {}", t.getMessage()))
                 // put updated trade
                 .flatMapSingle(tradeService::put)
+                .doOnError(t -> log.error("putTrade: error {}", t.getMessage()))
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(updatedTradeSubject::onNext));

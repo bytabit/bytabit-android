@@ -68,14 +68,14 @@ public class WalletPresenter {
 
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
 
-        walletManager.getDownloadProgress().autoConnect()
+        walletManager.getTradeDownloadProgress().autoConnect()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(p -> {
                     downloadProgressBar.progressProperty().setValue(p);
                 });
 
-        walletManager.getUpdatedTradeWalletTx().autoConnect()
+        walletManager.getTradeUpdatedWalletTx().autoConnect()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(tx -> {
