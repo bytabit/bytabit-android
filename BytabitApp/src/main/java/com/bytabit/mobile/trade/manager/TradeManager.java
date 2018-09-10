@@ -386,7 +386,6 @@ public class TradeManager {
 
     private Trade setRole(Trade trade, String profilePubKey) {
 
-
         if (trade.getSellerProfilePubKey().equals(profilePubKey)) {
             trade.setRole(SELLER);
         } else if (trade.getBuyerProfilePubKey().equals(profilePubKey)) {

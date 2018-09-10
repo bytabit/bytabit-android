@@ -4,11 +4,7 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.gluonhq.charm.glisten.application.MobileApplication;
-import com.gluonhq.charm.glisten.control.AppBar;
-import com.gluonhq.charm.glisten.control.CharmListCell;
-import com.gluonhq.charm.glisten.control.CharmListView;
-import com.gluonhq.charm.glisten.control.ListTile;
-import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
+import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.Observable;
@@ -61,7 +57,7 @@ public class PaymentsPresenter {
 
         addButton.setText(MaterialDesignIcon.ADD.text);
 
-        paymentsView.getLayers().add(addButton.getLayer());
+        addButton.showOn(paymentsView);
 
         // subscribe to observables
 

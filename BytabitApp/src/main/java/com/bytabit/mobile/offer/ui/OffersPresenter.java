@@ -4,11 +4,7 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.gluonhq.charm.glisten.application.MobileApplication;
-import com.gluonhq.charm.glisten.control.AppBar;
-import com.gluonhq.charm.glisten.control.CharmListCell;
-import com.gluonhq.charm.glisten.control.CharmListView;
-import com.gluonhq.charm.glisten.control.ListTile;
-import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
+import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.Observable;
@@ -37,7 +33,7 @@ public class OffersPresenter {
 
         // setup view components
 
-        offersView.getLayers().add(addOfferButton.getLayer());
+        addOfferButton.showOn(offersView);
 
         offersListView.setCellFactory(view -> new CharmListCell<SellOffer>() {
             @Override

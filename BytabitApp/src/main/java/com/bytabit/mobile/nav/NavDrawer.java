@@ -55,7 +55,7 @@ public class NavDrawer {
         drawer.addEventHandler(NavigationDrawer.ITEM_SELECTED,
                 e -> MobileApplication.getInstance().hideLayer(MENU_LAYER));
 
-        MobileApplication.getInstance().viewProperty().addListener((obs, oldView, newView) -> updateItem(newView.getName()));
+        MobileApplication.getInstance().viewProperty().addListener((obs, oldView, newView) -> updateItem(newView.getId()));
         updateItem(HOME_VIEW);
     }
 

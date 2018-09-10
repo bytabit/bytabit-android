@@ -5,7 +5,6 @@ import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
-import com.gluonhq.charm.glisten.layout.layer.FloatingActionButton;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.Observable;
@@ -84,7 +83,7 @@ public class WalletPresenter {
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
         depositButton.attachTo(withdrawButton, Side.LEFT);
 
-        walletView.getLayers().add(withdrawButton.getLayer());
+        withdrawButton.showOn(walletView);
 
         Observable.create(source -> depositButton.setOnAction(source::onNext))
                 .subscribeOn(Schedulers.io())
