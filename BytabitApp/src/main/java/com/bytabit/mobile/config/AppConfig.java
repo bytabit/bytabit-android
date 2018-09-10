@@ -16,24 +16,22 @@ public class AppConfig {
 
     private static final Logger log = LoggerFactory.getLogger(AppConfig.class.getName());
 
-    private final static String PROP_FILE_NAME = "config.properties";
+    private static final String PROP_FILE_NAME = "config.properties";
 
     private static Properties props;
     private static File privateStorage;
 
+    private AppConfig() {
+
+    }
+
     private static Properties getProps() {
         if (props == null) {
-            try {
-                InputStream inputStream = AppConfig.class.getClassLoader().getResourceAsStream(PROP_FILE_NAME);
-
-                if (inputStream != null) {
-                    props = new Properties();
-                    props.load(inputStream);
-                } else {
-                    log.error("property file '%s' not found in the classpath", PROP_FILE_NAME);
-                }
+            try (InputStream inputStream = AppConfig.class.getClassLoader().getResourceAsStream(PROP_FILE_NAME)) {
+                props = new Properties();
+                props.load(inputStream);
             } catch (IOException ioe) {
-                log.error("could not load properties", ioe);
+                log.error("could not load properties {}: {}", PROP_FILE_NAME, ioe);
             }
         }
         return props;

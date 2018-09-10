@@ -14,14 +14,6 @@ import java.util.List;
 
 public class TradeService {
 
-//    @Headers("Content-Type:application/json")
-//    @GET("/trades")
-//    Single<List<Trade>> get(@Query("profilePubKey") String profilePubKey);
-//
-//    @Headers("Content-Type:application/json")
-//    @PUT("/trades/{escrowAddress}")
-//    Single<Trade> put(@Path("escrowAddress") String escrowAddress, @Body Trade trade);
-
     public Single<List<Trade>> get(String profilePubKey) {
 
         return Single.create(source -> {

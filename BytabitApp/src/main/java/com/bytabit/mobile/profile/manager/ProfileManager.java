@@ -16,10 +16,10 @@ import java.util.Optional;
 
 public class ProfileManager {
 
-    private String PROFILE_PUBKEY = "profile.pubkey";
-    private String PROFILE_ISARBITRATOR = "profile.arbitrator";
-    private String PROFILE_USERNAME = "profile.name";
-    private String PROFILE_PHONENUM = "profile.phoneNum";
+    private static final String PROFILE_PUBKEY = "profile.pubkey";
+    private static final String PROFILE_ISARBITRATOR = "profile.arbitrator";
+    private static final String PROFILE_USERNAME = "profile.name";
+    private static final String PROFILE_PHONENUM = "profile.phoneNum";
 
     private final ProfileService profilesService;
 
@@ -30,8 +30,6 @@ public class ProfileManager {
     private WalletManager walletManager;
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
-
-    //private final EventLogger eventLogger = EventLogger.of(ProfileManager.class);
 
     private final PublishSubject<Profile> updatedProfile = PublishSubject.create();
 
@@ -55,7 +53,7 @@ public class ProfileManager {
 
     private Profile storeMyProfile(Profile profile) {
 
-        storageManager.store(PROFILE_ISARBITRATOR, Boolean.valueOf(profile.getIsArbitrator()).toString());
+        storageManager.store(PROFILE_ISARBITRATOR, profile.getIsArbitrator().toString());
         storageManager.store(PROFILE_USERNAME, profile.getUserName());
         storageManager.store(PROFILE_PHONENUM, profile.getPhoneNum());
         return profile;

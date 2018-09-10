@@ -20,8 +20,6 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.uri.BitcoinURI;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -41,8 +39,6 @@ public class DepositPresenter {
 
     @Inject
     WalletManager walletManager;
-
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     public void initialize() {
 
@@ -67,19 +63,11 @@ public class DepositPresenter {
     }
 
     private void showDepositAddress(Address address) {
-        bitcoinAddressLabel.setText(address.toBase58());
-        //QRCode qrCode = QRCode.from(depositAddressUri(address));
 
-        // TODO FT-150 Cross platform QR code generator for wallet deposits
-//        if (Platform.isDesktop()) {
-//            ByteArrayOutputStream outputStream = qrCode.stream();
-//            Image img = new Image(new ByteArrayInputStream(outputStream.toByteArray()));
-//            qrCodeImageView.setImage(img);
-//        } else {
+        bitcoinAddressLabel.setText(address.toBase58());
         copyButton.setText("Share");
-//        }
         copyButton.visibleProperty().setValue(true);
-        copyButton.setOnAction((event) -> copyAddress(address));
+        copyButton.setOnAction(event -> copyAddress(address));
     }
 
     // TODO FT-147 make sure copy and paste works on Android and iOS
@@ -94,29 +82,10 @@ public class DepositPresenter {
         } else {
             ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new RuntimeException("ShareService not available."));
             shareService.share(addressStr);
-//            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-//            ClipData clip = ClipData.newPlainText("label", addressStr);
-//            clipboard.setPrimaryClip(clip);
         }
     }
 
     private String depositAddressUri(Address a) {
         return BitcoinURI.convertToBitcoinURI(a, null, "Bytabit", "Bytabit deposit");
     }
-
-//    public Image toImage(QRCode qrCode) {//BitMatrix matrix, MatrixToImageConfig config) {
-//        BitMatrix matrix = qrCode.getQrWriter().encode();
-//        int width = matrix.getWidth();
-//        int height = matrix.getHeight();
-//        PixelReader pixelReader
-//        WritableImage image = new WritableImage(width, height, config.getBufferedImageColorModel());
-//        int onColor = config.getPixelOnColor();
-//        int offColor = config.getPixelOffColor();
-//        for (int x = 0; x < width; x++) {
-//            for (int y = 0; y < height; y++) {
-//                image.setRGB(x, y, matrix.get(x, y) ? onColor : offColor);
-//            }
-//        }
-//        return image;
-//    }
 }

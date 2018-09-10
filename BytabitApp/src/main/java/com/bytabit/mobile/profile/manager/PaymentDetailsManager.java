@@ -10,13 +10,12 @@ import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.util.Optional;
 
 public class PaymentDetailsManager {
 
-    private final String PROFILE_PAYMENT_DETAILS = "profile.paymentDetails";
+    private static final String PROFILE_PAYMENT_DETAILS = "profile.paymentDetails";
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
@@ -29,15 +28,10 @@ public class PaymentDetailsManager {
     @Inject
     StorageManager storageManager;
 
-    @PostConstruct
-    public void initialize() {
-
-    }
-
     public void updatePaymentDetails(PaymentDetails paymentDetails) {
         Observable.fromCallable(() -> {
             storageManager.store(paymentDetailsKey(paymentDetails.getCurrencyCode(),
-                    paymentDetails.getPaymentMethod()), paymentDetails.getPaymentDetails());
+                    paymentDetails.getPaymentMethod()), paymentDetails.getDetails());
             return paymentDetails;
         }).subscribeOn(Schedulers.io()).observeOn(Schedulers.io())
                 .subscribe(updatedPaymentDetails::onNext);

@@ -17,8 +17,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.TextField;
 import javafx.util.StringConverter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -44,8 +42,6 @@ public class PaymentPresenter {
 
     @FXML
     private Button removePaymentDetailButton;
-
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     public void initialize() {
 
@@ -145,6 +141,6 @@ public class PaymentPresenter {
     private void setPaymentDetails(PaymentDetails paymentDetails) {
         currencyChoiceBox.selectionModelProperty().getValue().select(paymentDetails.getCurrencyCode());
         paymentMethodChoiceBox.selectionModelProperty().getValue().select(paymentDetails.getPaymentMethod());
-        paymentDetailsTextField.setText(paymentDetails.getPaymentDetails());
+        paymentDetailsTextField.setText(paymentDetails.getDetails());
     }
 }

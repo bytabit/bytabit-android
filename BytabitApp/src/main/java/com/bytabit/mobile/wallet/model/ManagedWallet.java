@@ -5,9 +5,9 @@ import org.bitcoinj.wallet.Wallet;
 
 public class ManagedWallet {
 
-    final private String name;
-    final private Wallet wallet;
-    final private PeerGroup peerGroup;
+    private final String name;
+    private final Wallet wallet;
+    private final PeerGroup peerGroup;
 
     public ManagedWallet(String name, Wallet wallet, PeerGroup peerGroup) {
         this.name = name;
@@ -29,7 +29,7 @@ public class ManagedWallet {
 
     @Override
     public String toString() {
-        final StringBuffer sb = new StringBuffer("ManagedWallet{");
+        final StringBuilder sb = new StringBuilder("ManagedWallet{");
         sb.append("name=").append(name);
         sb.append(", balance=").append(wallet.getBalance());
         sb.append(", watched scripts=").append(wallet.getWatchedScripts().size());

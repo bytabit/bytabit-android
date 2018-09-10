@@ -115,7 +115,7 @@ public class TransactionWithAmt {
 
     @Override
     public String toString() {
-        final StringBuffer sb = new StringBuffer("TransactionWithAmt{");
+        final StringBuilder sb = new StringBuilder("TransactionWithAmt{");
         sb.append("hash='").append(hash).append('\'');
         sb.append(", confidenceType='").append(confidenceType).append('\'');
         sb.append(", depth=").append(depth);

@@ -12,13 +12,6 @@ public class ProfileStringConverter extends StringConverter<Profile> {
 
     @Override
     public Profile fromString(String displayName) {
-//        Profile found = null;
-//        for (PaymentMethod paymentMethod : PaymentMethod.values()) {
-//            if (paymentMethod.displayName().equals(displayName)) {
-//                found = paymentMethod;
-//                break;
-//            }
-//        }
         return null;
     }
 }

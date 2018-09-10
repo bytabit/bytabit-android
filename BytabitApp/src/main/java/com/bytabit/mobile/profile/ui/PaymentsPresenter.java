@@ -17,8 +17,6 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -33,15 +31,13 @@ public class PaymentsPresenter {
     @FXML
     private CharmListView<PaymentDetails, String> paymentDetailsListView;
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
-
     private FloatingActionButton addButton = new FloatingActionButton();
 
     public void initialize() {
 
         // setup view components
 
-        paymentDetailsListView.setCellFactory((view) -> new CharmListCell<PaymentDetails>() {
+        paymentDetailsListView.setCellFactory(view -> new CharmListCell<PaymentDetails>() {
             @Override
             public void updateItem(PaymentDetails paymentDetails, boolean empty) {
                 super.updateItem(paymentDetails, empty);
@@ -50,7 +46,7 @@ public class PaymentsPresenter {
                     String currencyCodeMethod = String.format("%s via %s",
                             paymentDetails.getCurrencyCode().name(),
                             paymentDetails.getPaymentMethod().displayName());
-                    String details = String.format("%s", paymentDetails.getPaymentDetails());
+                    String details = String.format("%s", paymentDetails.getDetails());
                     tile.textProperty().addAll(currencyCodeMethod, details);
                     setText(null);
                     setGraphic(tile);

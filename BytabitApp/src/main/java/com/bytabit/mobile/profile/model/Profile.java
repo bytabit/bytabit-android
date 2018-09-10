@@ -21,7 +21,7 @@ public class Profile {
         return pubKey;
     }
 
-    public boolean getIsArbitrator() {
+    public Boolean getIsArbitrator() {
         return arbitrator;
     }
 
@@ -55,7 +55,7 @@ public class Profile {
 
     @Override
     public String toString() {
-        final StringBuffer sb = new StringBuffer("Profile{");
+        final StringBuilder sb = new StringBuilder("Profile{");
         sb.append("pubKey='").append(pubKey).append('\'');
         sb.append(", arbitrator=").append(arbitrator);
         sb.append(", userName='").append(userName).append('\'');

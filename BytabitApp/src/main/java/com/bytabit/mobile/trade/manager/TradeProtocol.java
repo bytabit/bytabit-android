@@ -4,6 +4,7 @@ import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.TradeProtocolException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import io.reactivex.Maybe;
 
@@ -22,9 +23,9 @@ public abstract class TradeProtocol {
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-    abstract public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
+    public abstract Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
 
-    abstract public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade);
+    public abstract Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade);
 
     public Maybe<Trade> handlePaid(Trade trade, Trade receivedTrade) {
 
@@ -51,7 +52,7 @@ public abstract class TradeProtocol {
         } else if (trade.getRole().equals(Trade.Role.BUYER)) {
             reason = ArbitrateRequest.Reason.NO_BTC;
         } else {
-            throw new RuntimeException("Invalid role, can't request arbitrate");
+            throw new TradeProtocolException("Invalid role, can't request arbitrate");
         }
 
         ArbitrateRequest arbitrateRequest = new ArbitrateRequest(reason);

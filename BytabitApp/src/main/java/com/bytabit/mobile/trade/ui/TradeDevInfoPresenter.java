@@ -19,7 +19,7 @@ import javax.inject.Inject;
 
 public class TradeDevInfoPresenter {
 
-    private static Logger LOG = LoggerFactory.getLogger(TradeDevInfoPresenter.class);
+    private static Logger log = LoggerFactory.getLogger(TradeDevInfoPresenter.class);
 
     @Inject
     TradeManager tradeManager;
@@ -41,7 +41,7 @@ public class TradeDevInfoPresenter {
 
     public void initialize() {
 
-        LOG.debug("initialize trade debug info presenter");
+        log.debug("initialize trade debug info presenter");
 
         JavaFxObservable.changesOf(tradeDevInfoView.showingProperty())
                 .filter(Change::getNewVal)

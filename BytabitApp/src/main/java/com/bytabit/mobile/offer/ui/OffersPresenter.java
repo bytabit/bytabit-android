@@ -17,14 +17,10 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
 public class OffersPresenter {
-
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     OfferManager offerManager;
@@ -43,7 +39,7 @@ public class OffersPresenter {
 
         offersView.getLayers().add(addOfferButton.getLayer());
 
-        offersListView.setCellFactory((view) -> new CharmListCell<SellOffer>() {
+        offersListView.setCellFactory(view -> new CharmListCell<SellOffer>() {
             @Override
             public void updateItem(SellOffer o, boolean empty) {
                 super.updateItem(o, empty);
@@ -115,8 +111,6 @@ public class OffersPresenter {
         appBar.setNavIcon(MaterialDesignIcon.MENU.button(e ->
                 MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
         appBar.setTitleText("Offers");
-        appBar.getActionItems().add(MaterialDesignIcon.SEARCH.button(e ->
-                System.out.println("Search")));
     }
 
     private void clearSelection() {

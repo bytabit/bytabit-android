@@ -10,9 +10,6 @@ public class StorageManager {
 
     private final String prefix = AppConfig.getBtcNetwork() + "." + AppConfig.getConfigName() + ".";
 
-    public StorageManager() {
-    }
-
     public Optional<String> retrieve(String key) {
         return Services.get(SettingsService.class).map(s -> s.retrieve(prefix + key));
     }

@@ -9,12 +9,8 @@ import io.reactivex.Maybe;
 import io.reactivex.Single;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SellerProtocol extends TradeProtocol {
-
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     public SellerProtocol() {
         super();
@@ -54,7 +50,7 @@ public class SellerProtocol extends TradeProtocol {
 
             // 3. create payment request
             return Single.zip(refundTxSignature, paymentDetails, (rs, pd) ->
-                    new PaymentRequest(ftx.getHashAsString(), pd.getPaymentDetails(), ra.toBase58(), rs));
+                    new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra.toBase58(), rs));
 
         }).flatMap(Single::toMaybe);
     }

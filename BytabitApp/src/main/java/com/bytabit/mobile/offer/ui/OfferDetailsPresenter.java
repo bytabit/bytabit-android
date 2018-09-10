@@ -6,7 +6,6 @@ import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.manager.TradeManager;
-import com.bytabit.mobile.trade.model.BuyRequest;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -20,16 +19,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.math.MathContext;
 
 public class OfferDetailsPresenter {
-
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     OfferManager offerManager;
@@ -94,9 +89,6 @@ public class OfferDetailsPresenter {
     @FXML
     private TextField buyBtcAmtTextField;
 
-    public OfferDetailsPresenter() {
-    }
-
     public void initialize() {
 
         // setup view components
@@ -160,19 +152,6 @@ public class OfferDetailsPresenter {
                             showOffer(offer);
                         }));
 
-//        Observable.zip(
-//                offerDetailEvents.ofType(BuyButtonPressed.class),
-//                profileManager.getResults().ofType(ProfileManager.ProfileLoaded.class),
-//                walletManager.getWalletResults().ofType(WalletManager.EscrowPubKey.class),
-//                walletManager.getWalletResults().ofType(WalletManager.TradeWalletDepositAddress.class),
-//                offerManager.getResults().ofType(OfferManager.OfferSelected.class),
-//                (a, p, e, d, s) -> {
-//                    SellOffer sellOffer = s.getOffer();
-//                    BuyRequest buyRequest = createBuyRequest(p.getProfile().getPubKey(), e.getPubKey(), d.getAddress().toBase58());
-//                    String escrowAddress = walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyRequest.getBuyerEscrowPubKey());
-//                    return tradeManager.new CreateTrade(escrowAddress, Trade.Role.BUYER, s.getOffer(), buyRequest);
-//                });
-
     }
 
     private void setAppBar() {
@@ -198,12 +177,5 @@ public class OfferDetailsPresenter {
         maxTradeAmtCurrencyLabel.setText(currencyCode);
         priceLabel.setText(sellOffer.getPrice().toPlainString());
         priceCurrencyLabel.setText(currencyCode);
-    }
-
-    private BuyRequest createBuyRequest(String buyerProfilePubKey, String buyerEscrowPubKey,
-                                        String buyerPayoutAddress) {
-
-        BigDecimal btcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().getValue());
-        return new BuyRequest(buyerEscrowPubKey, btcAmount, buyerProfilePubKey, buyerPayoutAddress);
     }
 }

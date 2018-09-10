@@ -24,7 +24,9 @@ public class SellOffer {
         return new SellOfferBuilder();
     }
 
-    SellOffer(String sellerEscrowPubKey, String sellerProfilePubKey, String arbitratorProfilePubKey, CurrencyCode currencyCode, PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
+    SellOffer(String sellerEscrowPubKey, String sellerProfilePubKey, String arbitratorProfilePubKey, CurrencyCode currencyCode,
+              PaymentMethod paymentMethod, BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
+
         this.sellerEscrowPubKey = sellerEscrowPubKey;
         this.sellerProfilePubKey = sellerProfilePubKey;
         this.arbitratorProfilePubKey = arbitratorProfilePubKey;
@@ -124,7 +126,7 @@ public class SellOffer {
 
     @Override
     public String toString() {
-        final StringBuffer sb = new StringBuffer("SellOffer{");
+        final StringBuilder sb = new StringBuilder("SellOffer{");
         sb.append("sellerEscrowPubKey='").append(sellerEscrowPubKey).append('\'');
         sb.append(", sellerProfilePubKey='").append(sellerProfilePubKey).append('\'');
         sb.append(", arbitratorProfilePubKey='").append(arbitratorProfilePubKey).append('\'');

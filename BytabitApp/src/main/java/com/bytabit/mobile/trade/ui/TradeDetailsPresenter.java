@@ -17,15 +17,12 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
-import javafx.util.StringConverter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
-public class TradeDetailsPresenter {
+import static com.bytabit.mobile.trade.model.Trade.Status.COMPLETED;
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+public class TradeDetailsPresenter {
 
     @Inject
     TradeManager tradeManager;
@@ -99,24 +96,7 @@ public class TradeDetailsPresenter {
     @FXML
     FlowPane arbitrateButtonsFlowPane;
 
-    private StringConverter<Trade.Status> statusStringConverter;
-
     public void initialize() {
-
-        // setup view components
-
-        this.statusStringConverter = new StringConverter<Trade.Status>() {
-
-            @Override
-            public String toString(Trade.Status status) {
-                return status.toString();
-            }
-
-            @Override
-            public Trade.Status fromString(String statusStr) {
-                return Trade.Status.valueOf(statusStr);
-            }
-        };
 
         // setup event observables
 
@@ -191,21 +171,29 @@ public class TradeDetailsPresenter {
 
     private void showTrade(Trade trade) {
 
+        showTradeDetails(trade);
+
+        switch (trade.getRole()) {
+
+            case BUYER:
+                showDisabledTraderButtons();
+                enableBuyerButtons(trade.status());
+                break;
+            case SELLER:
+                showDisabledTraderButtons();
+                enableSellerButtons(trade.status());
+                break;
+            case ARBITRATOR:
+                showDisabledArbitratorButtons();
+                enableArbitratorButtons(trade);
+                break;
+        }
+    }
+
+    private void showTradeDetails(Trade trade) {
+
         tradeStatusLabel.setText(trade.status().toString());
         tradeRoleLabel.setText(trade.getRole().toString());
-
-        if (trade.getRole().equals(Trade.Role.ARBITRATOR)) {
-            actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
-            refundSellerButton.setDisable(true);
-            payoutBuyerButton.setDisable(true);
-        } else {
-            actionButtonsVBox.getChildren().remove(arbitrateButtonsFlowPane);
-            fundEscrowButton.setDisable(true);
-            paymentSentButton.setDisable(true);
-            paymentReceivedButton.setDisable(true);
-            cancelButton.setDisable(true);
-            arbitrateButton.setDisable(true);
-        }
 
         // sell offer
         String currencyCode = trade.getCurrencyCode().toString();
@@ -223,65 +211,94 @@ public class TradeDetailsPresenter {
         arbitrateReasonLabel.textProperty().setValue(null);
         payoutReasonLabel.textProperty().setValue(null);
 
-        if (trade.status().equals(Trade.Status.CREATED)) {
+        if (trade.hasPaymentRequest()) {
             paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-            if (trade.getRole() == Trade.Role.BUYER) {
+        }
+
+        if (trade.hasPayoutRequest()) {
+            paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
+        }
+
+        if (trade.hasArbitrateRequest()) {
+            arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
+        }
+
+        if (trade.hasPayoutCompleted()) {
+            payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
+        }
+    }
+
+    private void showDisabledTraderButtons() {
+        actionButtonsVBox.getChildren().remove(arbitrateButtonsFlowPane);
+        fundEscrowButton.setDisable(true);
+        paymentSentButton.setDisable(true);
+        paymentReceivedButton.setDisable(true);
+        cancelButton.setDisable(true);
+        arbitrateButton.setDisable(true);
+    }
+
+    private void showDisabledArbitratorButtons() {
+        actionButtonsVBox.getChildren().remove(tradeButtonsFlowPane);
+        refundSellerButton.setDisable(true);
+        payoutBuyerButton.setDisable(true);
+    }
+
+    private void enableBuyerButtons(Trade.Status status) {
+
+        switch (status) {
+
+            case CREATED:
+            case FUNDING:
                 cancelButton.setDisable(false);
-            } else if (trade.getRole() == Trade.Role.SELLER) {
-                fundEscrowButton.setDisable(false);
+                break;
+            case FUNDED:
                 cancelButton.setDisable(false);
-            }
-        } else if (trade.status().equals(Trade.Status.FUNDING)) {
-            paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-            cancelButton.setDisable(false);
-            if (trade.getRole() == Trade.Role.BUYER) {
-//                paymentReferenceField.setDisable(false);
-//                paymentReferenceField.setEditable(true);
-//                paymentSentButton.setDisable(false);
-            } else if (trade.getRole() == Trade.Role.SELLER) {
-                arbitrateButton.setDisable(false);
-            }
-        } else if (trade.status().equals(Trade.Status.FUNDED)) {
-            paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-            cancelButton.setDisable(false);
-            if (trade.getRole() == Trade.Role.BUYER) {
                 paymentReferenceField.setDisable(false);
                 paymentReferenceField.setEditable(true);
                 paymentSentButton.setDisable(false);
-            } else if (trade.getRole() == Trade.Role.SELLER) {
+                break;
+            case PAID:
                 arbitrateButton.setDisable(false);
-            }
-        } else if (trade.status().equals(Trade.Status.PAID)) {
-            paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-            paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-            arbitrateButton.setDisable(false);
-            if (trade.getRole() == Trade.Role.BUYER) {
-                paymentReceivedButton.setDisable(true);
-            } else if (trade.getRole() == Trade.Role.SELLER) {
+                break;
+            case COMPLETING:
+                arbitrateButton.setDisable(false);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void enableSellerButtons(Trade.Status status) {
+
+        switch (status) {
+
+            case CREATED:
+                fundEscrowButton.setDisable(false);
+                cancelButton.setDisable(false);
+                break;
+            case FUNDING:
+            case FUNDED:
+                arbitrateButton.setDisable(false);
+                break;
+            case PAID:
+                arbitrateButton.setDisable(false);
                 paymentReceivedButton.setDisable(false);
-            }
-        } else if (trade.status().equals(Trade.Status.COMPLETED)) {
-            paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+                break;
+            case COMPLETING:
+                arbitrateButton.setDisable(false);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void enableArbitratorButtons(Trade trade) {
+
+        if (!COMPLETED.equals(trade.status())) {
+
+            refundSellerButton.setDisable(false);
             if (trade.hasPayoutRequest()) {
-                paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-            }
-            if (trade.hasArbitrateRequest()) {
-                arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
-            }
-            if (trade.hasPayoutCompleted()) {
-                payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
-            }
-        } else if (trade.status().equals(Trade.Status.ARBITRATING)) {
-            paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
-            if (trade.hasPayoutRequest()) {
-                paymentReferenceField.textProperty().setValue(trade.getPaymentReference());
-            }
-            arbitrateReasonLabel.textProperty().setValue(trade.getArbitrationReason().toString());
-            if (trade.getRole() == Trade.Role.ARBITRATOR) {
-                refundSellerButton.setDisable(false);
-                if (trade.hasPayoutRequest()) {
-                    payoutBuyerButton.setDisable(false);
-                }
+                payoutBuyerButton.setDisable(false);
             }
         }
     }

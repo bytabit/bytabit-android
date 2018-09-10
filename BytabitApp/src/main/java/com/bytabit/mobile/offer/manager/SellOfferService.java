@@ -16,17 +16,7 @@ import java.util.List;
 
 public class SellOfferService {
 
-//    @Headers("Content-Type:application/json")
-//    @PUT("/offers/{sellerEscrowPubKey}")
-//    Single<SellOffer> put(@Path("sellerEscrowPubKey") String sellerEscrowPubKey, @Body SellOffer sellOffer);
-//
-//    @Headers("Content-Type:application/json")
-//    @GET("/offers")
-//    Single<List<SellOffer>> getAll();
-//
-//    @Headers("Content-Type:application/json")
-//    @DELETE("/offers/{sellerEscrowPubKey}")
-//    Completable delete(@Path("sellerEscrowPubKey") String sellerEscrowPubKey);
+    private static final String APPLICATION_JSON = "application/json";
 
     Single<SellOffer> put(SellOffer sellOffer) {
         return Single.create((SingleEmitter<SellOffer> source) -> {
@@ -35,7 +25,7 @@ public class SellOfferService {
                     .host(AppConfig.getBaseUrl())
                     .path(String.format("/offers/%s", sellOffer.getSellerEscrowPubKey()))
                     .method("PUT")
-                    .contentType("application/json");
+                    .contentType(APPLICATION_JSON);
 
             ObjectDataWriter<SellOffer> dataWriter = putRestClient.createObjectDataWriter(SellOffer.class);
 
@@ -55,7 +45,7 @@ public class SellOfferService {
                     .host(AppConfig.getBaseUrl())
                     .path("/offers")
                     .method("GET")
-                    .contentType("application/json");
+                    .contentType(APPLICATION_JSON);
 
             ListDataReader<SellOffer> listDataReader = getRestClient.createListDataReader(SellOffer.class);
 
@@ -80,7 +70,7 @@ public class SellOfferService {
                     .host(AppConfig.getBaseUrl())
                     .path(String.format("/offers/%s", sellerEscrowPubKey))
                     .method("DELETE")
-                    .contentType("application/json");
+                    .contentType(APPLICATION_JSON);
 
             ObjectDataReader<SellOffer> dataReader = deleteRestClient.createObjectDataReader(SellOffer.class);
 

@@ -81,7 +81,7 @@ public class BuyerProtocol extends TradeProtocol {
     public Maybe<Trade> refundTrade(Trade trade) {
 
         // 1. sign and broadcast payout tx
-        Maybe<String> refundTxHash = walletManager.cancelEscrowToSeller(trade);
+        Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade);
 
         // 2. confirm refund tx and create payout completed
         Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.BUYER_SELLER_REFUND));

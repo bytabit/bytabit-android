@@ -1,8 +1,6 @@
 package com.bytabit.mobile;
 
 import com.bytabit.mobile.nav.NavDrawer;
-import com.bytabit.mobile.nav.evt.NavEvent;
-import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.bytabit.mobile.offer.ui.AddOfferView;
 import com.bytabit.mobile.offer.ui.OfferDetailsView;
 import com.bytabit.mobile.offer.ui.OffersView;
@@ -36,29 +34,33 @@ import java.util.concurrent.Executors;
 
 public class BytabitMobile extends MobileApplication {
 
-    private static Logger LOG = LoggerFactory.getLogger(BytabitMobile.class);
+    public enum NavEvent {
+        QUIT
+    }
 
-    final public static String WALLET_VIEW = "Wallet";
-    final public static String WALLET_BACKUP_VIEW = "WalletBackup";
-    final public static String DEPOSIT_VIEW = "Deposit";
+    public static final String WALLET_VIEW = "Wallet";
+    public static final String WALLET_BACKUP_VIEW = "WalletBackup";
+    public static final String DEPOSIT_VIEW = "Deposit";
 
-    final public static String OFFERS_VIEW = "Offers";
-    final public static String ADD_OFFER_VIEW = "AddOffer";
-    final public static String OFFER_DETAILS_VIEW = "OfferDetails";
+    public static final String OFFERS_VIEW = "Offers";
+    public static final String ADD_OFFER_VIEW = "AddOffer";
+    public static final String OFFER_DETAILS_VIEW = "OfferDetails";
 
-    final public static String TRADE_VIEW = HOME_VIEW; //"Trades";
-    final public static String TRADE_DETAILS_VIEW = "TradeDetails";
-    final public static String TRADE_DEV_INFO_VIEW = "TradeDevInfo";
+    public static final String TRADE_VIEW = HOME_VIEW;
+    public static final String TRADE_DETAILS_VIEW = "TradeDetails";
+    public static final String TRADE_DEV_INFO_VIEW = "TradeDevInfo";
 
-    final public static String PROFILE_VIEW = "Profile";
-    final public static String PAYMENT_VIEW = "PaymentDetails";
-    final public static String ADD_PAYMENT_VIEW = "AddPaymentDetail";
+    public static final String PROFILE_VIEW = "Profile";
+    public static final String PAYMENT_VIEW = "PaymentDetails";
+    public static final String ADD_PAYMENT_VIEW = "AddPaymentDetail";
 
-    final public static String HELP_VIEW = "Contracts";
+    public static final String HELP_VIEW = "Contracts";
 
-    final public static String MENU_LAYER = "SideMenu";
+    public static final String MENU_LAYER = "SideMenu";
 
-    final public static Executor EXECUTOR = Executors.newWorkStealingPool();
+    public static final Executor EXECUTOR = Executors.newWorkStealingPool();
+
+    private Logger log = LoggerFactory.getLogger(BytabitMobile.class);
 
     private static PublishSubject<NavEvent> navEventsSubject = PublishSubject.create();
 
@@ -82,8 +84,6 @@ public class BytabitMobile extends MobileApplication {
         addViewFactory(ADD_PAYMENT_VIEW, () -> (View) new PaymentView().getView());
 
         addViewFactory(PROFILE_VIEW, () -> (View) new ProfileView().getView());
-
-//        addViewFactory(HELP_VIEW, () -> new ContractsView(HELP_VIEW));
 
         addLayerFactory(MENU_LAYER, () -> new SidePopupView(new NavDrawer().getDrawer()));
     }
@@ -109,8 +109,8 @@ public class BytabitMobile extends MobileApplication {
 
     @Override
     public void stop() {
-        navEventsSubject.onNext(new QuitEvent());
-        LOG.debug("Stop app");
+        navEventsSubject.onNext(NavEvent.QUIT);
+        log.debug("Stop app");
     }
 
     public static PublishSubject<NavEvent> getNavEventsSubject() {

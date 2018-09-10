@@ -4,12 +4,12 @@ public class PaymentDetails {
 
     private final CurrencyCode currencyCode;
     private final PaymentMethod paymentMethod;
-    private final String paymentDetails;
+    private final String details;
 
-    public PaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod, String paymentDetails) {
+    public PaymentDetails(CurrencyCode currencyCode, PaymentMethod paymentMethod, String details) {
         this.currencyCode = currencyCode;
         this.paymentMethod = paymentMethod;
-        this.paymentDetails = paymentDetails;
+        this.details = details;
     }
 
     public CurrencyCode getCurrencyCode() {
@@ -20,8 +20,8 @@ public class PaymentDetails {
         return paymentMethod;
     }
 
-    public String getPaymentDetails() {
-        return paymentDetails;
+    public String getDetails() {
+        return details;
     }
 
     public PaymentDetailsKey key() {
@@ -34,10 +34,10 @@ public class PaymentDetails {
 
     @Override
     public String toString() {
-        final StringBuffer sb = new StringBuffer("PaymentDetails{");
+        final StringBuilder sb = new StringBuilder("PaymentDetails{");
         sb.append("currencyCode=").append(currencyCode);
         sb.append(", paymentMethod=").append(paymentMethod);
-        sb.append(", paymentDetails='").append(paymentDetails).append('\'');
+        sb.append(", details='").append(details).append('\'');
         sb.append('}');
         return sb.toString();
     }
@@ -51,14 +51,14 @@ public class PaymentDetails {
 
         if (currencyCode != that.currencyCode) return false;
         if (paymentMethod != that.paymentMethod) return false;
-        return paymentDetails != null ? paymentDetails.equals(that.paymentDetails) : that.paymentDetails == null;
+        return details != null ? details.equals(that.details) : that.details == null;
     }
 
     @Override
     public int hashCode() {
         int result = currencyCode.hashCode();
         result = 31 * result + paymentMethod.hashCode();
-        result = 31 * result + (paymentDetails != null ? paymentDetails.hashCode() : 0);
+        result = 31 * result + (details != null ? details.hashCode() : 0);
         return result;
     }
 }

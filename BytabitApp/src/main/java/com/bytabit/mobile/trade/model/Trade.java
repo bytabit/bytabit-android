@@ -360,7 +360,7 @@ public class Trade {
             status = COMPLETED;
         }
         if (status == null) {
-            throw new RuntimeException("Unable to determine trade status.");
+            throw new TradeManagerException("Unable to determine trade status.");
         }
         return status;
     }
@@ -482,24 +482,6 @@ public class Trade {
         return new PayoutCompleted(this.payoutTxHash, this.payoutReason);
     }
 
-//    public Trade role(String profilePubKey, Boolean getIsArbitrator) {
-//
-//        if (!getIsArbitrator) {
-//            if (getSellerProfilePubKey().equals(profilePubKey)) {
-//                this.role = SELLER;
-//            } else if (getBuyerProfilePubKey().equals(profilePubKey)) {
-//                this.role = BUYER;
-//            } else {
-//                throw new RuntimeException("Unable to determine trader role.");
-//            }
-//        } else if (getArbitratorProfilePubKey().equals(profilePubKey)) {
-//            this.role = ARBITRATOR;
-//        } else {
-//            throw new RuntimeException("Unable to determine arbitrator role.");
-//        }
-//        return this;
-//    }
-
     public Trade fundingTransactionHash(String fundingTxHash) {
         this.fundingTxHash = fundingTxHash;
         return this;
@@ -606,7 +588,7 @@ public class Trade {
 
     @Override
     public String toString() {
-        final StringBuffer sb = new StringBuffer("Trade{");
+        final StringBuilder sb = new StringBuilder("Trade{");
         sb.append("escrowAddress='").append(escrowAddress).append('\'');
         sb.append(", sellerEscrowPubKey='").append(sellerEscrowPubKey).append('\'');
         sb.append(", sellerProfilePubKey='").append(sellerProfilePubKey).append('\'');

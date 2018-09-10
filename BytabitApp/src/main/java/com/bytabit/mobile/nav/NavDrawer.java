@@ -2,7 +2,6 @@ package com.bytabit.mobile.nav;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.nav.evt.QuitEvent;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.LifecycleService;
@@ -46,7 +45,7 @@ public class NavDrawer {
             final Item quitItem = new Item("Quit", MaterialDesignIcon.EXIT_TO_APP.graphic());
             quitItem.selectedProperty().addListener((obs, ov, nv) -> {
                 if (nv) {
-                    BytabitMobile.getNavEventsSubject().onNext(new QuitEvent());
+                    BytabitMobile.getNavEventsSubject().onNext(NavEvent.QUIT);
                     Services.get(LifecycleService.class).ifPresent(LifecycleService::shutdown);
                 }
             });

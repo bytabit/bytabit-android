@@ -1,7 +1,6 @@
 package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
-import com.bytabit.mobile.common.StringBigDecimalConverter;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileManager;
@@ -23,16 +22,11 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.util.StringConverter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
 
 public class AddOfferPresenter {
-
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     OfferManager offerManager;
@@ -79,8 +73,18 @@ public class AddOfferPresenter {
     public void initialize() {
 
         // setup view components
+        setupViewComponents();
 
-        StringConverter<BigDecimal> bigDecConverter = new StringBigDecimalConverter();
+        // setup event observables
+        handleShowing();
+        handleAddOffer();
+        handleCurrencyChoice();
+        handleUpdatePaymentDetails();
+        handleRemovePaymentDetails();
+        handleArbitratorProfiles();
+    }
+
+    private void setupViewComponents() {
 
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
 
@@ -89,8 +93,9 @@ public class AddOfferPresenter {
         minTradeAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
         maxTradeAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
         btcPriceTextField.setTextFormatter(new DecimalTextFieldFormatter());
+    }
 
-        // setup event observables
+    private void handleShowing() {
 
         JavaFxObservable.changesOf(addOfferView.showingProperty())
                 .filter(Change::getNewVal)
@@ -100,7 +105,9 @@ public class AddOfferPresenter {
                     setAppBar();
                     clearForm();
                 });
+    }
 
+    private void handleAddOffer() {
         Observable.create(source ->
                 addOfferButton.setOnAction(source::onNext))
                 .subscribeOn(Schedulers.io())
@@ -115,7 +122,9 @@ public class AddOfferPresenter {
                     offerManager.createOffer(currencyCode, paymentMethod, arbitratorProfilePubKey, minAmount, maxAmount, price);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
+    }
 
+    private void handleCurrencyChoice() {
         JavaFxObservable.changesOf(currencyChoiceBox.getSelectionModel().selectedItemProperty())
                 .map(Change::getNewVal)
                 .flatMap(cc -> paymentDetailsManager.getLoadedPaymentDetails()
@@ -139,6 +148,9 @@ public class AddOfferPresenter {
                     maxTradeAmtCurrencyLabel.setText(cc);
                     btcPriceCurrencyLabel.setText(cc);
                 });
+    }
+
+    private void handleUpdatePaymentDetails() {
 
         Observable.concat(paymentDetailsManager.getLoadedPaymentDetails(),
                 paymentDetailsManager.getUpdatedPaymentDetails())
@@ -161,6 +173,9 @@ public class AddOfferPresenter {
                         }
                     }
                 });
+    }
+
+    private void handleRemovePaymentDetails() {
 
         paymentDetailsManager.getRemovedPaymentDetails()
                 .subscribeOn(Schedulers.io())
@@ -178,6 +193,9 @@ public class AddOfferPresenter {
                         }
                     }
                 });
+    }
+
+    private void handleArbitratorProfiles() {
 
         profileManager.loadArbitratorProfiles()
                 .subscribeOn(Schedulers.io())

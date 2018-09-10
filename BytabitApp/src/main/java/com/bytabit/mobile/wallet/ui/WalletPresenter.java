@@ -16,15 +16,11 @@ import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.control.Label;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Locale;
 
 public class WalletPresenter {
-
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     @Inject
     WalletManager walletManager;
@@ -48,7 +44,7 @@ public class WalletPresenter {
     public void initialize() {
 
         // setup transaction list view
-        transactionListView.setCellFactory((view) -> new CharmListCell<TransactionWithAmt>() {
+        transactionListView.setCellFactory(view -> new CharmListCell<TransactionWithAmt>() {
             @Override
             public void updateItem(TransactionWithAmt tx, boolean empty) {
                 super.updateItem(tx, empty);
@@ -71,9 +67,7 @@ public class WalletPresenter {
         walletManager.getTradeDownloadProgress().autoConnect()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(p -> {
-                    downloadProgressBar.progressProperty().setValue(p);
-                });
+                .subscribe(p -> downloadProgressBar.progressProperty().setValue(p));
 
         walletManager.getTradeUpdatedWalletTx().autoConnect()
                 .subscribeOn(Schedulers.io())
@@ -95,16 +89,12 @@ public class WalletPresenter {
         Observable.create(source -> depositButton.setOnAction(source::onNext))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> {
-                    MobileApplication.getInstance().switchView(BytabitMobile.DEPOSIT_VIEW);
-                });
+                .subscribe(c -> MobileApplication.getInstance().switchView(BytabitMobile.DEPOSIT_VIEW));
 
         JavaFxObservable.changesOf(walletView.showingProperty()).subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .filter(Change::getNewVal)
-                .subscribe(c -> {
-                    setAppBar();
-                });
+                .subscribe(c -> setAppBar());
     }
 
     private void setAppBar() {
