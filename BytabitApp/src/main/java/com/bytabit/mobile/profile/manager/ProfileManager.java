@@ -53,7 +53,7 @@ public class ProfileManager {
 
     private Profile storeMyProfile(Profile profile) {
 
-        storageManager.store(PROFILE_ISARBITRATOR, profile.getIsArbitrator().toString());
+        storageManager.store(PROFILE_ISARBITRATOR, Boolean.toString(profile.getIsArbitrator()));
         storageManager.store(PROFILE_USERNAME, profile.getUserName());
         storageManager.store(PROFILE_PHONENUM, profile.getPhoneNum());
         return profile;

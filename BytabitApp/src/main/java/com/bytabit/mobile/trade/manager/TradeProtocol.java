@@ -47,9 +47,9 @@ public abstract class TradeProtocol {
     public Maybe<Trade> requestArbitrate(Trade trade) {
 
         ArbitrateRequest.Reason reason;
-        if (trade.getRole().equals(Trade.Role.SELLER)) {
+        if (trade.role().equals(Trade.Role.SELLER)) {
             reason = ArbitrateRequest.Reason.NO_PAYMENT;
-        } else if (trade.getRole().equals(Trade.Role.BUYER)) {
+        } else if (trade.role().equals(Trade.Role.BUYER)) {
             reason = ArbitrateRequest.Reason.NO_BTC;
         } else {
             throw new TradeProtocolException("Invalid role, can't request arbitrate");

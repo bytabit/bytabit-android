@@ -1,40 +1,21 @@
 package com.bytabit.mobile.wallet.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.ToString;
 import org.bitcoinj.core.PeerGroup;
 import org.bitcoinj.wallet.Wallet;
 
+@AllArgsConstructor
+@Getter
+@Builder
+@ToString
 public class ManagedWallet {
 
     private final String name;
+
     private final Wallet wallet;
+
     private final PeerGroup peerGroup;
-
-    public ManagedWallet(String name, Wallet wallet, PeerGroup peerGroup) {
-        this.name = name;
-        this.wallet = wallet;
-        this.peerGroup = peerGroup;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Wallet getWallet() {
-        return wallet;
-    }
-
-    public PeerGroup getPeerGroup() {
-        return peerGroup;
-    }
-
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder("ManagedWallet{");
-        sb.append("name=").append(name);
-        sb.append(", balance=").append(wallet.getBalance());
-        sb.append(", watched scripts=").append(wallet.getWatchedScripts().size());
-        sb.append(", peerGroup isRunning=").append(peerGroup.isRunning());
-        sb.append('}');
-        return sb.toString();
-    }
 }

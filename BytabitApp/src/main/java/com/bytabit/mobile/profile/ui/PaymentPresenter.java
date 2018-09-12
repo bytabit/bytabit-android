@@ -134,7 +134,7 @@ public class PaymentPresenter {
         return PaymentDetails.builder()
                 .currencyCode(currencyChoiceBox.getValue())
                 .paymentMethod(paymentMethodChoiceBox.getValue())
-                .paymentDetails(paymentDetailsTextField.textProperty().getValue())
+                .details(paymentDetailsTextField.textProperty().getValue())
                 .build();
     }
 

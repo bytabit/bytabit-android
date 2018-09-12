@@ -666,9 +666,9 @@ public class WalletManager {
                 .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true));
 
         Single<List<TransactionSignature>> signatures;
-        if (trade.getRole().equals(Trade.Role.ARBITRATOR)) {
+        if (trade.role().equals(Trade.Role.ARBITRATOR)) {
             signatures = mySignature.concatWith(sellerSignature).toList();
-        } else if (trade.getRole().equals(Trade.Role.BUYER)) {
+        } else if (trade.role().equals(Trade.Role.BUYER)) {
             signatures = sellerSignature.concatWith(mySignature).toList();
         } else {
             throw new WalletManagerException("Only arbitrator or buyer roles can refund escrow to seller.");

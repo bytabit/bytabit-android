@@ -173,7 +173,7 @@ public class TradeDetailsPresenter {
 
         showTradeDetails(trade);
 
-        switch (trade.getRole()) {
+        switch (trade.role()) {
 
             case BUYER:
                 showDisabledTraderButtons();
@@ -187,13 +187,16 @@ public class TradeDetailsPresenter {
                 showDisabledArbitratorButtons();
                 enableArbitratorButtons(trade);
                 break;
+            default:
+                disableAllActionButtons();
+                break;
         }
     }
 
     private void showTradeDetails(Trade trade) {
 
         tradeStatusLabel.setText(trade.status().toString());
-        tradeRoleLabel.setText(trade.getRole().toString());
+        tradeRoleLabel.setText(trade.role().toString());
 
         // sell offer
         String currencyCode = trade.getCurrencyCode().toString();
@@ -226,6 +229,11 @@ public class TradeDetailsPresenter {
         if (trade.hasPayoutCompleted()) {
             payoutReasonLabel.textProperty().setValue(trade.getPayoutReason().toString());
         }
+    }
+
+    private void disableAllActionButtons() {
+        arbitrateButtonsFlowPane.setDisable(true);
+        tradeButtonsFlowPane.setDisable(true);
     }
 
     private void showDisabledTraderButtons() {

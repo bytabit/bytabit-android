@@ -39,7 +39,7 @@ public class TradesPresenter {
                 super.updateItem(t, empty);
                 if (t != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s %s BTC @ %s %s", t.getRole(), t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
+                    String amount = String.format("%s %s BTC @ %s %s", t.role(), t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
                     String details = String.format("%s for %s %s via %s", t.status(), t.getBtcAmount().multiply(t.getPrice()),
                             t.getCurrencyCode(), t.getPaymentMethod().displayName());
                     tile.textProperty().addAll(amount, details, t.getEscrowAddress());

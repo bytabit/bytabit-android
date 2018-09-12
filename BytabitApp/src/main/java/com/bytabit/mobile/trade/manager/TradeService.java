@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class TradeService {
+class TradeService {
 
-    public Single<List<Trade>> get(String profilePubKey) {
+    Single<List<Trade>> get(String profilePubKey) {
 
         return Single.create(source -> {
 
@@ -40,7 +40,7 @@ public class TradeService {
         });
     }
 
-    public Single<Trade> put(Trade trade) {
+    Single<Trade> put(Trade trade) {
 
         return Single.create(source -> {
 

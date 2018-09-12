@@ -49,7 +49,7 @@ public class WalletPresenter {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC, %tc", tx.getTransactionCoinAmt().toPlainString(), tx.getDate().toDate());
+                    String amount = String.format("%s BTC, %tc", tx.getTransactionAmt().toPlainString(), tx.getDate().toDate());
                     String details = String.format(Locale.US, "%s (%d), Hash: %s", tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());
                     setText(null);
@@ -77,7 +77,7 @@ public class WalletPresenter {
                         transactionListView.itemsProperty().remove(index);
                     }
                     transactionListView.itemsProperty().add(tx);
-                    balanceAmountLabel.textProperty().setValue(tx.getWalletCoinBalance().toFriendlyString());
+                    balanceAmountLabel.textProperty().setValue(tx.getWalletBalance().toFriendlyString());
                 });
 
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);

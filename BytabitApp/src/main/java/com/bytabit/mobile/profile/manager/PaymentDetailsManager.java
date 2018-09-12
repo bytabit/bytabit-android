@@ -59,7 +59,7 @@ public class PaymentDetailsManager {
                                 PaymentDetails.builder()
                                         .currencyCode(c)
                                         .paymentMethod(p)
-                                        .paymentDetails(pd).build()))
+                                        .details(pd).build()))
                         .filter(Optional::isPresent)
                         .map(Optional::get))
                 .doOnNext(paymentDetails -> log.debug("Loaded: {}", paymentDetails))
