@@ -1,14 +1,18 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.*;
 
+@NoArgsConstructor
 @AllArgsConstructor
 @Getter
+@Setter
+@Builder
+@EqualsAndHashCode
+@ToString
 public class PaymentRequest {
 
-    private final String fundingTxHash;
-    private final String paymentDetails;
-    private final String refundAddress;
-    private final String refundTxSignature;
+    private String fundingTxHash;
+    private String paymentDetails;
+    private String refundAddress;
+    private String refundTxSignature;
 }

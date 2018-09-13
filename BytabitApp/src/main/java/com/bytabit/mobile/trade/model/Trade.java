@@ -4,313 +4,309 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
+import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
-@NoArgsConstructor
 @AllArgsConstructor
 @Getter
-@Setter
-@EqualsAndHashCode(exclude = {"role", "createdTimestamp"})
-@ToString
+@Builder
 public class Trade {
 
     public enum Status {
 
         CREATED, FUNDING, FUNDED, PAID, COMPLETING, // happy path
         CANCELING, ARBITRATING,
-        COMPLETED, CANCELED;
-
-        private List<Status> nextValid;
-
-        static {
-            CREATED.nextValid = Arrays.asList(FUNDING, CANCELING);
-            FUNDING.nextValid = Arrays.asList(FUNDED, CANCELING, ARBITRATING);
-            FUNDED.nextValid = Arrays.asList(PAID, CANCELING, ARBITRATING);
-            PAID.nextValid = Arrays.asList(COMPLETING, ARBITRATING);
-            COMPLETING.nextValid = Arrays.asList(COMPLETED, ARBITRATING);
-            CANCELING.nextValid = Arrays.asList(CANCELED, PAID, ARBITRATING);
-            ARBITRATING.nextValid = Collections.singletonList(COMPLETED);
-            COMPLETED.nextValid = new ArrayList<>();
-            CANCELED.nextValid = new ArrayList<>();
-        }
-
-        public List<Status> nextValid() {
-            return nextValid;
-        }
+        COMPLETED, CANCELED
     }
 
     public enum Role {
         BUYER, SELLER, ARBITRATOR
     }
 
+    private final Status status;
+
+    private final Role role;
+
     private String escrowAddress;
 
-    @Getter(value = AccessLevel.NONE)
-    @Setter(value = AccessLevel.NONE)
-    private Role role;
-
-    @Getter(value = AccessLevel.NONE)
-    @Setter(value = AccessLevel.NONE)
     private LocalDateTime createdTimestamp;
 
     // Sell Offer
-    private String sellerEscrowPubKey;
-    private String sellerProfilePubKey;
-    private String arbitratorProfilePubKey;
-    private CurrencyCode currencyCode;
-    private PaymentMethod paymentMethod;
-    private BigDecimal minAmount;
-    private BigDecimal maxAmount;
-    private BigDecimal price;
+    private SellOffer sellOffer;
+
+    public boolean hasSellOffer() {
+        return sellOffer != null;
+    }
+
+    public String getArbitratorProfilePubKey() {
+
+        if (hasSellOffer()) {
+            return sellOffer.getArbitratorProfilePubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public String getSellerProfilePubKey() {
+
+        if (hasSellOffer()) {
+            return sellOffer.getSellerProfilePubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public String getSellerEscrowPubKey() {
+
+        if (hasSellOffer()) {
+            return sellOffer.getSellerEscrowPubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public CurrencyCode getCurrencyCode() {
+        if (hasSellOffer()) {
+            return sellOffer.getCurrencyCode();
+        } else {
+            return null;
+        }
+    }
+
+    public PaymentMethod getPaymentMethod() {
+        if (hasSellOffer()) {
+            return sellOffer.getPaymentMethod();
+        } else {
+            return null;
+        }
+    }
+
+    public BigDecimal getPrice() {
+        if (hasSellOffer()) {
+            return sellOffer.getPrice();
+        } else {
+            return null;
+        }
+    }
 
     // Buy Request
-    private String buyerEscrowPubKey;
-    private BigDecimal btcAmount;
-    private String buyerProfilePubKey;
-    private String buyerPayoutAddress;
+    private BuyRequest buyRequest;
 
-    // Funding, Payment Request
-    private String fundingTxHash;
-    private String paymentDetails;
-    private String refundAddress;
-    private String refundTxSignature;
+    public boolean hasBuyRequest() {
+        return buyRequest != null;
+    }
+
+    public String getBuyerProfilePubKey() {
+
+        if (hasBuyRequest()) {
+            return buyRequest.getBuyerProfilePubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public String getBuyerEscrowPubKey() {
+
+        if (hasBuyRequest()) {
+            return buyRequest.getBuyerEscrowPubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public BigDecimal getBtcAmount() {
+        if (hasBuyRequest()) {
+            return buyRequest.getBtcAmount().stripTrailingZeros();
+        } else {
+            return null;
+        }
+    }
+
+    public String getBuyerPayoutAddress() {
+        if (hasBuyRequest()) {
+            return buyRequest.getBuyerPayoutAddress();
+        } else {
+            return null;
+        }
+    }
 
     // Funded, Tx Confirmation
-    @Getter(value = AccessLevel.NONE)
-    @Setter(value = AccessLevel.NONE)
     private TransactionWithAmt fundingTransactionWithAmt;
 
+    // Funding, Payment Request
+    private PaymentRequest paymentRequest;
+
+    public boolean hasPaymentRequest() {
+        return paymentRequest != null;
+    }
+
+    public String getFundingTxHash() {
+
+        if (hasPaymentRequest()) {
+            return paymentRequest.getFundingTxHash();
+        } else {
+            return null;
+        }
+    }
+
+    public String getPaymentDetails() {
+        if (hasPaymentRequest()) {
+            return paymentRequest.getPaymentDetails();
+        } else {
+            return null;
+        }
+    }
+
+    public String getRefundAddress() {
+        if (hasPaymentRequest()) {
+            return paymentRequest.getRefundAddress();
+        } else {
+            return null;
+        }
+    }
+
+    public String getRefundTxSignature() {
+        if (hasPaymentRequest()) {
+            return paymentRequest.getRefundTxSignature();
+        } else {
+            return null;
+        }
+    }
+
     // Payout Request
-    private String paymentReference;
-    private String payoutTxSignature;
+    private PayoutRequest payoutRequest;
+
+    public boolean hasPayoutRequest() {
+        return payoutRequest != null;
+    }
+
+    public String getPaymentReference() {
+        if (hasPayoutRequest()) {
+            return payoutRequest.getPaymentReference();
+        } else {
+            return null;
+        }
+    }
+
+    public String getPayoutTxSignature() {
+        if (hasPayoutRequest()) {
+            return payoutRequest.getPayoutTxSignature();
+        } else {
+            return null;
+        }
+    }
 
     // Arbitrate Request
-    private ArbitrateRequest.Reason arbitrationReason;
+    private ArbitrateRequest arbitrateRequest;
 
-    // Payout Completed
-    private String payoutTxHash;
-    private PayoutCompleted.Reason payoutReason;
+    public boolean hasArbitrateRequest() {
+        return arbitrateRequest != null;
+    }
+
+    public ArbitrateRequest.Reason getArbitrationReason() {
+        if (hasArbitrateRequest()) {
+            return arbitrateRequest.getReason();
+        } else {
+            return null;
+        }
+    }
 
     // Completed, Tx Confirmation
-    @Getter(value = AccessLevel.NONE)
-    @Setter(value = AccessLevel.NONE)
     private TransactionWithAmt payoutTransactionWithAmt;
 
-    @Builder
-    public Trade(String escrowAddress, LocalDateTime createdTimestamp, Role role, SellOffer sellOffer, BuyRequest buyRequest,
-                 PaymentRequest paymentRequest, PayoutRequest payoutRequest, PayoutCompleted payoutCompleted) {
+    // Payout Completed
+    private PayoutCompleted payoutCompleted;
 
-        this.escrowAddress = escrowAddress;
-        this.createdTimestamp = createdTimestamp;
-        this.role = role;
-
-        this.sellOffer(sellOffer);
-        if (buyRequest != null) this.buyRequest(buyRequest);
-        if (paymentRequest != null) this.paymentRequest(paymentRequest);
-        if (payoutRequest != null) this.payoutRequest(payoutRequest);
-        if (payoutCompleted != null) this.payoutCompleted(payoutCompleted);
+    public boolean hasPayoutCompleted() {
+        return payoutCompleted != null;
     }
 
-    public LocalDateTime createdTimestamp() {
-        return createdTimestamp;
+    public String getPayoutTxHash() {
+        if (hasPayoutCompleted()) {
+            return payoutCompleted.getPayoutTxHash();
+        } else {
+            return null;
+        }
     }
 
-    public String getCreatedTimestamp() {
-        return createdTimestamp.toString();
+    public PayoutCompleted.Reason getPayoutReason() {
+        if (hasPayoutCompleted()) {
+            return payoutCompleted.getReason();
+        } else {
+            return null;
+        }
     }
 
-    public void setCreatedTimestamp(String createdTimestamp) {
-        this.createdTimestamp = LocalDateTime.parse(createdTimestamp);
+    public Trade.TradeBuilder copyBuilder() {
+
+        return Trade.builder()
+                .status(this.status)
+                .role(this.role)
+                .escrowAddress(this.escrowAddress)
+                .createdTimestamp(this.createdTimestamp)
+                .sellOffer(this.sellOffer)
+                .buyRequest(this.buyRequest)
+                .fundingTransactionWithAmt(this.fundingTransactionWithAmt)
+                .paymentRequest(this.paymentRequest)
+                .payoutRequest(this.payoutRequest)
+                .arbitrateRequest(this.arbitrateRequest)
+                .payoutTransactionWithAmt(this.payoutTransactionWithAmt)
+                .payoutCompleted(this.payoutCompleted);
     }
 
-    public Role role() {
-        return this.role;
+    public Trade withRole(String profilePubKey) {
+
+        Trade tradeWithRole;
+
+        if (getSellerProfilePubKey().equals(profilePubKey)) {
+            tradeWithRole = this.copyBuilder().role(SELLER).build();
+        } else if (getBuyerProfilePubKey().equals(profilePubKey)) {
+            tradeWithRole = this.copyBuilder().role(BUYER).build();
+        } else if (getArbitratorProfilePubKey().equals(profilePubKey)) {
+            tradeWithRole = this.copyBuilder().role(ARBITRATOR).build();
+        } else {
+            throw new TradeManagerException("Unable to determine trade role.");
+        }
+        return tradeWithRole;
     }
 
-    public void role(Role role) {
-        this.role = role;
-    }
+    public Trade withStatus() {
 
-    public Status status() {
-
-        Status status = null;
-        if (this.getEscrowAddress() != null && this.hasSellOffer() && this.hasBuyRequest()) {
+        Trade.Status status = null;
+        if (this.getEscrowAddress() != null && hasSellOffer() && hasBuyRequest()) {
             status = CREATED;
         }
-        if (status == CREATED && this.hasPaymentRequest()) {
+        if (status == CREATED && hasPaymentRequest()) {
             status = FUNDING;
         }
-        if (status == FUNDING && this.fundingTransactionWithAmt() != null && this.fundingTransactionWithAmt().getDepth() > 0) {
+        if (status == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {
             status = FUNDED;
         }
-        if (status == FUNDED && this.hasPayoutRequest()) {
+        if (status == FUNDED && hasPayoutRequest()) {
             status = PAID;
         }
-        if (status == FUNDED && this.hasPayoutCompleted() && this.payoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
+        if (status == FUNDED && hasPayoutCompleted() && getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
             status = COMPLETING;
         }
-        if (this.hasArbitrateRequest()) {
+        if (hasArbitrateRequest()) {
             status = ARBITRATING;
         }
-        if ((status == PAID || status == ARBITRATING || status == CANCELING) && this.getPayoutTxHash() != null) {
+        if ((status == PAID || status == ARBITRATING || status == CANCELING) && getPayoutTxHash() != null) {
             status = COMPLETING;
         }
-        if (status == COMPLETING && this.payoutTransactionWithAmt() != null && this.payoutTransactionWithAmt().getDepth() > 0) {
+        if (status == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
             status = COMPLETED;
         }
         if (status == null) {
             throw new TradeManagerException("Unable to determine trade status.");
         }
-        return status;
+        return this.copyBuilder().status(status).build();
     }
-
-    public boolean hasSellOffer() {
-        return sellerEscrowPubKey != null &&
-                sellerProfilePubKey != null &&
-                arbitratorProfilePubKey != null &&
-                currencyCode != null &&
-                paymentMethod != null &&
-                minAmount != null &&
-                maxAmount != null &&
-                price != null;
-    }
-
-    public Trade sellOffer(SellOffer sellOffer) {
-        this.sellerEscrowPubKey = sellOffer.getSellerEscrowPubKey();
-        this.sellerProfilePubKey = sellOffer.getSellerProfilePubKey();
-        this.arbitratorProfilePubKey = sellOffer.getArbitratorProfilePubKey();
-        this.currencyCode = sellOffer.getCurrencyCode();
-        this.paymentMethod = sellOffer.getPaymentMethod();
-        this.minAmount = sellOffer.getMinAmount();
-        this.maxAmount = sellOffer.getMaxAmount();
-        this.price = sellOffer.getPrice();
-        return this;
-    }
-
-    public SellOffer sellOffer() {
-        return SellOffer.builder()
-                .sellerEscrowPubKey(this.sellerEscrowPubKey)
-                .sellerProfilePubKey(this.sellerProfilePubKey)
-                .arbitratorProfilePubKey(this.arbitratorProfilePubKey)
-                .currencyCode(this.currencyCode)
-                .paymentMethod(this.paymentMethod)
-                .minAmount(this.minAmount)
-                .maxAmount(this.maxAmount)
-                .price(this.price)
-                .build();
-    }
-
-    public boolean hasBuyRequest() {
-        return buyerEscrowPubKey != null &&
-                btcAmount != null &&
-                buyerProfilePubKey != null &&
-                buyerPayoutAddress != null;
-    }
-
-    public Trade buyRequest(BuyRequest buyRequest) {
-        this.buyerEscrowPubKey = buyRequest.getBuyerEscrowPubKey();
-        this.btcAmount = buyRequest.getBtcAmount();
-        this.buyerProfilePubKey = buyRequest.getBuyerProfilePubKey();
-        this.buyerPayoutAddress = buyRequest.getBuyerPayoutAddress();
-        return this;
-    }
-
-    public BuyRequest buyRequest() {
-        return new BuyRequest(this.buyerEscrowPubKey, this.btcAmount,
-                this.buyerProfilePubKey, this.buyerPayoutAddress);
-    }
-
-    public boolean hasPaymentRequest() {
-        return fundingTxHash != null &&
-                paymentDetails != null &&
-                refundAddress != null &&
-                refundTxSignature != null;
-    }
-
-    public Trade paymentRequest(PaymentRequest paymentRequest) {
-        this.fundingTxHash = paymentRequest.getFundingTxHash();
-        this.paymentDetails = paymentRequest.getPaymentDetails();
-        this.refundAddress = paymentRequest.getRefundAddress();
-        this.refundTxSignature = paymentRequest.getRefundTxSignature();
-        return this;
-    }
-
-    public PaymentRequest paymentRequest() {
-        return new PaymentRequest(this.fundingTxHash, this.paymentDetails, this.refundAddress, this.refundTxSignature);
-    }
-
-    public boolean hasPayoutRequest() {
-        return paymentReference != null && payoutTxSignature != null;
-    }
-
-    public Trade payoutRequest(PayoutRequest payoutRequest) {
-        this.paymentReference = payoutRequest.getPaymentReference();
-        this.payoutTxSignature = payoutRequest.getPayoutTxSignature();
-        return this;
-    }
-
-    public PayoutRequest payoutRequest() {
-        return new PayoutRequest(this.paymentReference, this.payoutTxSignature);
-    }
-
-    public boolean hasArbitrateRequest() {
-        return arbitrationReason != null;
-    }
-
-    public Trade arbitrateRequest(ArbitrateRequest arbitrateRequest) {
-        this.arbitrationReason = arbitrateRequest.getReason();
-        return this;
-    }
-
-    public ArbitrateRequest arbitrateRequest() {
-        return new ArbitrateRequest(this.arbitrationReason);
-    }
-
-    public boolean hasPayoutCompleted() {
-        return payoutTxHash != null &&
-                payoutReason != null;
-    }
-
-    public Trade payoutCompleted(PayoutCompleted payoutCompleted) {
-        this.payoutTxHash = payoutCompleted.getPayoutTxHash();
-        this.payoutReason = payoutCompleted.getReason();
-        return this;
-    }
-
-    public PayoutCompleted payoutCompleted() {
-        return new PayoutCompleted(this.payoutTxHash, this.payoutReason);
-    }
-
-    public Trade fundingTransactionHash(String fundingTxHash) {
-        this.fundingTxHash = fundingTxHash;
-        return this;
-    }
-
-    public Trade fundingTransactionWithAmt(TransactionWithAmt transactionWithAmt) {
-        this.fundingTransactionWithAmt = transactionWithAmt;
-        return this;
-    }
-
-    public TransactionWithAmt fundingTransactionWithAmt() {
-        return fundingTransactionWithAmt;
-    }
-
-    public Trade payoutTransactionWithAmt(TransactionWithAmt transactionWithAmt) {
-        this.payoutTransactionWithAmt = transactionWithAmt;
-        return this;
-    }
-
-    public TransactionWithAmt payoutTransactionWithAmt() {
-        return payoutTransactionWithAmt;
-    }
-
 }

@@ -11,35 +11,36 @@ public class ArbitratorProtocol extends TradeProtocol {
     }
 
     @Override
-    public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
         Maybe<Trade> updatedTrade = Maybe.empty();
+        Trade.TradeBuilder tradeBuilder = trade.copyBuilder();
 
         if (receivedTrade.hasArbitrateRequest()) {
 
             if (receivedTrade.hasPaymentRequest()) {
-                trade.paymentRequest(receivedTrade.paymentRequest());
+                tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
             }
 
             if (receivedTrade.hasPayoutRequest()) {
-                trade.payoutRequest(receivedTrade.payoutRequest());
+                tradeBuilder.payoutRequest(receivedTrade.getPayoutRequest());
             }
 
             updatedTrade = walletManager.watchEscrowAddressAndResetBlockchain(trade.getEscrowAddress())
-                    .map(ea -> receivedTrade.arbitrateRequest())
+                    .map(ea -> receivedTrade.getArbitrateRequest())
                     // create arbitrating trade from trade and arbitrate request
-                    .map(trade::arbitrateRequest);
+                    .map(ar -> tradeBuilder.arbitrateRequest(ar).build());
         }
 
         return updatedTrade;
     }
 
     @Override
-    public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
         return Maybe.empty();
     }
 
-    public Maybe<Trade> refundSeller(Trade trade) {
+    Maybe<Trade> refundSeller(Trade trade) {
 
         // 1. sign and broadcast payout tx
         Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade);
@@ -48,10 +49,10 @@ public class ArbitratorProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND));
 
         // 5. post payout completed
-        return payoutCompleted.map(trade::payoutCompleted);
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
     }
 
-    public Maybe<Trade> payoutBuyer(Trade trade) {
+    Maybe<Trade> payoutBuyer(Trade trade) {
 
         // 1. sign and broadcast payout tx
         Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade);
@@ -60,6 +61,6 @@ public class ArbitratorProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT));
 
         // 5. post payout completed
-        return payoutCompleted.map(trade::payoutCompleted);
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
     }
 }

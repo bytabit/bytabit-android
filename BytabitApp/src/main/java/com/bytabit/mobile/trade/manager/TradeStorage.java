@@ -2,6 +2,7 @@ package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.TradeStorageResource;
 import com.gluonhq.connect.converter.InputStreamInputConverter;
 import com.gluonhq.connect.converter.JsonInputConverter;
 import com.gluonhq.connect.converter.JsonOutputConverter;
@@ -17,22 +18,22 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-class TradeStorage {
+public class TradeStorage {
 
     private static final String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
     private static final String CURRENT_TRADE_JSON = "currentTrade.json";
 
-    private final InputStreamInputConverter<Trade> tradeInputConverter;
+    private final InputStreamInputConverter<TradeStorageResource> tradeInputConverter;
 
-    private final OutputStreamOutputConverter<Trade> tradeOutputConverter;
+    private final OutputStreamOutputConverter<TradeStorageResource> tradeOutputConverter;
 
     TradeStorage() {
 
         // create a JSON converters that convert a JSON object to/from a trade object
-        tradeInputConverter = new JsonInputConverter<>(Trade.class);
-        tradeOutputConverter = new JsonOutputConverter<>(Trade.class);
+        tradeInputConverter = new JsonInputConverter<>(TradeStorageResource.class);
+        tradeOutputConverter = new JsonOutputConverter<>(TradeStorageResource.class);
     }
 
     void createTradesDir() {
@@ -67,9 +68,9 @@ class TradeStorage {
                 }
                 // create a FileClient to the specified File
                 FileClient fileClient = FileClient.create(tradeFile);
-                ObjectDataWriter<Trade> objectWriter = fileClient.createObjectDataWriter(tradeOutputConverter);
+                ObjectDataWriter<TradeStorageResource> objectWriter = fileClient.createObjectDataWriter(tradeOutputConverter);
                 // write an object with an ObjectDataWriter created from the FileClient
-                objectWriter.writeObject(trade).ifPresent(source::onSuccess);
+                objectWriter.writeObject(TradeStorageResource.fromTrade(trade)).map(TradeStorageResource::toTrade).ifPresent(source::onSuccess);
             } catch (IOException e) {
                 source.onError(e);
             }
@@ -85,8 +86,8 @@ class TradeStorage {
                     // create a FileClient to the specified File
                     FileClient fileClient = FileClient.create(tradeFile);
                     // retrieve an object from an ObjectDataReader created from the FileClient
-                    ObjectDataReader<Trade> objectReader = fileClient.createObjectDataReader(tradeInputConverter);
-                    source.onSuccess(objectReader.readObject());
+                    ObjectDataReader<TradeStorageResource> objectReader = fileClient.createObjectDataReader(tradeInputConverter);
+                    source.onSuccess(TradeStorageResource.toTrade(objectReader.readObject()));
                 } else {
                     source.onComplete();
                 }
@@ -95,5 +96,4 @@ class TradeStorage {
             }
         });
     }
-
 }

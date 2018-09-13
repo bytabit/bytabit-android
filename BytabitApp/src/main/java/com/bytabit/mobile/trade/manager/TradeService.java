@@ -2,6 +2,7 @@ package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.TradeServiceResource;
 import com.gluonhq.connect.provider.ListDataReader;
 import com.gluonhq.connect.provider.ObjectDataWriter;
 import com.gluonhq.connect.provider.RestClient;
@@ -12,7 +13,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-class TradeService {
+public class TradeService {
 
     Single<List<Trade>> get(String profilePubKey) {
 
@@ -25,13 +26,13 @@ class TradeService {
                     .method("GET")
                     .contentType("application/json");
 
-            ListDataReader<Trade> listDataReader = getRestClient.createListDataReader(Trade.class);
+            ListDataReader<TradeServiceResource> listDataReader = getRestClient.createListDataReader(TradeServiceResource.class);
 
             try {
                 List<Trade> trades = new ArrayList<>();
-                Iterator<Trade> tradeIterator = listDataReader.iterator();
+                Iterator<TradeServiceResource> tradeIterator = listDataReader.iterator();
                 while (tradeIterator.hasNext()) {
-                    trades.add(tradeIterator.next());
+                    trades.add(TradeServiceResource.toTrade(tradeIterator.next()));
                 }
                 source.onSuccess(trades);
             } catch (IOException ioe) {
@@ -50,11 +51,11 @@ class TradeService {
                     .method("PUT")
                     .contentType("application/json");
 
-            ObjectDataWriter<Trade> dataWriter = putRestClient.createObjectDataWriter(Trade.class);
+            ObjectDataWriter<TradeServiceResource> dataWriter = putRestClient.createObjectDataWriter(TradeServiceResource.class);
 
             try {
                 // write trade and return original trade object
-                dataWriter.writeObject(trade).ifPresent(wt -> source.onSuccess(trade));
+                dataWriter.writeObject(TradeServiceResource.fromTrade(trade)).ifPresent(wt -> source.onSuccess(trade));
             } catch (Exception e) {
                 source.onError(e);
             }

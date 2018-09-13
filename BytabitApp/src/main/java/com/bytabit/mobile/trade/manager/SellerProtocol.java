@@ -18,21 +18,20 @@ public class SellerProtocol extends TradeProtocol {
 
     // 1.S: seller receives created trade with sell offer + buy request
     @Override
-    public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
         return walletManager.watchEscrowAddress(trade.getEscrowAddress())
                 // fund escrow and create paymentRequest
                 .flatMap(ea -> fundEscrow(trade))
                 // create funded trade from created trade and payment request
-                .map(trade::paymentRequest);
+                .map(pr -> trade.copyBuilder().paymentRequest(pr).build());
     }
 
     // 2.S: seller fund escrow and post payment request
     private Maybe<PaymentRequest> fundEscrow(Trade trade) {
 
         // 1. fund escrow
-        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(),
-                trade.getBtcAmount());
+        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(), trade.getBtcAmount());
 
         // 2. create refund tx address and signature
 
@@ -56,30 +55,27 @@ public class SellerProtocol extends TradeProtocol {
     }
 
     @Override
-    public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
 
         Maybe<Trade> updatedTrade = Maybe.just(trade);
 
         if (receivedTrade.hasPayoutRequest()) {
-            trade.payoutRequest(receivedTrade.payoutRequest());
-            updatedTrade = Maybe.just(trade);
+            updatedTrade = Maybe.just(trade.copyBuilder().payoutRequest(receivedTrade.getPayoutRequest()).build());
         }
 
-        if (receivedTrade.hasPayoutCompleted() && receivedTrade.payoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
-            trade.payoutCompleted(receivedTrade.payoutCompleted());
-            updatedTrade = Maybe.just(trade);
+        if (receivedTrade.hasPayoutCompleted() && receivedTrade.getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
+            updatedTrade = Maybe.just(trade.copyBuilder().payoutCompleted(receivedTrade.getPayoutCompleted()).build());
         }
 
         if (receivedTrade.hasArbitrateRequest()) {
-            trade.arbitrateRequest(receivedTrade.arbitrateRequest());
-            updatedTrade = Maybe.just(trade);
+            updatedTrade = Maybe.just(trade.copyBuilder().arbitrateRequest(receivedTrade.getArbitrateRequest()).build());
         }
 
         return updatedTrade;
     }
 
     // 3.S: seller payout escrow to buyer and write payout details
-    public Maybe<Trade> confirmPaymentReceived(Trade trade) {
+    Maybe<Trade> confirmPaymentReceived(Trade trade) {
 
         // 1. sign and broadcast payout tx
         Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade);
@@ -88,6 +84,6 @@ public class SellerProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT));
 
         // 5. post payout completed
-        return payoutCompleted.map(trade::payoutCompleted);
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
     }
 }

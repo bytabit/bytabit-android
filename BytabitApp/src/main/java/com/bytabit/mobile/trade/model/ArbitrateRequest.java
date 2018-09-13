@@ -1,15 +1,19 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.*;
 
+@NoArgsConstructor
 @AllArgsConstructor
 @Getter
+@Setter
+@Builder
+@EqualsAndHashCode
+@ToString
 public class ArbitrateRequest {
 
     public enum Reason {
         NO_PAYMENT, NO_BTC
     }
 
-    private final Reason reason;
+    private Reason reason;
 }

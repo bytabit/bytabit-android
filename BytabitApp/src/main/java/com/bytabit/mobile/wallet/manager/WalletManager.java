@@ -553,7 +553,7 @@ public class WalletManager {
 
     public Maybe<String> getPayoutSignature(Trade fundedTrade) {
         Address buyerPayoutAddress = Address.fromBase58(netParams, fundedTrade.getBuyerPayoutAddress());
-        return getPayoutSignature(fundedTrade, fundedTrade.fundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
+        return getPayoutSignature(fundedTrade, fundedTrade.getFundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
     }
 
     public Maybe<String> getRefundSignature(Trade trade, Transaction
@@ -640,7 +640,7 @@ public class WalletManager {
 
         Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
 
-        Maybe<String> signature = getPayoutSignature(trade, trade.fundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
+        Maybe<String> signature = getPayoutSignature(trade, trade.getFundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
 
         Maybe<TransactionSignature> mySignature = signature.map(s -> TransactionSignature
                 .decodeFromBitcoin(Base58.decode(s), true, true));
@@ -657,7 +657,7 @@ public class WalletManager {
 
         Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
 
-        Maybe<String> signature = getPayoutSignature(trade, trade.fundingTransactionWithAmt().getTransaction(), sellerRefundAddress);
+        Maybe<String> signature = getPayoutSignature(trade, trade.getFundingTransactionWithAmt().getTransaction(), sellerRefundAddress);
 
         Maybe<TransactionSignature> mySignature = signature.map(s -> TransactionSignature
                 .decodeFromBitcoin(Base58.decode(s), true, true));
@@ -666,9 +666,9 @@ public class WalletManager {
                 .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true));
 
         Single<List<TransactionSignature>> signatures;
-        if (trade.role().equals(Trade.Role.ARBITRATOR)) {
+        if (trade.getRole().equals(Trade.Role.ARBITRATOR)) {
             signatures = mySignature.concatWith(sellerSignature).toList();
-        } else if (trade.role().equals(Trade.Role.BUYER)) {
+        } else if (trade.getRole().equals(Trade.Role.BUYER)) {
             signatures = sellerSignature.concatWith(mySignature).toList();
         } else {
             throw new WalletManagerException("Only arbitrator or buyer roles can refund escrow to seller.");
@@ -680,7 +680,7 @@ public class WalletManager {
     private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
                                        List<TransactionSignature> signatures) {
 
-        Transaction fundingTx = trade.fundingTransactionWithAmt().getTransaction();
+        Transaction fundingTx = trade.getFundingTransactionWithAmt().getTransaction();
 
         Transaction payoutTx = new Transaction(netParams);
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);

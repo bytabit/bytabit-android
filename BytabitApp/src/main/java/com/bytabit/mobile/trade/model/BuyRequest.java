@@ -1,16 +1,20 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.*;
 
 import java.math.BigDecimal;
 
+@NoArgsConstructor
 @AllArgsConstructor
 @Getter
+@Setter
+@Builder
+@EqualsAndHashCode
+@ToString
 public class BuyRequest {
 
-    private final String buyerEscrowPubKey;
-    private final BigDecimal btcAmount;
-    private final String buyerProfilePubKey;
-    private final String buyerPayoutAddress;
+    private String buyerEscrowPubKey;
+    private BigDecimal btcAmount;
+    private String buyerProfilePubKey;
+    private String buyerPayoutAddress;
 }

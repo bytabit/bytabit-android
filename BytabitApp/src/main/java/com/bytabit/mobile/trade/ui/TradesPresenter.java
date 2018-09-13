@@ -39,8 +39,8 @@ public class TradesPresenter {
                 super.updateItem(t, empty);
                 if (t != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s %s BTC @ %s %s", t.role(), t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
-                    String details = String.format("%s for %s %s via %s", t.status(), t.getBtcAmount().multiply(t.getPrice()),
+                    String amount = String.format("%s %s BTC @ %s %s", t.getRole(), t.getBtcAmount(), t.getPrice(), t.getCurrencyCode());
+                    String details = String.format("%s for %s %s via %s", t.getStatus(), t.getBtcAmount().multiply(t.getPrice()),
                             t.getCurrencyCode(), t.getPaymentMethod().displayName());
                     tile.textProperty().addAll(amount, details, t.getEscrowAddress());
                     setText(null);
@@ -52,7 +52,7 @@ public class TradesPresenter {
             }
         });
 
-        tradesListView.setComparator((t1, t2) -> t2.createdTimestamp().compareTo(t1.createdTimestamp()));
+        tradesListView.setComparator((t1, t2) -> t2.getCreatedTimestamp().compareTo(t1.getCreatedTimestamp()));
 
         // setup event observables
 

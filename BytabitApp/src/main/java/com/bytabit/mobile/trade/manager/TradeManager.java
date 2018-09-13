@@ -117,15 +117,11 @@ public class TradeManager {
         walletsSynced.subscribe(p -> tradeStorage.getStoredTrades()
                 .flatMapIterable(t -> t)
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
-                        .map(txa -> {
-                            t.fundingTransactionWithAmt(txa);
-                            return t;
-                        }).defaultIfEmpty(t))
+                        .map(txa -> t.copyBuilder().fundingTransactionWithAmt(txa).build())
+                        .defaultIfEmpty(t))
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
-                        .map(txa -> {
-                            t.payoutTransactionWithAmt(txa);
-                            return t;
-                        }).defaultIfEmpty(t))
+                        .map(txa -> t.copyBuilder().payoutTransactionWithAmt(txa).build())
+                        .defaultIfEmpty(t))
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 //.doOnNext(walletManager::createOrLoadEscrowWallet)
@@ -177,7 +173,7 @@ public class TradeManager {
 
     public void buyerSendPayment(String paymentReference) {
         getLastSelectedTrade().autoConnect()
-                .filter(trade -> trade.status().equals(FUNDED))
+                .filter(trade -> trade.getStatus().equals(FUNDED))
                 .flatMapMaybe(st -> buyerProtocol.sendPayment(st, paymentReference))
                 .flatMapSingle(tradeStorage::writeTrade)
                 .flatMapSingle(tradeService::put)
@@ -189,7 +185,7 @@ public class TradeManager {
 
     public void sellerConfirmPaymentReceived() {
         getLastSelectedTrade().autoConnect()
-                .filter(trade -> PAID.equals(trade.status()))
+                .filter(trade -> PAID.equals(trade.getStatus()))
                 .firstElement().flatMap(st -> sellerProtocol.confirmPaymentReceived(st))
                 .flatMapSingle(tradeStorage::writeTrade)
                 .flatMap(tradeService::put)
@@ -201,9 +197,9 @@ public class TradeManager {
     public void requestArbitrate() {
 
         getLastSelectedTrade().autoConnect()
-                .filter(trade -> trade.role().compareTo(ARBITRATOR) != 0)
-                .filter(trade -> trade.status().compareTo(CREATED) > 0)
-                .filter(trade -> trade.status().compareTo(ARBITRATING) < 0)
+                .filter(trade -> trade.getRole().compareTo(ARBITRATOR) != 0)
+                .filter(trade -> trade.getStatus().compareTo(CREATED) > 0)
+                .filter(trade -> trade.getStatus().compareTo(ARBITRATING) < 0)
                 .firstElement().flatMap(trade -> getProtocol(trade).requestArbitrate(trade))
                 .flatMapSingle(tradeStorage::writeTrade)
                 .flatMap(tradeService::put)
@@ -214,8 +210,8 @@ public class TradeManager {
 
     public void arbitratorRefundSeller() {
         getLastSelectedTrade().autoConnect()
-                .filter(trade -> trade.role().compareTo(ARBITRATOR) == 0)
-                .filter(trade -> trade.status().compareTo(ARBITRATING) == 0)
+                .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
+                .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
                 .firstElement().flatMap(trade -> arbitratorProtocol.refundSeller(trade))
                 .flatMapSingle(tradeStorage::writeTrade)
                 .flatMap(tradeService::put)
@@ -226,8 +222,8 @@ public class TradeManager {
 
     public void arbitratorPayoutBuyer() {
         getLastSelectedTrade().autoConnect()
-                .filter(trade -> trade.role().compareTo(ARBITRATOR) == 0)
-                .filter(trade -> trade.status().compareTo(ARBITRATING) == 0)
+                .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
+                .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
                 .firstElement().flatMap(trade -> arbitratorProtocol.payoutBuyer(trade))
                 .flatMapSingle(tradeStorage::writeTrade)
                 .flatMap(tradeService::put)
@@ -238,8 +234,8 @@ public class TradeManager {
 
     public void cancelAndRefundSeller() {
         getLastSelectedTrade().autoConnect()
-                .filter(trade -> trade.role().compareTo(BUYER) == 0)
-                .filter(trade -> trade.status().compareTo(FUNDED) == 0)
+                .filter(trade -> trade.getRole().compareTo(BUYER) == 0)
+                .filter(trade -> trade.getStatus().compareTo(FUNDED) == 0)
                 .firstElement().flatMap(trade -> buyerProtocol.refundTrade(trade))
                 .flatMapSingle(tradeStorage::writeTrade)
                 .flatMap(tradeService::put)
@@ -254,12 +250,15 @@ public class TradeManager {
                 .toSingle(createdFromReceivedTrade(receivedTrade));
 
         Single<Trade> currentTradeWithRole = currentTrade
-                .map(ct -> setRole(ct, profile.getPubKey()));
+                .map(ct -> ct.withRole(profile.getPubKey()));
 
-        Single<Trade> currentTradeWithTx = currentTradeWithRole
+        Single<Trade> currentTradeWithStatus = currentTradeWithRole
+                .map(Trade::withStatus);
+
+        Single<Trade> currentTradeWithTx = currentTradeWithStatus
                 .flatMap(this::updateTradeTx);
 
-        return currentTradeWithTx.flatMapMaybe(ct -> updateTrade(ct, receivedTrade));
+        return currentTradeWithTx.flatMapMaybe(ct -> updateTrade(ct, receivedTrade.withRole(profile.getPubKey()).withStatus()));
     }
 
     private Trade createdFromReceivedTrade(Trade receivedTrade) {
@@ -272,18 +271,18 @@ public class TradeManager {
         return Trade.builder()
                 .escrowAddress(escrowAddress)
                 .createdTimestamp(LocalDateTime.now())
-                .sellOffer(receivedTrade.sellOffer())
-                .buyRequest(receivedTrade.buyRequest())
+                .sellOffer(receivedTrade.getSellOffer())
+                .buyRequest(receivedTrade.getBuyRequest())
                 .build();
     }
 
     private Single<Trade> updateTradeTx(Trade trade) {
 
         return walletManager.getEscrowTransactionWithAmt(trade.getFundingTxHash())
-                .map(trade::fundingTransactionWithAmt)
+                .map(ftx -> trade.copyBuilder().fundingTransactionWithAmt(ftx).build())
                 .toSingle(trade)
                 .flatMap(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
-                        .map(t::payoutTransactionWithAmt)
+                        .map(ptx -> t.copyBuilder().payoutTransactionWithAmt(ptx).build())
                         .toSingle(t));
     }
 
@@ -293,7 +292,7 @@ public class TradeManager {
 
         Maybe<Trade> tradeUpdated = Maybe.empty();
 
-        switch (trade.status()) {
+        switch (trade.getStatus()) {
 
             case CREATED:
                 tradeUpdated = tradeProtocol.handleCreated(trade, receivedTrade);
@@ -330,28 +329,17 @@ public class TradeManager {
             case COMPLETED:
                 tradeUpdated = Maybe.just(trade);
                 break;
+
+            default:
+                break;
         }
 
-        return tradeUpdated;
-    }
-
-    private Trade setRole(Trade trade, String profilePubKey) {
-
-        if (trade.getSellerProfilePubKey().equals(profilePubKey)) {
-            trade.role(SELLER);
-        } else if (trade.getBuyerProfilePubKey().equals(profilePubKey)) {
-            trade.role(BUYER);
-        } else if (trade.getArbitratorProfilePubKey().equals(profilePubKey)) {
-            trade.role(ARBITRATOR);
-        } else {
-            throw new TradeManagerException("Unable to determine trade role.");
-        }
-        return trade;
+        return tradeUpdated.map(Trade::withStatus);
     }
 
     private TradeProtocol getProtocol(Trade trade) {
 
-        Trade.Role role = trade.role();
+        Trade.Role role = trade.getRole();
 
         if (role.equals(SELLER)) {
             return sellerProtocol;

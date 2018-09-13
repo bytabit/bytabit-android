@@ -21,7 +21,7 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 1.B: create trade, post created trade
-    public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
+    Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
 
         return Single.zip(walletManager.getTradeWalletEscrowPubKey().toSingle(),
                 profileManager.loadOrCreateMyProfile().map(Profile::getPubKey),
@@ -29,6 +29,7 @@ public class BuyerProtocol extends TradeProtocol {
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         Trade.builder()
                                 .role(Trade.Role.BUYER)
+                                .status(Trade.Status.CREATED)
                                 .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
                                 .createdTimestamp(LocalDateTime.now())
                                 .sellOffer(sellOffer)
@@ -39,14 +40,13 @@ public class BuyerProtocol extends TradeProtocol {
 
     // 1.B: create trade, post created trade
     @Override
-    public Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
         // TODO handle seller canceling created trade
         Maybe<Trade> updatedTrade = Maybe.empty();
 
         if (receivedTrade.hasPaymentRequest()) {
-            trade.paymentRequest(receivedTrade.paymentRequest());
-            updatedTrade = Maybe.just(trade);
+            updatedTrade = Maybe.just(trade.copyBuilder().paymentRequest(receivedTrade.getPaymentRequest()).build());
         }
 
         return updatedTrade;
@@ -54,20 +54,19 @@ public class BuyerProtocol extends TradeProtocol {
 
     // 2.B: buyer receives payment request, confirm funding tx
     @Override
-    public Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
 
         Maybe<Trade> updatedTrade = Maybe.just(trade);
 
         if (receivedTrade.hasArbitrateRequest()) {
-            trade.arbitrateRequest(receivedTrade.arbitrateRequest());
-            updatedTrade = Maybe.just(trade);
+            updatedTrade = Maybe.just(trade.copyBuilder().arbitrateRequest(receivedTrade.getArbitrateRequest()).build());
         }
 
         return updatedTrade;
     }
 
     // 3.B: buyer sends payment to seller and post payout request
-    public Maybe<Trade> sendPayment(Trade trade, String paymentReference) {
+    Maybe<Trade> sendPayment(Trade trade, String paymentReference) {
 
         // 1. create payout request with buyer payout signature
 
@@ -75,10 +74,10 @@ public class BuyerProtocol extends TradeProtocol {
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .map(payoutSignature -> new PayoutRequest(paymentReference, payoutSignature))
-                .map(trade::payoutRequest);
+                .map(pr -> trade.copyBuilder().payoutRequest(pr).build());
     }
 
-    public Maybe<Trade> refundTrade(Trade trade) {
+    Maybe<Trade> refundTrade(Trade trade) {
 
         // 1. sign and broadcast payout tx
         Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade);
@@ -87,6 +86,6 @@ public class BuyerProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.BUYER_SELLER_REFUND));
 
         // 5. post payout completed
-        return payoutCompleted.map(trade::payoutCompleted);
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
     }
 }

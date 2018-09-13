@@ -10,7 +10,7 @@ import io.reactivex.Maybe;
 
 import javax.inject.Inject;
 
-public abstract class TradeProtocol {
+abstract class TradeProtocol {
 
     @Inject
     WalletManager walletManager;
@@ -23,33 +23,35 @@ public abstract class TradeProtocol {
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
-    public abstract Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
+    abstract Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
 
-    public abstract Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade);
+    abstract Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade);
 
-    public Maybe<Trade> handlePaid(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handlePaid(Trade trade, Trade receivedTrade) {
 
         Maybe<Trade> updatedTrade = Maybe.empty();
 
         if (receivedTrade.hasArbitrateRequest()) {
-            trade.arbitrateRequest(receivedTrade.arbitrateRequest());
-            updatedTrade = Maybe.just(trade);
+            updatedTrade = Maybe.just(trade.copyBuilder()
+                    .arbitrateRequest(receivedTrade.getArbitrateRequest())
+                    .build());
         }
 
         if (receivedTrade.hasPayoutCompleted()) {
-            trade.payoutCompleted(receivedTrade.payoutCompleted());
-            updatedTrade = Maybe.just(trade);
+            updatedTrade = Maybe.just(trade.copyBuilder()
+                    .payoutCompleted(receivedTrade.getPayoutCompleted())
+                    .build());
         }
 
         return updatedTrade;
     }
 
-    public Maybe<Trade> requestArbitrate(Trade trade) {
+    Maybe<Trade> requestArbitrate(Trade trade) {
 
         ArbitrateRequest.Reason reason;
-        if (trade.role().equals(Trade.Role.SELLER)) {
+        if (trade.getRole().equals(Trade.Role.SELLER)) {
             reason = ArbitrateRequest.Reason.NO_PAYMENT;
-        } else if (trade.role().equals(Trade.Role.BUYER)) {
+        } else if (trade.getRole().equals(Trade.Role.BUYER)) {
             reason = ArbitrateRequest.Reason.NO_BTC;
         } else {
             throw new TradeProtocolException("Invalid role, can't request arbitrate");
@@ -58,15 +60,15 @@ public abstract class TradeProtocol {
         ArbitrateRequest arbitrateRequest = new ArbitrateRequest(reason);
 
         return Maybe.just(trade)
-                .map(t -> t.arbitrateRequest(arbitrateRequest));
+                .map(t -> t.copyBuilder().arbitrateRequest(arbitrateRequest).build());
     }
 
-    public Maybe<Trade> handleArbitrating(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleArbitrating(Trade trade, Trade receivedTrade) {
 
         Maybe<Trade> updatedTrade = Maybe.just(trade);
 
         if (receivedTrade.hasPayoutCompleted()) {
-            trade.payoutCompleted(receivedTrade.payoutCompleted());
+            trade.copyBuilder().payoutCompleted(receivedTrade.getPayoutCompleted()).build();
             updatedTrade = Maybe.just(trade);
         }
 

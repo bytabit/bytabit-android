@@ -1,12 +1,16 @@
 package com.bytabit.mobile.trade.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.*;
 
+@NoArgsConstructor
 @AllArgsConstructor
 @Getter
+@Setter
+@Builder
+@EqualsAndHashCode
+@ToString
 public class PayoutRequest {
 
-    private final String paymentReference;
-    private final String payoutTxSignature;
+    private String paymentReference;
+    private String payoutTxSignature;
 }

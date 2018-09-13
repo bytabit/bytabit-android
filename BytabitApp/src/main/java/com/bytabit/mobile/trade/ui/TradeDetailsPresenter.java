@@ -173,15 +173,15 @@ public class TradeDetailsPresenter {
 
         showTradeDetails(trade);
 
-        switch (trade.role()) {
+        switch (trade.getRole()) {
 
             case BUYER:
                 showDisabledTraderButtons();
-                enableBuyerButtons(trade.status());
+                enableBuyerButtons(trade.getStatus());
                 break;
             case SELLER:
                 showDisabledTraderButtons();
-                enableSellerButtons(trade.status());
+                enableSellerButtons(trade.getStatus());
                 break;
             case ARBITRATOR:
                 showDisabledArbitratorButtons();
@@ -195,8 +195,8 @@ public class TradeDetailsPresenter {
 
     private void showTradeDetails(Trade trade) {
 
-        tradeStatusLabel.setText(trade.status().toString());
-        tradeRoleLabel.setText(trade.role().toString());
+        tradeStatusLabel.setText(trade.getStatus().toString());
+        tradeRoleLabel.setText(trade.getRole().toString());
 
         // sell offer
         String currencyCode = trade.getCurrencyCode().toString();
@@ -302,7 +302,7 @@ public class TradeDetailsPresenter {
 
     private void enableArbitratorButtons(Trade trade) {
 
-        if (!COMPLETED.equals(trade.status())) {
+        if (!COMPLETED.equals(trade.getStatus())) {
 
             refundSellerButton.setDisable(false);
             if (trade.hasPayoutRequest()) {
