@@ -30,16 +30,18 @@ public class Trade {
         BUYER, SELLER, ARBITRATOR
     }
 
+    private final Long version;
+
     private final Status status;
 
     private final Role role;
 
-    private String escrowAddress;
+    private final String escrowAddress;
 
-    private LocalDateTime createdTimestamp;
+    private final LocalDateTime createdTimestamp;
 
     // Sell Offer
-    private SellOffer sellOffer;
+    private final SellOffer sellOffer;
 
     public boolean hasSellOffer() {
         return sellOffer != null;
@@ -97,7 +99,7 @@ public class Trade {
     }
 
     // Buy Request
-    private BuyRequest buyRequest;
+    private final BuyRequest buyRequest;
 
     public boolean hasBuyRequest() {
         return buyRequest != null;
@@ -247,6 +249,7 @@ public class Trade {
     public Trade.TradeBuilder copyBuilder() {
 
         return Trade.builder()
+                .version(this.version)
                 .status(this.status)
                 .role(this.role)
                 .escrowAddress(this.escrowAddress)

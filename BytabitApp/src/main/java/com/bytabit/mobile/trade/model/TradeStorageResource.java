@@ -11,6 +11,8 @@ import org.joda.time.LocalDateTime;
 @ToString
 public class TradeStorageResource {
 
+    private Long version;
+
     private Trade.Status status;
 
     private Trade.Role role;
@@ -21,6 +23,7 @@ public class TradeStorageResource {
 
     public static Trade toTrade(TradeStorageResource tr) {
         return Trade.builder()
+                .version(tr.getVersion())
                 .status(tr.getStatus())
                 .role(tr.getRole())
                 .createdTimestamp(LocalDateTime.parse(tr.getCreatedTimestamp()))
@@ -36,6 +39,7 @@ public class TradeStorageResource {
 
     public static TradeStorageResource fromTrade(Trade t) {
         return TradeStorageResource.builder()
+                .version(t.getVersion())
                 .status(t.getStatus())
                 .role(t.getRole())
                 .createdTimestamp(t.getCreatedTimestamp().toString())

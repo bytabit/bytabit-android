@@ -25,8 +25,8 @@ public class NavDrawer {
     public NavDrawer() {
 
         String config = AppConfig.getConfigName().equals("default") ? "" : ", " + AppConfig.getConfigName();
-        NavigationDrawer.Header header = new NavigationDrawer.Header("Bytabit Mobile",
-                String.format("%s (%s)", AppConfig.getVersion(), AppConfig.getBtcNetwork() + config),
+        NavigationDrawer.Header header = new NavigationDrawer.Header(String.format("Bytabit Mobile (%S)", AppConfig.getBtcNetwork() + config),
+                String.format("%s", AppConfig.getVersion()),
                 new ImageView(new Image(NavDrawer.class.getResourceAsStream("/logo42.png"))));
 
         final Item tradesItem = new ViewItem("Trades", MaterialDesignIcon.SWAP_VERTICAL_CIRCLE.graphic(), TRADE_VIEW);

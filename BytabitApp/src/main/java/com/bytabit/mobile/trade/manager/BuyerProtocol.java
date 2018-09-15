@@ -28,6 +28,7 @@ public class BuyerProtocol extends TradeProtocol {
                 walletManager.getTradeWalletDepositAddress().map(Address::toBase58).toSingle(),
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         Trade.builder()
+                                .version(null)
                                 .role(Trade.Role.BUYER)
                                 .status(Trade.Status.CREATED)
                                 .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))

@@ -258,7 +258,9 @@ public class TradeManager {
         Single<Trade> currentTradeWithTx = currentTradeWithStatus
                 .flatMap(this::updateTradeTx);
 
-        return currentTradeWithTx.flatMapMaybe(ct -> updateTrade(ct, receivedTrade.withRole(profile.getPubKey()).withStatus()));
+        return currentTradeWithTx
+                .filter(ct -> ct.getVersion() != null && ct.getVersion().compareTo(receivedTrade.getVersion()) < 0)
+                .flatMap(ct -> updateTrade(ct, receivedTrade.withRole(profile.getPubKey()).withStatus()));
     }
 
     private Trade createdFromReceivedTrade(Trade receivedTrade) {
@@ -269,6 +271,7 @@ public class TradeManager {
                 receivedTrade.getBuyerEscrowPubKey());
 
         return Trade.builder()
+                .version(null)
                 .escrowAddress(escrowAddress)
                 .createdTimestamp(LocalDateTime.now())
                 .sellOffer(receivedTrade.getSellOffer())

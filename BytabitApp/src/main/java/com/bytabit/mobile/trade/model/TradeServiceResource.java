@@ -25,6 +25,7 @@ public class TradeServiceResource {
     public static Trade toTrade(TradeServiceResource tr) {
         return Trade.builder()
                 .escrowAddress(tr.getEscrowAddress())
+                .version(tr.getVersion())
                 .sellOffer(tr.getTrade().getSellOffer())
                 .buyRequest(tr.getTrade().getBuyRequest())
                 .paymentRequest(tr.getTrade().getPaymentRequest())
@@ -37,6 +38,7 @@ public class TradeServiceResource {
     public static TradeServiceResource fromTrade(Trade t) {
         return TradeServiceResource.builder()
                 .escrowAddress(t.getEscrowAddress())
+                .version(t.getVersion())
                 .sellerProfilePubKey(t.getSellOffer().getSellerProfilePubKey())
                 .buyerProfilePubKey(t.getBuyRequest().getBuyerProfilePubKey())
                 .arbitratorProfilePubKey(t.getSellOffer().getArbitratorProfilePubKey())
