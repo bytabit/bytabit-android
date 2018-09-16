@@ -61,8 +61,8 @@ processResources {
 }
 
 dependencies {
-    compile 'com.gluonhq:charm:5.0.0'
-    compile 'com.gluonhq:glisten-afterburner:1.2.1'
+    compile 'com.gluonhq:charm:5.0.1'
+    compile 'com.airhacks:afterburner.mfx:1.6.3'
     compile "org.bitcoinj:bitcoinj-core:0.15-Segwit-Samourai-004"
     compile "joda-time:joda-time:2.9.1"
     compile 'io.reactivex.rxjava2:rxjavafx:2.2.0'

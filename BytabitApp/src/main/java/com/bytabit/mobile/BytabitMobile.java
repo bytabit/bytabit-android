@@ -111,7 +111,11 @@ public class BytabitMobile extends MobileApplication {
                     .map(s -> s / 2)
                     .orElse(1F);
 
-            String scaledFontsCss = ".app-bar > .title-box > .label,\n" +
+            String scaledFontsCss = ".app-bar > .title-box > .label {\n" +
+                    "    -fx-font-family: 'san-serif';\n" +
+                    "    -fx-font-size: " + String.format("%.2f", screenScale * 1.5) + "em;\n" +
+                    "}\n" +
+                    "\n" +
                     ".dialog > .container > .label,\n" +
                     ".dialog > .container > .dialog-button-bar > .button,\n" +
                     ".title > .text, .subtitle > .text, .text-box > .label > .text,\n" +
