@@ -7,6 +7,8 @@ import com.gluonhq.connect.provider.ListDataReader;
 import com.gluonhq.connect.provider.ObjectDataWriter;
 import com.gluonhq.connect.provider.RestClient;
 import io.reactivex.Single;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,9 +17,11 @@ import java.util.List;
 
 public class TradeService {
 
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
+
     Single<List<Trade>> get(String profilePubKey) {
 
-        return Single.create(source -> {
+        return Single.<List<Trade>>create(source -> {
 
             RestClient getRestClient = RestClient.create()
                     .host(AppConfig.getBaseUrl())
@@ -38,12 +42,12 @@ public class TradeService {
             } catch (IOException ioe) {
                 source.onError(ioe);
             }
-        });
+        }).doOnError(t -> log.error("get: error {}", t.getMessage()));
     }
 
     Single<Trade> put(Trade trade) {
 
-        return Single.create(source -> {
+        return Single.<Trade>create(source -> {
 
             RestClient putRestClient = RestClient.create()
                     .host(AppConfig.getBaseUrl())
@@ -59,6 +63,6 @@ public class TradeService {
             } catch (Exception e) {
                 source.onError(e);
             }
-        });
+        }).doOnError(t -> log.error("put: error {}", t.getMessage()));
     }
 }

@@ -111,11 +111,19 @@ public class TradeDetailsPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(this::showTrade);
 
+        JavaFxObservable.actionEventsOf(fundEscrowButton)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(ae -> {
+                    tradeManager.sellerFundEscrow().subscribe();
+                    MobileApplication.getInstance().switchToPreviousView();
+                });
+
         JavaFxObservable.actionEventsOf(paymentSentButton)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(ae -> {
-                    tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get());
+                    tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get()).subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -123,7 +131,7 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(actionEvent -> {
-                    tradeManager.sellerConfirmPaymentReceived();
+                    tradeManager.sellerPaymentReceived().subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -131,7 +139,7 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(actionEvent -> {
-                    tradeManager.requestArbitrate();
+                    tradeManager.requestArbitrate().subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -139,7 +147,7 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(actionEvent -> {
-                    tradeManager.arbitratorRefundSeller();
+                    tradeManager.arbitratorRefundSeller().subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -147,7 +155,7 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(actionEvent -> {
-                    tradeManager.arbitratorPayoutBuyer();
+                    tradeManager.arbitratorPayoutBuyer().subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -155,7 +163,7 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(actionEvent -> {
-                    tradeManager.cancelAndRefundSeller();
+                    tradeManager.buyerRefundSeller().subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
     }

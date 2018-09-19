@@ -66,6 +66,7 @@ public class TradesPresenter {
                 });
 
         tradeManager.getCreatedTrade()
+                .autoConnect()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(trade -> tradesListView.itemsProperty().add(trade));

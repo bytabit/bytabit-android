@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
@@ -79,7 +80,7 @@ public class TradeManager {
 
         updatedTrade = updatedTradeSubject
                 .doOnSubscribe(d -> log.debug("updatedTrade: subscribe"))
-                //.doOnNext(ut -> log.debug("updatedTrade: {}", ut.getEscrowAddress()))
+                .doOnNext(ut -> log.debug("updatedTrade: {}", ut.getEscrowAddress()))
                 .share();
 
         selectedTradeSubject = PublishSubject.create();
@@ -100,9 +101,6 @@ public class TradeManager {
 
         tradeStorage.createTradesDir();
 
-        createdTrade.connect();
-        lastSelectedTrade.connect();
-
         Maybe<Boolean> walletsSynced = Observable.zip(walletManager.getTradeDownloadProgress().autoConnect(),
                 walletManager.getEscrowDownloadProgress().autoConnect(), (tp, ep) -> tp == 1 && ep == 1)
                 .filter(p -> p)
@@ -114,7 +112,7 @@ public class TradeManager {
                 .cache();
 
         // get stored trades after download progress is 100% loaded
-        walletsSynced.subscribe(p -> tradeStorage.getStoredTrades()
+        walletsSynced.subscribe(p -> tradeStorage.getAll()
                 .flatMapIterable(t -> t)
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
                         .map(txa -> t.copyBuilder().fundingTransactionWithAmt(txa).build())
@@ -122,40 +120,34 @@ public class TradeManager {
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
                         .map(txa -> t.copyBuilder().payoutTransactionWithAmt(txa).build())
                         .defaultIfEmpty(t))
+                .map(Trade::withStatus)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                //.doOnNext(walletManager::createOrLoadEscrowWallet)
                 .subscribe(createdTradeSubject::onNext));
 
-        // get updated trades after download progress is 100% loaded
+        // get update and store trades from received data after download progress is 100% loaded
         walletsSynced.subscribe(p -> profileManager.loadOrCreateMyProfile().toObservable()
                 .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
                         .flatMap(t -> tradeService.get(profile.getPubKey())
                                 .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
+                                .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))
                                 .flattenAsObservable(l -> l))
                         .flatMapMaybe(trade -> handleReceivedTrade(profile, trade)))
-                // store updated trade
-                .flatMapSingle(tradeStorage::writeTrade)
-                .doOnError(t -> log.error("writeTrade: error {}", t.getMessage()))
-                // put updated trade
-                .flatMapSingle(tradeService::put)
-                .doOnError(t -> log.error("putTrade: error {}", t.getMessage()))
+                .flatMapSingle(tradeStorage::write)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(updatedTradeSubject::onNext));
     }
 
-    public Single<Trade> createTrade(SellOffer sellOffer, BigDecimal btcAmount) {
+    public Maybe<Trade> buyerCreateTrade(SellOffer sellOffer, BigDecimal btcAmount) {
 
         return buyerProtocol.createTrade(sellOffer, btcAmount)
-                .flatMap(tradeStorage::writeTrade)
-                .flatMap(tradeService::put)
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .doOnSuccess(createdTradeSubject::onNext);
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public Observable<Trade> getCreatedTrade() {
+    public ConnectableObservable<Trade> getCreatedTrade() {
         return createdTrade;
     }
 
@@ -171,96 +163,105 @@ public class TradeManager {
         return lastSelectedTrade;
     }
 
-    public void buyerSendPayment(String paymentReference) {
-        getLastSelectedTrade().autoConnect()
+    public Maybe<Trade> buyerSendPayment(String paymentReference) {
+        return getLastSelectedTrade().autoConnect().firstOrError()
                 .filter(trade -> trade.getStatus().equals(FUNDED))
-                .flatMapMaybe(st -> buyerProtocol.sendPayment(st, paymentReference))
-                .flatMapSingle(tradeStorage::writeTrade)
-                .flatMapSingle(tradeService::put)
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .doOnNext(updatedTradeSubject::onNext)
-                .subscribe();
+                .flatMapSingleElement(this::updateTradeTx)
+                .filter(trade -> trade.getFundingTransactionWithAmt() != null)
+                .flatMap(st -> buyerProtocol.sendPayment(st, paymentReference))
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public void sellerConfirmPaymentReceived() {
-        getLastSelectedTrade().autoConnect()
+    public Maybe<Trade> sellerFundEscrow() {
+        return getLastSelectedTrade().autoConnect().firstOrError()
+                .filter(trade -> CREATED.equals(trade.getStatus()))
+                .flatMap(st -> sellerProtocol.fundEscrow(st))
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
+    }
+
+    public Maybe<Trade> sellerPaymentReceived() {
+        return getLastSelectedTrade().autoConnect().firstOrError()
                 .filter(trade -> PAID.equals(trade.getStatus()))
-                .firstElement().flatMap(st -> sellerProtocol.confirmPaymentReceived(st))
-                .flatMapSingle(tradeStorage::writeTrade)
-                .flatMap(tradeService::put)
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .subscribe(updatedTradeSubject::onNext);
+                .flatMapSingleElement(this::updateTradeTx)
+                .filter(trade -> trade.getFundingTransactionWithAmt() != null)
+                .flatMap(st -> sellerProtocol.confirmPaymentReceived(st))
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public void requestArbitrate() {
+    public Maybe<Trade> requestArbitrate() {
 
-        getLastSelectedTrade().autoConnect()
+        return getLastSelectedTrade().autoConnect().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) != 0)
                 .filter(trade -> trade.getStatus().compareTo(CREATED) > 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) < 0)
-                .firstElement().flatMap(trade -> getProtocol(trade).requestArbitrate(trade))
-                .flatMapSingle(tradeStorage::writeTrade)
-                .flatMap(tradeService::put)
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .subscribe(updatedTradeSubject::onNext);
+                .flatMap(trade -> getProtocol(trade).requestArbitrate(trade))
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public void arbitratorRefundSeller() {
-        getLastSelectedTrade().autoConnect()
+    public Maybe<Trade> arbitratorRefundSeller() {
+
+        return getLastSelectedTrade().autoConnect().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
-                .firstElement().flatMap(trade -> arbitratorProtocol.refundSeller(trade))
-                .flatMapSingle(tradeStorage::writeTrade)
-                .flatMap(tradeService::put)
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .subscribe(updatedTradeSubject::onNext);
+                .flatMapSingleElement(this::updateTradeTx)
+                .filter(trade -> trade.getFundingTransactionWithAmt() != null)
+                .flatMap(trade -> arbitratorProtocol.refundSeller(trade))
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public void arbitratorPayoutBuyer() {
-        getLastSelectedTrade().autoConnect()
+    public Maybe<Trade> arbitratorPayoutBuyer() {
+
+        return getLastSelectedTrade().autoConnect().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
-                .firstElement().flatMap(trade -> arbitratorProtocol.payoutBuyer(trade))
-                .flatMapSingle(tradeStorage::writeTrade)
-                .flatMap(tradeService::put)
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .subscribe(updatedTradeSubject::onNext);
+                .flatMapSingleElement(this::updateTradeTx)
+                .filter(trade -> trade.getFundingTransactionWithAmt() != null)
+                .flatMap(trade -> arbitratorProtocol.payoutBuyer(trade))
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public void cancelAndRefundSeller() {
-        getLastSelectedTrade().autoConnect()
+    public Maybe<Trade> buyerRefundSeller() {
+        return getLastSelectedTrade().autoConnect().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(BUYER) == 0)
                 .filter(trade -> trade.getStatus().compareTo(FUNDED) == 0)
-                .firstElement().flatMap(trade -> buyerProtocol.refundTrade(trade))
-                .flatMapSingle(tradeStorage::writeTrade)
-                .flatMap(tradeService::put)
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .subscribe(updatedTradeSubject::onNext);
+                .flatMapSingleElement(this::updateTradeTx)
+                .filter(trade -> trade.getFundingTransactionWithAmt() != null)
+                .flatMap(trade -> buyerProtocol.refundTrade(trade))
+                .flatMapSingleElement(tradeStorage::write)
+                .flatMapSingleElement(tradeService::put)
+                .doOnSuccess(updatedTradeSubject::onNext);
     }
 
     private Maybe<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
 
-        Single<Trade> currentTrade = tradeStorage.readTrade(receivedTrade.getEscrowAddress())
-                .toSingle(createdFromReceivedTrade(receivedTrade));
-
-        Single<Trade> currentTradeWithRole = currentTrade
-                .map(ct -> ct.withRole(profile.getPubKey()));
-
-        Single<Trade> currentTradeWithStatus = currentTradeWithRole
-                .map(Trade::withStatus);
-
-        Single<Trade> currentTradeWithTx = currentTradeWithStatus
+        Single<Trade> currentTrade = tradeStorage.read(receivedTrade.getEscrowAddress())
+                .toSingle(createdFromReceivedTrade(receivedTrade))
+                // add role
+                .map(ct -> ct.withRole(profile.getPubKey()))
+                // add trade tx
                 .flatMap(this::updateTradeTx);
 
-        return currentTradeWithTx
-                .filter(ct -> ct.getVersion() != null && ct.getVersion().compareTo(receivedTrade.getVersion()) < 0)
-                .flatMap(ct -> updateTrade(ct, receivedTrade.withRole(profile.getPubKey()).withStatus()));
+        Single<Trade> updatedReceivedTrade = Single.just(receivedTrade)
+                .map(rt -> rt.withRole(profile.getPubKey()))
+                // add trade tx
+                .flatMap(this::updateTradeTx)
+                // add status
+                .map(Trade::withStatus);
+
+        return Single.zip(currentTrade, updatedReceivedTrade, this::updateTrade)
+                .flatMapMaybe(t -> t);
     }
 
     private Trade createdFromReceivedTrade(Trade receivedTrade) {
@@ -271,7 +272,7 @@ public class TradeManager {
                 receivedTrade.getBuyerEscrowPubKey());
 
         return Trade.builder()
-                .version(null)
+                .status(CREATED)
                 .escrowAddress(escrowAddress)
                 .createdTimestamp(LocalDateTime.now())
                 .sellOffer(receivedTrade.getSellOffer())
@@ -293,7 +294,7 @@ public class TradeManager {
 
         TradeProtocol tradeProtocol = getProtocol(trade);
 
-        Maybe<Trade> tradeUpdated = Maybe.empty();
+        Maybe<Trade> tradeUpdated;
 
         switch (trade.getStatus()) {
 
@@ -302,7 +303,7 @@ public class TradeManager {
                 break;
 
             case FUNDING:
-                tradeUpdated = tradeProtocol.handleFunded(trade, receivedTrade);
+                tradeUpdated = tradeProtocol.handleFunding(trade);
                 break;
 
             case FUNDED:
@@ -310,11 +311,11 @@ public class TradeManager {
                 break;
 
             case CANCELING:
-                tradeUpdated = Maybe.just(trade);
+                tradeUpdated = tradeProtocol.handleCompleting(trade);
                 break;
 
             case CANCELED:
-                tradeUpdated = Maybe.just(trade);
+                tradeUpdated = Maybe.empty();
                 break;
 
             case PAID:
@@ -326,15 +327,15 @@ public class TradeManager {
                 break;
 
             case COMPLETING:
-                tradeUpdated = Maybe.empty();
+                tradeUpdated = tradeProtocol.handleCompleting(trade);
                 break;
 
             case COMPLETED:
-                tradeUpdated = Maybe.just(trade);
+                tradeUpdated = Maybe.empty();
                 break;
 
             default:
-                break;
+                throw new TradeManagerException("Invalid status, can't update trade");
         }
 
         return tradeUpdated.map(Trade::withStatus);

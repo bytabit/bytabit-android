@@ -7,7 +7,6 @@ import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
-import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.bitcoinj.core.Address;
 import org.joda.time.LocalDateTime;
@@ -21,14 +20,13 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 1.B: create trade, post created trade
-    Single<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
+    Maybe<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
 
-        return Single.zip(walletManager.getTradeWalletEscrowPubKey().toSingle(),
-                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey),
-                walletManager.getTradeWalletDepositAddress().map(Address::toBase58).toSingle(),
+        return Maybe.zip(walletManager.getTradeWalletEscrowPubKey(),
+                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toMaybe(),
+                walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         Trade.builder()
-                                .version(null)
                                 .role(Trade.Role.BUYER)
                                 .status(Trade.Status.CREATED)
                                 .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
@@ -36,7 +34,7 @@ public class BuyerProtocol extends TradeProtocol {
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
-                .doOnSuccess(t -> walletManager.watchEscrowAddress(t.getEscrowAddress()).subscribe());
+                .flatMap(t -> walletManager.watchEscrowAddress(t.getEscrowAddress()).map(e -> t.withStatus()));
     }
 
     // 1.B: create trade, post created trade
@@ -45,9 +43,11 @@ public class BuyerProtocol extends TradeProtocol {
 
         // TODO handle seller canceling created trade
         Maybe<Trade> updatedTrade = Maybe.empty();
+        Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion());
 
         if (receivedTrade.hasPaymentRequest()) {
-            updatedTrade = Maybe.just(trade.copyBuilder().paymentRequest(receivedTrade.getPaymentRequest()).build());
+            tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
         return updatedTrade;
@@ -57,10 +57,12 @@ public class BuyerProtocol extends TradeProtocol {
     @Override
     Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
 
-        Maybe<Trade> updatedTrade = Maybe.just(trade);
+        Maybe<Trade> updatedTrade = Maybe.empty();
+        Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion());
 
         if (receivedTrade.hasArbitrateRequest()) {
-            updatedTrade = Maybe.just(trade.copyBuilder().arbitrateRequest(receivedTrade.getArbitrateRequest()).build());
+            tradeBuilder.arbitrateRequest(receivedTrade.getArbitrateRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
         return updatedTrade;
@@ -75,7 +77,7 @@ public class BuyerProtocol extends TradeProtocol {
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .map(payoutSignature -> new PayoutRequest(paymentReference, payoutSignature))
-                .map(pr -> trade.copyBuilder().payoutRequest(pr).build());
+                .map(pr -> trade.copyBuilder().payoutRequest(pr).build().withStatus());
     }
 
     Maybe<Trade> refundTrade(Trade trade) {
@@ -87,6 +89,6 @@ public class BuyerProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.BUYER_SELLER_REFUND));
 
         // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
     }
 }

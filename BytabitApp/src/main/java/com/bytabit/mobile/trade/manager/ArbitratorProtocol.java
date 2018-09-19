@@ -14,9 +14,11 @@ public class ArbitratorProtocol extends TradeProtocol {
     Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
         Maybe<Trade> updatedTrade = Maybe.empty();
-        Trade.TradeBuilder tradeBuilder = trade.copyBuilder();
 
         if (receivedTrade.hasArbitrateRequest()) {
+
+            Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion())
+                    .arbitrateRequest(receivedTrade.getArbitrateRequest());
 
             if (receivedTrade.hasPaymentRequest()) {
                 tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
@@ -27,9 +29,7 @@ public class ArbitratorProtocol extends TradeProtocol {
             }
 
             updatedTrade = walletManager.watchEscrowAddressAndResetBlockchain(trade.getEscrowAddress())
-                    .map(ea -> receivedTrade.getArbitrateRequest())
-                    // create arbitrating trade from trade and arbitrate request
-                    .map(ar -> tradeBuilder.arbitrateRequest(ar).build());
+                    .map(ea -> tradeBuilder.build().withStatus());
         }
 
         return updatedTrade;
@@ -49,7 +49,7 @@ public class ArbitratorProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND));
 
         // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
     }
 
     Maybe<Trade> payoutBuyer(Trade trade) {
@@ -61,6 +61,6 @@ public class ArbitratorProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT));
 
         // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
     }
 }

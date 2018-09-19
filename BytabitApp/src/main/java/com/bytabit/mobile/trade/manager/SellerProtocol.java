@@ -1,12 +1,10 @@
 package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.profile.model.PaymentDetails;
-import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
-import io.reactivex.Single;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Transaction;
 
@@ -20,55 +18,61 @@ public class SellerProtocol extends TradeProtocol {
     @Override
     Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        return walletManager.watchEscrowAddress(trade.getEscrowAddress())
-                // fund escrow and create paymentRequest
-                .flatMap(ea -> fundEscrow(trade))
-                // create funded trade from created trade and payment request
-                .map(pr -> trade.copyBuilder().paymentRequest(pr).build());
+        Maybe<Trade> updatedTrade = Maybe.just(trade.copyBuilder().version(receivedTrade.getVersion()).build());
+
+        // TODO handle buyer or seller canceling created trade
+
+        return updatedTrade;
     }
 
     // 2.S: seller fund escrow and post payment request
-    private Maybe<PaymentRequest> fundEscrow(Trade trade) {
+    Maybe<Trade> fundEscrow(Trade trade) {
+
+        // 0. watch escrow address
+        Maybe<String> watchedEscrowAddress = walletManager.watchEscrowAddress(trade.getEscrowAddress());
 
         // 1. fund escrow
-        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getEscrowAddress(), trade.getBtcAmount());
+        Maybe<Transaction> fundingTx = watchedEscrowAddress
+                .flatMap(ea -> walletManager.fundEscrow(ea, trade.getBtcAmount())).cache();
 
         // 2. create refund tx address and signature
+        Maybe<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress().cache();
 
-        Single<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress().toSingle();
-
-        Single<Profile> profile = profileManager.loadOrCreateMyProfile();
-
-        Single<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
+        Maybe<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
-                .singleOrError();
+                .singleElement().cache();
 
-        return Maybe.zip(fundingTx, refundTxAddress.toMaybe(), profile.toMaybe(), (ftx, ra, p) -> {
+        Maybe<String> refundTxSignature = Maybe.zip(fundingTx, refundTxAddress, (ftx, ra) ->
+                walletManager.getRefundSignature(trade, ftx, ra)).flatMap(rs -> rs);
 
-            Single<String> refundTxSignature = walletManager.getRefundSignature(trade, ftx, ra).toSingle();
+        // 3. create payment request
+        Maybe<PaymentRequest> paymentRequest = Maybe.zip(fundingTx, refundTxAddress, paymentDetails, refundTxSignature,
+                (ftx, ra, pd, rs) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra.toBase58(), rs));
 
-            // 3. create payment request
-            return Single.zip(refundTxSignature, paymentDetails, (rs, pd) ->
-                    new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra.toBase58(), rs));
-
-        }).flatMap(Single::toMaybe);
+        return paymentRequest.map(pr -> trade.copyBuilder().paymentRequest(pr).build().withStatus());
     }
 
     @Override
     Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
 
-        Maybe<Trade> updatedTrade = Maybe.just(trade);
+        Maybe<Trade> updatedTrade = Maybe.empty();
+
+        Trade.TradeBuilder tradeBuilder = trade.copyBuilder()
+                .version(receivedTrade.getVersion());
 
         if (receivedTrade.hasPayoutRequest()) {
-            updatedTrade = Maybe.just(trade.copyBuilder().payoutRequest(receivedTrade.getPayoutRequest()).build());
+            tradeBuilder.payoutRequest(receivedTrade.getPayoutRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
         if (receivedTrade.hasPayoutCompleted() && receivedTrade.getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
-            updatedTrade = Maybe.just(trade.copyBuilder().payoutCompleted(receivedTrade.getPayoutCompleted()).build());
+            tradeBuilder.payoutCompleted(receivedTrade.getPayoutCompleted());
+            updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
         if (receivedTrade.hasArbitrateRequest()) {
-            updatedTrade = Maybe.just(trade.copyBuilder().arbitrateRequest(receivedTrade.getArbitrateRequest()).build());
+            tradeBuilder.arbitrateRequest(receivedTrade.getArbitrateRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
         return updatedTrade;
@@ -84,6 +88,6 @@ public class SellerProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT));
 
         // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
     }
 }

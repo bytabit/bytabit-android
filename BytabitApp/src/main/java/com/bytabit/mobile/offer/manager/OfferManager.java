@@ -5,8 +5,10 @@ import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.trade.manager.TradeManager;
+import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import io.reactivex.Flowable;
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
@@ -129,11 +131,8 @@ public class OfferManager {
                 .share();
     }
 
-    public void createTrade(BigDecimal btcAmount) {
-        getLastSelectedOffer().autoConnect().take(1)
-                .flatMapSingle(sellOffer -> tradeManager.createTrade(sellOffer, btcAmount))
-                .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .subscribe();
+    public Maybe<Trade> createTrade(BigDecimal btcAmount) {
+        return getLastSelectedOffer().autoConnect().firstOrError()
+                .flatMapMaybe(sellOffer -> tradeManager.buyerCreateTrade(sellOffer, btcAmount));
     }
 }

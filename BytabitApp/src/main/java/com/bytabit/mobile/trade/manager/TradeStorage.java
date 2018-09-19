@@ -13,12 +13,16 @@ import com.gluonhq.connect.provider.ObjectDataWriter;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
 public class TradeStorage {
+
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private static final String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
@@ -44,7 +48,7 @@ public class TradeStorage {
         }
     }
 
-    Observable<List<Trade>> getStoredTrades() {
+    Observable<List<Trade>> getAll() {
 
         File tradesDir = new File(TRADES_PATH);
 
@@ -53,13 +57,13 @@ public class TradeStorage {
         }
 
         return Observable.fromArray(tradesDir.list())
-                .flatMapMaybe(this::readTrade)
+                .flatMapMaybe(this::read)
                 .toList().toObservable();
     }
 
-    Single<Trade> writeTrade(Trade trade) {
+    Single<Trade> write(Trade trade) {
 
-        return Single.create(source -> {
+        return Single.<Trade>create(source -> {
             File tradeFile = new File(TRADES_PATH + trade.getEscrowAddress() + File.separator + CURRENT_TRADE_JSON);
             try {
                 File dir = new File(TRADES_PATH + trade.getEscrowAddress());
@@ -74,12 +78,12 @@ public class TradeStorage {
             } catch (IOException e) {
                 source.onError(e);
             }
-        });
+        }).doOnError(t -> log.error("write: error {}", t.getMessage()));
     }
 
-    Maybe<Trade> readTrade(String escrowAddress) {
+    Maybe<Trade> read(String escrowAddress) {
 
-        return Maybe.create(source -> {
+        return Maybe.<Trade>create(source -> {
             try {
                 File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + CURRENT_TRADE_JSON);
                 if (tradeFile.exists()) {
@@ -94,6 +98,6 @@ public class TradeStorage {
             } catch (Exception ex) {
                 source.onError(ex);
             }
-        });
+        }).doOnError(t -> log.error("read: error {}", t.getMessage()));
     }
 }
