@@ -2,61 +2,36 @@ package com.bytabit.mobile.profile.manager;
 
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.profile.model.Profile;
-import com.gluonhq.connect.provider.ListDataReader;
-import com.gluonhq.connect.provider.ObjectDataWriter;
-import com.gluonhq.connect.provider.RestClient;
 import io.reactivex.Single;
-import io.reactivex.SingleEmitter;
+import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 public class ProfileService {
 
+    private final Retrofit retrofit;
+    private final ProfileServiceApi profileServiceApi;
+
+    public ProfileService() {
+        retrofit = new Retrofit.Builder()
+                .baseUrl(AppConfig.getBaseUrl())
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .build();
+
+        // create an instance of the ApiService
+        profileServiceApi = retrofit.create(ProfileServiceApi.class);
+    }
+
     Single<Profile> put(Profile profile) {
 
-        return Single.create((SingleEmitter<Profile> source) -> {
-
-            RestClient putRestClient = RestClient.create()
-                    .host(AppConfig.getBaseUrl())
-                    .path(String.format("/profiles/%s", profile.getPubKey()))
-                    .method("PUT")
-                    .contentType("application/json");
-
-            ObjectDataWriter<Profile> dataWriter = putRestClient.createObjectDataWriter(Profile.class);
-
-            try {
-                dataWriter.writeObject(profile).ifPresent(source::onSuccess);
-            } catch (IOException ioe) {
-                source.onError(ioe);
-            }
-        });
+        return profileServiceApi.put(profile.getPubKey(), profile);
     }
 
     Single<List<Profile>> get() {
 
-        return Single.create((SingleEmitter<List<Profile>> source) -> {
-
-            RestClient getRestClient = RestClient.create()
-                    .host(AppConfig.getBaseUrl())
-                    .path("/profiles")
-                    .method("GET")
-                    .contentType("application/json");
-
-            ListDataReader<Profile> listDataReader = getRestClient.createListDataReader(Profile.class);
-
-            try {
-                List<Profile> profiles = new ArrayList<>();
-                Iterator<Profile> profileIterator = listDataReader.iterator();
-                while (profileIterator.hasNext()) {
-                    profiles.add(profileIterator.next());
-                }
-                source.onSuccess(profiles);
-            } catch (IOException ioe) {
-                source.onError(ioe);
-            }
-        });
+        return profileServiceApi.get();
     }
 }

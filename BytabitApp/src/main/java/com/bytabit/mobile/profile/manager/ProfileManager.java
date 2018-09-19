@@ -42,7 +42,7 @@ public class ProfileManager {
     public void updateMyProfile(Profile newProfile) {
         loadOrCreateMyProfile().map(oldProfile -> Profile.builder()
                 .pubKey(oldProfile.getPubKey())
-                .arbitrator(newProfile.getIsArbitrator())
+                .isArbitrator(newProfile.isArbitrator())
                 .userName(newProfile.getUserName())
                 .phoneNum(newProfile.getPhoneNum())
                 .build())
@@ -53,7 +53,7 @@ public class ProfileManager {
 
     private Profile storeMyProfile(Profile profile) {
 
-        storageManager.store(PROFILE_ISARBITRATOR, Boolean.toString(profile.getIsArbitrator()));
+        storageManager.store(PROFILE_ISARBITRATOR, Boolean.toString(profile.isArbitrator()));
         storageManager.store(PROFILE_USERNAME, profile.getUserName());
         storageManager.store(PROFILE_PHONENUM, profile.getPhoneNum());
         return profile;
@@ -87,7 +87,7 @@ public class ProfileManager {
     private Profile getProfile(String profilePubKey) {
         return Profile.builder()
                 .pubKey(profilePubKey)
-                .arbitrator(Boolean.valueOf(storageManager.retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
+                .isArbitrator(Boolean.valueOf(storageManager.retrieve(PROFILE_ISARBITRATOR).orElse(Boolean.FALSE.toString())))
                 .userName(storageManager.retrieve(PROFILE_USERNAME).orElse(""))
                 .phoneNum(storageManager.retrieve(PROFILE_PHONENUM).orElse(""))
                 .build();

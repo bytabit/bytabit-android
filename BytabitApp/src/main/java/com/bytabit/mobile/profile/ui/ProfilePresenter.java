@@ -73,14 +73,14 @@ public class ProfilePresenter {
     private Profile getProfile() {
         return Profile.builder()
                 .pubKey(pubKeyTextField.getText())
-                .arbitrator(arbitratorCheckbox.isSelected())
+                .isArbitrator(arbitratorCheckbox.isSelected())
                 .userName(userNameTextField.getText())
                 .phoneNum(phoneNumTextField.getText()).build();
     }
 
     private void setProfile(Profile profile) {
         pubKeyTextField.setText(profile.getPubKey());
-        arbitratorCheckbox.setSelected(profile.getIsArbitrator());
+        arbitratorCheckbox.setSelected(profile.isArbitrator());
         userNameTextField.setText(profile.getUserName());
         phoneNumTextField.setText(profile.getPhoneNum());
     }

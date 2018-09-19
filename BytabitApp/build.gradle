@@ -69,6 +69,10 @@ dependencies {
     compile 'org.slf4j:slf4j-api:1.7.21'
     compile "org.projectlombok:lombok:1.14.0"
 
+    compile 'com.squareup.retrofit2:retrofit:2.4.0'
+    compile 'com.squareup.retrofit2:converter-gson:2.4.0'
+    compile 'com.squareup.retrofit2:adapter-rxjava2:2.4.0'
+
     desktopRuntime "ch.qos.logback:logback-classic:1.1.9"
     desktopRuntime "ch.qos.logback:logback-core:1.1.9"
 
