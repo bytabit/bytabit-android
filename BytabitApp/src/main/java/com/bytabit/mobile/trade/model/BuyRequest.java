@@ -15,6 +15,7 @@ public class BuyRequest {
 
     private String buyerEscrowPubKey;
     private BigDecimal btcAmount;
+    private BigDecimal paymentAmount;
     private String buyerProfilePubKey;
     private String buyerPayoutAddress;
 }

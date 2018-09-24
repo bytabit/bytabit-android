@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -94,7 +95,7 @@ public class OfferManager {
                         .paymentMethod(paymentMethod)
                         .minAmount(minAmount)
                         .maxAmount(maxAmount)
-                        .price(price)
+                        .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
                         .build()
         )
                 .flatMap(sellOfferService::put)

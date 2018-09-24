@@ -211,11 +211,11 @@ public class TradeDetailsPresenter {
         paymentMethodLabel.setText(trade.getPaymentMethod().displayName());
         paymentAmountCurrencyLabel.setText(currencyCode);
         priceCurrencyLabel.setText(currencyCode);
-        priceLabel.setText(trade.getPrice().toPlainString());
+        priceLabel.setText(trade.getPaymentAmount().toPlainString());
 
         // buy request
         purchasedAmountLabel.setText(trade.getBtcAmount().toPlainString());
-        paymentAmountLabel.setText(trade.getBtcAmount().multiply(trade.getPrice()).toPlainString());
+        paymentAmountLabel.setText(trade.getPaymentAmount().toPlainString());
 
         paymentDetailsLabel.textProperty().setValue(null);
         paymentReferenceField.textProperty().setValue(null);

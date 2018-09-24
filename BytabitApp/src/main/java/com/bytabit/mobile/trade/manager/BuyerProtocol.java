@@ -12,6 +12,7 @@ import org.bitcoinj.core.Address;
 import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class BuyerProtocol extends TradeProtocol {
 
@@ -32,7 +33,9 @@ public class BuyerProtocol extends TradeProtocol {
                                 .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
                                 .createdTimestamp(LocalDateTime.now())
                                 .sellOffer(sellOffer)
-                                .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount, buyerProfilePubKey, buyerPayoutAddress))
+                                .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount,
+                                        buyBtcAmount.setScale(8, RoundingMode.HALF_UP).multiply(sellOffer.getPrice()).setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.HALF_UP),
+                                        buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
                 .flatMap(t -> walletManager.watchEscrowAddress(t.getEscrowAddress()).map(e -> t.withStatus()));
     }

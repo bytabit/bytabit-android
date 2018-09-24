@@ -119,6 +119,7 @@ public class BytabitMobile extends MobileApplication {
                     ".dialog > .container > .label,\n" +
                     ".dialog > .container > .dialog-button-bar > .button,\n" +
                     ".title > .text, .subtitle > .text, .text-box > .label > .text,\n" +
+                    ".primary-text > .text, .secondary-text > .text, .tertiary-text > .text,\n" +
                     ".button, .check-box, .label, .text-field,\n" +
                     ".header, .footer, .list-cell, .text-area {\n" +
                     "    -fx-font-family: 'san-serif';\n" +

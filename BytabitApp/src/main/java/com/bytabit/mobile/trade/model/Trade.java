@@ -10,6 +10,7 @@ import lombok.Getter;
 import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
@@ -27,7 +28,18 @@ public class Trade {
     }
 
     public enum Role {
-        BUYER, SELLER, ARBITRATOR
+
+        BUYER("BUY"), SELLER("SELL"), ARBITRATOR("ARB");
+
+        private String action;
+
+        Role(String action) {
+            this.action = action;
+        }
+
+        public String getAction() {
+            return action;
+        }
     }
 
     private final Long version;
@@ -92,7 +104,15 @@ public class Trade {
 
     public BigDecimal getPrice() {
         if (hasSellOffer()) {
-            return sellOffer.getPrice();
+            return sellOffer.getPrice().setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
+        } else {
+            return null;
+        }
+    }
+
+    public BigDecimal getPaymentAmount() {
+        if (hasSellOffer() && hasBuyRequest()) {
+            return buyRequest.getPaymentAmount().setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
         } else {
             return null;
         }
@@ -125,7 +145,7 @@ public class Trade {
 
     public BigDecimal getBtcAmount() {
         if (hasBuyRequest()) {
-            return buyRequest.getBtcAmount().stripTrailingZeros();
+            return buyRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP);
         } else {
             return null;
         }
