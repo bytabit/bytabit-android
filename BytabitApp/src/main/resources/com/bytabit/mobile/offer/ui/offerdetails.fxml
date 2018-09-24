@@ -91,7 +91,7 @@
                 </GridPane>
                 <GridPane fx:id="buyGridPane" maxHeight="-Infinity" maxWidth="1.7976931348623157E308">
                     <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" percentWidth="35.0"/>
+                        <ColumnConstraints hgrow="SOMETIMES" percentWidth="27.0"/>
                         <ColumnConstraints hgrow="SOMETIMES"/>
                     </columnConstraints>
                     <rowConstraints>
@@ -110,7 +110,7 @@
                         </Button>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1">
                             <children>
-                                <TextField fx:id="buyCurrencyAmtTextField" maxHeight="-Infinity"/>
+                                <TextField fx:id="buyCurrencyAmtTextField" maxHeight="-Infinity" maxWidth="-Infinity"/>
                                 <Label fx:id="currencyAmtLabel" contentDisplay="CENTER" text="CUR">
                                     <padding>
                                         <Insets left="5.0"/>
@@ -122,7 +122,7 @@
                               GridPane.rowIndex="1">
                             <children>
                                 <TextField fx:id="buyBtcAmtTextField" editable="false" focusTraversable="false"
-                                           maxHeight="-Infinity"/>
+                                           maxHeight="-Infinity" maxWidth="-Infinity"/>
                                 <Label fx:id="btcPriceCurrencyLabel" contentDisplay="CENTER" text="BTC">
                                     <padding>
                                         <Insets left="5.0"/>
