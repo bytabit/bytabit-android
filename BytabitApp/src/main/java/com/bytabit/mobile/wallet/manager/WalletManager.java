@@ -3,7 +3,6 @@ package com.bytabit.mobile.wallet.manager;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.wallet.model.ManagedWallet;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.bytabit.mobile.wallet.model.WalletManagerException;
 import com.google.common.base.Joiner;
@@ -13,60 +12,37 @@ import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
-import io.reactivex.subjects.PublishSubject;
-import io.reactivex.subjects.Subject;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.crypto.TransactionSignature;
-import org.bitcoinj.net.discovery.DnsDiscovery;
+import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
-import org.bitcoinj.store.BlockStore;
-import org.bitcoinj.store.SPVBlockStore;
-import org.bitcoinj.wallet.*;
+import org.bitcoinj.wallet.KeyChain;
+import org.bitcoinj.wallet.SendRequest;
+import org.bitcoinj.wallet.Wallet;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
-import java.io.*;
 import java.math.BigDecimal;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static com.bytabit.mobile.wallet.manager.WalletManager.Command.*;
-import static org.bitcoinj.core.Transaction.REFERENCE_DEFAULT_MIN_TX_FEE;
-
 public class WalletManager {
-
-    public enum Command {
-        START,
-        STOP,
-        RESET
-    }
-
-    private static final String WALLET_FILE_EXT = ".wallet";
-    private static final String SPVCHAIN_FILE_EXT = ".spvchain";
-
-    private static final String BACKUP_EXT = ".bkp";
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private final NetworkParameters netParams;
     private final Context btcContext;
 
-    private final Subject<Command> tradeCommandSubject;
-    private final Subject<Command> escrowCommandSubject;
-
-    private ConnectableObservable<ManagedWallet> tradeManagedWallet;
-    private ConnectableObservable<ManagedWallet> escrowManagedWallet;
+    private Single<BytabitWalletAppKit> tradeWalletAppKit;
+    private Single<BytabitWalletAppKit> escrowWalletAppKit;
 
     private ConnectableObservable<Double> tradeDownloadProgress;
     private ConnectableObservable<Double> escrowDownloadProgress;
@@ -75,168 +51,131 @@ public class WalletManager {
     private ConnectableObservable<TransactionWithAmt> escrowUpdatedWalletTx;
 
     public WalletManager() {
-        netParams = NetworkParameters.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
+        netParams = BytabitTestNet3Params.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
         btcContext = Context.getOrCreate(netParams);
-        tradeCommandSubject = PublishSubject.create();
-        escrowCommandSubject = PublishSubject.create();
     }
 
     @PostConstruct
     public void initialize() {
 
-        tradeManagedWallet = tradeCommandSubject.startWith(START)
-                .doOnNext(c -> log.debug("trade command: {}", c))
-                .switchMap(c -> {
-                    Observable<ManagedWallet> managedWallet;
+        tradeWalletAppKit = Single.just("trade")
+                .flatMap(this::createWalletAppKit)
+                .doOnSuccess(wak -> log.debug("created tradeWalletAppKit: {}", wak))
+//                .flatMap(this::startWalletAppKit)
+//                .doOnSuccess(wak -> log.debug("started tradeWalletAppKit: {}", wak))
+                .cache()
+//                .doOnSubscribe(wak -> log.debug("subscribed tradeWalletAppKit: {}", wak))
+                .observeOn(Schedulers.io());
 
-                    if (START.equals(c)) {
-                        managedWallet = createManagedWallet("trade", false);
-                    } else if (RESET.equals(c)) {
-                        managedWallet = createManagedWallet("trade", true);
-                    } else {
-                        managedWallet = Observable.empty();
-                    }
+        escrowWalletAppKit = Single.just("escrow")
+                .flatMap(this::createWalletAppKit)
+                .doOnSuccess(wak -> log.debug("created escrowWalletAppKit: {}", wak))
+//                .flatMap(this::startWalletAppKit)
+//                .doOnSuccess(wak -> log.debug("started escrowWalletAppKit: {}", wak))
+                .cache()
+//                .doOnSubscribe(wak -> log.debug("subscribed escrowWalletAppKit: {}", wak))
+                .observeOn(Schedulers.io());
 
-                    return managedWallet.doOnTerminate(() -> log.debug("tradeManagedWallet: terminate"))
-                            .doOnSubscribe(d -> log.debug("tradeManagedWallet: subscribe"))
-                            .doOnDispose(() -> log.debug("tradeManagedWallet: dispose"))
-                            .doOnComplete(() -> log.debug("tradeManagedWallet: complete"))
-                            .doOnError(t -> log.error("tradeManagedWallet: error {}", t.getMessage()))
-                            .retry(1);
-
-                })
-                .doOnNext(mw -> log.debug("tradeManagedWallet: {}", mw))
-                .replay(1);
-
-        escrowManagedWallet = escrowCommandSubject.startWith(START)
-                .doOnNext(c -> log.debug("escrow command: {}", c))
-                .switchMap(c -> {
-                    Observable<ManagedWallet> managedWallet;
-
-                    if (START.equals(c)) {
-                        managedWallet = createManagedWallet("escrow", false);
-                    } else if (RESET.equals(c)) {
-                        managedWallet = createManagedWallet("escrow", true);
-                    } else {
-                        managedWallet = Observable.empty();
-                    }
-
-                    return managedWallet.doOnTerminate(() -> log.debug("escrowManagedWallet: terminate"))
-                            .doOnSubscribe(d -> log.debug("escrowManagedWallet: subscribe"))
-                            .doOnDispose(() -> log.debug("escrowManagedWallet: dispose"))
-                            .doOnComplete(() -> log.debug("escrowManagedWallet: complete"))
-                            .doOnError(t -> log.error("escrowManagedWallet: error {}", t.getMessage()))
-                            .retry(1);
-
-                })
-                .doOnNext(mw -> log.debug("tradeManagedWallet: {}", mw))
-                .replay(1);
-
-        tradeUpdatedWalletTx = tradeManagedWallet.autoConnect()
-                .map(ManagedWallet::getWallet)
-                .switchMap(tw -> Observable.<TransactionWithAmt>create(source -> {
-
-                    Observable.fromIterable(tw.getTransactions(false))
-                            .subscribe(tx -> source.onNext(createTransactionWithAmt(tw, tx)));
+        tradeUpdatedWalletTx = tradeWalletAppKit
+                .map(WalletAppKit::wallet)
+                .flatMapObservable(tw -> Observable.<TransactionWithAmt>create(source -> {
 
                     TransactionConfidenceEventListener listener = (wallet, tx) -> source.onNext(createTransactionWithAmt(wallet, tx));
-
                     tw.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
 
                     source.setCancellable(() -> {
                         log.debug("tradeUpdatedWalletTx: removeTransactionConfidenceEventListener");
                         tw.removeTransactionConfidenceEventListener(listener);
                     });
-                }).groupBy(TransactionWithAmt::getHash).flatMap(txg ->
-                        txg.throttleLast(1, TimeUnit.SECONDS)))
+                }).startWith(Observable.fromIterable(tw.getTransactions(false))
+                        .map(tx -> createTransactionWithAmt(tw, tx))))
+                .groupBy(TransactionWithAmt::getHash)
+                .flatMap(txg -> txg.throttleLast(1, TimeUnit.SECONDS))
                 .doOnSubscribe(d -> log.debug("tradeUpdatedWalletTx: subscribe"))
                 .doOnNext(tx -> log.debug("tradeUpdatedWalletTx: {}", tx.getHash()))
+                .observeOn(Schedulers.io())
                 .replay(20, TimeUnit.MINUTES);
 
         // post observable download events
-        tradeDownloadProgress = tradeManagedWallet.autoConnect()
-                .map(ManagedWallet::getPeerGroup)
-                .switchMap(this::downloadListener).subscribeOn(Schedulers.io())
+        tradeDownloadProgress = tradeWalletAppKit
+                .flatMapObservable(this::setDownloadListenerAndStart)
                 .doOnSubscribe(d -> log.debug("tradeDownloadProgress: subscribe"))
                 .doOnNext(progress -> log.debug("tradeDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
                 .throttleLast(1, TimeUnit.SECONDS)
+                .observeOn(Schedulers.io())
                 .replay(100);
 
-        escrowDownloadProgress = escrowManagedWallet.autoConnect()
-                .map(ManagedWallet::getPeerGroup)
-                .switchMap(this::downloadListener).subscribeOn(Schedulers.io())
+        escrowDownloadProgress = escrowWalletAppKit
+                .flatMapObservable(this::setDownloadListenerAndStart)
                 .doOnSubscribe(d -> log.debug("escrowDownloadProgress: subscribe"))
                 .doOnNext(progress -> log.debug("escrowDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
                 .throttleLast(1, TimeUnit.SECONDS)
+                .observeOn(Schedulers.io())
                 .replay(100);
 
-        BytabitMobile.getNavEvents().distinctUntilChanged()
-                .filter(ne -> ne.equals(BytabitMobile.NavEvent.QUIT))
-                .subscribe(qe -> {
-                    tradeCommandSubject.onNext(STOP);
-                    escrowCommandSubject.onNext(STOP);
-                });
+        // TODO shutdown wallet?
     }
 
-    private Observable<ManagedWallet> createManagedWallet(String name, boolean deleteBlockstore) {
-
-        // block store file
-
-        Single<File> blockStoreFile = Single.just(new File(AppConfig.getPrivateStorage(), name + SPVCHAIN_FILE_EXT));
-
-        // create wallet
-
-        Observable<Wallet> wallet = Observable.<Wallet>create(source -> {
+    private Single<BytabitWalletAppKit> createWalletAppKit(String filePrefix) {
+        return Single.create(source -> {
             try {
-                source.onNext(createOrLoadTradeWallet(name));
-            } catch (IOException | UnreadableWalletException e) {
+                BytabitWalletAppKit walletAppKit = new BytabitWalletAppKit(netParams, AppConfig.getPrivateStorage(), filePrefix);
+
+                if (netParams.equals(RegTestParams.get())) {
+                    walletAppKit.connectToLocalHost();
+                }
+
+                walletAppKit.setBlockingStartup(false);
+                walletAppKit.setAutoSave(true);
+                walletAppKit.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
+                source.onSuccess(walletAppKit);
+
+            } catch (Exception e) {
                 source.onError(e);
             }
-        }).doOnError(t -> log.debug("{} wallet: error {}", name, t.getMessage())).retry(1).cache();
-
-        // create block store
-
-        Observable<BlockStore> blockStore = blockStoreFile.toObservable().map(bsf -> {
-            Context.propagate(btcContext);
-            if (deleteBlockstore && bsf.exists()) {
-                Files.delete(bsf.toPath());
-            }
-            BlockStore bs = new SPVBlockStore(netParams, bsf);
-            bs.getChainHead(); // detect corruptions as early as possible
-            return bs;
-        }).doOnError(t -> log.debug("{} blockStore: error {}", name, t.getMessage())).retry(1);
-
-        // create block chain
-
-        Observable<BlockChain> blockChain = Observable.zip(wallet, blockStore, (w, bs) -> {
-            Context.propagate(btcContext);
-            return new BlockChain(netParams, w, bs);
         });
-
-        // create peer group
-
-        Observable<PeerGroup> peerGroup = Observable.zip(wallet, blockChain, this::createPeerGroup)
-                .doOnNext(PeerGroup::start);
-
-        return Observable.zip(wallet, peerGroup, (w, pg) -> new ManagedWallet(name, w, pg));
     }
 
-    private Observable<Double> downloadListener(PeerGroup pg) {
+//    private Single<WalletAppKit> startWalletAppKit(WalletAppKit walletAppKit) {
+//        return Single.create(source -> {
+//            try {
+//                walletAppKit.startAsync();
+//                walletAppKit.awaitRunning();
+//                source.onSuccess(walletAppKit);
+//            } catch (Exception e) {
+//                source.onError(e);
+//            }
+//        });
+//    }
 
-        return Observable.create(source -> pg.startBlockChainDownload(new DownloadProgressTracker() {
+    private Observable<Double> setDownloadListenerAndStart(WalletAppKit wak) {
 
-            @Override
-            protected void progress(double pct, int blocksSoFar, Date date) {
-                super.progress(pct, blocksSoFar, date);
-                source.onNext(pct / 100.00);
+        return Observable.<Double>create(source -> {
+            wak.setDownloadListener(new DownloadProgressTracker() {
+
+                @Override
+                protected void progress(double pct, int blocksSoFar, Date date) {
+                    super.progress(pct, blocksSoFar, date);
+                    source.onNext(pct / 100.00);
+                }
+
+                @Override
+                protected void doneDownload() {
+                    super.doneDownload();
+                    source.onNext(1.00);
+                }
+            });
+
+            try {
+                wak.startAsync();
+                wak.awaitRunning();
+            } catch (Exception e) {
+                source.onError(e);
             }
-
-            @Override
-            protected void doneDownload() {
-                super.doneDownload();
-                source.onNext(1.00);
-            }
-        }));
+        }).onErrorReturn(t -> {
+            log.error("DownloadProgressTracker: {}", t);
+            return -1.0;
+        });
     }
 
     public ConnectableObservable<Double> getTradeDownloadProgress() {
@@ -247,8 +186,9 @@ public class WalletManager {
         return escrowDownloadProgress;
     }
 
-    public Observable<TradeWalletInfo> getTradeWalletInfo() {
-        return tradeManagedWallet.autoConnect().map(ManagedWallet::getWallet)
+    public Single<TradeWalletInfo> getTradeWalletInfo() {
+        return tradeWalletAppKit
+                .map(WalletAppKit::wallet)
                 .map(this::getTradeWalletInfo);
     }
 
@@ -271,174 +211,50 @@ public class WalletManager {
                 .build();
     }
 
-    public Maybe<String> getTradeWalletProfilePubKey() {
-        return tradeManagedWallet.autoConnect().firstElement()
-                .map(ManagedWallet::getWallet).map(this::getFreshBase58AuthPubKey);
+    public Single<String> getTradeWalletProfilePubKey() {
+        return tradeWalletAppKit
+                .map(WalletAppKit::wallet).map(this::getFreshBase58AuthPubKey);
     }
 
-    public Maybe<String> getTradeWalletEscrowPubKey() {
-        return tradeManagedWallet.autoConnect().firstElement()
-                .map(ManagedWallet::getWallet).map(this::getFreshBase58ReceivePubKey);
+    public Single<String> getTradeWalletEscrowPubKey() {
+        return tradeWalletAppKit
+                .map(WalletAppKit::wallet).map(this::getFreshBase58ReceivePubKey);
     }
 
-    public Maybe<Address> getTradeWalletDepositAddress() {
-        return tradeManagedWallet.autoConnect().firstElement()
-                .map(ManagedWallet::getWallet).map(this::getDepositAddress);
-    }
-
-    private PeerGroup createPeerGroup(Wallet wallet, BlockChain blockChain) throws UnknownHostException {
-
-        Context.propagate(btcContext);
-
-        PeerGroup peerGroup = new PeerGroup(netParams, blockChain);
-        peerGroup.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
-
-        peerGroup.addWallet(wallet);
-
-        if (netParams.equals(RegTestParams.get())) {
-            peerGroup.setMaxConnections(1);
-            peerGroup.addAddress(new PeerAddress(netParams, InetAddress.getLocalHost(), netParams.getPort()));
-
-        } else {
-            peerGroup.addPeerDiscovery(new DnsDiscovery(netParams));
-        }
-
-        peerGroup.setFastCatchupTimeSecs(wallet.getEarliestKeyCreationTime());
-
-        return peerGroup;
-    }
-
-    private Wallet createOrLoadTradeWallet(String name)
-            throws IOException, UnreadableWalletException {
-
-        final File walletFile = new File(AppConfig.getPrivateStorage(), name + WALLET_FILE_EXT);
-        final File walletBackupFile = new File(AppConfig.getPrivateStorage(), name + WALLET_FILE_EXT + BACKUP_EXT);
-        return createOrLoadWallet(walletFile, walletBackupFile);
+    public Single<Address> getTradeWalletDepositAddress() {
+        return tradeWalletAppKit
+                .map(WalletAppKit::wallet).map(this::getDepositAddress);
     }
 
     public Maybe<String> watchEscrowAddressAndResetBlockchain(String escrowAddress) {
 
-        return watchEscrowAddress(escrowAddress)
-                .doOnSuccess(ea -> escrowCommandSubject.onNext(RESET));
+        return watchEscrowAddress(escrowAddress);
     }
 
     public Maybe<String> watchEscrowAddress(String escrowAddress) {
 
-        return escrowManagedWallet.autoConnect().firstElement()
-                .map(ManagedWallet::getWallet)
+        return escrowWalletAppKit
+                .map(WalletAppKit::wallet)
                 .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000)))
                 .filter(s -> s.equals(true))
                 .map(s -> escrowAddress);
     }
 
-    Wallet createOrLoadWallet(File walletFile, File walletBackupFile)
-            throws IOException, UnreadableWalletException {
-
-        return createOrLoadWallet(walletFile, walletBackupFile, null);
+    private Single<Wallet> getTradeWallet() {
+        return tradeWalletAppKit
+                .map(WalletAppKit::wallet);
     }
 
-    Wallet createOrLoadWallet(File walletFile, File walletBackupFile, String escrowAddress)
-            throws IOException, UnreadableWalletException {
+    private Single<Wallet> getEscrowWallet() {
 
-        Context.propagate(btcContext);
-        Wallet wallet;
-        if (walletFile.exists()) {
-            try {
-                wallet = loadWallet(walletFile);
-
-            } catch (FileNotFoundException | UnreadableWalletException e1) {
-
-                wallet = loadWallet(walletBackupFile);
-                wallet.reset();
-                log.debug("restoreWallet ({}): {}", e1.getMessage(), walletBackupFile.getPath());
-                saveWallet(wallet, walletFile);
-                throw e1;
-            }
-        } else {
-            log.debug("createWallet: {}", walletFile.getPath());
-            // create new wallet
-            wallet = new Wallet(netParams);
-            if (escrowAddress != null) {
-                wallet.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000));
-            }
-            // save new wallet
-            saveWallet(wallet, walletFile);
-            // backup backup new wallet
-            backupWallet(wallet, walletBackupFile);
-        }
-
-        wallet.autosaveToFile(walletFile, 10, TimeUnit.SECONDS, null);
-        return wallet;
+        return escrowWalletAppKit
+                .map(WalletAppKit::wallet);
     }
 
-    private Wallet loadWallet(File walletFile) throws IOException, UnreadableWalletException {
+    private Single<PeerGroup> getPeerGroup() {
 
-        Context.propagate(btcContext);
-        Wallet wallet;
-        try (FileInputStream walletInputStream = new FileInputStream(walletFile)) {
-            final WalletProtobufSerializer serializer = new WalletProtobufSerializer();
-            wallet = serializer.readWallet(walletInputStream);
-
-            if (!wallet.getParams().equals(netParams)) {
-                log.error("Invalid network params in wallet file: {}", walletFile);
-                throw new UnreadableWalletException("Wrong network parameters, found: " + wallet.getParams().getId() + " should be: " + netParams.getId());
-            }
-            log.debug("loadWallet: {}", walletFile.getPath());
-
-        } catch (final IOException e) {
-            log.error("Unable to close wallet input stream {}: {}", walletFile, e.getCause());
-            throw e;
-        }
-
-        return wallet;
-    }
-
-    private void saveWallet(Wallet wallet, File walletFile) throws IOException {
-
-        final Protos.Wallet walletProto = new WalletProtobufSerializer().walletToProto(wallet);
-
-        try (OutputStream walletOutputStream = new FileOutputStream(walletFile)) {
-
-            walletProto.writeTo(walletOutputStream);
-            walletOutputStream.flush();
-            log.debug("savedWallet: {}", walletFile.getPath());
-        }
-    }
-
-    private void backupWallet(Wallet wallet, File walletBackupFile) {
-
-        final Protos.Wallet.Builder walletBuilder = new WalletProtobufSerializer().walletToProto(wallet).toBuilder();
-
-        // strip redundant
-        walletBuilder.clearTransaction();
-        walletBuilder.clearLastSeenBlockHash();
-        walletBuilder.setLastSeenBlockHeight(-1);
-        walletBuilder.clearLastSeenBlockTimeSecs();
-        final Protos.Wallet walletProto = walletBuilder.build();
-
-        try (OutputStream walletOutputStream = new FileOutputStream(walletBackupFile)) {
-            walletProto.writeTo(walletOutputStream);
-            walletOutputStream.flush();
-        } catch (final IOException e) {
-            log.error("Can't save wallet backup", e);
-        }
-    }
-
-    private Maybe<Wallet> getTradeWallet() {
-        return tradeManagedWallet.autoConnect().firstElement()
-                .map(ManagedWallet::getWallet);
-    }
-
-    private Maybe<Wallet> getEscrowWallet() {
-
-        return escrowManagedWallet.autoConnect().firstElement()
-                .map(ManagedWallet::getWallet);
-    }
-
-    private Maybe<PeerGroup> getPeerGroup() {
-
-        return tradeManagedWallet.autoConnect().firstElement()
-                .map(ManagedWallet::getPeerGroup);
+        return tradeWalletAppKit
+                .map(WalletAppKit::peerGroup);
     }
 
     private Address getDepositAddress(Wallet wallet) {
@@ -466,7 +282,7 @@ public class WalletManager {
     }
 
     private Coin defaultTxFeeCoin() {
-        return REFERENCE_DEFAULT_MIN_TX_FEE.multiply(100);
+        return Coin.valueOf(106000); //REFERENCE_DEFAULT_MIN_TX_FEE.multiply(100);
     }
 
     public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
@@ -482,13 +298,14 @@ public class WalletManager {
                     return outputAddress != null && outputAddress.equals(address);
                 })
                 .filter(f -> f.equals(false))
-                .flatMap(f -> getTradeWallet());
+                .flatMapSingleElement(f -> getTradeWallet());
 
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         return notFundedWallet.flatMap(tw -> Maybe.create(source -> {
             try {
                 SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
                         Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
+                sendRequest.feePerKb = defaultTxFeeCoin();
                 Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
                 source.onSuccess(sendResult.tx);
             } catch (InsufficientMoneyException ex) {
@@ -544,7 +361,7 @@ public class WalletManager {
 
     public Maybe<TransactionWithAmt> getEscrowTransactionWithAmt(String txHash) {
 
-        return getEscrowWallet().flatMap(w -> {
+        return getEscrowWallet().flatMapMaybe(w -> {
             Transaction tx = txHash != null ? w.getTransaction(Sha256Hash.wrap(txHash)) : null;
             Maybe<Transaction> maybeTx = tx != null ? Maybe.just(tx) : Maybe.empty();
             return maybeTx.map(t -> createTransactionWithAmt(w, t));
@@ -582,7 +399,7 @@ public class WalletManager {
                                                            ECKey buyerEscrowPubKey,
                                                            Address payoutAddress) {
 
-        return getTradeWallet().map(tw -> {
+        return getTradeWallet().flatMapMaybe(tw -> {
             Transaction payoutTx = new Transaction(netParams);
             payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
 
@@ -620,7 +437,7 @@ public class WalletManager {
             if (escrowKey != null) {
                 // sign tx input
                 Sha256Hash unlockSigHash = payoutTx.hashForSignature(0, redeemScript, Transaction.SigHash.ALL, false);
-                return new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false);
+                return Single.just(new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false)).toMaybe();
             } else {
                 throw new WalletManagerException("Can not create payout signature, no signing key found.");
             }
@@ -726,12 +543,12 @@ public class WalletManager {
             }
         }
 
-        return Maybe.zip(getEscrowWallet(), getPeerGroup(), (ew, pg) -> {
+        return Single.zip(getEscrowWallet(), getPeerGroup(), (ew, pg) -> {
             Context.propagate(btcContext);
             ew.commitTx(payoutTx);
             pg.broadcastTransaction(payoutTx);
             return payoutTx.getHash().toString();
-        });
+        }).toMaybe();
     }
 
     private String getSeedWords(Wallet wallet) {

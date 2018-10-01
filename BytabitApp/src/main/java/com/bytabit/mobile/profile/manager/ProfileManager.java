@@ -69,7 +69,7 @@ public class ProfileManager {
                     .map(this::getProfile)
                     .doOnSuccess(p -> log.debug("Load Profile: {}", p));
         } else {
-            return walletManager.getTradeWalletProfilePubKey().toSingle()
+            return walletManager.getTradeWalletProfilePubKey()
                     .subscribeOn(Schedulers.io())
                     .observeOn(Schedulers.io())
                     .doOnSuccess(pubKey -> storageManager.store(PROFILE_PUBKEY, pubKey))

@@ -38,8 +38,7 @@
                                 <Insets top="10.0"/>
                             </GridPane.margin>
                         </Button>
-                        <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1"
-                              GridPane.rowIndex="5">
+                        <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="5">
                             <children>
                                 <Label fx:id="minTradeAmtLabel" text="TBD"/>
                                 <Label fx:id="minTradeAmtCurrencyLabel" contentDisplay="CENTER" text="CUR">
@@ -49,8 +48,7 @@
                                 </Label>
                             </children>
                         </HBox>
-                        <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1"
-                              GridPane.rowIndex="6">
+                        <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="6">
                             <children>
                                 <Label fx:id="maxTradeAmtLabel" text="TBD"/>
                                 <Label fx:id="maxTradeAmtCurrencyLabel" contentDisplay="CENTER" text="CUR">
@@ -60,8 +58,7 @@
                                 </Label>
                             </children>
                         </HBox>
-                        <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1"
-                              GridPane.rowIndex="7">
+                        <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="7">
                             <children>
                                 <Label fx:id="priceLabel" text="TBD"/>
                                 <Label fx:id="priceCurrencyLabel" contentDisplay="CENTER" text="CUR">
@@ -108,9 +105,9 @@
                                 <Insets top="10.0"/>
                             </GridPane.margin>
                         </Button>
-                        <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1">
+                        <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1">
                             <children>
-                                <TextField fx:id="buyCurrencyAmtTextField" maxHeight="-Infinity" maxWidth="-Infinity"/>
+                                <TextField fx:id="buyCurrencyAmtTextField" prefWidth="150.0"/>
                                 <Label fx:id="currencyAmtLabel" contentDisplay="CENTER" text="CUR">
                                     <padding>
                                         <Insets left="5.0"/>
@@ -118,11 +115,10 @@
                                 </Label>
                             </children>
                         </HBox>
-                        <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0" GridPane.columnIndex="1"
-                              GridPane.rowIndex="1">
+                        <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1" GridPane.rowIndex="1">
                             <children>
                                 <TextField fx:id="buyBtcAmtTextField" editable="false" focusTraversable="false"
-                                           maxHeight="-Infinity" maxWidth="-Infinity"/>
+                                           prefWidth="150.0"/>
                                 <Label fx:id="btcPriceCurrencyLabel" contentDisplay="CENTER" text="BTC">
                                     <padding>
                                         <Insets left="5.0"/>
@@ -134,9 +130,9 @@
                     <opaqueInsets>
                         <Insets top="10.0"/>
                     </opaqueInsets>
-                    <padding>
+                    <VBox.margin>
                         <Insets left="10.0" right="10.0" top="10.0"/>
-                    </padding>
+                    </VBox.margin>
                 </GridPane>
             </children>
             <opaqueInsets>

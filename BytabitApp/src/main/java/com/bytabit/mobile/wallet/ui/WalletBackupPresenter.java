@@ -45,7 +45,7 @@ public class WalletBackupPresenter {
 
         JavaFxObservable.changesOf(walletBackupView.showingProperty())
                 .filter(Change::getNewVal)
-                .flatMap(c -> walletManager.getTradeWalletInfo())
+                .flatMapSingle(c -> walletManager.getTradeWalletInfo())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(info -> {

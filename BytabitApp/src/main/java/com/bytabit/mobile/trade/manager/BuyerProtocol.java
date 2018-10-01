@@ -7,6 +7,7 @@ import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
+import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import org.bitcoinj.core.Address;
 import org.joda.time.LocalDateTime;
@@ -23,8 +24,8 @@ public class BuyerProtocol extends TradeProtocol {
     // 1.B: create trade, post created trade
     Maybe<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
 
-        return Maybe.zip(walletManager.getTradeWalletEscrowPubKey(),
-                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey).toMaybe(),
+        return Single.zip(walletManager.getTradeWalletEscrowPubKey(),
+                profileManager.loadOrCreateMyProfile().map(Profile::getPubKey),
                 walletManager.getTradeWalletDepositAddress().map(Address::toBase58),
                 (buyerEscrowPubKey, buyerProfilePubKey, buyerPayoutAddress) ->
                         Trade.builder()
@@ -37,7 +38,7 @@ public class BuyerProtocol extends TradeProtocol {
                                         buyBtcAmount.setScale(8, RoundingMode.HALF_UP).multiply(sellOffer.getPrice()).setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.HALF_UP),
                                         buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
-                .flatMap(t -> walletManager.watchEscrowAddress(t.getEscrowAddress()).map(e -> t.withStatus()));
+                .flatMapMaybe(t -> walletManager.watchEscrowAddress(t.getEscrowAddress()).map(e -> t.withStatus()));
     }
 
     // 1.B: create trade, post created trade

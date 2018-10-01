@@ -86,7 +86,7 @@ public class OfferManager {
     public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, String arbitratorProfilePubKey,
                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getTradeWalletEscrowPubKey().toSingle(), (p, pk) ->
+        Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
                 SellOffer.builder()
                         .sellerProfilePubKey(p.getPubKey())
                         .sellerEscrowPubKey(pk)

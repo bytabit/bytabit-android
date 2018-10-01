@@ -1,5 +1,6 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.common.RetryWithDelay;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeStorageResource;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class TradeStorage {
 
@@ -78,7 +80,9 @@ public class TradeStorage {
             } catch (IOException e) {
                 source.onError(e);
             }
-        }).doOnError(t -> log.error("write: error {}", t.getMessage()));
+        })
+                .retryWhen(new RetryWithDelay(3, 500, TimeUnit.MILLISECONDS))
+                .doOnError(t -> log.error("write error: {}", t.getMessage()));
     }
 
     Maybe<Trade> read(String escrowAddress) {
@@ -98,6 +102,8 @@ public class TradeStorage {
             } catch (Exception ex) {
                 source.onError(ex);
             }
-        }).doOnError(t -> log.error("read: error {}", t.getMessage()));
+        })
+                .retryWhen(new RetryWithDelay(3, 500, TimeUnit.MILLISECONDS))
+                .doOnError(t -> log.error("read error: {}", t.getMessage()));
     }
 }

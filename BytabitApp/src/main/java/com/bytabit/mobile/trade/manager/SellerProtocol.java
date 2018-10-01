@@ -36,7 +36,7 @@ public class SellerProtocol extends TradeProtocol {
                 .flatMap(ea -> walletManager.fundEscrow(ea, trade.getBtcAmount())).cache();
 
         // 2. create refund tx address and signature
-        Maybe<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress().cache();
+        Maybe<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress().toMaybe().cache();
 
         Maybe<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))

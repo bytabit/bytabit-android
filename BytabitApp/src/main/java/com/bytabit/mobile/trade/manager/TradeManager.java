@@ -6,7 +6,6 @@ import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
-import io.reactivex.Flowable;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -104,7 +103,6 @@ public class TradeManager {
         Maybe<Boolean> walletsSynced = Observable.zip(walletManager.getTradeDownloadProgress().autoConnect(),
                 walletManager.getEscrowDownloadProgress().autoConnect(), (tp, ep) -> tp == 1 && ep == 1)
                 .filter(p -> p)
-                .map(p -> true)
                 .firstElement()
                 .observeOn(Schedulers.io())
                 .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
@@ -112,7 +110,7 @@ public class TradeManager {
                 .cache();
 
         // get stored trades after download progress is 100% loaded
-        walletsSynced.subscribe(p -> tradeStorage.getAll()
+        walletsSynced.flatMapObservable(p -> tradeStorage.getAll())
                 .flatMapIterable(t -> t)
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
                         .map(txa -> t.copyBuilder().fundingTransactionWithAmt(txa).build())
@@ -123,20 +121,19 @@ public class TradeManager {
                 .map(Trade::withStatus)
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .subscribe(createdTradeSubject::onNext));
+                .subscribe(createdTradeSubject::onNext);
 
         // get update and store trades from received data after download progress is 100% loaded
-        walletsSynced.subscribe(p -> profileManager.loadOrCreateMyProfile().toObservable()
-                .flatMap(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
+        walletsSynced.flatMapSingle(p -> profileManager.loadOrCreateMyProfile())
+                .flatMapObservable(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
                         .flatMap(t -> tradeService.get(profile.getPubKey())
-                                .retryWhen(error -> error.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
                                 .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))
                                 .flattenAsObservable(l -> l))
                         .flatMapMaybe(trade -> handleReceivedTrade(profile, trade)))
                 .flatMapSingle(tradeStorage::write)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
-                .subscribe(updatedTradeSubject::onNext));
+                .subscribe(updatedTradeSubject::onNext);
     }
 
     public Maybe<Trade> buyerCreateTrade(SellOffer sellOffer, BigDecimal btcAmount) {

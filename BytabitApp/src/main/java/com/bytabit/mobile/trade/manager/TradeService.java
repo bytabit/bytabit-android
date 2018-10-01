@@ -1,5 +1,6 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.common.RetryWithDelay;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeServiceResource;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class TradeService {
 
@@ -42,7 +44,9 @@ public class TradeService {
             } catch (IOException ioe) {
                 source.onError(ioe);
             }
-        }).doOnError(t -> log.error("get: error {}", t.getMessage()));
+        })
+                .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
+                .doOnError(t -> log.error("get error: {}", t.getMessage()));
     }
 
     Single<Trade> put(Trade trade) {
@@ -63,6 +67,8 @@ public class TradeService {
             } catch (Exception e) {
                 source.onError(e);
             }
-        }).doOnError(t -> log.error("put: error {}", t.getMessage()));
+        })
+                .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
+                .doOnError(t -> log.error("put error: {}", t.getMessage()));
     }
 }
