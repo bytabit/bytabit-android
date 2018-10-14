@@ -1,6 +1,5 @@
 package com.bytabit.mobile;
 
-import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.nav.NavDrawer;
 import com.bytabit.mobile.offer.ui.AddOfferView;
 import com.bytabit.mobile.offer.ui.OfferDetailsView;
@@ -29,9 +28,6 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Executor;
@@ -42,9 +38,6 @@ public class BytabitMobile extends MobileApplication {
     public enum NavEvent {
         QUIT
     }
-
-    private static final String SCALED_FONTS_CSS_FILE_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
-            "scaled-fonts.css";
 
     public static final String WALLET_VIEW = "Wallet";
     public static final String WALLET_BACKUP_VIEW = "WalletBackup";
@@ -103,46 +96,6 @@ public class BytabitMobile extends MobileApplication {
         Swatch.ORANGE.assignTo(scene);
 
         Optional<DisplayService> displayService = Services.get(DisplayService.class);
-
-        File scaledFontsCssFile = new File(SCALED_FONTS_CSS_FILE_PATH);
-        if (!scaledFontsCssFile.exists()) {
-
-            Float screenScale = displayService.map(DisplayService::getScreenScale)
-                    .map(s -> s / 2)
-                    .orElse(1F);
-
-            String scaledFontsCss = ".app-bar > .title-box > .label {\n" +
-                    "    -fx-font-family: 'san-serif';\n" +
-                    "    -fx-font-size: " + String.format("%.2f", screenScale * 1.5) + "em;\n" +
-                    "}\n" +
-                    "\n" +
-                    ".dialog > .container > .label,\n" +
-                    ".dialog > .container > .dialog-button-bar > .button,\n" +
-                    ".title > .text, .subtitle > .text, .text-box > .label > .text,\n" +
-                    ".primary-text > .text, .secondary-text > .text, .tertiary-text > .text,\n" +
-                    ".button, .check-box, .label, .text-field,\n" +
-                    ".header, .footer, .list-cell, .text-area {\n" +
-                    "    -fx-font-family: 'san-serif';\n" +
-                    "    -fx-font-size: " + String.format("%.2f", screenScale) + "em;\n" +
-                    "}\n" +
-                    "\n" +
-                    ".icon-text {\n" +
-                    "    -fx-font-family: 'Material Icons';\n" +
-                    "    -fx-font-size: " + String.format("%.2f", screenScale * 2) + "em;\n" +
-                    "}";
-
-            // Create screen-scale.css
-            try (PrintWriter printWriter = new PrintWriter(scaledFontsCssFile)) {
-                printWriter.println(scaledFontsCss);
-                printWriter.flush();
-                log.debug("Created {} containing:\n{}", scaledFontsCssFile, scaledFontsCss);
-            } catch (IOException e) {
-                log.error("Could not create {}", scaledFontsCssFile, e);
-            }
-        }
-
-        // Add screen-scale.css to the scene
-        scene.getStylesheets().add(scaledFontsCssFile.toURI().toString());
 
         String formFactorSuffix = displayService
                 .map(s -> s.isTablet() ? "_tablet" : "")
