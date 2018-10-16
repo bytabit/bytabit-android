@@ -102,8 +102,11 @@ public class OfferManager {
                 .subscribe(createdOffer::onNext);
     }
 
-    public void deleteOffer(String sellerEscrowPubKey) {
-        sellOfferService.delete(sellerEscrowPubKey)
+    public void deleteOffer() {
+        selectedOffer.map(SellOffer::getSellerEscrowPubKey)
+                .flatMapSingle(sellOfferService::delete)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
                 .subscribe(removedOffer::onNext);
     }
 
@@ -128,7 +131,7 @@ public class OfferManager {
 
     public Observable<SellOffer> getRemovedOffer() {
         return removedOffer
-                .doOnNext(sellOffer -> log.debug("Created: {}", sellOffer))
+                .doOnNext(sellOffer -> log.debug("Removed: {}", sellOffer))
                 .share();
     }
 

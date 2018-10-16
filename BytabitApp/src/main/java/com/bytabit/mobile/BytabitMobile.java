@@ -8,7 +8,6 @@ import com.bytabit.mobile.profile.ui.PaymentView;
 import com.bytabit.mobile.profile.ui.PaymentsView;
 import com.bytabit.mobile.profile.ui.ProfileView;
 import com.bytabit.mobile.trade.ui.TradeDetailsView;
-import com.bytabit.mobile.trade.ui.TradeDevInfoView;
 import com.bytabit.mobile.trade.ui.TradesView;
 import com.bytabit.mobile.wallet.ui.DepositView;
 import com.bytabit.mobile.wallet.ui.WalletBackupView;
@@ -49,7 +48,6 @@ public class BytabitMobile extends MobileApplication {
 
     public static final String TRADE_VIEW = HOME_VIEW;
     public static final String TRADE_DETAILS_VIEW = "TradeDetails";
-    public static final String TRADE_DEV_INFO_VIEW = "TradeDevInfo";
 
     public static final String PROFILE_VIEW = "Profile";
     public static final String PAYMENT_VIEW = "PaymentDetails";
@@ -75,7 +73,6 @@ public class BytabitMobile extends MobileApplication {
 
         addViewFactory(TRADE_VIEW, () -> (View) new TradesView().getView());
         addViewFactory(TRADE_DETAILS_VIEW, () -> (View) new TradeDetailsView().getView());
-        addViewFactory(TRADE_DEV_INFO_VIEW, () -> (View) new TradeDevInfoView().getView());
 
         addViewFactory(WALLET_VIEW, () -> (View) new WalletView().getView());
         addViewFactory(WALLET_BACKUP_VIEW, () -> (View) new WalletBackupView().getView());

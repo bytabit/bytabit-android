@@ -60,19 +60,10 @@ public class OfferDetailsPresenter {
     private Label priceCurrencyLabel;
 
     @FXML
-    private Label sellerEscrowPubKeyLabel;
-
-    @FXML
-    private Label sellerProfilePubKeyLabel;
-
-    @FXML
     private Label currencyLabel;
 
     @FXML
     private Label paymentMethodLabel;
-
-    @FXML
-    private Label arbitratorProfilePubKeyLabel;
 
     @FXML
     private GridPane buyGridPane;
@@ -108,7 +99,7 @@ public class OfferDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(actionEvent -> {
-                    offerManager.deleteOffer(sellerEscrowPubKeyLabel.getText());
+                    offerManager.deleteOffer();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -161,10 +152,6 @@ public class OfferDetailsPresenter {
     }
 
     private void showOffer(SellOffer sellOffer) {
-
-        sellerEscrowPubKeyLabel.setText(sellOffer.getSellerEscrowPubKey());
-        sellerProfilePubKeyLabel.setText(sellOffer.getSellerProfilePubKey());
-        arbitratorProfilePubKeyLabel.setText(sellOffer.getArbitratorProfilePubKey());
 
         paymentMethodLabel.setText(sellOffer.getPaymentMethod().displayName());
 

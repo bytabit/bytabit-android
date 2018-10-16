@@ -1,6 +1,5 @@
 package com.bytabit.mobile.trade.ui;
 
-import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -172,9 +171,6 @@ public class TradeDetailsPresenter {
         AppBar appBar = MobileApplication.getInstance().getAppBar();
         appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
         appBar.setTitleText("Trade Details");
-        appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
-                MobileApplication.getInstance().switchView(BytabitMobile.TRADE_DEV_INFO_VIEW)));
-
     }
 
     private void showTrade(Trade trade) {
