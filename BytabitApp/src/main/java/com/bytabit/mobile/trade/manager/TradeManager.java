@@ -6,6 +6,7 @@ import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
+import com.google.gson.Gson;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -61,6 +62,8 @@ public class TradeManager {
     private final Observable<Trade> selectedTrade;
 
     private final ConnectableObservable<Trade> lastSelectedTrade;
+
+    private final Gson gson = new Gson();
 
     public TradeManager() {
 
@@ -239,6 +242,11 @@ public class TradeManager {
                 .flatMapSingleElement(tradeStorage::write)
                 .flatMapSingleElement(tradeService::put)
                 .doOnSuccess(updatedTradeSubject::onNext);
+    }
+
+    public Single<String> getSelectedTradeAsJson() {
+        return getLastSelectedTrade().autoConnect().firstOrError()
+                .map(gson::toJson);
     }
 
     private Maybe<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
