@@ -16,11 +16,13 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
 
 import static com.bytabit.mobile.trade.model.Trade.Status.COMPLETED;
 
+@Slf4j
 public class TradeDetailsPresenter {
 
     @Inject
@@ -171,6 +173,9 @@ public class TradeDetailsPresenter {
         AppBar appBar = MobileApplication.getInstance().getAppBar();
         appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
         appBar.setTitleText("Trade Details");
+        appBar.getActionItems().add(MaterialDesignIcon.BUG_REPORT.button(e ->
+                tradeManager.getLastSelectedTrade().autoConnect()
+                        .subscribe(t -> log.debug("Debug Info"))));
     }
 
     private void showTrade(Trade trade) {

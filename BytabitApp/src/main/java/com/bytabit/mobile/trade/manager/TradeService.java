@@ -1,74 +1,40 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.common.RetrofitService;
 import com.bytabit.mobile.common.RetryWithDelay;
-import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeServiceResource;
-import com.gluonhq.connect.provider.ListDataReader;
-import com.gluonhq.connect.provider.ObjectDataWriter;
-import com.gluonhq.connect.provider.RestClient;
+import io.reactivex.Observable;
 import io.reactivex.Single;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class TradeService {
+@Slf4j
+public class TradeService extends RetrofitService {
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+    private final TradeServiceApi tradeServiceApi;
+
+    public TradeService() {
+
+        // create an instance of the ApiService
+        this.tradeServiceApi = retrofit.create(TradeServiceApi.class);
+    }
 
     Single<List<Trade>> get(String profilePubKey) {
 
-        return Single.<List<Trade>>create(source -> {
-
-            RestClient getRestClient = RestClient.create()
-                    .host(AppConfig.getBaseUrl())
-                    .path("/trades")
-                    .queryParam("profilePubKey", profilePubKey)
-                    .method("GET")
-                    .contentType("application/json");
-
-            ListDataReader<TradeServiceResource> listDataReader = getRestClient.createListDataReader(TradeServiceResource.class);
-
-            try {
-                List<Trade> trades = new ArrayList<>();
-                Iterator<TradeServiceResource> tradeIterator = listDataReader.iterator();
-                while (tradeIterator.hasNext()) {
-                    trades.add(TradeServiceResource.toTrade(tradeIterator.next()));
-                }
-                source.onSuccess(trades);
-            } catch (IOException ioe) {
-                source.onError(ioe);
-            }
-        })
+        return tradeServiceApi.get(profilePubKey)
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
-                .doOnError(t -> log.error("get error: {}", t.getMessage()));
+                .doOnError(t -> log.error("get error: {}", t.getMessage()))
+                .flatMap(l -> Observable.fromIterable(l).map(TradeServiceResource::toTrade).toList());
     }
 
     Single<Trade> put(Trade trade) {
 
-        return Single.<Trade>create(source -> {
-
-            RestClient putRestClient = RestClient.create()
-                    .host(AppConfig.getBaseUrl())
-                    .path(String.format("/trades/%s", trade.getEscrowAddress()))
-                    .method("PUT")
-                    .contentType("application/json");
-
-            ObjectDataWriter<TradeServiceResource> dataWriter = putRestClient.createObjectDataWriter(TradeServiceResource.class);
-
-            try {
-                // write trade and return original trade object
-                dataWriter.writeObject(TradeServiceResource.fromTrade(trade)).ifPresent(wt -> source.onSuccess(trade));
-            } catch (Exception e) {
-                source.onError(e);
-            }
-        })
+        return tradeServiceApi.put(trade.getEscrowAddress(), TradeServiceResource.fromTrade(trade))
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
-                .doOnError(t -> log.error("put error: {}", t.getMessage()));
+                .doOnError(t -> log.error("put error: {}", t.getMessage()))
+                .map(TradeServiceResource::toTrade);
     }
 }
