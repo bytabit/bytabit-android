@@ -1,5 +1,6 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.common.LocalDateTimeConverter;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.Profile;
@@ -7,6 +8,7 @@ import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -63,9 +65,14 @@ public class TradeManager {
 
     private final ConnectableObservable<Trade> lastSelectedTrade;
 
-    private final Gson gson = new Gson();
+    private final Gson gson;
 
     public TradeManager() {
+
+        gson = new GsonBuilder()
+                .setPrettyPrinting()
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeConverter())
+                .create();
 
         tradeService = new TradeService();
 

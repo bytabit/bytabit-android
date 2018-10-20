@@ -1,5 +1,6 @@
 package com.bytabit.mobile.offer.manager;
 
+import com.bytabit.mobile.common.LocalDateTimeConverter;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
@@ -7,6 +8,8 @@ import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import io.reactivex.Flowable;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
@@ -14,6 +17,7 @@ import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
+import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +46,8 @@ public class OfferManager {
 
     private Observable<List<SellOffer>> offers;
 
+    private final Gson gson;
+
     @Inject
     ProfileManager profileManager;
 
@@ -52,6 +58,11 @@ public class OfferManager {
     TradeManager tradeManager;
 
     public OfferManager() {
+
+        gson = new GsonBuilder()
+                .setPrettyPrinting()
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeConverter())
+                .create();
 
         sellOfferService = new SellOfferService();
 
@@ -138,5 +149,10 @@ public class OfferManager {
     public Maybe<Trade> createTrade(BigDecimal btcAmount) {
         return getLastSelectedOffer().autoConnect().firstOrError()
                 .flatMapMaybe(sellOffer -> tradeManager.buyerCreateTrade(sellOffer, btcAmount));
+    }
+
+    public Single<String> getSelectedOfferAsJson() {
+        return getLastSelectedOffer().autoConnect().firstOrError()
+                .map(gson::toJson);
     }
 }
