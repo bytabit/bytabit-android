@@ -83,6 +83,7 @@ public class DepositPresenter {
             ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new RuntimeException("ShareService not available."));
             shareService.share(addressStr);
         }
+        MobileApplication.getInstance().switchToPreviousView();
     }
 
     private String depositAddressUri(Address a) {

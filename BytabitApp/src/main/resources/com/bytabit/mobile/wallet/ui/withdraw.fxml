@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.gluonhq.charm.glisten.mvc.View?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+<View fx:id="withdrawView" maxHeight="-Infinity" maxWidth="-Infinity"
+      minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
+      xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.bytabit.mobile.wallet.ui.WithdrawPresenter">
+    <center>
+        <VBox alignment="TOP_CENTER" spacing="5.0" BorderPane.alignment="CENTER">
+            <children>
+                <Label alignment="CENTER" contentDisplay="CENTER" text="Withdraw Address">
+                    <font>
+                        <Font size="14.0"/>
+                    </font>
+                    <padding>
+                        <Insets top="100.0"/>
+                    </padding>
+                </Label>
+                <TextField fx:id="withdrawAddressField">
+                    <VBox.margin>
+                        <Insets left="10.0" right="10.0"/>
+                    </VBox.margin>
+                </TextField>
+                <HBox alignment="CENTER">
+                    <children>
+                        <Label text="Available:">
+                            <font>
+                                <Font size="14.0"/>
+                            </font>
+                            <padding>
+                                <Insets right="10.0"/>
+                            </padding>
+                        </Label>
+                        <TextField fx:id="availableAmountField" editable="false"
+                                   focusTraversable="false" maxWidth="150.0"
+                                   prefWidth="150.0" text="0">
+                            <opaqueInsets>
+                                <Insets/>
+                            </opaqueInsets>
+                        </TextField>
+                    </children>
+                    <padding>
+                        <Insets top="20.0"/>
+                    </padding>
+                </HBox>
+                <HBox alignment="CENTER">
+                    <children>
+                        <Label text="Amount:">
+                            <font>
+                                <Font size="14.0"/>
+                            </font>
+                            <padding>
+                                <Insets right="10.0"/>
+                            </padding>
+                        </Label>
+                        <TextField fx:id="withdrawAmountField" maxWidth="150.0"
+                                   prefWidth="150.0">
+                            <opaqueInsets>
+                                <Insets/>
+                            </opaqueInsets>
+                        </TextField>
+                        <Label text="BTC">
+                            <font>
+                                <Font size="14.0"/>
+                            </font>
+                            <padding>
+                                <Insets left="5.0"/>
+                            </padding>
+                        </Label>
+                    </children>
+                    <padding>
+                        <Insets top="10.0"/>
+                    </padding>
+                </HBox>
+                <Button fx:id="withdrawButton" mnemonicParsing="false" text="WITHDRAW">
+                    <VBox.margin>
+                        <Insets top="10.0"/>
+                    </VBox.margin>
+                </Button>
+            </children>
+            <opaqueInsets>
+                <Insets/>
+            </opaqueInsets>
+        </VBox>
+    </center>
+</View>

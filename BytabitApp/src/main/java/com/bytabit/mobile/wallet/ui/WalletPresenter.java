@@ -90,6 +90,11 @@ public class WalletPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(c -> MobileApplication.getInstance().switchView(BytabitMobile.DEPOSIT_VIEW));
 
+        Observable.create(source -> withdrawButton.setOnAction(source::onNext))
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(c -> MobileApplication.getInstance().switchView(BytabitMobile.WITHDRAW_VIEW));
+
         JavaFxObservable.changesOf(walletView.showingProperty()).subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .filter(Change::getNewVal)

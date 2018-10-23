@@ -226,6 +226,17 @@ public class WalletManager {
                 .map(WalletAppKit::wallet).map(this::getDepositAddress);
     }
 
+    public Single<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount) {
+        return tradeWalletAppKit
+                .map(WalletAppKit::wallet).map(w -> {
+                    Address address = Address.fromBase58(netParams, withdrawAddress);
+                    Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
+                    SendRequest request = SendRequest.to(address, amount);
+                    Wallet.SendResult sendResult = w.sendCoins(request);
+                    return createTransactionWithAmt(w, sendResult.tx);
+                });
+    }
+
     public Maybe<String> watchEscrowAddressAndResetBlockchain(String escrowAddress) {
 
         return watchEscrowAddress(escrowAddress);
