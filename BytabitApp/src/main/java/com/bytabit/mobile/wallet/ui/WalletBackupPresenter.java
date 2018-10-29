@@ -45,13 +45,14 @@ public class WalletBackupPresenter {
 
         JavaFxObservable.changesOf(walletBackupView.showingProperty())
                 .filter(Change::getNewVal)
-                .flatMapSingle(c -> walletManager.getTradeWalletInfo())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(info -> {
-                    setAppBar();
-                    setInfo(info);
-                });
+                .subscribe(change -> setAppBar());
+
+        walletManager.getTradeWalletInfo()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(this::setInfo);
     }
 
     private void setInfo(WalletManager.TradeWalletInfo walletInfo) {

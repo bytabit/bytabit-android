@@ -110,8 +110,8 @@ public class TradeManager {
 
         tradeStorage.createTradesDir();
 
-        Maybe<Boolean> walletsSynced = Observable.zip(walletManager.getTradeDownloadProgress().autoConnect(),
-                walletManager.getEscrowDownloadProgress().autoConnect(), (tp, ep) -> tp == 1 && ep == 1)
+        Maybe<Boolean> walletsSynced = Observable.zip(walletManager.getTradeDownloadProgress(),
+                walletManager.getEscrowDownloadProgress(), (tp, ep) -> tp == 1 && ep == 1)
                 .filter(p -> p)
                 .firstElement()
                 .observeOn(Schedulers.io())
@@ -134,7 +134,7 @@ public class TradeManager {
                 .subscribe(createdTradeSubject::onNext);
 
         // get update and store trades from received data after download progress is 100% loaded
-        walletsSynced.flatMapSingle(p -> profileManager.loadOrCreateMyProfile())
+        walletsSynced.flatMap(p -> profileManager.loadOrCreateMyProfile())
                 .flatMapObservable(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
                         .flatMap(t -> tradeService.get(profile.getPubKey())
                                 .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))

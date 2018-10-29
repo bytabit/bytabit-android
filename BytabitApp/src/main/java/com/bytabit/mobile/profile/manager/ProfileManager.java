@@ -3,8 +3,8 @@ package com.bytabit.mobile.profile.manager;
 import com.bytabit.mobile.common.StorageManager;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.manager.WalletManager;
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
-import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
@@ -47,7 +47,7 @@ public class ProfileManager {
                 .phoneNum(newProfile.getPhoneNum())
                 .build())
                 .map(this::storeMyProfile)
-                .flatMap(profilesService::put)
+                .flatMapSingle(profilesService::put)
                 .subscribe(updatedProfile::onNext);
     }
 
@@ -59,11 +59,11 @@ public class ProfileManager {
         return profile;
     }
 
-    public Single<Profile> loadOrCreateMyProfile() {
+    public Maybe<Profile> loadOrCreateMyProfile() {
         Optional<String> profilePubKey = storageManager.retrieve(PROFILE_PUBKEY);
 
         if (profilePubKey.isPresent()) {
-            return Single.just(profilePubKey.get())
+            return Maybe.just(profilePubKey.get())
                     .subscribeOn(Schedulers.io())
                     .observeOn(Schedulers.io())
                     .map(this::getProfile)

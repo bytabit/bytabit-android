@@ -97,7 +97,7 @@ public class OfferManager {
     public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, String arbitratorProfilePubKey,
                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        Single.zip(profileManager.loadOrCreateMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
+        Maybe.zip(profileManager.loadOrCreateMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
                 SellOffer.builder()
                         .sellerProfilePubKey(p.getPubKey())
                         .sellerEscrowPubKey(pk)
@@ -109,7 +109,7 @@ public class OfferManager {
                         .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
                         .build()
         )
-                .flatMap(sellOfferService::put)
+                .flatMapSingle(sellOfferService::put)
                 .subscribe(createdOffer::onNext);
     }
 

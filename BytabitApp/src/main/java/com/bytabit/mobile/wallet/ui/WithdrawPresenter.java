@@ -52,13 +52,13 @@ public class WithdrawPresenter {
 
         JavaFxObservable.changesOf(withdrawView.showingProperty())
                 .filter(Change::getNewVal)
-                .flatMap(showing -> walletManager.getTradeUpdatedWalletTx().autoConnect())
+                .flatMap(showing -> walletManager.getTradeUpdatedWalletTx())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(this::showAvailableAmount);
 
         JavaFxObservable.actionEventsOf(withdrawButton)
-                .flatMapSingle(actionEvent -> {
+                .flatMapMaybe(actionEvent -> {
                     String address = withdrawAddressField.getText();
                     BigDecimal amount = new BigDecimal(withdrawAmountField.getText());
                     return walletManager.withdrawFromTradeWallet(address, amount);

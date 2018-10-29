@@ -4,14 +4,15 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import com.bytabit.mobile.wallet.model.WalletKitConfig;
 import com.bytabit.mobile.wallet.model.WalletManagerException;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
+import io.reactivex.subjects.BehaviorSubject;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
@@ -41,14 +42,14 @@ public class WalletManager {
     private final NetworkParameters netParams;
     private final Context btcContext;
 
-    private Single<BytabitWalletAppKit> tradeWalletAppKit;
+    private BehaviorSubject<WalletKitConfig> tradeWalletConfig = BehaviorSubject.create();
+    private Observable<BytabitWalletAppKit> tradeWalletAppKit;
+    private Observable<Double> tradeDownloadProgress;
+    private Observable<TransactionWithAmt> tradeUpdatedWalletTx;
+
     private Single<BytabitWalletAppKit> escrowWalletAppKit;
-
-    private ConnectableObservable<Double> tradeDownloadProgress;
-    private ConnectableObservable<Double> escrowDownloadProgress;
-
-    private ConnectableObservable<TransactionWithAmt> tradeUpdatedWalletTx;
-    private ConnectableObservable<TransactionWithAmt> escrowUpdatedWalletTx;
+    private Observable<Double> escrowDownloadProgress;
+    private Observable<TransactionWithAmt> escrowUpdatedWalletTx;
 
     public WalletManager() {
         netParams = BytabitTestNet3Params.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
@@ -58,27 +59,38 @@ public class WalletManager {
     @PostConstruct
     public void initialize() {
 
-        tradeWalletAppKit = Single.just("trade")
-                .flatMap(this::createWalletAppKit)
-                .doOnSuccess(wak -> log.debug("created tradeWalletAppKit: {}", wak))
-//                .flatMap(this::startWalletAppKit)
-//                .doOnSuccess(wak -> log.debug("started tradeWalletAppKit: {}", wak))
-                .cache()
-//                .doOnSubscribe(wak -> log.debug("subscribed tradeWalletAppKit: {}", wak))
-                .observeOn(Schedulers.io());
+        // setup trade wallet
 
-        escrowWalletAppKit = Single.just("escrow")
-                .flatMap(this::createWalletAppKit)
-                .doOnSuccess(wak -> log.debug("created escrowWalletAppKit: {}", wak))
-//                .flatMap(this::startWalletAppKit)
-//                .doOnSuccess(wak -> log.debug("started escrowWalletAppKit: {}", wak))
-                .cache()
-//                .doOnSubscribe(wak -> log.debug("subscribed escrowWalletAppKit: {}", wak))
-                .observeOn(Schedulers.io());
+        BehaviorSubject<Double> tradeDownloadProgressSubject = BehaviorSubject.create();
+        tradeDownloadProgress = tradeDownloadProgressSubject
+                .doOnSubscribe(d -> log.debug("tradeDownloadProgress: subscribe"))
+                .doOnNext(progress -> log.debug("tradeDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
+                .throttleLast(1, TimeUnit.SECONDS)
+                .observeOn(Schedulers.io())
+                .replay(100).autoConnect();
+
+        WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
+                .directory(AppConfig.getPrivateStorage()).filePrefix("trade").build();
+
+//        WalletKitConfig tradeConfig2 = WalletKitConfig.builder().netParams(netParams)
+//                .directory(AppConfig.getPrivateStorage()).filePrefix("trade")
+//                .deterministicSeed(new DeterministicSeed(Arrays.asList("canyon", "shoulder", "absent", "angle", "problem", "soon", "baby", "foster", "evidence", "ready", "cost", "raw"), null, "", 0))
+//                .build();
+
+        tradeWalletAppKit = tradeWalletConfig.startWith(tradeConfig)
+                .scan(Maybe.<BytabitWalletAppKit>empty(), (wak, newConfig) ->
+                        wak.filter(BytabitWalletAppKit::isRunning)
+                                .doOnSuccess(this::stop)
+                                .map(ak -> createWalletAppKit(newConfig))
+                                .defaultIfEmpty(createWalletAppKit(newConfig)))
+                .flatMapMaybe(wak -> wak)
+                .doOnNext(wak -> setDownloadListener(wak, tradeDownloadProgressSubject))
+                .doOnNext(this::start)
+                .replay(1).autoConnect();
 
         tradeUpdatedWalletTx = tradeWalletAppKit
                 .map(WalletAppKit::wallet)
-                .flatMapObservable(tw -> Observable.<TransactionWithAmt>create(source -> {
+                .switchMap(tw -> Observable.<TransactionWithAmt>create(source -> {
 
                     TransactionConfidenceEventListener listener = (wallet, tx) -> source.onNext(createTransactionWithAmt(wallet, tx));
                     tw.addTransactionConfidenceEventListener(BytabitMobile.EXECUTOR, listener);
@@ -94,109 +106,99 @@ public class WalletManager {
                 .doOnSubscribe(d -> log.debug("tradeUpdatedWalletTx: subscribe"))
                 .doOnNext(tx -> log.debug("tradeUpdatedWalletTx: {}", tx.getHash()))
                 .observeOn(Schedulers.io())
-                .replay(20, TimeUnit.MINUTES);
+                .replay(20, TimeUnit.MINUTES).autoConnect();
 
-        // post observable download events
-        tradeDownloadProgress = tradeWalletAppKit
-                .flatMapObservable(this::setDownloadListenerAndStart)
-                .doOnSubscribe(d -> log.debug("tradeDownloadProgress: subscribe"))
-                .doOnNext(progress -> log.debug("tradeDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
-                .throttleLast(1, TimeUnit.SECONDS)
-                .observeOn(Schedulers.io())
-                .replay(100);
+        // setup escrow wallet
 
-        escrowDownloadProgress = escrowWalletAppKit
-                .flatMapObservable(this::setDownloadListenerAndStart)
+        BehaviorSubject<Double> escrowDownloadProgressSubject = BehaviorSubject.create();
+        escrowDownloadProgress = escrowDownloadProgressSubject
                 .doOnSubscribe(d -> log.debug("escrowDownloadProgress: subscribe"))
                 .doOnNext(progress -> log.debug("escrowDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
                 .throttleLast(1, TimeUnit.SECONDS)
                 .observeOn(Schedulers.io())
-                .replay(100);
+                .replay(100).autoConnect();
+
+        escrowWalletAppKit = Single.just(WalletKitConfig.builder().netParams(netParams)
+                .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build())
+                .map(this::createWalletAppKit)
+                .doOnSuccess(wak -> setDownloadListener(wak, escrowDownloadProgressSubject))
+                .doOnSuccess(this::start)
+                .cache();
 
         // TODO shutdown wallet?
     }
 
-    private Single<BytabitWalletAppKit> createWalletAppKit(String filePrefix) {
-        return Single.create(source -> {
-            try {
-                BytabitWalletAppKit walletAppKit = new BytabitWalletAppKit(netParams, AppConfig.getPrivateStorage(), filePrefix);
+    private BytabitWalletAppKit createWalletAppKit(WalletKitConfig walletConfig) {
+        BytabitWalletAppKit walletAppKit = new BytabitWalletAppKit(walletConfig);
 
-                if (netParams.equals(RegTestParams.get())) {
-                    walletAppKit.connectToLocalHost();
-                }
+        if (walletConfig.getNetParams().equals(RegTestParams.get())) {
+            walletAppKit.connectToLocalHost();
+        }
 
-                walletAppKit.setBlockingStartup(false);
-                walletAppKit.setAutoSave(true);
-                walletAppKit.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
-                source.onSuccess(walletAppKit);
+        if (walletConfig.getDeterministicSeed() != null) {
+            walletAppKit.restoreWalletFromSeed(walletConfig.getDeterministicSeed());
+        }
 
-            } catch (Exception e) {
-                source.onError(e);
-            }
-        });
+        walletAppKit.setBlockingStartup(false);
+        walletAppKit.setAutoSave(true);
+        walletAppKit.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
+        log.debug("created walletAppKit with config {}", walletConfig);
+
+        return walletAppKit;
     }
 
-//    private Single<WalletAppKit> startWalletAppKit(WalletAppKit walletAppKit) {
-//        return Single.create(source -> {
-//            try {
-//                walletAppKit.startAsync();
-//                walletAppKit.awaitRunning();
-//                source.onSuccess(walletAppKit);
-//            } catch (Exception e) {
-//                source.onError(e);
-//            }
-//        });
-//    }
+    private void setDownloadListener(BytabitWalletAppKit wak, BehaviorSubject<Double> subject) {
 
-    private Observable<Double> setDownloadListenerAndStart(WalletAppKit wak) {
+        wak.setDownloadListener(new DownloadProgressTracker() {
 
-        return Observable.<Double>create(source -> {
-            wak.setDownloadListener(new DownloadProgressTracker() {
-
-                @Override
-                protected void progress(double pct, int blocksSoFar, Date date) {
-                    super.progress(pct, blocksSoFar, date);
-                    source.onNext(pct / 100.00);
-                }
-
-                @Override
-                protected void doneDownload() {
-                    super.doneDownload();
-                    source.onNext(1.00);
-                }
-            });
-
-            try {
-                wak.startAsync();
-                wak.awaitRunning();
-            } catch (Exception e) {
-                source.onError(e);
+            @Override
+            protected void progress(double pct, int blocksSoFar, Date date) {
+                super.progress(pct, blocksSoFar, date);
+                subject.onNext(pct / 100.00);
             }
-        }).onErrorReturn(t -> {
-            log.error("DownloadProgressTracker: {}", t);
-            return -1.0;
+
+            @Override
+            protected void doneDownload() {
+                super.doneDownload();
+                subject.onNext(1.00);
+            }
         });
+        log.debug("added download listener for {}", wak.getFilePrefix());
     }
 
-    public ConnectableObservable<Double> getTradeDownloadProgress() {
+    private void start(BytabitWalletAppKit wak) {
+        log.debug("starting walletAppKit: {}", wak.getFilePrefix());
+        wak.startAsync();
+        wak.awaitRunning();
+        log.debug("started walletAppKit: {}", wak.getFilePrefix());
+    }
+
+    private void stop(BytabitWalletAppKit wak) {
+        log.debug("stopping {}", wak.getFilePrefix());
+        wak.stopAsync();
+        wak.awaitTerminated();
+        log.debug("stopped {}", wak.getFilePrefix());
+    }
+
+    public Observable<Double> getTradeDownloadProgress() {
         return tradeDownloadProgress;
     }
 
-    public ConnectableObservable<Double> getEscrowDownloadProgress() {
+    public Observable<Double> getEscrowDownloadProgress() {
         return escrowDownloadProgress;
     }
 
-    public Single<TradeWalletInfo> getTradeWalletInfo() {
-        return tradeWalletAppKit
+    public Maybe<TradeWalletInfo> getTradeWalletInfo() {
+        return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet)
                 .map(this::getTradeWalletInfo);
     }
 
-    public ConnectableObservable<TransactionWithAmt> getTradeUpdatedWalletTx() {
+    public Observable<TransactionWithAmt> getTradeUpdatedWalletTx() {
         return tradeUpdatedWalletTx;
     }
 
-    public ConnectableObservable<TransactionWithAmt> getUpdatedEscrowWalletTx() {
+    public Observable<TransactionWithAmt> getUpdatedEscrowWalletTx() {
         return escrowUpdatedWalletTx;
     }
 
@@ -211,23 +213,23 @@ public class WalletManager {
                 .build();
     }
 
-    public Single<String> getTradeWalletProfilePubKey() {
-        return tradeWalletAppKit
+    public Maybe<String> getTradeWalletProfilePubKey() {
+        return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(this::getFreshBase58AuthPubKey);
     }
 
-    public Single<String> getTradeWalletEscrowPubKey() {
-        return tradeWalletAppKit
+    public Maybe<String> getTradeWalletEscrowPubKey() {
+        return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(this::getFreshBase58ReceivePubKey);
     }
 
-    public Single<Address> getTradeWalletDepositAddress() {
-        return tradeWalletAppKit
+    public Maybe<Address> getTradeWalletDepositAddress() {
+        return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(this::getDepositAddress);
     }
 
-    public Single<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount) {
-        return tradeWalletAppKit
+    public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount) {
+        return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(w -> {
                     Address address = Address.fromBase58(netParams, withdrawAddress);
                     Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
@@ -251,8 +253,8 @@ public class WalletManager {
                 .map(s -> escrowAddress);
     }
 
-    private Single<Wallet> getTradeWallet() {
-        return tradeWalletAppKit
+    private Maybe<Wallet> getTradeWallet() {
+        return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet);
     }
 
@@ -262,9 +264,9 @@ public class WalletManager {
                 .map(WalletAppKit::wallet);
     }
 
-    private Single<PeerGroup> getPeerGroup() {
+    private Single<PeerGroup> getEscrowPeerGroup() {
 
-        return tradeWalletAppKit
+        return escrowWalletAppKit
                 .map(WalletAppKit::peerGroup);
     }
 
@@ -293,7 +295,7 @@ public class WalletManager {
     }
 
     private Coin defaultTxFeeCoin() {
-        return Coin.valueOf(106000); //REFERENCE_DEFAULT_MIN_TX_FEE.multiply(100);
+        return Coin.valueOf(106000);
     }
 
     public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
@@ -309,7 +311,7 @@ public class WalletManager {
                     return outputAddress != null && outputAddress.equals(address);
                 })
                 .filter(f -> f.equals(false))
-                .flatMapSingleElement(f -> getTradeWallet());
+                .flatMap(f -> getTradeWallet());
 
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         return notFundedWallet.flatMap(tw -> Maybe.create(source -> {
@@ -410,7 +412,7 @@ public class WalletManager {
                                                            ECKey buyerEscrowPubKey,
                                                            Address payoutAddress) {
 
-        return getTradeWallet().flatMapMaybe(tw -> {
+        return getTradeWallet().flatMap(tw -> {
             Transaction payoutTx = new Transaction(netParams);
             payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
 
@@ -554,7 +556,7 @@ public class WalletManager {
             }
         }
 
-        return Single.zip(getEscrowWallet(), getPeerGroup(), (ew, pg) -> {
+        return Single.zip(getEscrowWallet(), getEscrowPeerGroup(), (ew, pg) -> {
             Context.propagate(btcContext);
             ew.commitTx(payoutTx);
             pg.broadcastTransaction(payoutTx);
