@@ -88,12 +88,12 @@ public class WalletPresenter {
         Observable.create(source -> depositButton.setOnAction(source::onNext))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> MobileApplication.getInstance().switchView(BytabitMobile.DEPOSIT_VIEW));
+                .subscribe(c -> MobileApplication.getInstance().switchView(BytabitMobile.WALLET_DEPOSIT_VIEW));
 
         Observable.create(source -> withdrawButton.setOnAction(source::onNext))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> MobileApplication.getInstance().switchView(BytabitMobile.WITHDRAW_VIEW));
+                .subscribe(c -> MobileApplication.getInstance().switchView(BytabitMobile.WALLET_WITHDRAW_VIEW));
 
         JavaFxObservable.changesOf(walletView.showingProperty()).subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
@@ -107,7 +107,7 @@ public class WalletPresenter {
                 MobileApplication.getInstance().showLayer(BytabitMobile.MENU_LAYER)));
         appBar.setTitleText("Wallet");
         appBar.getActionItems().add(MaterialDesignIcon.RESTORE.button(e ->
-                MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
+                MobileApplication.getInstance().switchView(BytabitMobile.WALLET_RESTORE_VIEW)));
         appBar.getActionItems().add(MaterialDesignIcon.INFO.button(e ->
                 MobileApplication.getInstance().switchView(BytabitMobile.WALLET_BACKUP_VIEW)));
     }

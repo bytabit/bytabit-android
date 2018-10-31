@@ -9,10 +9,7 @@ import com.bytabit.mobile.profile.ui.PaymentsView;
 import com.bytabit.mobile.profile.ui.ProfileView;
 import com.bytabit.mobile.trade.ui.TradeDetailsView;
 import com.bytabit.mobile.trade.ui.TradesView;
-import com.bytabit.mobile.wallet.ui.DepositView;
-import com.bytabit.mobile.wallet.ui.WalletBackupView;
-import com.bytabit.mobile.wallet.ui.WalletView;
-import com.bytabit.mobile.wallet.ui.WithdrawView;
+import com.bytabit.mobile.wallet.ui.*;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.DisplayService;
@@ -41,8 +38,9 @@ public class BytabitMobile extends MobileApplication {
 
     public static final String WALLET_VIEW = "Wallet";
     public static final String WALLET_BACKUP_VIEW = "WalletBackup";
-    public static final String DEPOSIT_VIEW = "Deposit";
-    public static final String WITHDRAW_VIEW = "Withdraw";
+    public static final String WALLET_DEPOSIT_VIEW = "Deposit";
+    public static final String WALLET_WITHDRAW_VIEW = "Withdraw";
+    public static final String WALLET_RESTORE_VIEW = "Restore";
 
     public static final String OFFERS_VIEW = "Offers";
     public static final String ADD_OFFER_VIEW = "AddOffer";
@@ -78,8 +76,9 @@ public class BytabitMobile extends MobileApplication {
 
         addViewFactory(WALLET_VIEW, () -> (View) new WalletView().getView());
         addViewFactory(WALLET_BACKUP_VIEW, () -> (View) new WalletBackupView().getView());
-        addViewFactory(DEPOSIT_VIEW, () -> (View) new DepositView().getView());
-        addViewFactory(WITHDRAW_VIEW, () -> (View) new WithdrawView().getView());
+        addViewFactory(WALLET_DEPOSIT_VIEW, () -> (View) new DepositView().getView());
+        addViewFactory(WALLET_WITHDRAW_VIEW, () -> (View) new WithdrawView().getView());
+        addViewFactory(WALLET_RESTORE_VIEW, () -> (View) new RestoreView().getView());
 
         addViewFactory(PAYMENT_VIEW, () -> (View) new PaymentsView().getView());
         addViewFactory(ADD_PAYMENT_VIEW, () -> (View) new PaymentView().getView());
