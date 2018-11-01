@@ -4,7 +4,6 @@ import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.AutoCompleteTextField;
-import com.gluonhq.charm.glisten.control.DatePicker;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.rxjavafx.observables.JavaFxObservable;
@@ -13,10 +12,12 @@ import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.DatePicker;
 import javafx.util.Duration;
 import org.bitcoinj.crypto.MnemonicCode;
 
 import javax.inject.Inject;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -63,12 +64,9 @@ public class RestorePresenter {
     private AutoCompleteTextField<String> word12;
 
     @FXML
-    private javafx.scene.control.DatePicker datePicker;
+    private DatePicker datePicker;
 
     private List<AutoCompleteTextField<String>> words = new ArrayList<>();
-
-    @FXML
-    private DatePicker firstUsedDate;
 
     @FXML
     private Button restoreButton;
@@ -93,6 +91,19 @@ public class RestorePresenter {
                     setAppBar();
                     clearAll(words);
                 });
+
+        JavaFxObservable.actionEventsOf(restoreButton)
+                .doOnNext(actionEvent -> {
+                    List<String> selectedWords = new ArrayList<>();
+                    for (AutoCompleteTextField<String> word : words) {
+                        selectedWords.add(word.getValue());
+                    }
+                    LocalDate selectedDate = datePicker.getValue();
+                    walletManager.restoreTradeWallet(selectedWords, selectedDate);
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(tx -> MobileApplication.getInstance().switchToPreviousView());
     }
 
     private void setupWordCompleters(List<AutoCompleteTextField<String>> words) {

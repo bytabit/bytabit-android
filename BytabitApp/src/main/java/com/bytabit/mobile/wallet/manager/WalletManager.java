@@ -21,6 +21,7 @@ import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
+import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
@@ -30,6 +31,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -71,11 +74,6 @@ public class WalletManager {
 
         WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("trade").build();
-
-//        WalletKitConfig tradeConfig2 = WalletKitConfig.builder().netParams(netParams)
-//                .directory(AppConfig.getPrivateStorage()).filePrefix("trade")
-//                .deterministicSeed(new DeterministicSeed(Arrays.asList("canyon", "shoulder", "absent", "angle", "problem", "soon", "baby", "foster", "evidence", "ready", "cost", "raw"), null, "", 0))
-//                .build();
 
         tradeWalletAppKit = tradeWalletConfig.startWith(tradeConfig)
                 .scan(Maybe.<BytabitWalletAppKit>empty(), (wak, newConfig) ->
@@ -574,6 +572,22 @@ public class WalletManager {
 
     private String getXpubKey(Wallet wallet) {
         return wallet.getWatchingKey().serializePubB58(netParams);
+    }
+
+    public void restoreTradeWallet(List<String> mnemonicCode, LocalDate creationTime) {
+        long creationTimeSeconds = 0;
+        if (creationTime != null) {
+            ZoneId zoneId = ZoneId.systemDefault();
+            creationTimeSeconds = creationTime.atStartOfDay(zoneId).toEpochSecond();
+        }
+        DeterministicSeed seed = new DeterministicSeed(mnemonicCode, null, "", creationTimeSeconds);
+        WalletKitConfig walletKitConfig = WalletKitConfig.builder()
+                .netParams(netParams)
+                .directory(AppConfig.getPrivateStorage()).filePrefix("trade")
+                .deterministicSeed(seed)
+                .build();
+
+        tradeWalletConfig.onNext(walletKitConfig);
     }
 
     public class TradeWalletInfo {
