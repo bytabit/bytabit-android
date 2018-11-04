@@ -13,8 +13,15 @@ git clone git@bitbucket.org:bytabit/bytabit-mobile.git
 ### Install projects dependencies
 
 1. Install [JDK 8u111](https://jdk8.java.net/download.html)
-2. Install [Gradle version 3.3](https://gradle.org/gradle-download/)
+2. Install [Gradle version 3.3] or later (https://gradle.org/gradle-download/)
 3. Verify your JAVA_HOME environment variable is set to your JDK home
+4. Set a gradle property with the name ANDROID_HOME: defined in ~/.gradle/gradle.properties 
+   or a system environment variable with the name ANDROID_HOME. For example:
+   
+   ```  
+     more ~/.gradle/gradle.properties 
+     ANDROID_HOME=/Users/steve/Library/Android/sdk
+   ```
 
 ### Run trader client with Gradle using default (testnet) config
 
@@ -42,8 +49,8 @@ gradle clean zipalignDebug
 
 ### JavaFX Scene Builder
 
-1. Install [JavaFX Scene Builder 2.0](http://www.oracle.com/technetwork/java/javase/downloads/index.html). Find it under “Additional Resources”.
-2. Open main UI file: ```src/main/java/org/bytabit/ft/fxui/MainUI.fxml```
+1. Install [JavaFX Scene Builder](https://gluonhq.com/products/scene-builder/)
+2. Open trades UI file: ```src/main/resources/com/bytabit/mobile/trade/ui/trades.fxml```
 
 ### Testnet In a Box via Docker
 
