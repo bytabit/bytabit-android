@@ -8,6 +8,8 @@ import com.bytabit.mobile.wallet.model.WalletKitConfig;
 import com.bytabit.mobile.wallet.model.WalletManagerException;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.Service.Listener;
+import com.google.common.util.concurrent.Service.State;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -54,6 +56,9 @@ public class WalletManager {
     private Observable<Double> escrowDownloadProgress;
     private Observable<TransactionWithAmt> escrowUpdatedWalletTx;
 
+    private Observable<Boolean> walletRunning;
+    private Observable<Boolean> walletSynced;
+
     public WalletManager() {
         netParams = BytabitTestNet3Params.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
         btcContext = Context.getOrCreate(netParams);
@@ -75,14 +80,8 @@ public class WalletManager {
         WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("trade").build();
 
-        tradeWalletAppKit = tradeWalletConfig.startWith(tradeConfig)
-                .scan(Maybe.<BytabitWalletAppKit>empty(), (wak, newConfig) ->
-                        wak.filter(BytabitWalletAppKit::isRunning)
-                                .doOnSuccess(this::stop)
-                                .map(ak -> createWalletAppKit(newConfig))
-                                .defaultIfEmpty(createWalletAppKit(newConfig)))
-                .flatMapMaybe(wak -> wak)
-                .doOnNext(wak -> setDownloadListener(wak, tradeDownloadProgressSubject))
+        tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig), this::reloadTradeWallet)
+                .doOnNext(tw -> setDownloadListener(tw, tradeDownloadProgressSubject))
                 .doOnNext(this::start)
                 .replay(1).autoConnect();
 
@@ -123,7 +122,46 @@ public class WalletManager {
                 .doOnSuccess(this::start)
                 .cache();
 
+        // triggers for wallet start and synced
+
+        walletRunning = tradeWalletAppKit
+                .switchMap(tw -> Observable.<Boolean>create(source -> {
+                    Listener listener = new Listener() {
+                        @Override
+                        public void running() {
+                            source.onNext(Boolean.TRUE);
+                        }
+
+                        @Override
+                        public void stopping(State from) {
+                            source.onNext(Boolean.FALSE);
+                        }
+                    };
+                    tw.addListener(listener, BytabitMobile.EXECUTOR);
+                    source.onNext(tw.isRunning());
+                }))
+                .observeOn(Schedulers.io())
+                .doOnSubscribe(d -> log.debug("walletRunning: subscribe"))
+                .doOnNext(p -> log.debug("walletRunning: {}", p))
+                .replay(1).autoConnect();
+
+        walletSynced = Observable.zip(tradeDownloadProgress, escrowDownloadProgress,
+                (tp, ep) -> tp == 1 && ep == 1)
+                .startWith(Boolean.FALSE)
+                .observeOn(Schedulers.io())
+                .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
+                .doOnNext(p -> log.debug("walletSynced: {}", p))
+                .replay(1).autoConnect();
+
         // TODO shutdown wallet?
+    }
+
+    private BytabitWalletAppKit reloadTradeWallet(BytabitWalletAppKit currentWallet, WalletKitConfig tradeConfig) {
+
+        if (currentWallet.isRunning()) {
+            stop(currentWallet);
+        }
+        return createWalletAppKit(tradeConfig);
     }
 
     private BytabitWalletAppKit createWalletAppKit(WalletKitConfig walletConfig) {
@@ -505,6 +543,30 @@ public class WalletManager {
         return signatures.flatMapMaybe(sl -> payoutEscrow(trade, sellerRefundAddress, sl));
     }
 
+    public Observable<Boolean> getWalletRunning() {
+        return walletRunning;
+    }
+
+    public Observable<Boolean> getWalletSynced() {
+        return walletSynced;
+    }
+
+    public void restoreTradeWallet(List<String> mnemonicCode, LocalDate creationTime) {
+        long creationTimeSeconds = 0;
+        if (creationTime != null) {
+            ZoneId zoneId = ZoneId.systemDefault();
+            creationTimeSeconds = creationTime.atStartOfDay(zoneId).toEpochSecond();
+        }
+        DeterministicSeed seed = new DeterministicSeed(mnemonicCode, null, "", creationTimeSeconds);
+        WalletKitConfig walletKitConfig = WalletKitConfig.builder()
+                .netParams(netParams)
+                .directory(AppConfig.getPrivateStorage()).filePrefix("trade")
+                .deterministicSeed(seed)
+                .build();
+
+        tradeWalletConfig.onNext(walletKitConfig);
+    }
+
     private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
                                        List<TransactionSignature> signatures) {
 
@@ -572,22 +634,6 @@ public class WalletManager {
 
     private String getXpubKey(Wallet wallet) {
         return wallet.getWatchingKey().serializePubB58(netParams);
-    }
-
-    public void restoreTradeWallet(List<String> mnemonicCode, LocalDate creationTime) {
-        long creationTimeSeconds = 0;
-        if (creationTime != null) {
-            ZoneId zoneId = ZoneId.systemDefault();
-            creationTimeSeconds = creationTime.atStartOfDay(zoneId).toEpochSecond();
-        }
-        DeterministicSeed seed = new DeterministicSeed(mnemonicCode, null, "", creationTimeSeconds);
-        WalletKitConfig walletKitConfig = WalletKitConfig.builder()
-                .netParams(netParams)
-                .directory(AppConfig.getPrivateStorage()).filePrefix("trade")
-                .deterministicSeed(seed)
-                .build();
-
-        tradeWalletConfig.onNext(walletKitConfig);
     }
 
     public class TradeWalletInfo {

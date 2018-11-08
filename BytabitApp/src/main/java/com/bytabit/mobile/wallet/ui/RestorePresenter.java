@@ -14,6 +14,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.util.Duration;
+import lombok.extern.slf4j.Slf4j;
 import org.bitcoinj.crypto.MnemonicCode;
 
 import javax.inject.Inject;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 public class RestorePresenter {
 
     @FXML
@@ -96,11 +98,12 @@ public class RestorePresenter {
                 .doOnNext(actionEvent -> {
                     List<String> selectedWords = new ArrayList<>();
                     for (AutoCompleteTextField<String> word : words) {
-                        selectedWords.add(word.getValue());
+                        selectedWords.add(word.getText());
                     }
                     LocalDate selectedDate = datePicker.getValue();
                     walletManager.restoreTradeWallet(selectedWords, selectedDate);
                 })
+                .doOnError(t -> log.error("Error restoring: {}", t))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(tx -> MobileApplication.getInstance().switchToPreviousView());
