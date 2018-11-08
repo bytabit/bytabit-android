@@ -3,6 +3,7 @@ package com.bytabit.mobile.trade.ui;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.control.CharmListCell;
@@ -22,6 +23,9 @@ public class TradesPresenter {
 
     @Inject
     TradeManager tradeManager;
+
+    @Inject
+    WalletManager walletManager;
 
     @FXML
     private View tradesView;
@@ -64,6 +68,11 @@ public class TradesPresenter {
                     setAppBar();
                     clearSelection();
                 });
+
+        walletManager.getWalletSynced()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(synced -> tradesListView.setDisable(!synced));
 
         tradeManager.getCreatedTrade()
                 .autoConnect()

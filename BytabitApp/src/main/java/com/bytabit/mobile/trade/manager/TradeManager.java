@@ -110,17 +110,16 @@ public class TradeManager {
 
         tradeStorage.createTradesDir();
 
-        Maybe<Boolean> walletsSynced = Observable.zip(walletManager.getTradeDownloadProgress(),
-                walletManager.getEscrowDownloadProgress(), (tp, ep) -> tp == 1 && ep == 1)
-                .filter(p -> p)
+        Maybe<Boolean> walletStarted = walletManager.getWalletRunning()
+                .filter(s -> s)
                 .firstElement()
                 .observeOn(Schedulers.io())
                 .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
                 .doOnSuccess(p -> log.debug("walletSynced: {}", p))
                 .cache();
 
-        // get stored trades after download progress is 100% loaded
-        walletsSynced.flatMapObservable(p -> tradeStorage.getAll())
+        // get stored trades after download started
+        walletStarted.flatMapObservable(p -> tradeStorage.getAll())
                 .flatMapIterable(t -> t)
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
                         .map(txa -> t.copyBuilder().fundingTransactionWithAmt(txa).build())
@@ -133,8 +132,8 @@ public class TradeManager {
                 .observeOn(Schedulers.io())
                 .subscribe(createdTradeSubject::onNext);
 
-        // get update and store trades from received data after download progress is 100% loaded
-        walletsSynced.flatMap(p -> profileManager.loadOrCreateMyProfile())
+        // get update and store trades from received data after download started
+        walletStarted.flatMap(p -> profileManager.loadOrCreateMyProfile())
                 .flatMapObservable(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
                         .flatMap(t -> tradeService.get(profile.getPubKey())
                                 .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))

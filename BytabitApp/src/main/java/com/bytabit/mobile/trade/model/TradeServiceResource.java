@@ -22,20 +22,35 @@ public class TradeServiceResource {
 
     private TradeResource trade;
 
-    public static Trade toTrade(TradeServiceResource tr) {
-        return Trade.builder()
-                .escrowAddress(tr.getEscrowAddress())
-                .version(tr.getVersion())
-                .sellOffer(tr.getTrade().getSellOffer())
-                .buyRequest(tr.getTrade().getBuyRequest())
-                .paymentRequest(tr.getTrade().getPaymentRequest())
-                .payoutRequest(tr.getTrade().getPayoutRequest())
-                .arbitrateRequest(tr.getTrade().getArbitrateRequest())
-                .payoutCompleted(tr.getTrade().getPayoutCompleted())
+    public static Trade toTrade(TradeServiceResource receivedTradeServiceResource) {
+
+        return toTradeBuilder(receivedTradeServiceResource).build();
+    }
+
+    public static Trade toTrade(TradeServiceResource receivedTradeServiceResource, Trade trade) {
+
+        return toTradeBuilder(receivedTradeServiceResource)
+                .createdTimestamp(trade.getCreatedTimestamp())
+                .role(trade.getRole())
+                .status(trade.getStatus())
                 .build();
     }
 
+    private static Trade.TradeBuilder toTradeBuilder(TradeServiceResource receivedTradeServiceResource) {
+
+        return Trade.builder()
+                .escrowAddress(receivedTradeServiceResource.getEscrowAddress())
+                .version(receivedTradeServiceResource.getVersion())
+                .sellOffer(receivedTradeServiceResource.getTrade().getSellOffer())
+                .buyRequest(receivedTradeServiceResource.getTrade().getBuyRequest())
+                .paymentRequest(receivedTradeServiceResource.getTrade().getPaymentRequest())
+                .payoutRequest(receivedTradeServiceResource.getTrade().getPayoutRequest())
+                .arbitrateRequest(receivedTradeServiceResource.getTrade().getArbitrateRequest())
+                .payoutCompleted(receivedTradeServiceResource.getTrade().getPayoutCompleted());
+    }
+
     public static TradeServiceResource fromTrade(Trade t) {
+
         return TradeServiceResource.builder()
                 .escrowAddress(t.getEscrowAddress())
                 .version(t.getVersion())

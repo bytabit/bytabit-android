@@ -4,9 +4,7 @@ import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
@@ -18,6 +16,8 @@ import static com.bytabit.mobile.trade.model.Trade.Status.*;
 @AllArgsConstructor
 @Getter
 @Builder
+@EqualsAndHashCode
+@ToString
 public class Trade {
 
     public enum Status {
@@ -42,10 +42,14 @@ public class Trade {
         }
     }
 
-    private final Long version;
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private final Long version = 0L;
 
+    @EqualsAndHashCode.Exclude
     private final Status status;
 
+    @EqualsAndHashCode.Exclude
     private final Role role;
 
     private final String escrowAddress;
@@ -160,6 +164,7 @@ public class Trade {
     }
 
     // Funded, Tx Confirmation
+    @EqualsAndHashCode.Exclude
     private TransactionWithAmt fundingTransactionWithAmt;
 
     // Funding, Payment Request
@@ -241,6 +246,7 @@ public class Trade {
     }
 
     // Completed, Tx Confirmation
+    @EqualsAndHashCode.Exclude
     private TransactionWithAmt payoutTransactionWithAmt;
 
     // Payout Completed
@@ -302,34 +308,34 @@ public class Trade {
 
     public Trade withStatus() {
 
-        Trade.Status status = null;
+        Trade.Status newStatus = null;
         if (this.getEscrowAddress() != null && hasSellOffer() && hasBuyRequest()) {
-            status = CREATED;
+            newStatus = CREATED;
         }
-        if (status == CREATED && hasPaymentRequest()) {
-            status = FUNDING;
+        if (newStatus == CREATED && hasPaymentRequest()) {
+            newStatus = FUNDING;
         }
-        if (status == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {
-            status = FUNDED;
+        if (newStatus == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {
+            newStatus = FUNDED;
         }
-        if (status == FUNDED && hasPayoutRequest()) {
-            status = PAID;
+        if (newStatus == FUNDED && hasPayoutRequest()) {
+            newStatus = PAID;
         }
-        if (status == FUNDED && hasPayoutCompleted() && getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
-            status = COMPLETING;
+        if (newStatus == FUNDED && hasPayoutCompleted() && getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
+            newStatus = COMPLETING;
         }
         if (hasArbitrateRequest()) {
-            status = ARBITRATING;
+            newStatus = ARBITRATING;
         }
-        if ((status == PAID || status == ARBITRATING || status == CANCELING) && getPayoutTxHash() != null) {
-            status = COMPLETING;
+        if ((newStatus == PAID || newStatus == ARBITRATING || newStatus == CANCELING) && getPayoutTxHash() != null) {
+            newStatus = COMPLETING;
         }
-        if (status == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
-            status = COMPLETED;
+        if (newStatus == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
+            newStatus = COMPLETED;
         }
-        if (status == null) {
+        if (newStatus == null) {
             throw new TradeManagerException("Unable to determine trade status.");
         }
-        return this.copyBuilder().status(status).build();
+        return this.copyBuilder().status(newStatus).build();
     }
 }

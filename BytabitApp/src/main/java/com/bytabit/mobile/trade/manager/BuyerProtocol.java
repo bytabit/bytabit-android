@@ -34,7 +34,7 @@ public class BuyerProtocol extends TradeProtocol {
                                 .createdTimestamp(LocalDateTime.now())
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount,
-                                        buyBtcAmount.setScale(8, RoundingMode.HALF_UP).multiply(sellOffer.getPrice()).setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.HALF_UP),
+                                        buyBtcAmount.setScale(8, RoundingMode.UP).multiply(sellOffer.getPrice()).setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.UP),
                                         buyerProfilePubKey, buyerPayoutAddress))
                                 .build())
                 .flatMap(t -> walletManager.watchEscrowAddress(t.getEscrowAddress()).map(e -> t.withStatus()));

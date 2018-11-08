@@ -3,6 +3,7 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.common.RetrofitService;
 import com.bytabit.mobile.common.RetryWithDelay;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.trade.model.TradeServiceResource;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -35,6 +36,15 @@ public class TradeService extends RetrofitService {
         return tradeServiceApi.put(trade.getEscrowAddress(), TradeServiceResource.fromTrade(trade))
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("put error: {}", t.getMessage()))
-                .map(TradeServiceResource::toTrade);
+                .map(tr -> TradeServiceResource.toTrade(tr, trade))
+                .doOnSuccess(rt -> {
+                    // validate sent and received trades are equal except for version, which must be higher
+                    if (!rt.equals(trade)) {
+                        throw new TradeManagerException("Received trade from put that isn't equal to trade sent.");
+                    }
+                    if (rt.getVersion() <= trade.getVersion()) {
+                        throw new TradeManagerException("Received trade version less than or equal to trade sent.");
+                    }
+                });
     }
 }
