@@ -29,6 +29,9 @@ public class TradeResource {
     // Arbitrate Request
     private ArbitrateRequest arbitrateRequest;
 
+    // Cancel Completed
+    private CancelCompleted cancelCompleted;
+
     // Payout Completed
     private PayoutCompleted payoutCompleted;
 
@@ -40,6 +43,7 @@ public class TradeResource {
                 .paymentRequest(tr.getPaymentRequest())
                 .payoutRequest(tr.getPayoutRequest())
                 .arbitrateRequest(tr.getArbitrateRequest())
+                .cancelCompleted(tr.getCancelCompleted())
                 .payoutCompleted(tr.getPayoutCompleted())
                 .build();
     }
@@ -52,6 +56,7 @@ public class TradeResource {
                 .paymentRequest(t.getPaymentRequest())
                 .payoutRequest(t.getPayoutRequest())
                 .arbitrateRequest(t.getArbitrateRequest())
+                .cancelCompleted(t.getCancelCompleted())
                 .payoutCompleted(t.getPayoutCompleted())
                 .build();
     }

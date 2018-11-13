@@ -3,6 +3,7 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
+import com.bytabit.mobile.trade.model.CancelCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeProtocolException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -94,5 +95,14 @@ abstract class TradeProtocol {
         }
 
         return updatedTrade;
+    }
+
+    Maybe<Trade> cancelCreatedTrade(Trade trade) {
+
+        // create cancel completed
+        CancelCompleted cancelCompleted = CancelCompleted.builder().reason(CancelCompleted.Reason.CANCEL_CREATED).build();
+
+        // post cancel completed
+        return Maybe.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build().withStatus());
     }
 }

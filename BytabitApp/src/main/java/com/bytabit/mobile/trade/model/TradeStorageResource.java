@@ -33,6 +33,7 @@ public class TradeStorageResource {
                 .paymentRequest(tr.getTrade().getPaymentRequest())
                 .payoutRequest(tr.getTrade().getPayoutRequest())
                 .arbitrateRequest(tr.getTrade().getArbitrateRequest())
+                .cancelCompleted(tr.getTrade().getCancelCompleted())
                 .payoutCompleted(tr.getTrade().getPayoutCompleted())
                 .build();
     }

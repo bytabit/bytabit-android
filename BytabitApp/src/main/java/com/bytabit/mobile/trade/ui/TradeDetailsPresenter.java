@@ -169,7 +169,7 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(actionEvent -> {
-                    tradeManager.buyerRefundSeller().subscribe();
+                    tradeManager.cancelTrade().subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
     }

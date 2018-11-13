@@ -56,8 +56,27 @@ public class Trade {
 
     private final LocalDateTime createdTimestamp;
 
-    // Sell Offer
     private final SellOffer sellOffer;
+
+    private final BuyRequest buyRequest;
+
+    @EqualsAndHashCode.Exclude
+    private TransactionWithAmt fundingTransactionWithAmt;
+
+    private PaymentRequest paymentRequest;
+
+    private PayoutRequest payoutRequest;
+
+    private ArbitrateRequest arbitrateRequest;
+
+    @EqualsAndHashCode.Exclude
+    private TransactionWithAmt payoutTransactionWithAmt;
+
+    private CancelCompleted cancelCompleted;
+
+    private PayoutCompleted payoutCompleted;
+
+    // Sell Offer
 
     public boolean hasSellOffer() {
         return sellOffer != null;
@@ -123,7 +142,6 @@ public class Trade {
     }
 
     // Buy Request
-    private final BuyRequest buyRequest;
 
     public boolean hasBuyRequest() {
         return buyRequest != null;
@@ -163,12 +181,7 @@ public class Trade {
         }
     }
 
-    // Funded, Tx Confirmation
-    @EqualsAndHashCode.Exclude
-    private TransactionWithAmt fundingTransactionWithAmt;
-
     // Funding, Payment Request
-    private PaymentRequest paymentRequest;
 
     public boolean hasPaymentRequest() {
         return paymentRequest != null;
@@ -208,7 +221,6 @@ public class Trade {
     }
 
     // Payout Request
-    private PayoutRequest payoutRequest;
 
     public boolean hasPayoutRequest() {
         return payoutRequest != null;
@@ -231,7 +243,6 @@ public class Trade {
     }
 
     // Arbitrate Request
-    private ArbitrateRequest arbitrateRequest;
 
     public boolean hasArbitrateRequest() {
         return arbitrateRequest != null;
@@ -245,12 +256,13 @@ public class Trade {
         }
     }
 
-    // Completed, Tx Confirmation
-    @EqualsAndHashCode.Exclude
-    private TransactionWithAmt payoutTransactionWithAmt;
+    // Cancel Completed
+
+    public boolean hasCancelCompleted() {
+        return cancelCompleted != null;
+    }
 
     // Payout Completed
-    private PayoutCompleted payoutCompleted;
 
     public boolean hasPayoutCompleted() {
         return payoutCompleted != null;
@@ -259,6 +271,8 @@ public class Trade {
     public String getPayoutTxHash() {
         if (hasPayoutCompleted()) {
             return payoutCompleted.getPayoutTxHash();
+        } else if (hasCancelCompleted()) {
+            return cancelCompleted.getPayoutTxHash();
         } else {
             return null;
         }
@@ -287,7 +301,8 @@ public class Trade {
                 .payoutRequest(this.payoutRequest)
                 .arbitrateRequest(this.arbitrateRequest)
                 .payoutTransactionWithAmt(this.payoutTransactionWithAmt)
-                .payoutCompleted(this.payoutCompleted);
+                .payoutCompleted(this.payoutCompleted)
+                .cancelCompleted(this.cancelCompleted);
     }
 
     public Trade withRole(String profilePubKey) {
@@ -333,6 +348,18 @@ public class Trade {
         if (newStatus == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
             newStatus = COMPLETED;
         }
+        if (newStatus == CREATED && getCancelCompleted() != null &&
+                getCancelCompleted().getReason().equals(CancelCompleted.Reason.CANCEL_CREATED)) {
+            newStatus = CANCELED;
+        }
+        if ((newStatus == FUNDING || newStatus == FUNDED) && getCancelCompleted() != null &&
+                getCancelCompleted().getReason().equals(CancelCompleted.Reason.CANCEL_FUNDED)) {
+            newStatus = CANCELING;
+        }
+        if (newStatus == CANCELING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
+            newStatus = CANCELED;
+        }
+
         if (newStatus == null) {
             throw new TradeManagerException("Unable to determine trade status.");
         }

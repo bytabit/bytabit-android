@@ -238,13 +238,29 @@ public class TradeManager {
                 .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public Maybe<Trade> buyerRefundSeller() {
-        return getLastSelectedTrade().autoConnect().firstOrError()
-                .filter(trade -> trade.getRole().compareTo(BUYER) == 0)
-                .filter(trade -> trade.getStatus().compareTo(FUNDED) == 0)
+    public Maybe<Trade> cancelTrade() {
+
+        Single<Trade> trade = getLastSelectedTrade().autoConnect().firstOrError();
+
+        Maybe<Trade> sellerCancelCreated = trade
+                .filter(t -> t.getRole().compareTo(SELLER) == 0)
+                .filter(t -> t.getStatus().compareTo(CREATED) == 0)
+                .flatMap(t -> sellerProtocol.cancelCreatedTrade(t));
+
+        Maybe<Trade> buyerCancelCreated = trade
+                .filter(t -> t.getRole().compareTo(BUYER) == 0)
+                .filter(t -> t.getStatus().compareTo(CREATED) == 0)
+                .flatMap(t -> buyerProtocol.cancelCreatedTrade(t));
+
+        Maybe<Trade> buyerCancelFunding = trade
+                .filter(t -> t.getRole().compareTo(BUYER) == 0)
+                .filter(t -> t.getStatus().compareTo(FUNDING) == 0 || t.getStatus().compareTo(FUNDED) == 0)
                 .flatMapSingleElement(this::updateTradeTx)
-                .filter(trade -> trade.getFundingTransactionWithAmt() != null)
-                .flatMap(trade -> buyerProtocol.refundTrade(trade))
+                .filter(t -> t.getFundingTransactionWithAmt() != null)
+                .flatMap(t -> buyerProtocol.cancelFundingTrade(t));
+
+        return Maybe.concat(sellerCancelCreated, buyerCancelCreated, buyerCancelFunding)
+                .lastElement()
                 .flatMapSingleElement(tradeStorage::write)
                 .flatMapSingleElement(tradeService::put)
                 .doOnSuccess(updatedTradeSubject::onNext);

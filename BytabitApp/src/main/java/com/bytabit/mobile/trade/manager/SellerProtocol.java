@@ -18,9 +18,15 @@ public class SellerProtocol extends TradeProtocol {
     @Override
     Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        return Maybe.just(trade.copyBuilder().version(receivedTrade.getVersion()).build());
+        Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion());
+        Maybe<Trade> updatedTrade = Maybe.just(tradeBuilder.build());
 
-        // TODO handle buyer or seller canceling created trade
+        if (receivedTrade.hasCancelCompleted()) {
+            tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
+            updatedTrade = Maybe.just(tradeBuilder.build());
+        }
+
+        return updatedTrade;
     }
 
     // 2.S: seller fund escrow and post payment request

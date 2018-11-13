@@ -3,7 +3,7 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.BuyRequest;
-import com.bytabit.mobile.trade.model.PayoutCompleted;
+import com.bytabit.mobile.trade.model.CancelCompleted;
 import com.bytabit.mobile.trade.model.PayoutRequest;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
@@ -44,12 +44,14 @@ public class BuyerProtocol extends TradeProtocol {
     @Override
     Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade) {
 
-        // TODO handle seller canceling created trade
         Maybe<Trade> updatedTrade = Maybe.empty();
         Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion());
 
         if (receivedTrade.hasPaymentRequest()) {
             tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
+        } else if (receivedTrade.hasCancelCompleted()) {
+            tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
@@ -83,15 +85,15 @@ public class BuyerProtocol extends TradeProtocol {
                 .map(pr -> trade.copyBuilder().payoutRequest(pr).build().withStatus());
     }
 
-    Maybe<Trade> refundTrade(Trade trade) {
+    Maybe<Trade> cancelFundingTrade(Trade trade) {
 
-        // 1. sign and broadcast payout tx
+        // 1. sign and broadcast refund tx
         Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade);
 
-        // 2. confirm refund tx and create payout completed
-        Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.BUYER_SELLER_REFUND));
+        // 2. confirm refund tx and create cancel completed
+        Maybe<CancelCompleted> cancelCompleted = refundTxHash.map(ph -> new CancelCompleted(ph, CancelCompleted.Reason.CANCEL_FUNDED));
 
-        // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
+        // 5. post cancel completed
+        return cancelCompleted.map(pc -> trade.copyBuilder().cancelCompleted(pc).build().withStatus());
     }
 }

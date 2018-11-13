@@ -46,6 +46,7 @@ public class TradeServiceResource {
                 .paymentRequest(receivedTradeServiceResource.getTrade().getPaymentRequest())
                 .payoutRequest(receivedTradeServiceResource.getTrade().getPayoutRequest())
                 .arbitrateRequest(receivedTradeServiceResource.getTrade().getArbitrateRequest())
+                .cancelCompleted(receivedTradeServiceResource.getTrade().getCancelCompleted())
                 .payoutCompleted(receivedTradeServiceResource.getTrade().getPayoutCompleted());
     }
 
