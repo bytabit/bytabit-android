@@ -1,6 +1,7 @@
 package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.profile.model.PaymentDetails;
+import com.bytabit.mobile.trade.model.CancelCompleted;
 import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
@@ -69,8 +70,8 @@ public class SellerProtocol extends TradeProtocol {
             updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
-        if (receivedTrade.hasPayoutCompleted() && receivedTrade.getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
-            tradeBuilder.payoutCompleted(receivedTrade.getPayoutCompleted());
+        if (receivedTrade.hasCancelCompleted() && receivedTrade.getCancelCompleted().getReason().equals(CancelCompleted.Reason.CANCEL_FUNDED)) {
+            tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
