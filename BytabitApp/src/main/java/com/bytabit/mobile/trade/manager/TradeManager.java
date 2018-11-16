@@ -268,7 +268,7 @@ public class TradeManager {
 
     public Single<String> getSelectedTradeAsJson() {
         return getLastSelectedTrade().autoConnect().firstOrError()
-                .map(gson::toJson);
+                .map(t -> gson.toJson(t));
     }
 
     private Maybe<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {

@@ -1,5 +1,6 @@
 package com.bytabit.mobile.offer.manager;
 
+import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.common.LocalDateTimeConverter;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
@@ -49,6 +50,9 @@ public class OfferManager {
     private final Gson gson;
 
     @Inject
+    ArbitratorManager arbitratorManager;
+
+    @Inject
     ProfileManager profileManager;
 
     @Inject
@@ -94,14 +98,14 @@ public class OfferManager {
         return offers.share();
     }
 
-    public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod, String arbitratorProfilePubKey,
+    public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod,
                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
         Maybe.zip(profileManager.loadOrCreateMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
                 SellOffer.builder()
                         .sellerProfilePubKey(p.getPubKey())
                         .sellerEscrowPubKey(pk)
-                        .arbitratorProfilePubKey(arbitratorProfilePubKey)
+                        .arbitratorProfilePubKey(arbitratorManager.getArbitrator().getPubkey())
                         .currencyCode(currencyCode)
                         .paymentMethod(paymentMethod)
                         .minAmount(minAmount)

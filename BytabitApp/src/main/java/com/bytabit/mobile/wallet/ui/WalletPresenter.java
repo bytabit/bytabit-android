@@ -80,6 +80,15 @@ public class WalletPresenter {
                     balanceAmountLabel.textProperty().setValue(tx.getWalletBalance().toFriendlyString());
                 });
 
+        walletManager.getTradeWalletConfig()
+                .filter(c -> c.getDeterministicSeed() != null)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(c -> {
+                    transactionListView.itemsProperty().clear();
+                    balanceAmountLabel.textProperty().setValue("");
+                });
+
         withdrawButton.setText(MaterialDesignIcon.REMOVE.text);
         depositButton.attachTo(withdrawButton, Side.LEFT);
 

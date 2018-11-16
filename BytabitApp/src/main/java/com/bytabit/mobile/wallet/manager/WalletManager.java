@@ -567,6 +567,10 @@ public class WalletManager {
         tradeWalletConfig.onNext(walletKitConfig);
     }
 
+    public Observable<WalletKitConfig> getTradeWalletConfig() {
+        return tradeWalletConfig;
+    }
+
     private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
                                        List<TransactionSignature> signatures) {
 

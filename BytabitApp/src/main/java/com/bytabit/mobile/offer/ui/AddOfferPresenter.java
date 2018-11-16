@@ -7,7 +7,6 @@ import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
-import com.bytabit.mobile.profile.model.Profile;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -47,9 +46,6 @@ public class AddOfferPresenter {
     private ChoiceBox<PaymentMethod> paymentMethodChoiceBox;
 
     @FXML
-    private ChoiceBox<Profile> arbitratorChoiceBox;
-
-    @FXML
     private TextField btcPriceTextField;
 
     @FXML
@@ -81,14 +77,11 @@ public class AddOfferPresenter {
         handleCurrencyChoice();
         handleUpdatePaymentDetails();
         handleRemovePaymentDetails();
-        handleArbitratorProfiles();
     }
 
     private void setupViewComponents() {
 
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
-
-        arbitratorChoiceBox.setConverter(new ProfileStringConverter());
 
         minTradeAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
         maxTradeAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
@@ -115,11 +108,11 @@ public class AddOfferPresenter {
                 .subscribe(sellOffer -> {
                     CurrencyCode currencyCode = currencyChoiceBox.selectionModelProperty().getValue().getSelectedItem();
                     PaymentMethod paymentMethod = paymentMethodChoiceBox.selectionModelProperty().getValue().getSelectedItem();
-                    String arbitratorProfilePubKey = arbitratorChoiceBox.selectionModelProperty().getValue().getSelectedItem().getPubKey();
+
                     BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
                     BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
                     BigDecimal price = new BigDecimal(btcPriceTextField.getText());
-                    offerManager.createOffer(currencyCode, paymentMethod, arbitratorProfilePubKey, minAmount, maxAmount, price);
+                    offerManager.createOffer(currencyCode, paymentMethod, minAmount, maxAmount, price);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
     }
@@ -191,23 +184,6 @@ public class AddOfferPresenter {
                         } else if (paymentMethodChoiceBox.getSelectionModel().isEmpty()) {
                             paymentMethodChoiceBox.getSelectionModel().selectFirst();
                         }
-                    }
-                });
-    }
-
-    private void handleArbitratorProfiles() {
-
-        profileManager.loadArbitratorProfiles()
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .flatMap(pl -> Observable.fromIterable(pl).filter(Profile::isArbitrator).toList().toObservable())
-                .subscribe(al -> {
-                    arbitratorChoiceBox.getItems().setAll(al);
-                    Profile selected = arbitratorChoiceBox.getSelectionModel().getSelectedItem();
-                    if (selected != null) {
-                        arbitratorChoiceBox.getSelectionModel().select(selected);
-                    } else {
-                        arbitratorChoiceBox.getSelectionModel().selectFirst();
                     }
                 });
     }

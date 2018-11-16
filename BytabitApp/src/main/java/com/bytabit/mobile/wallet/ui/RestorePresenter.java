@@ -1,5 +1,6 @@
 package com.bytabit.mobile.wallet.ui;
 
+import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
@@ -76,6 +77,9 @@ public class RestorePresenter {
     @Inject
     WalletManager walletManager;
 
+    @Inject
+    ProfileManager profileManager;
+
     private final int completerWaitMs = 200;
 
     public void initialize() {
@@ -102,6 +106,7 @@ public class RestorePresenter {
                     }
                     LocalDate selectedDate = datePicker.getValue();
                     walletManager.restoreTradeWallet(selectedWords, selectedDate);
+                    profileManager.clearProfilePubKey();
                 })
                 .doOnError(t -> log.error("Error restoring: {}", t))
                 .subscribeOn(Schedulers.io())

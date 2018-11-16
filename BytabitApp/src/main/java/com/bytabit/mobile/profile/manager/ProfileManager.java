@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.List;
 import java.util.Optional;
 
 public class ProfileManager {
@@ -20,8 +19,6 @@ public class ProfileManager {
     private static final String PROFILE_ISARBITRATOR = "profile.arbitrator";
     private static final String PROFILE_USERNAME = "profile.name";
     private static final String PROFILE_PHONENUM = "profile.phoneNum";
-
-    private final ProfileService profilesService;
 
     @Inject
     private StorageManager storageManager;
@@ -33,10 +30,6 @@ public class ProfileManager {
 
     private final PublishSubject<Profile> updatedProfile = PublishSubject.create();
 
-    public ProfileManager() {
-        profilesService = new ProfileService();
-    }
-
     // my profile
 
     public void updateMyProfile(Profile newProfile) {
@@ -47,7 +40,6 @@ public class ProfileManager {
                 .phoneNum(newProfile.getPhoneNum())
                 .build())
                 .map(this::storeMyProfile)
-                .flatMapSingle(profilesService::put)
                 .subscribe(updatedProfile::onNext);
     }
 
@@ -57,6 +49,10 @@ public class ProfileManager {
         storageManager.store(PROFILE_USERNAME, profile.getUserName());
         storageManager.store(PROFILE_PHONENUM, profile.getPhoneNum());
         return profile;
+    }
+
+    public void clearProfilePubKey() {
+        storageManager.remove(PROFILE_PUBKEY);
     }
 
     public Maybe<Profile> loadOrCreateMyProfile() {
@@ -77,12 +73,6 @@ public class ProfileManager {
                     .doOnSuccess(p -> log.debug("Create Profile: {}", p));
         }
     }
-
-    public Observable<List<Profile>> loadArbitratorProfiles() {
-        // TODO refresh values, cache latest results
-        return profilesService.get().toObservable();
-    }
-
 
     private Profile getProfile(String profilePubKey) {
         return Profile.builder()
