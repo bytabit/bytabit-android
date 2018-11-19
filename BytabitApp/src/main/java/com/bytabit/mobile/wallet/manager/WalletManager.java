@@ -52,9 +52,9 @@ public class WalletManager {
     private Observable<Double> tradeDownloadProgress;
     private Observable<TransactionWithAmt> tradeUpdatedWalletTx;
 
-    private Single<BytabitWalletAppKit> escrowWalletAppKit;
+    private BehaviorSubject<WalletKitConfig> escrowWalletConfig = BehaviorSubject.create();
+    private Observable<BytabitWalletAppKit> escrowWalletAppKit;
     private Observable<Double> escrowDownloadProgress;
-    private Observable<TransactionWithAmt> escrowUpdatedWalletTx;
 
     private Observable<Boolean> walletRunning;
     private Observable<Boolean> walletSynced;
@@ -80,7 +80,7 @@ public class WalletManager {
         WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("trade").build();
 
-        tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig), this::reloadTradeWallet)
+        tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig), this::reloadWallet)
                 .doOnNext(tw -> setDownloadListener(tw, tradeDownloadProgressSubject))
                 .doOnNext(this::start)
                 .replay(1).autoConnect();
@@ -115,12 +115,21 @@ public class WalletManager {
                 .observeOn(Schedulers.io())
                 .replay(100).autoConnect();
 
-        escrowWalletAppKit = Single.just(WalletKitConfig.builder().netParams(netParams)
-                .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build())
-                .map(this::createWalletAppKit)
-                .doOnSuccess(wak -> setDownloadListener(wak, escrowDownloadProgressSubject))
-                .doOnSuccess(this::start)
-                .cache();
+
+        WalletKitConfig escrowConfig = WalletKitConfig.builder().netParams(netParams)
+                .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build();
+
+        escrowWalletAppKit = escrowWalletConfig.scan(createWalletAppKit(escrowConfig), this::reloadWallet)
+                .doOnNext(tw -> setDownloadListener(tw, escrowDownloadProgressSubject))
+                .doOnNext(this::start)
+                .replay(1).autoConnect();
+
+//        escrowWalletAppKit = Single.just(WalletKitConfig.builder().netParams(netParams)
+//                .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build())
+//                .map(this::createWalletAppKit)
+//                .doOnSuccess(wak -> setDownloadListener(wak, escrowDownloadProgressSubject))
+//                .doOnSuccess(this::start)
+//                .cache();
 
         // triggers for wallet start and synced
 
@@ -156,12 +165,12 @@ public class WalletManager {
         // TODO shutdown wallet?
     }
 
-    private BytabitWalletAppKit reloadTradeWallet(BytabitWalletAppKit currentWallet, WalletKitConfig tradeConfig) {
+    private BytabitWalletAppKit reloadWallet(BytabitWalletAppKit currentWallet, WalletKitConfig config) {
 
         if (currentWallet.isRunning()) {
             stop(currentWallet);
         }
-        return createWalletAppKit(tradeConfig);
+        return createWalletAppKit(config);
     }
 
     private BytabitWalletAppKit createWalletAppKit(WalletKitConfig walletConfig) {
@@ -234,10 +243,6 @@ public class WalletManager {
         return tradeUpdatedWalletTx;
     }
 
-    public Observable<TransactionWithAmt> getUpdatedEscrowWalletTx() {
-        return escrowUpdatedWalletTx;
-    }
-
     private TransactionWithAmt createTransactionWithAmt(Wallet wallet, Transaction tx) {
         Context.propagate(btcContext);
         return TransactionWithAmt.builder()
@@ -282,7 +287,7 @@ public class WalletManager {
 
     public Maybe<String> watchEscrowAddress(String escrowAddress) {
 
-        return escrowWalletAppKit
+        return escrowWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet)
                 .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000)))
                 .filter(s -> s.equals(true))
@@ -294,15 +299,15 @@ public class WalletManager {
                 .map(WalletAppKit::wallet);
     }
 
-    private Single<Wallet> getEscrowWallet() {
+    private Maybe<Wallet> getEscrowWallet() {
 
-        return escrowWalletAppKit
+        return escrowWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet);
     }
 
-    private Single<PeerGroup> getEscrowPeerGroup() {
+    private Maybe<PeerGroup> getEscrowPeerGroup() {
 
-        return escrowWalletAppKit
+        return escrowWalletAppKit.firstElement()
                 .map(WalletAppKit::peerGroup);
     }
 
@@ -410,7 +415,7 @@ public class WalletManager {
 
     public Maybe<TransactionWithAmt> getEscrowTransactionWithAmt(String txHash) {
 
-        return getEscrowWallet().flatMapMaybe(w -> {
+        return getEscrowWallet().flatMap(w -> {
             Transaction tx = txHash != null ? w.getTransaction(Sha256Hash.wrap(txHash)) : null;
             Maybe<Transaction> maybeTx = tx != null ? Maybe.just(tx) : Maybe.empty();
             return maybeTx.map(t -> createTransactionWithAmt(w, t));
@@ -620,12 +625,12 @@ public class WalletManager {
             }
         }
 
-        return Single.zip(getEscrowWallet(), getEscrowPeerGroup(), (ew, pg) -> {
+        return Maybe.zip(getEscrowWallet(), getEscrowPeerGroup(), (ew, pg) -> {
             Context.propagate(btcContext);
             ew.commitTx(payoutTx);
             pg.broadcastTransaction(payoutTx);
             return payoutTx.getHash().toString();
-        }).toMaybe();
+        });
     }
 
     private String getSeedWords(Wallet wallet) {
