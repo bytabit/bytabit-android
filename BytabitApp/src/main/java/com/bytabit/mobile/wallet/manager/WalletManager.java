@@ -20,21 +20,19 @@ import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.kits.WalletAppKit;
-import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -80,7 +78,7 @@ public class WalletManager {
         WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("trade").build();
 
-        tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig), this::reloadWallet)
+        tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig, null), this::reloadWallet)
                 .doOnNext(tw -> setDownloadListener(tw, tradeDownloadProgressSubject))
                 .doOnNext(this::start)
                 .replay(1).autoConnect();
@@ -119,7 +117,7 @@ public class WalletManager {
         WalletKitConfig escrowConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build();
 
-        escrowWalletAppKit = escrowWalletConfig.scan(createWalletAppKit(escrowConfig), this::reloadWallet)
+        escrowWalletAppKit = escrowWalletConfig.scan(createWalletAppKit(escrowConfig, null), this::reloadWallet)
                 .doOnNext(tw -> setDownloadListener(tw, escrowDownloadProgressSubject))
                 .doOnNext(this::start)
                 .replay(1).autoConnect();
@@ -167,27 +165,18 @@ public class WalletManager {
 
     private BytabitWalletAppKit reloadWallet(BytabitWalletAppKit currentWallet, WalletKitConfig config) {
 
+        DeterministicSeed currentSeed = null;
         if (currentWallet.isRunning()) {
+            currentSeed = currentWallet.wallet().getKeyChainSeed();
             stop(currentWallet);
         }
-        return createWalletAppKit(config);
+        return createWalletAppKit(config, currentSeed);
     }
 
-    private BytabitWalletAppKit createWalletAppKit(WalletKitConfig walletConfig) {
-        BytabitWalletAppKit walletAppKit = new BytabitWalletAppKit(walletConfig);
+    private BytabitWalletAppKit createWalletAppKit(WalletKitConfig walletKitConfig, DeterministicSeed currentSeed) {
+        BytabitWalletAppKit walletAppKit = new BytabitWalletAppKit(walletKitConfig, currentSeed);
 
-        if (walletConfig.getNetParams().equals(RegTestParams.get())) {
-            walletAppKit.connectToLocalHost();
-        }
-
-        if (walletConfig.getDeterministicSeed() != null) {
-            walletAppKit.restoreWalletFromSeed(walletConfig.getDeterministicSeed());
-        }
-
-        walletAppKit.setBlockingStartup(false);
-        walletAppKit.setAutoSave(true);
-        walletAppKit.setUserAgent("org.bytabit.mobile", AppConfig.getVersion());
-        log.debug("created walletAppKit with config {}", walletConfig);
+        log.debug("created walletAppKit with config {}", walletKitConfig);
 
         return walletAppKit;
     }
@@ -282,6 +271,14 @@ public class WalletManager {
 
     public Maybe<String> watchEscrowAddressAndResetBlockchain(String escrowAddress) {
 
+//        watchEscrowAddress(escrowAddress).map(ea -> WalletKitConfig.builder()
+//                .netParams(netParams)
+//                .directory(AppConfig.getPrivateStorage()).filePrefix("escrow")
+//                .creationDate(creationDate)
+//                .build();
+//
+//        tradeWalletConfig.onNext(walletKitConfig);
+
         return watchEscrowAddress(escrowAddress);
     }
 
@@ -289,7 +286,7 @@ public class WalletManager {
 
         return escrowWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet)
-                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (DateTime.now().getMillis() / 1000)))
+                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (ZonedDateTime.now().toEpochSecond())))
                 .filter(s -> s.equals(true))
                 .map(s -> escrowAddress);
     }
@@ -556,17 +553,13 @@ public class WalletManager {
         return walletSynced;
     }
 
-    public void restoreTradeWallet(List<String> mnemonicCode, LocalDate creationTime) {
-        long creationTimeSeconds = 0;
-        if (creationTime != null) {
-            ZoneId zoneId = ZoneId.systemDefault();
-            creationTimeSeconds = creationTime.atStartOfDay(zoneId).toEpochSecond();
-        }
-        DeterministicSeed seed = new DeterministicSeed(mnemonicCode, null, "", creationTimeSeconds);
+    public void restoreTradeWallet(List<String> mnemonicCode, LocalDate creationDate) {
+
         WalletKitConfig walletKitConfig = WalletKitConfig.builder()
                 .netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("trade")
-                .deterministicSeed(seed)
+                .mnemonicCode(mnemonicCode)
+                .creationDate(creationDate)
                 .build();
 
         tradeWalletConfig.onNext(walletKitConfig);

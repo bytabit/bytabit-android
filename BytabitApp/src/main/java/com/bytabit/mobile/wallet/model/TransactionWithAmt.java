@@ -6,10 +6,11 @@ import lombok.Getter;
 import lombok.ToString;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
-import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 @Getter
 @EqualsAndHashCode(of = "hash")
@@ -24,7 +25,7 @@ public class TransactionWithAmt {
 
     private Integer depth;
 
-    private LocalDateTime date;
+    private ZonedDateTime date;
 
     private String memo;
 
@@ -45,7 +46,7 @@ public class TransactionWithAmt {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
         this.depth = tx.getConfidence().getDepthInBlocks();
-        this.date = new LocalDateTime(tx.getUpdateTime());
+        this.date = ZonedDateTime.ofInstant(tx.getUpdateTime().toInstant(), ZoneId.systemDefault());
         this.memo = tx.getMemo();
 
         this.transactionAmt = transactionAmt;

@@ -9,10 +9,10 @@ import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
 import io.reactivex.schedulers.Schedulers;
 import org.bitcoinj.core.Address;
-import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZonedDateTime;
 
 public class BuyerProtocol extends TradeProtocol {
 
@@ -31,7 +31,7 @@ public class BuyerProtocol extends TradeProtocol {
                                 .role(Trade.Role.BUYER)
                                 .status(Trade.Status.CREATED)
                                 .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
-                                .createdTimestamp(LocalDateTime.now())
+                                .createdTimestamp(ZonedDateTime.now())
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount,
                                         buyBtcAmount.setScale(8, RoundingMode.UP).multiply(sellOffer.getPrice()).setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.UP),

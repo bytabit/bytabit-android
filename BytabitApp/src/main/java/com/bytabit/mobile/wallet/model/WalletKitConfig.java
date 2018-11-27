@@ -2,9 +2,10 @@ package com.bytabit.mobile.wallet.model;
 
 import lombok.*;
 import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.wallet.DeterministicSeed;
 
 import java.io.File;
+import java.time.LocalDate;
+import java.util.List;
 
 @AllArgsConstructor
 @Builder
@@ -17,5 +18,6 @@ public class WalletKitConfig {
     private final String filePrefix;
     private final File directory;
 
-    private DeterministicSeed deterministicSeed;
+    private final List<String> mnemonicCode;
+    private final LocalDate creationDate;
 }

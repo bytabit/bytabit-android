@@ -49,7 +49,7 @@ public class WalletPresenter {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC, %tc", tx.getTransactionAmt().toPlainString(), tx.getDate().toDate());
+                    String amount = String.format("%s BTC, %s", tx.getTransactionAmt().toPlainString(), tx.getDate().toLocalDateTime());
                     String details = String.format(Locale.US, "%s (%d), Hash: %s", tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());
                     setText(null);
@@ -81,7 +81,7 @@ public class WalletPresenter {
                 });
 
         walletManager.getTradeWalletConfig()
-                .filter(c -> c.getDeterministicSeed() != null)
+                .filter(c -> c.getMnemonicCode() != null || c.getCreationDate() != null)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(c -> {

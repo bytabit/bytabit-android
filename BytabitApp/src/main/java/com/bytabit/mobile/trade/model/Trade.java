@@ -5,10 +5,10 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import lombok.*;
-import org.joda.time.LocalDateTime;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZonedDateTime;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
@@ -54,7 +54,7 @@ public class Trade {
 
     private final String escrowAddress;
 
-    private final LocalDateTime createdTimestamp;
+    private final ZonedDateTime createdTimestamp;
 
     private final SellOffer sellOffer;
 

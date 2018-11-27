@@ -1,19 +1,19 @@
 package com.bytabit.mobile.common;
 
 import com.google.gson.*;
-import org.joda.time.LocalDateTime;
 
 import java.lang.reflect.Type;
+import java.time.ZonedDateTime;
 
-public class LocalDateTimeConverter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
+public class LocalDateTimeConverter implements JsonSerializer<ZonedDateTime>, JsonDeserializer<ZonedDateTime> {
 
     @Override
-    public JsonElement serialize(LocalDateTime localDateTime, Type type, JsonSerializationContext context) {
+    public JsonElement serialize(ZonedDateTime localDateTime, Type type, JsonSerializationContext context) {
         return new JsonPrimitive(localDateTime.toString());
     }
 
     @Override
-    public LocalDateTime deserialize(JsonElement json, Type type, JsonDeserializationContext context) {
-        return LocalDateTime.parse(json.getAsString());
+    public ZonedDateTime deserialize(JsonElement json, Type type, JsonDeserializationContext context) {
+        return ZonedDateTime.parse(json.getAsString());
     }
 }

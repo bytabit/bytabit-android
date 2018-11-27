@@ -1,7 +1,8 @@
 package com.bytabit.mobile.trade.model;
 
 import lombok.*;
-import org.joda.time.LocalDateTime;
+
+import java.time.ZonedDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,7 +27,7 @@ public class TradeStorageResource {
                 .version(tr.getVersion())
                 .status(tr.getStatus())
                 .role(tr.getRole())
-                .createdTimestamp(LocalDateTime.parse(tr.getCreatedTimestamp()))
+                .createdTimestamp(ZonedDateTime.parse(tr.getCreatedTimestamp()))
                 .escrowAddress(tr.getTrade().getEscrowAddress())
                 .sellOffer(tr.getTrade().getSellOffer())
                 .buyRequest(tr.getTrade().getBuyRequest())

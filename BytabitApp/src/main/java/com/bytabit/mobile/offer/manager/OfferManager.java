@@ -18,7 +18,6 @@ import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
-import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +25,7 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -65,7 +65,7 @@ public class OfferManager {
 
         gson = new GsonBuilder()
                 .setPrettyPrinting()
-                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeConverter())
+                .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
                 .create();
 
         sellOfferService = new SellOfferService();

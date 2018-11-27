@@ -103,6 +103,11 @@ public class RestorePresenter {
                     List<String> selectedWords = new ArrayList<>();
                     for (AutoCompleteTextField<String> word : words) {
                         selectedWords.add(word.getText());
+                        if (word.getText() == null || word.getText().isEmpty()) {
+                            // TODO warn user incomplete words, restoring from curent seed
+                            selectedWords = null;
+                            break;
+                        }
                     }
                     LocalDate selectedDate = datePicker.getValue();
                     walletManager.restoreTradeWallet(selectedWords, selectedDate);
