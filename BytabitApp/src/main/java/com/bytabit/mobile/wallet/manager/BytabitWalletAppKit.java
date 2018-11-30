@@ -30,6 +30,10 @@ public class BytabitWalletAppKit extends WalletAppKit {
             resetCreationTimeSeconds = 0L;
         }
 
+        if (walletKitConfig.getWatchAddresses() != null && !walletKitConfig.getWatchAddresses().isEmpty()) {
+            this.wallet().addWatchedAddresses(walletKitConfig.getWatchAddresses(), resetCreationTimeSeconds);
+        }
+
         // reset wallet with new seed and creation time
         if (walletKitConfig.getMnemonicCode() != null && !walletKitConfig.getMnemonicCode().isEmpty()) {
             DeterministicSeed newSeed = new DeterministicSeed(walletKitConfig.getMnemonicCode(), null, "", resetCreationTimeSeconds);

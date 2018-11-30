@@ -1,6 +1,7 @@
 package com.bytabit.mobile.wallet.model;
 
 import lombok.*;
+import org.bitcoinj.core.Address;
 import org.bitcoinj.core.NetworkParameters;
 
 import java.io.File;
@@ -20,4 +21,5 @@ public class WalletKitConfig {
 
     private final List<String> mnemonicCode;
     private final LocalDate creationDate;
+    private final List<Address> watchAddresses;
 }

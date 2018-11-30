@@ -28,10 +28,9 @@ public class ArbitratorProtocol extends TradeProtocol {
                 tradeBuilder.payoutRequest(receivedTrade.getPayoutRequest());
             }
 
-            // TODO DateTime versionDate = new DateTime(Long.valueOf(trade.getVersion()), DateTimeZone.UTC);
+            walletManager.watchEscrowAddressAndResetBlockchain(trade.getEscrowAddress());
 
-            updatedTrade = walletManager.watchEscrowAddressAndResetBlockchain(trade.getEscrowAddress())
-                    .map(ea -> tradeBuilder.build().withStatus());
+            updatedTrade = Maybe.just(tradeBuilder.build().withStatus());
         }
 
         return updatedTrade;

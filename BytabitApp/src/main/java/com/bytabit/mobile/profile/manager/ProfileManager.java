@@ -5,11 +5,13 @@ import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.util.Optional;
 
@@ -29,6 +31,16 @@ public class ProfileManager {
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private final PublishSubject<Profile> updatedProfile = PublishSubject.create();
+
+    @PostConstruct
+    public void initialize() {
+
+        walletManager.getEscrowWalletConfig()
+                .filter(c -> c.getMnemonicCode() != null || c.getCreationDate() != null)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(c -> clearProfilePubKey());
+    }
 
     // my profile
 

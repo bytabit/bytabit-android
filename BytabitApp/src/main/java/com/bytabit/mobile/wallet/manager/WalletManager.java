@@ -18,6 +18,7 @@ import io.reactivex.subjects.BehaviorSubject;
 import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
+import org.bitcoinj.crypto.DeterministicKey;
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.script.Script;
@@ -37,6 +38,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static org.bitcoinj.wallet.DeterministicKeyChain.BIP44_ACCOUNT_ZERO_PATH;
 
 public class WalletManager {
 
@@ -121,13 +124,6 @@ public class WalletManager {
                 .doOnNext(tw -> setDownloadListener(tw, escrowDownloadProgressSubject))
                 .doOnNext(this::start)
                 .replay(1).autoConnect();
-
-//        escrowWalletAppKit = Single.just(WalletKitConfig.builder().netParams(netParams)
-//                .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build())
-//                .map(this::createWalletAppKit)
-//                .doOnSuccess(wak -> setDownloadListener(wak, escrowDownloadProgressSubject))
-//                .doOnSuccess(this::start)
-//                .cache();
 
         // triggers for wallet start and synced
 
@@ -245,7 +241,7 @@ public class WalletManager {
 
     public Maybe<String> getTradeWalletProfilePubKey() {
         return tradeWalletAppKit.firstElement()
-                .map(WalletAppKit::wallet).map(this::getFreshBase58AuthPubKey);
+                .map(WalletAppKit::wallet).map(this::getBase58ProfilePubKey);
     }
 
     public Maybe<String> getTradeWalletEscrowPubKey() {
@@ -269,26 +265,27 @@ public class WalletManager {
                 });
     }
 
-    public Maybe<String> watchEscrowAddressAndResetBlockchain(String escrowAddress) {
-
-//        watchEscrowAddress(escrowAddress).map(ea -> WalletKitConfig.builder()
-//                .netParams(netParams)
-//                .directory(AppConfig.getPrivateStorage()).filePrefix("escrow")
-//                .creationDate(creationDate)
-//                .build();
-//
-//        tradeWalletConfig.onNext(walletKitConfig);
-
-        return watchEscrowAddress(escrowAddress);
+    public void watchEscrowAddressAndResetBlockchain(String escrowAddress) {
+        getWatchedEscrowAddresses()
+                .doOnSuccess(eal -> eal.add(Address.fromBase58(netParams, escrowAddress)))
+                .subscribe(eal -> escrowWalletConfig.onNext(WalletKitConfig.builder()
+                        .netParams(netParams)
+                        .directory(AppConfig.getPrivateStorage())
+                        .filePrefix("escrow")
+                        .creationDate(LocalDate.now().minusMonths(1))
+                        .watchAddresses(eal)
+                        .build()));
     }
 
     public Maybe<String> watchEscrowAddress(String escrowAddress) {
-
-        return escrowWalletAppKit.firstElement()
-                .map(WalletAppKit::wallet)
+        return getEscrowWallet()
                 .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (ZonedDateTime.now().toEpochSecond())))
                 .filter(s -> s.equals(true))
                 .map(s -> escrowAddress);
+    }
+
+    private Maybe<List<Address>> getWatchedEscrowAddresses() {
+        return getEscrowWallet().map(Wallet::getWatchedAddresses);
     }
 
     private Maybe<Wallet> getTradeWallet() {
@@ -297,13 +294,11 @@ public class WalletManager {
     }
 
     private Maybe<Wallet> getEscrowWallet() {
-
         return escrowWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet);
     }
 
     private Maybe<PeerGroup> getEscrowPeerGroup() {
-
         return escrowWalletAppKit.firstElement()
                 .map(WalletAppKit::peerGroup);
     }
@@ -313,9 +308,11 @@ public class WalletManager {
         return wallet.currentReceiveAddress();
     }
 
-    private String getFreshBase58AuthPubKey(Wallet tradeWallet) {
+    private String getBase58ProfilePubKey(Wallet tradeWallet) {
         Context.propagate(btcContext);
-        return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).getPubKey());
+        DeterministicKey profileKey = tradeWallet.getActiveKeyChain().getKeyByPath(BIP44_ACCOUNT_ZERO_PATH, true);
+        return Base58.encode(profileKey.getPubKey());
+        //return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).getPubKey());
     }
 
     private TradeWalletInfo getTradeWalletInfo(Wallet tradeWallet) {
@@ -567,6 +564,10 @@ public class WalletManager {
 
     public Observable<WalletKitConfig> getTradeWalletConfig() {
         return tradeWalletConfig;
+    }
+
+    public Observable<WalletKitConfig> getEscrowWalletConfig() {
+        return escrowWalletConfig;
     }
 
     private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,

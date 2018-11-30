@@ -98,6 +98,8 @@ public class RestorePresenter {
                     clearAll(words);
                 });
 
+        // TODO disable restore button if any trades are not completed or canceled
+
         JavaFxObservable.actionEventsOf(restoreButton)
                 .doOnNext(actionEvent -> {
                     List<String> selectedWords = new ArrayList<>();

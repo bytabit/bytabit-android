@@ -13,7 +13,7 @@ public class ArbitratorManager {
 
         if (btcNetwork.equals("regtest")) {
             arbitrator = Arbitrator.builder()
-                    .pubkey("cu4xcxY1dC3Zum4q6xYRXM1vHEjE4gnhL7Jx5DQ7vXyH")
+                    .pubkey("egR53oLfKiyuh81eQJEa4pbJYqSncPQz8oLxTcEkjddd")
                     .feeAddress("mzyUFtqhQxGtn4fsDRVAK3EUXPPjkhjgKC")
                     .build();
         } else if (btcNetwork.equals("test")) {
