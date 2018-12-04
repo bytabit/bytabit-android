@@ -3,7 +3,6 @@ package com.bytabit.mobile.offer.manager;
 import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.common.LocalDateTimeConverter;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.trade.manager.TradeManager;
@@ -53,9 +52,6 @@ public class OfferManager {
     ArbitratorManager arbitratorManager;
 
     @Inject
-    ProfileManager profileManager;
-
-    @Inject
     WalletManager walletManager;
 
     @Inject
@@ -101,10 +97,10 @@ public class OfferManager {
     public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod,
                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        Maybe.zip(profileManager.loadOrCreateMyProfile(), walletManager.getTradeWalletEscrowPubKey(), (p, pk) ->
+        Maybe.zip(walletManager.getProfilePubKeyBase58(), walletManager.getEscrowPubKeyBase58(), (ppk, epk) ->
                 SellOffer.builder()
-                        .sellerProfilePubKey(p.getPubKey())
-                        .sellerEscrowPubKey(pk)
+                        .sellerProfilePubKey(ppk)
+                        .sellerEscrowPubKey(epk)
                         .arbitratorProfilePubKey(arbitratorManager.getArbitrator().getPubkey())
                         .currencyCode(currencyCode)
                         .paymentMethod(paymentMethod)

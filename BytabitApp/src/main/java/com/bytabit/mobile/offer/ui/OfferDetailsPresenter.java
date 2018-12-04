@@ -4,7 +4,7 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.SellOffer;
-import com.bytabit.mobile.profile.manager.ProfileManager;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.ShareService;
@@ -34,7 +34,7 @@ public class OfferDetailsPresenter {
     OfferManager offerManager;
 
     @Inject
-    ProfileManager profileManager;
+    WalletManager walletManager;
 
     @FXML
     private View offerDetailsView;
@@ -127,22 +127,20 @@ public class OfferDetailsPresenter {
 
         offerManager.getLastSelectedOffer().autoConnect()
                 .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .subscribe(offer -> profileManager.loadOrCreateMyProfile()
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(JavaFxScheduler.platform())
-                        .subscribe(myProfile -> {
-                            if (myProfile.getPubKey().equals(offer.getSellerProfilePubKey())) {
-                                // my offer
-                                buyGridPane.setVisible(false);
-                                removeOfferButton.setVisible(true);
-                            } else {
-                                // not my offer
-                                buyGridPane.setVisible(true);
-                                removeOfferButton.setVisible(false);
-                            }
-                            showOffer(offer);
-                        }));
+                .observeOn(JavaFxScheduler.platform())
+                .zipWith(walletManager.getProfilePubKeyBase58().toObservable(), (offer, profilePubKey) -> {
+                    if (profilePubKey.equals(offer.getSellerProfilePubKey())) {
+                        // my offer
+                        buyGridPane.setVisible(false);
+                        removeOfferButton.setVisible(true);
+                    } else {
+                        // not my offer
+                        buyGridPane.setVisible(true);
+                        removeOfferButton.setVisible(false);
+                    }
+                    return offer;
+                })
+                .subscribe(this::showOffer);
 
     }
 

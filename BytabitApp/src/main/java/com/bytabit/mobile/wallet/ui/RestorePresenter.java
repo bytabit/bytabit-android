@@ -113,7 +113,6 @@ public class RestorePresenter {
                     }
                     LocalDate selectedDate = datePicker.getValue();
                     walletManager.restoreTradeWallet(selectedWords, selectedDate);
-                    profileManager.clearProfilePubKey();
                 })
                 .doOnError(t -> log.error("Error restoring: {}", t))
                 .subscribeOn(Schedulers.io())

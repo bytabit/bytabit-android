@@ -6,7 +6,7 @@
 <?import javafx.scene.layout.*?>
 <View fx:id="profileView" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity"
       minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
-      xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bytabit.mobile.profile.ui.ProfilePresenter">
     <center>
         <VBox alignment="TOP_CENTER" BorderPane.alignment="CENTER">
@@ -21,21 +21,15 @@
                                         vgrow="SOMETIMES"/>
                         <RowConstraints minHeight="10.0" prefHeight="30.0"
                                         vgrow="SOMETIMES"/>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0"
-                                        vgrow="SOMETIMES"/>
                     </rowConstraints>
                     <children>
-                        <Label focusTraversable="false" text="Public Name"
-                               GridPane.rowIndex="1"/>
+                        <Label focusTraversable="false" text="Public Name"/>
                         <Label focusTraversable="false" text="Phone Number"
-                               GridPane.rowIndex="2"/>
+                               GridPane.rowIndex="1"/>
                         <TextField fx:id="userNameTextField" maxHeight="-Infinity"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                                   GridPane.columnIndex="1"/>
                         <TextField fx:id="phoneNumTextField" maxHeight="-Infinity"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="2"/>
-                        <CheckBox fx:id="arbitratorCheckbox" alignment="CENTER_RIGHT"
-                                  contentDisplay="RIGHT" mnemonicParsing="false"
-                                  text="Arbitrator" GridPane.columnIndex="1"/>
+                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
                     </children>
                     <opaqueInsets>
                         <Insets top="10.0"/>

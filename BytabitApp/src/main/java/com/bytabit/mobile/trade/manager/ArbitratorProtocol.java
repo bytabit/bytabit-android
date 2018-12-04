@@ -28,7 +28,7 @@ public class ArbitratorProtocol extends TradeProtocol {
                 tradeBuilder.payoutRequest(receivedTrade.getPayoutRequest());
             }
 
-            walletManager.watchEscrowAddressAndResetBlockchain(trade.getEscrowAddress());
+            walletManager.watchNewEscrowAddressAndResetBlockchain(trade.getEscrowAddress());
 
             updatedTrade = Maybe.just(tradeBuilder.build().withStatus());
         }

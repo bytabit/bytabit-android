@@ -7,14 +7,9 @@ import lombok.*;
 @Getter
 @Setter
 @Builder
-@EqualsAndHashCode(of = "pubKey")
+@EqualsAndHashCode
 @ToString
 public class Profile {
-
-    private String pubKey;
-
-    @Builder.Default
-    private boolean isArbitrator = false;
 
     private String userName;
 

@@ -9,6 +9,7 @@ import org.bitcoinj.wallet.DeterministicSeed;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZonedDateTime;
 
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 
@@ -22,16 +23,12 @@ public class BytabitWalletAppKit extends WalletAppKit {
 
         // determine reset wallet creation time
         long resetCreationTimeSeconds;
-        if (walletKitConfig.getCreationDate() != null) {
-            resetCreationTimeSeconds = (walletKitConfig.getCreationDate().toEpochDay() - 1) * 24 * 60 * 60;
+        if (walletKitConfig.getCreationTimeSeconds() != null) {
+            resetCreationTimeSeconds = walletKitConfig.getCreationTimeSeconds();
         } else if (currentSeed != null) {
             resetCreationTimeSeconds = currentSeed.getCreationTimeSeconds();
         } else {
             resetCreationTimeSeconds = 0L;
-        }
-
-        if (walletKitConfig.getWatchAddresses() != null && !walletKitConfig.getWatchAddresses().isEmpty()) {
-            this.wallet().addWatchedAddresses(walletKitConfig.getWatchAddresses(), resetCreationTimeSeconds);
         }
 
         // reset wallet with new seed and creation time
@@ -62,6 +59,11 @@ public class BytabitWalletAppKit extends WalletAppKit {
     @Override
     protected void onSetupCompleted() {
 
+        WalletKitConfig config = getWalletKitConfig();
+        if (config.getWatchAddresses() != null && !config.getWatchAddresses().isEmpty()) {
+            wallet().addWatchedAddresses(config.getWatchAddresses(), ZonedDateTime.now().minusMonths(2).toEpochSecond());
+        }
+
         Path walletBackupFilePath = directory.toPath().resolve(String.format("%s.wallet.bkp", filePrefix));
 
         if (!walletBackupFilePath.toFile().exists()) {
@@ -71,5 +73,9 @@ public class BytabitWalletAppKit extends WalletAppKit {
                 log.error("Could not make backup copy of {} to {}", vWalletFile.toPath(), walletBackupFilePath);
             }
         }
+    }
+
+    WalletKitConfig getWalletKitConfig() {
+        return walletKitConfig;
     }
 }

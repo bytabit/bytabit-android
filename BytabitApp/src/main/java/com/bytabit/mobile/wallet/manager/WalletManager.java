@@ -39,6 +39,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static java.lang.Boolean.TRUE;
 import static org.bitcoinj.wallet.DeterministicKeyChain.BIP44_ACCOUNT_ZERO_PATH;
 
 public class WalletManager {
@@ -50,15 +51,15 @@ public class WalletManager {
 
     private BehaviorSubject<WalletKitConfig> tradeWalletConfig = BehaviorSubject.create();
     private Observable<BytabitWalletAppKit> tradeWalletAppKit;
-    private Observable<Double> tradeDownloadProgress;
     private Observable<TransactionWithAmt> tradeUpdatedWalletTx;
 
     private BehaviorSubject<WalletKitConfig> escrowWalletConfig = BehaviorSubject.create();
     private Observable<BytabitWalletAppKit> escrowWalletAppKit;
-    private Observable<Double> escrowDownloadProgress;
 
-    private Observable<Boolean> walletRunning;
+    private Observable<Double> walletsDownloadProgress;
+    private Observable<Boolean> walletsRunning;
     private Observable<Boolean> walletSynced;
+    private Observable<String> profilePubKey;
 
     public WalletManager() {
         netParams = BytabitTestNet3Params.fromID("org.bitcoin." + AppConfig.getBtcNetwork());
@@ -71,12 +72,10 @@ public class WalletManager {
         // setup trade wallet
 
         BehaviorSubject<Double> tradeDownloadProgressSubject = BehaviorSubject.create();
-        tradeDownloadProgress = tradeDownloadProgressSubject
+        Observable<Double> tradeDownloadProgress = tradeDownloadProgressSubject
                 .doOnSubscribe(d -> log.debug("tradeDownloadProgress: subscribe"))
                 .doOnNext(progress -> log.debug("tradeDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
-                .throttleLast(1, TimeUnit.SECONDS)
-                .observeOn(Schedulers.io())
-                .replay(100).autoConnect();
+                .replay(1).autoConnect();
 
         WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("trade").build();
@@ -109,30 +108,33 @@ public class WalletManager {
         // setup escrow wallet
 
         BehaviorSubject<Double> escrowDownloadProgressSubject = BehaviorSubject.create();
-        escrowDownloadProgress = escrowDownloadProgressSubject
+        Observable<Double> escrowDownloadProgress = escrowDownloadProgressSubject
                 .doOnSubscribe(d -> log.debug("escrowDownloadProgress: subscribe"))
                 .doOnNext(progress -> log.debug("escrowDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
-                .throttleLast(1, TimeUnit.SECONDS)
-                .observeOn(Schedulers.io())
-                .replay(100).autoConnect();
-
+                .replay(1).autoConnect();
 
         WalletKitConfig escrowConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build();
 
         escrowWalletAppKit = escrowWalletConfig.scan(createWalletAppKit(escrowConfig, null), this::reloadWallet)
-                .doOnNext(tw -> setDownloadListener(tw, escrowDownloadProgressSubject))
+                .doOnNext(ew -> setDownloadListener(ew, escrowDownloadProgressSubject))
                 .doOnNext(this::start)
                 .replay(1).autoConnect();
 
         // triggers for wallet start and synced
 
-        walletRunning = tradeWalletAppKit
+        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, Double::min)
+                .throttleLast(1, TimeUnit.SECONDS)
+                .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
+                .doOnNext(p -> log.debug("walletsDownloadProgress: {}", p))
+                .replay(100).autoConnect();
+
+        Observable<Boolean> tradeWalletsRunning = tradeWalletAppKit
                 .switchMap(tw -> Observable.<Boolean>create(source -> {
                     Listener listener = new Listener() {
                         @Override
                         public void running() {
-                            source.onNext(Boolean.TRUE);
+                            source.onNext(TRUE);
                         }
 
                         @Override
@@ -144,16 +146,44 @@ public class WalletManager {
                     source.onNext(tw.isRunning());
                 }))
                 .observeOn(Schedulers.io())
-                .doOnSubscribe(d -> log.debug("walletRunning: subscribe"))
-                .doOnNext(p -> log.debug("walletRunning: {}", p))
+                .doOnSubscribe(d -> log.debug("tradeWalletRunning: subscribe"))
+                .doOnNext(p -> log.debug("tradeWalletRunning: {}", p));
+
+        Observable<Boolean> escrowWalletsRunning = escrowWalletAppKit
+                .switchMap(ew -> Observable.<Boolean>create(source -> {
+                    Listener listener = new Listener() {
+                        @Override
+                        public void running() {
+                            source.onNext(TRUE);
+                        }
+
+                        @Override
+                        public void stopping(State from) {
+                            source.onNext(Boolean.FALSE);
+                        }
+                    };
+                    ew.addListener(listener, BytabitMobile.EXECUTOR);
+                    source.onNext(ew.isRunning());
+                }))
+                .observeOn(Schedulers.io())
+                .doOnSubscribe(d -> log.debug("escrowWalletRunning: subscribe"))
+                .doOnNext(p -> log.debug("EscrowWalletRunning: {}", p));
+
+        walletsRunning = Observable.zip(tradeWalletsRunning, escrowWalletsRunning, (tr, er) -> tr && er)
                 .replay(1).autoConnect();
 
-        walletSynced = Observable.zip(tradeDownloadProgress, escrowDownloadProgress,
-                (tp, ep) -> tp == 1 && ep == 1)
-                .startWith(Boolean.FALSE)
+        walletSynced = walletsDownloadProgress
+                .map(p -> p == 1.0)
+                .distinctUntilChanged()
                 .observeOn(Schedulers.io())
                 .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
                 .doOnNext(p -> log.debug("walletSynced: {}", p))
+                .replay(1).autoConnect();
+
+        profilePubKey = tradeWalletAppKit.map(BytabitWalletAppKit::wallet)
+                .map(this::getBase58ProfilePubKey)
+                .doOnSubscribe(d -> log.debug("profilePubKey: subscribe"))
+                .doOnNext(p -> log.debug("profilePubKey: {}", p))
                 .replay(1).autoConnect();
 
         // TODO shutdown wallet?
@@ -210,12 +240,8 @@ public class WalletManager {
         log.debug("stopped {}", wak.getFilePrefix());
     }
 
-    public Observable<Double> getTradeDownloadProgress() {
-        return tradeDownloadProgress;
-    }
-
-    public Observable<Double> getEscrowDownloadProgress() {
-        return escrowDownloadProgress;
+    public Observable<Double> getWalletsDownloadProgress() {
+        return walletsDownloadProgress;
     }
 
     public Maybe<TradeWalletInfo> getTradeWalletInfo() {
@@ -239,17 +265,27 @@ public class WalletManager {
                 .build();
     }
 
-    public Maybe<String> getTradeWalletProfilePubKey() {
-        return tradeWalletAppKit.firstElement()
-                .map(WalletAppKit::wallet).map(this::getBase58ProfilePubKey);
+    public Maybe<String> getProfilePubKeyBase58() {
+        return profilePubKey.firstElement();
     }
 
-    public Maybe<String> getTradeWalletEscrowPubKey() {
+    public Observable<String> getProfilePubKey() {
+        return profilePubKey;
+    }
+
+    public Maybe<String> getEscrowPubKeyBase58() {
         return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(this::getFreshBase58ReceivePubKey);
     }
 
-    public Maybe<Address> getTradeWalletDepositAddress() {
+    public Maybe<String> getDepositAddressBase58() {
+        return tradeWalletAppKit.firstElement()
+                .map(WalletAppKit::wallet)
+                .map(this::getDepositAddress)
+                .map(Address::toBase58);
+    }
+
+    public Maybe<Address> getDepositAddress() {
         return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(this::getDepositAddress);
     }
@@ -265,21 +301,21 @@ public class WalletManager {
                 });
     }
 
-    public void watchEscrowAddressAndResetBlockchain(String escrowAddress) {
+    public void watchNewEscrowAddressAndResetBlockchain(String escrowAddress) {
         getWatchedEscrowAddresses()
                 .doOnSuccess(eal -> eal.add(Address.fromBase58(netParams, escrowAddress)))
                 .subscribe(eal -> escrowWalletConfig.onNext(WalletKitConfig.builder()
                         .netParams(netParams)
                         .directory(AppConfig.getPrivateStorage())
                         .filePrefix("escrow")
-                        .creationDate(LocalDate.now().minusMonths(1))
+                        .creationDate(LocalDate.now().minusMonths(2))
                         .watchAddresses(eal)
                         .build()));
     }
 
-    public Maybe<String> watchEscrowAddress(String escrowAddress) {
+    public Maybe<String> watchNewEscrowAddress(String escrowAddress) {
         return getEscrowWallet()
-                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), (ZonedDateTime.now().toEpochSecond())))
+                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), ZonedDateTime.now().toEpochSecond()))
                 .filter(s -> s.equals(true))
                 .map(s -> escrowAddress);
     }
@@ -310,9 +346,13 @@ public class WalletManager {
 
     private String getBase58ProfilePubKey(Wallet tradeWallet) {
         Context.propagate(btcContext);
-        DeterministicKey profileKey = tradeWallet.getActiveKeyChain().getKeyByPath(BIP44_ACCOUNT_ZERO_PATH, true);
+        DeterministicKey profileKey = getProfilePubKey(tradeWallet);
         return Base58.encode(profileKey.getPubKey());
-        //return Base58.encode(tradeWallet.freshKey(KeyChain.KeyPurpose.AUTHENTICATION).getPubKey());
+    }
+
+    private DeterministicKey getProfilePubKey(Wallet tradeWallet) {
+        Context.propagate(btcContext);
+        return tradeWallet.getActiveKeyChain().getKeyByPath(BIP44_ACCOUNT_ZERO_PATH, true);
     }
 
     private TradeWalletInfo getTradeWalletInfo(Wallet tradeWallet) {
@@ -480,7 +520,7 @@ public class WalletManager {
                 escrowKey = tw.findKeyFromPubKey(sellerEscrowPubKey.getPubKey());
             }
             if (escrowKey == null) {
-                escrowKey = tw.findKeyFromPubKey(arbitratorProfilePubKey.getPubKey());
+                escrowKey = getProfilePubKey(tw);
             }
             if (escrowKey != null) {
                 // sign tx input
@@ -542,8 +582,8 @@ public class WalletManager {
         return signatures.flatMapMaybe(sl -> payoutEscrow(trade, sellerRefundAddress, sl));
     }
 
-    public Observable<Boolean> getWalletRunning() {
-        return walletRunning;
+    public Observable<Boolean> getWalletsRunning() {
+        return walletsRunning;
     }
 
     public Observable<Boolean> getWalletSynced() {
@@ -554,7 +594,8 @@ public class WalletManager {
 
         WalletKitConfig walletKitConfig = WalletKitConfig.builder()
                 .netParams(netParams)
-                .directory(AppConfig.getPrivateStorage()).filePrefix("trade")
+                .directory(AppConfig.getPrivateStorage())
+                .filePrefix("trade")
                 .mnemonicCode(mnemonicCode)
                 .creationDate(creationDate)
                 .build();

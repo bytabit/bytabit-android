@@ -12,7 +12,6 @@ import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
 
 import javax.inject.Inject;
@@ -26,9 +25,6 @@ public class ProfilePresenter {
     private View profileView;
 
     @FXML
-    private CheckBox arbitratorCheckbox;
-
-    @FXML
     private TextField userNameTextField;
 
     @FXML
@@ -40,14 +36,14 @@ public class ProfilePresenter {
     public void initialize() {
 
         JavaFxObservable.actionEventsOf(saveProfileButton)
-                .doOnNext(a -> profileManager.updateMyProfile(getProfile()))
+                .map(a -> profileManager.storeMyProfile(getProfile()))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(a -> MobileApplication.getInstance().switchToPreviousView());
 
         JavaFxObservable.changesOf(profileView.showingProperty())
                 .filter(Change::getNewVal)
-                .flatMap(e -> profileManager.loadOrCreateMyProfile().toObservable())
+                .map(e -> profileManager.retrieveMyProfile())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(profile -> {
@@ -69,13 +65,11 @@ public class ProfilePresenter {
 
     private Profile getProfile() {
         return Profile.builder()
-                .isArbitrator(arbitratorCheckbox.isSelected())
                 .userName(userNameTextField.getText())
                 .phoneNum(phoneNumTextField.getText()).build();
     }
 
     private void setProfile(Profile profile) {
-        arbitratorCheckbox.setSelected(profile.isArbitrator());
         userNameTextField.setText(profile.getUserName());
         phoneNumTextField.setText(profile.getPhoneNum());
     }

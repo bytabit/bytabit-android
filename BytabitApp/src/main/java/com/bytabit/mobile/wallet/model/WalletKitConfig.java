@@ -22,4 +22,13 @@ public class WalletKitConfig {
     private final List<String> mnemonicCode;
     private final LocalDate creationDate;
     private final List<Address> watchAddresses;
+
+    public Long getCreationTimeSeconds() {
+        // determine reset wallet creation time
+        Long creationTimeSeconds = null;
+        if (getCreationDate() != null) {
+            creationTimeSeconds = (getCreationDate().toEpochDay() - 1) * 24 * 60 * 60;
+        }
+        return creationTimeSeconds;
+    }
 }

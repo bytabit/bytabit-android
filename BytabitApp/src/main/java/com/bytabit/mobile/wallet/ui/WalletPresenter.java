@@ -63,7 +63,7 @@ public class WalletPresenter {
 
         transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
 
-        walletManager.getTradeDownloadProgress()
+        walletManager.getWalletsDownloadProgress()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(p -> downloadProgressBar.progressProperty().setValue(p));

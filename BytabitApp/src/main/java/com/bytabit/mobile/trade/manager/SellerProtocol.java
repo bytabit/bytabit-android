@@ -34,14 +34,14 @@ public class SellerProtocol extends TradeProtocol {
     Maybe<Trade> fundEscrow(Trade trade) {
 
         // 0. watch escrow address
-        Maybe<String> watchedEscrowAddress = walletManager.watchEscrowAddress(trade.getEscrowAddress());
+        Maybe<String> watchedEscrowAddress = walletManager.watchNewEscrowAddress(trade.getEscrowAddress());
 
         // 1. fund escrow
         Maybe<Transaction> fundingTx = watchedEscrowAddress
                 .flatMap(ea -> walletManager.fundEscrow(ea, trade.getBtcAmount())).cache();
 
         // 2. create refund tx address and signature
-        Maybe<Address> refundTxAddress = walletManager.getTradeWalletDepositAddress().cache();
+        Maybe<Address> refundTxAddress = walletManager.getDepositAddress().cache();
 
         Maybe<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))

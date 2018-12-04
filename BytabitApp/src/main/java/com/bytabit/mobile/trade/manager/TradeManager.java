@@ -3,7 +3,6 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.common.LocalDateTimeConverter;
 import com.bytabit.mobile.offer.model.SellOffer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
-import com.bytabit.mobile.profile.model.Profile;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -110,16 +109,15 @@ public class TradeManager {
 
         tradeStorage.createTradesDir();
 
-        Maybe<Boolean> walletStarted = walletManager.getWalletRunning()
+        Observable<Boolean> walletsRunning = walletManager.getWalletsRunning()
                 .filter(s -> s)
-                .firstElement()
                 .observeOn(Schedulers.io())
-                .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
-                .doOnSuccess(p -> log.debug("walletSynced: {}", p))
-                .cache();
+                .doOnSubscribe(d -> log.debug("walletsRunning: subscribe"))
+                .doOnNext(p -> log.debug("walletsRunning: {}", p))
+                .replay(1).autoConnect();
 
         // get stored trades after download started
-        walletStarted.flatMapObservable(p -> tradeStorage.getAll())
+        walletsRunning.flatMap(isRunning -> tradeStorage.getAll())
                 .flatMapIterable(t -> t)
                 .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
                         .map(txa -> t.copyBuilder().fundingTransactionWithAmt(txa).build())
@@ -133,12 +131,12 @@ public class TradeManager {
                 .subscribe(createdTradeSubject::onNext);
 
         // get update and store trades from received data after download started
-        walletStarted.flatMap(p -> profileManager.loadOrCreateMyProfile())
-                .flatMapObservable(profile -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-                        .flatMap(t -> tradeService.get(profile.getPubKey())
+        walletManager.getProfilePubKey()
+                .flatMap(profilePubKey -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
+                        .flatMap(t -> tradeService.get(profilePubKey)
                                 .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))
                                 .flattenAsObservable(l -> l))
-                        .flatMapMaybe(trade -> handleReceivedTrade(profile, trade)))
+                        .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade)))
                 .flatMapSingle(tradeStorage::write)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
@@ -268,20 +266,20 @@ public class TradeManager {
 
     public Single<String> getSelectedTradeAsJson() {
         return getLastSelectedTrade().autoConnect().firstOrError()
-                .map(t -> gson.toJson(t));
+                .map(gson::toJson);
     }
 
-    private Maybe<Trade> handleReceivedTrade(Profile profile, Trade receivedTrade) {
+    private Maybe<Trade> handleReceivedTrade(String profilePubKey, Trade receivedTrade) {
 
         Single<Trade> currentTrade = tradeStorage.read(receivedTrade.getEscrowAddress())
                 .toSingle(createdFromReceivedTrade(receivedTrade))
                 // add role
-                .map(ct -> ct.withRole(profile.getPubKey()))
+                .map(ct -> ct.withRole(profilePubKey))
                 // add trade tx
                 .flatMap(this::updateTradeTx);
 
         Single<Trade> updatedReceivedTrade = Single.just(receivedTrade)
-                .map(rt -> rt.withRole(profile.getPubKey()))
+                .map(rt -> rt.withRole(profilePubKey))
                 // add trade tx
                 .flatMap(this::updateTradeTx)
                 // add status
