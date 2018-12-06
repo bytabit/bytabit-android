@@ -2,7 +2,7 @@ package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.offer.manager.OfferManager;
-import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.offer.model.Offer;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -25,7 +25,7 @@ public class OffersPresenter {
     View offersView;
 
     @FXML
-    CharmListView<SellOffer, String> offersListView;
+    CharmListView<Offer, String> offersListView;
 
     FloatingActionButton addOfferButton = new FloatingActionButton();
 
@@ -35,9 +35,9 @@ public class OffersPresenter {
 
         addOfferButton.showOn(offersView);
 
-        offersListView.setCellFactory(view -> new CharmListCell<SellOffer>() {
+        offersListView.setCellFactory(view -> new CharmListCell<Offer>() {
             @Override
-            public void updateItem(SellOffer o, boolean empty) {
+            public void updateItem(Offer o, boolean empty) {
                 super.updateItem(o, empty);
                 if (o != null && !empty) {
                     ListTile tile = new ListTile();

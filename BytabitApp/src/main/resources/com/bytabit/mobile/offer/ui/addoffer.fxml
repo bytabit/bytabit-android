@@ -27,29 +27,31 @@
                                         vgrow="SOMETIMES"/>
                         <RowConstraints minHeight="10.0" prefHeight="30.0"
                                         vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
                         <RowConstraints vgrow="SOMETIMES"/>
                     </rowConstraints>
                     <children>
-                        <Label text="Currency"/>
-                        <Label text="Payment Method" GridPane.rowIndex="1"/>
+                        <Label text="Currency" GridPane.rowIndex="1"/>
+                        <Label text="Payment Method" GridPane.rowIndex="2"/>
                         <ChoiceBox fx:id="currencyChoiceBox" maxWidth="-Infinity"
-                                   GridPane.columnIndex="1"/>
-                        <ChoiceBox fx:id="paymentMethodChoiceBox" maxWidth="-Infinity"
                                    GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <ChoiceBox fx:id="paymentMethodChoiceBox" maxWidth="-Infinity"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="2"/>
                         <Label focusTraversable="false" text="Min Trade Amt"
-                               GridPane.rowIndex="2"/>
-                        <Label focusTraversable="false" text="Max Trade Amt"
                                GridPane.rowIndex="3"/>
-                        <Label focusTraversable="false" text="Price per BTC"
+                        <Label focusTraversable="false" text="Max Trade Amt"
                                GridPane.rowIndex="4"/>
+                        <Label focusTraversable="false" text="Price per BTC"
+                               GridPane.rowIndex="5"/>
                         <Button fx:id="addOfferButton" mnemonicParsing="false" text="ADD"
-                                GridPane.columnIndex="1" GridPane.rowIndex="5">
+                                GridPane.columnIndex="1" GridPane.rowIndex="6">
                             <GridPane.margin>
                                 <Insets top="10.0"/>
                             </GridPane.margin>
                         </Button>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="2">
+                              GridPane.columnIndex="1" GridPane.rowIndex="3">
                             <children>
                                 <TextField fx:id="minTradeAmtTextField"
                                            maxHeight="-Infinity"/>
@@ -61,7 +63,7 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="3">
+                              GridPane.columnIndex="1" GridPane.rowIndex="4">
                             <children>
                                 <TextField fx:id="maxTradeAmtTextField"
                                            maxHeight="-Infinity"/>
@@ -73,7 +75,7 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" prefHeight="100.0" prefWidth="200.0"
-                              GridPane.columnIndex="1" GridPane.rowIndex="4">
+                              GridPane.columnIndex="1" GridPane.rowIndex="5">
                             <children>
                                 <TextField fx:id="btcPriceTextField"
                                            maxHeight="-Infinity"/>
@@ -84,6 +86,9 @@
                                 </Label>
                             </children>
                         </HBox>
+                        <ChoiceBox fx:id="offerTypeChoiceBox" maxWidth="-Infinity"
+                                   GridPane.columnIndex="1"/>
+                        <Label text="Type"/>
                     </children>
                     <opaqueInsets>
                         <Insets top="10.0"/>

@@ -1,6 +1,6 @@
 package com.bytabit.mobile.trade.model;
 
-import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.offer.model.Offer;
 import lombok.*;
 
 @NoArgsConstructor
@@ -15,7 +15,7 @@ public class TradeResource {
     private String escrowAddress;
 
     // Sell Offer
-    private SellOffer sellOffer;
+    private Offer sellOffer;
 
     // Buy Request
     private BuyRequest buyRequest;

@@ -55,7 +55,7 @@ public class TradeServiceResource {
         return TradeServiceResource.builder()
                 .escrowAddress(t.getEscrowAddress())
                 .version(t.getVersion())
-                .sellerProfilePubKey(t.getSellOffer().getSellerProfilePubKey())
+                .sellerProfilePubKey(t.getSellOffer().getTraderProfilePubKey())
                 .buyerProfilePubKey(t.getBuyRequest().getBuyerProfilePubKey())
                 .arbitratorProfilePubKey(t.getSellOffer().getArbitratorProfilePubKey())
                 .trade(TradeResource.fromTrade(t))

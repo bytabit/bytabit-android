@@ -1,7 +1,7 @@
 package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.common.LocalDateTimeConverter;
-import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeManagerException;
@@ -143,7 +143,7 @@ public class TradeManager {
                 .subscribe(updatedTradeSubject::onNext);
     }
 
-    public Maybe<Trade> buyerCreateTrade(SellOffer sellOffer, BigDecimal btcAmount) {
+    public Maybe<Trade> buyerCreateTrade(Offer sellOffer, BigDecimal btcAmount) {
 
         return buyerProtocol.createTrade(sellOffer, btcAmount)
                 .flatMapSingleElement(tradeStorage::write)

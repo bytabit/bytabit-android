@@ -3,7 +3,7 @@ package com.bytabit.mobile.offer.ui;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.offer.manager.OfferManager;
-import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.down.Platform;
 import com.gluonhq.charm.down.Services;
@@ -129,7 +129,7 @@ public class OfferDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .zipWith(walletManager.getProfilePubKeyBase58().toObservable(), (offer, profilePubKey) -> {
-                    if (profilePubKey.equals(offer.getSellerProfilePubKey())) {
+                    if (profilePubKey.equals(offer.getTraderProfilePubKey())) {
                         // my offer
                         buyGridPane.setVisible(false);
                         removeOfferButton.setVisible(true);
@@ -164,7 +164,7 @@ public class OfferDetailsPresenter {
         }
     }
 
-    private void showOffer(SellOffer sellOffer) {
+    private void showOffer(Offer sellOffer) {
 
         paymentMethodLabel.setText(sellOffer.getPaymentMethod().displayName());
 

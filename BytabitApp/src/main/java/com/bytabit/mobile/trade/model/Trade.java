@@ -1,6 +1,6 @@
 package com.bytabit.mobile.trade.model;
 
-import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
@@ -56,7 +56,7 @@ public class Trade {
 
     private final ZonedDateTime createdTimestamp;
 
-    private final SellOffer sellOffer;
+    private final Offer sellOffer;
 
     private final BuyRequest buyRequest;
 
@@ -94,7 +94,7 @@ public class Trade {
     public String getSellerProfilePubKey() {
 
         if (hasSellOffer()) {
-            return sellOffer.getSellerProfilePubKey();
+            return sellOffer.getTraderProfilePubKey();
         } else {
             return null;
         }
@@ -103,7 +103,7 @@ public class Trade {
     public String getSellerEscrowPubKey() {
 
         if (hasSellOffer()) {
-            return sellOffer.getSellerEscrowPubKey();
+            return sellOffer.getTraderEscrowPubKey();
         } else {
             return null;
         }

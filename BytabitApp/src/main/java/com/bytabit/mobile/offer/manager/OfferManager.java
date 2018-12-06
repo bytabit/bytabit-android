@@ -2,7 +2,7 @@ package com.bytabit.mobile.offer.manager;
 
 import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.common.LocalDateTimeConverter;
-import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.trade.manager.TradeManager;
@@ -32,19 +32,19 @@ public class OfferManager {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final PublishSubject<SellOffer> selectedOfferSubject;
+    private final PublishSubject<Offer> selectedOfferSubject;
 
-    private final Observable<SellOffer> selectedOffer;
+    private final Observable<Offer> selectedOffer;
 
-    private final ConnectableObservable<SellOffer> lastSelectedOffer;
+    private final ConnectableObservable<Offer> lastSelectedOffer;
 
-    private final PublishSubject<SellOffer> createdOffer;
+    private final PublishSubject<Offer> createdOffer;
 
-    private final PublishSubject<SellOffer> removedOffer;
+    private final PublishSubject<Offer> removedOffer;
 
-    private final SellOfferService sellOfferService;
+    private final OfferService sellOfferService;
 
-    private Observable<List<SellOffer>> offers;
+    private Observable<List<Offer>> offers;
 
     private final Gson gson;
 
@@ -64,7 +64,7 @@ public class OfferManager {
                 .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
                 .create();
 
-        sellOfferService = new SellOfferService();
+        sellOfferService = new OfferService();
 
         selectedOfferSubject = PublishSubject.create();
 
@@ -84,23 +84,24 @@ public class OfferManager {
                 .flatMap(tick -> getLoadedOffers());
     }
 
-    public Observable<List<SellOffer>> getLoadedOffers() {
+    public Observable<List<Offer>> getLoadedOffers() {
         return sellOfferService.getAll().retryWhen(errors ->
                 errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
                 .toObservable();
     }
 
-    public Observable<List<SellOffer>> getUpdatedOffers() {
+    public Observable<List<Offer>> getUpdatedOffers() {
         return offers.share();
     }
 
-    public void createOffer(CurrencyCode currencyCode, PaymentMethod paymentMethod,
+    public void createOffer(Offer.OfferType offerType, CurrencyCode currencyCode, PaymentMethod paymentMethod,
                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
         Maybe.zip(walletManager.getProfilePubKeyBase58(), walletManager.getEscrowPubKeyBase58(), (ppk, epk) ->
-                SellOffer.builder()
-                        .sellerProfilePubKey(ppk)
-                        .sellerEscrowPubKey(epk)
+                Offer.builder()
+                        .offerType(offerType)
+                        .traderProfilePubKey(ppk)
+                        .traderEscrowPubKey(epk)
                         .arbitratorProfilePubKey(arbitratorManager.getArbitrator().getPubkey())
                         .currencyCode(currencyCode)
                         .paymentMethod(paymentMethod)
@@ -114,33 +115,33 @@ public class OfferManager {
     }
 
     public void deleteOffer() {
-        selectedOffer.map(SellOffer::getSellerEscrowPubKey)
+        selectedOffer.map(Offer::getTraderEscrowPubKey)
                 .flatMapSingle(sellOfferService::delete)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(removedOffer::onNext);
     }
 
-    public void setSelectedOffer(SellOffer sellOffer) {
+    public void setSelectedOffer(Offer sellOffer) {
         selectedOfferSubject.onNext(sellOffer);
     }
 
-    public Observable<SellOffer> getSelectedOffer() {
+    public Observable<Offer> getSelectedOffer() {
         return selectedOffer
                 .doOnNext(sellOffer -> log.debug("Selected: {}", sellOffer));
     }
 
-    public ConnectableObservable<SellOffer> getLastSelectedOffer() {
+    public ConnectableObservable<Offer> getLastSelectedOffer() {
         return lastSelectedOffer;
     }
 
-    public Observable<SellOffer> getCreatedOffer() {
+    public Observable<Offer> getCreatedOffer() {
         return createdOffer
                 .doOnNext(sellOffer -> log.debug("Created: {}", sellOffer))
                 .share();
     }
 
-    public Observable<SellOffer> getRemovedOffer() {
+    public Observable<Offer> getRemovedOffer() {
         return removedOffer
                 .doOnNext(sellOffer -> log.debug("Removed: {}", sellOffer))
                 .share();

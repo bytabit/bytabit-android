@@ -1,6 +1,6 @@
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.offer.model.SellOffer;
+import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.trade.model.BuyRequest;
 import com.bytabit.mobile.trade.model.CancelCompleted;
 import com.bytabit.mobile.trade.model.PayoutRequest;
@@ -19,7 +19,7 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 1.B: create trade, post created trade
-    Maybe<Trade> createTrade(SellOffer sellOffer, BigDecimal buyBtcAmount) {
+    Maybe<Trade> createTrade(Offer sellOffer, BigDecimal buyBtcAmount) {
 
         return Maybe.zip(walletManager.getEscrowPubKeyBase58(),
                 walletManager.getProfilePubKeyBase58(),
@@ -28,7 +28,7 @@ public class BuyerProtocol extends TradeProtocol {
                         Trade.builder()
                                 .role(Trade.Role.BUYER)
                                 .status(Trade.Status.CREATED)
-                                .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getSellerEscrowPubKey(), buyerEscrowPubKey))
+                                .escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getTraderEscrowPubKey(), buyerEscrowPubKey))
                                 .createdTimestamp(ZonedDateTime.now())
                                 .sellOffer(sellOffer)
                                 .buyRequest(new BuyRequest(buyerEscrowPubKey, buyBtcAmount,

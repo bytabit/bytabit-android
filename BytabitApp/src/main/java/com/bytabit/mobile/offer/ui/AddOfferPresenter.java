@@ -2,6 +2,7 @@ package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.offer.manager.OfferManager;
+import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
@@ -25,6 +26,9 @@ import javafx.scene.control.TextField;
 import javax.inject.Inject;
 import java.math.BigDecimal;
 
+import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
+import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
+
 public class AddOfferPresenter {
 
     @Inject
@@ -38,6 +42,9 @@ public class AddOfferPresenter {
 
     @FXML
     private View addOfferView;
+
+    @FXML
+    private ChoiceBox<Offer.OfferType> offerTypeChoiceBox;
 
     @FXML
     private ChoiceBox<CurrencyCode> currencyChoiceBox;
@@ -81,6 +88,9 @@ public class AddOfferPresenter {
 
     private void setupViewComponents() {
 
+        offerTypeChoiceBox.getItems().setAll(BUY, SELL);
+        offerTypeChoiceBox.getSelectionModel().clearAndSelect(0);
+        
         paymentMethodChoiceBox.setConverter(new PaymentMethodStringConverter());
 
         minTradeAmtTextField.setTextFormatter(new DecimalTextFieldFormatter());
@@ -106,13 +116,13 @@ public class AddOfferPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(sellOffer -> {
+                    Offer.OfferType offerType = offerTypeChoiceBox.selectionModelProperty().getValue().getSelectedItem();
                     CurrencyCode currencyCode = currencyChoiceBox.selectionModelProperty().getValue().getSelectedItem();
                     PaymentMethod paymentMethod = paymentMethodChoiceBox.selectionModelProperty().getValue().getSelectedItem();
-
                     BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
                     BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
                     BigDecimal price = new BigDecimal(btcPriceTextField.getText());
-                    offerManager.createOffer(currencyCode, paymentMethod, minAmount, maxAmount, price);
+                    offerManager.createOffer(offerType, currencyCode, paymentMethod, minAmount, maxAmount, price);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
     }
@@ -191,7 +201,7 @@ public class AddOfferPresenter {
     private void setAppBar() {
         AppBar appBar = MobileApplication.getInstance().getAppBar();
         appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
-        appBar.setTitleText("Add Sell Offer");
+        appBar.setTitleText("Add Offer");
     }
 
     private void clearForm() {
