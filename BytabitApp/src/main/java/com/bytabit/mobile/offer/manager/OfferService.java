@@ -19,7 +19,7 @@ public class OfferService extends RetrofitService {
     }
 
     Single<Offer> put(Offer sellOffer) {
-        return offerServiceApi.put(sellOffer.getTraderEscrowPubKey(), sellOffer)
+        return offerServiceApi.put(sellOffer.getId(), sellOffer)
                 .doOnError(t -> log.error("put error: {}", t.getMessage()));
     }
 
@@ -28,9 +28,9 @@ public class OfferService extends RetrofitService {
                 .doOnError(t -> log.error("get error: {}", t.getMessage()));
     }
 
-    Single<Offer> delete(String sellerEscrowPubKey) {
+    Single<Offer> delete(String id) {
 
-        return offerServiceApi.delete(sellerEscrowPubKey)
+        return offerServiceApi.delete(id)
                 .doOnError(t -> log.error("delete error: {}", t.getMessage()));
     }
 }

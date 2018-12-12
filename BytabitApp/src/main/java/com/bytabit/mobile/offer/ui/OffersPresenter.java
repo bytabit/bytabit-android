@@ -41,9 +41,8 @@ public class OffersPresenter {
                 super.updateItem(o, empty);
                 if (o != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s %s per BTC via %s", o.getPrice().toPlainString(), o.getCurrencyCode().toString(), o.getPaymentMethod().displayName());
-                    String details = String.format("%s to %s %s",
-                            o.getMinAmount(), o.getMaxAmount(), o.getCurrencyCode());
+                    String amount = String.format("%s @ %s %s per BTC", o.getOfferType().toString(), o.getPrice().toPlainString(), o.getCurrencyCode().toString());
+                    String details = String.format("%s to %s %s via %s", o.getMinAmount(), o.getMaxAmount(), o.getCurrencyCode(), o.getPaymentMethod().displayName());
                     tile.textProperty().addAll(amount, details);
                     setText(null);
                     setGraphic(tile);
@@ -75,16 +74,16 @@ public class OffersPresenter {
 
         JavaFxObservable.changesOf(offersListView.selectedItemProperty())
                 .map(Change::getNewVal)
-                .subscribe(sellOffer -> {
+                .subscribe(offer -> {
                     MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
-                    offerManager.setSelectedOffer(sellOffer);
+                    offerManager.setSelectedOffer(offer);
                 });
 
         Observable.concat(offerManager.getLoadedOffers(), offerManager.getUpdatedOffers())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(sellOffers ->
-                        offersListView.itemsProperty().setAll(sellOffers)
+                .subscribe(offers ->
+                        offersListView.itemsProperty().setAll(offers)
                 );
 
         offerManager.getCreatedOffer()
@@ -97,8 +96,8 @@ public class OffersPresenter {
         offerManager.getRemovedOffer()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(sellOffer ->
-                        offersListView.itemsProperty().remove(sellOffer)
+                .subscribe(offer ->
+                        offersListView.itemsProperty().remove(offer)
                 );
     }
 

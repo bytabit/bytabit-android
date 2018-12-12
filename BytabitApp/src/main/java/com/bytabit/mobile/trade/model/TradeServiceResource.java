@@ -41,8 +41,8 @@ public class TradeServiceResource {
         return Trade.builder()
                 .escrowAddress(receivedTradeServiceResource.getEscrowAddress())
                 .version(receivedTradeServiceResource.getVersion())
-                .sellOffer(receivedTradeServiceResource.getTrade().getSellOffer())
-                .buyRequest(receivedTradeServiceResource.getTrade().getBuyRequest())
+                .offer(receivedTradeServiceResource.getTrade().getSellOffer())
+                .takeOfferRequest(receivedTradeServiceResource.getTrade().getBuyRequest())
                 .paymentRequest(receivedTradeServiceResource.getTrade().getPaymentRequest())
                 .payoutRequest(receivedTradeServiceResource.getTrade().getPayoutRequest())
                 .arbitrateRequest(receivedTradeServiceResource.getTrade().getArbitrateRequest())
@@ -55,9 +55,9 @@ public class TradeServiceResource {
         return TradeServiceResource.builder()
                 .escrowAddress(t.getEscrowAddress())
                 .version(t.getVersion())
-                .sellerProfilePubKey(t.getSellOffer().getTraderProfilePubKey())
-                .buyerProfilePubKey(t.getBuyRequest().getBuyerProfilePubKey())
-                .arbitratorProfilePubKey(t.getSellOffer().getArbitratorProfilePubKey())
+                .sellerProfilePubKey(t.getOffer().getMakerProfilePubKey())
+                .buyerProfilePubKey(t.getTakeOfferRequest().getTakerProfilePubKey())
+                .arbitratorProfilePubKey(t.getConfirmation().getArbitratorProfilePubKey())
                 .trade(TradeResource.fromTrade(t))
                 .build();
     }

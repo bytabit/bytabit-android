@@ -2,7 +2,6 @@ package com.bytabit.mobile.wallet.manager;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.bytabit.mobile.wallet.model.WalletKitConfig;
 import com.bytabit.mobile.wallet.model.WalletManagerException;
@@ -410,12 +409,14 @@ public class WalletManager {
         return ScriptBuilder.createP2SHOutputScript(redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey)).getToAddress(netParams);
     }
 
-    public String escrowAddress(String arbitratorProfilePubKey,
-                                String sellerEscrowPubKey,
-                                String buyerEscrowPubKey) {
-        ECKey apk = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKey));
-        ECKey spk = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKey));
-        ECKey bpk = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKey));
+    public String escrowAddress(String arbitratorProfilePubKeyBase58,
+                                String sellerEscrowPubKeyBase58,
+                                String buyerEscrowPubKeyBase58) {
+
+        ECKey apk = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKeyBase58));
+        ECKey spk = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKeyBase58));
+        ECKey bpk = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKeyBase58));
+
         return escrowAddress(apk, spk, bpk).toBase58();
     }
 
@@ -456,29 +457,40 @@ public class WalletManager {
         });
     }
 
-    public Maybe<String> getPayoutSignature(Trade fundedTrade) {
-        Address buyerPayoutAddress = Address.fromBase58(netParams, fundedTrade.getBuyerPayoutAddress());
-        return getPayoutSignature(fundedTrade, fundedTrade.getFundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
-    }
+    public Maybe<String> getPayoutSignature(BigDecimal btcAmount,
+                                            Transaction fundingTransaction,
+                                            String arbitratorProfilePubKeyBase58,
+                                            String sellerEscrowPubKeyBase58,
+                                            String buyerEscrowPubKeyBase58,
+                                            String payoutAddressBase58) {
 
-    public Maybe<String> getRefundSignature(Trade trade, Transaction
-            fundingTx, Address sellerRefundAddress) {
-        return getPayoutSignature(trade, fundingTx, sellerRefundAddress);
-    }
+        Coin payoutAmount = Coin.parseCoin(btcAmount.toPlainString());
+        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKeyBase58));
+        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKeyBase58));
+        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKeyBase58));
+        Address payoutAddress = Address.fromBase58(netParams, payoutAddressBase58);
 
-    private Maybe<String> getPayoutSignature(Trade trade, Transaction
-            fundingTx, Address payoutAddress) {
-        Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
-        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
-        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
-        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
-
-        Maybe<TransactionSignature> signature = getPayoutSignature(payoutAmount, fundingTx,
+        return getPayoutSignature(payoutAmount,
+                fundingTransaction,
                 arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
-                payoutAddress);
-
-        return signature.map(sig -> Base58.encode(sig.encodeToBitcoin()));
+                payoutAddress)
+                .map(TransactionSignature::encodeToBitcoin)
+                .map(Base58::encode);
     }
+
+//    private Maybe<String> getPayoutSignature(Trade trade, Transaction
+//            fundingTx, Address payoutAddress) {
+//        Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
+//        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
+//        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
+//        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
+//
+//        Maybe<TransactionSignature> signature = getPayoutSignature(payoutAmount, fundingTx,
+//                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
+//                payoutAddress);
+//
+//        return signature.map(sig -> Base58.encode(sig.encodeToBitcoin()));
+//    }
 
     private Maybe<TransactionSignature> getPayoutSignature(Coin payoutAmount,
                                                            Transaction fundingTx,
@@ -541,45 +553,66 @@ public class WalletManager {
     // TODO make sure trades always have funding tx with amount added when loaded
     // TODO handle InsufficientMoneyException
 
-    public Maybe<String> payoutEscrowToBuyer(Trade trade) {
+    public Maybe<String> payoutEscrowToBuyer(BigDecimal btcAmount,
+                                             Transaction fundingTransaction,
+                                             String arbitratorProfilePubKeyBase58,
+                                             String sellerEscrowPubKeyBase58,
+                                             String buyerEscrowPubKeyBase58,
+                                             String payoutAddressBase58,
+                                             String payoutTxSignatureBase58) {
 
-        Address buyerPayoutAddress = Address.fromBase58(netParams, trade.getBuyerPayoutAddress());
+        Coin payoutAmount = Coin.parseCoin(btcAmount.toPlainString());
+        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKeyBase58));
+        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKeyBase58));
+        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKeyBase58));
+        Address payoutAddress = Address.fromBase58(netParams, payoutAddressBase58);
 
-        Maybe<String> signature = getPayoutSignature(trade, trade.getFundingTransactionWithAmt().getTransaction(), buyerPayoutAddress);
-
-        Maybe<TransactionSignature> mySignature = signature.map(s -> TransactionSignature
-                .decodeFromBitcoin(Base58.decode(s), true, true));
+        Maybe<TransactionSignature> mySignature = getPayoutSignature(payoutAmount, fundingTransaction,
+                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
+                payoutAddress);
 
         Maybe<TransactionSignature> buyerSignature = Maybe.just(TransactionSignature
-                .decodeFromBitcoin(Base58.decode(trade.getPayoutTxSignature()), true, true));
+                .decodeFromBitcoin(Base58.decode(payoutTxSignatureBase58), true, true));
 
         Single<List<TransactionSignature>> signatures = mySignature.concatWith(buyerSignature).toList();
 
-        return signatures.flatMapMaybe(sl -> payoutEscrow(trade, buyerPayoutAddress, sl));
+        return signatures.flatMapMaybe(sl -> payoutEscrow(payoutAmount, fundingTransaction,
+                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
+                payoutAddress, sl).map(Sha256Hash::toString));
     }
 
-    public Maybe<String> refundEscrowToSeller(Trade trade) {
+    public Maybe<String> refundEscrowToSeller(BigDecimal btcAmount,
+                                              Transaction fundingTransaction,
+                                              String arbitratorProfilePubKeyBase58,
+                                              String sellerEscrowPubKeyBase58,
+                                              String buyerEscrowPubKeyBase58,
+                                              String refundAddressBase58,
+                                              String refundTxSignatureBase58,
+                                              boolean isArbitrator) {
 
-        Address sellerRefundAddress = Address.fromBase58(netParams, trade.getRefundAddress());
+        Coin payoutAmount = Coin.parseCoin(btcAmount.toPlainString());
+        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKeyBase58));
+        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKeyBase58));
+        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKeyBase58));
+        Address refundAddress = Address.fromBase58(netParams, refundAddressBase58);
 
-        Maybe<String> signature = getPayoutSignature(trade, trade.getFundingTransactionWithAmt().getTransaction(), sellerRefundAddress);
+        Maybe<TransactionSignature> mySignature = getPayoutSignature(payoutAmount, fundingTransaction,
+                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
+                refundAddress);
 
-        Maybe<TransactionSignature> mySignature = signature.map(s -> TransactionSignature
-                .decodeFromBitcoin(Base58.decode(s), true, true));
-
-        Maybe<TransactionSignature> sellerSignature = Maybe.just(TransactionSignature
-                .decodeFromBitcoin(Base58.decode(trade.getRefundTxSignature()), true, true));
+        Maybe<TransactionSignature> sellerRefundSignature = Maybe.just(TransactionSignature
+                .decodeFromBitcoin(Base58.decode(refundTxSignatureBase58), true, true));
 
         Single<List<TransactionSignature>> signatures;
-        if (trade.getRole().equals(Trade.Role.ARBITRATOR)) {
-            signatures = mySignature.concatWith(sellerSignature).toList();
-        } else if (trade.getRole().equals(Trade.Role.BUYER)) {
-            signatures = sellerSignature.concatWith(mySignature).toList();
+        if (isArbitrator) {
+            signatures = mySignature.concatWith(sellerRefundSignature).toList();
         } else {
-            throw new WalletManagerException("Only arbitrator or buyer roles can refund escrow to seller.");
+            signatures = sellerRefundSignature.concatWith(mySignature).toList();
         }
 
-        return signatures.flatMapMaybe(sl -> payoutEscrow(trade, sellerRefundAddress, sl));
+        return signatures.flatMapMaybe(sl -> payoutEscrow(payoutAmount, fundingTransaction,
+                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
+                refundAddress, sl).map(Sha256Hash::toString));
     }
 
     public Observable<Boolean> getWalletsRunning() {
@@ -611,18 +644,15 @@ public class WalletManager {
         return escrowWalletConfig;
     }
 
-    private Maybe<String> payoutEscrow(Trade trade, Address payoutAddress,
-                                       List<TransactionSignature> signatures) {
-
-        Transaction fundingTx = trade.getFundingTransactionWithAmt().getTransaction();
+    private Maybe<Sha256Hash> payoutEscrow(Coin payoutAmount, Transaction fundingTx,
+                                           ECKey arbitratorProfilePubKey,
+                                           ECKey sellerEscrowPubKey,
+                                           ECKey buyerEscrowPubKey,
+                                           Address payoutAddress,
+                                           List<TransactionSignature> signatures) {
 
         Transaction payoutTx = new Transaction(netParams);
         payoutTx.setPurpose(Transaction.Purpose.ASSURANCE_CONTRACT_CLAIM);
-        Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
-
-        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
-        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
-        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
 
         Script redeemScript = redeemScript(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
         Address escrowAddress = escrowAddress(arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey);
@@ -651,12 +681,15 @@ public class WalletManager {
         for (TransactionInput input : payoutTx.getInputs()) {
             log.debug("Validating input for payoutTx: {}", input);
             try {
+                if (input.getConnectedOutput() == null) {
+                    log.error("Null connectedOutput for payoutTx");
+                    throw new WalletManagerException("Null connectedOutput for payoutTx");
+                }
                 input.verify(input.getConnectedOutput());
                 log.debug("Input valid for payoutTx: {}", input);
             } catch (VerificationException ve) {
                 log.error("Input not valid for payoutTx, {}", ve.getMessage());
-            } catch (NullPointerException npe) {
-                log.error("Null connectedOutput for payoutTx");
+                throw new WalletManagerException(String.format("Input not valid for payoutTx, %s", ve.getMessage()));
             }
         }
 
@@ -664,7 +697,7 @@ public class WalletManager {
             Context.propagate(btcContext);
             ew.commitTx(payoutTx);
             pg.broadcastTransaction(payoutTx);
-            return payoutTx.getHash().toString();
+            return payoutTx.getHash();
         });
     }
 

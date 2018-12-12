@@ -23,11 +23,16 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.GridPane;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.math.MathContext;
 
+import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
+import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
+
+@Slf4j
 public class OfferDetailsPresenter {
 
     @Inject
@@ -41,6 +46,9 @@ public class OfferDetailsPresenter {
 
     @FXML
     private Button removeOfferButton;
+
+    @FXML
+    private Label typeLabel;
 
     @FXML
     private Label minTradeAmtLabel;
@@ -70,7 +78,7 @@ public class OfferDetailsPresenter {
     private GridPane buyGridPane;
 
     @FXML
-    private Button buyBtcButton;
+    private Button tradeBtcButton;
 
     @FXML
     private TextField buyCurrencyAmtTextField;
@@ -105,7 +113,7 @@ public class OfferDetailsPresenter {
                 });
 
 
-        JavaFxObservable.actionEventsOf(buyBtcButton)
+        JavaFxObservable.actionEventsOf(tradeBtcButton)
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(action -> {
@@ -125,21 +133,22 @@ public class OfferDetailsPresenter {
                     buyBtcAmtTextField.setText(btcAmount.toPlainString());
                 });
 
-        offerManager.getLastSelectedOffer().autoConnect()
+        offerManager.getSelectedOffer()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .zipWith(walletManager.getProfilePubKeyBase58().toObservable(), (offer, profilePubKey) -> {
-                    if (profilePubKey.equals(offer.getTraderProfilePubKey())) {
-                        // my offer
-                        buyGridPane.setVisible(false);
-                        removeOfferButton.setVisible(true);
-                    } else {
-                        // not my offer
-                        buyGridPane.setVisible(true);
-                        removeOfferButton.setVisible(false);
-                    }
-                    return offer;
-                })
+                .doOnNext(offer ->
+                        walletManager.getProfilePubKeyBase58()
+                                .subscribe(profilePubKey -> {
+                                    if (profilePubKey.equals(offer.getMakerProfilePubKey())) {
+                                        // my offer
+                                        buyGridPane.setVisible(false);
+                                        removeOfferButton.setVisible(true);
+                                    } else {
+                                        // not my offer
+                                        buyGridPane.setVisible(true);
+                                        removeOfferButton.setVisible(false);
+                                    }
+                                }))
                 .subscribe(this::showOffer);
 
     }
@@ -164,18 +173,19 @@ public class OfferDetailsPresenter {
         }
     }
 
-    private void showOffer(Offer sellOffer) {
+    private void showOffer(Offer offer) {
 
-        paymentMethodLabel.setText(sellOffer.getPaymentMethod().displayName());
-
-        String currencyCode = sellOffer.getCurrencyCode().toString();
+        paymentMethodLabel.setText(offer.getPaymentMethod().displayName());
+        typeLabel.setText(offer.getOfferType().toString());
+        tradeBtcButton.setText(SELL.equals(offer.getOfferType()) ? BUY.toString() : SELL.toString());
+        String currencyCode = offer.getCurrencyCode().toString();
         currencyLabel.setText(currencyCode);
         currencyAmtLabel.setText(currencyCode);
-        minTradeAmtLabel.setText(sellOffer.getMinAmount().toPlainString());
+        minTradeAmtLabel.setText(offer.getMinAmount().toPlainString());
         minTradeAmtCurrencyLabel.setText(currencyCode);
-        maxTradeAmtLabel.setText(sellOffer.getMinAmount().toPlainString());
+        maxTradeAmtLabel.setText(offer.getMinAmount().toPlainString());
         maxTradeAmtCurrencyLabel.setText(currencyCode);
-        priceLabel.setText(sellOffer.getPrice().toPlainString());
+        priceLabel.setText(offer.getPrice().toPlainString());
         priceCurrencyLabel.setText(currencyCode);
     }
 }

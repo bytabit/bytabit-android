@@ -6,7 +6,6 @@ import com.bytabit.mobile.trade.model.PaymentRequest;
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import io.reactivex.Maybe;
-import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Transaction;
 
 public class SellerProtocol extends TradeProtocol {
@@ -41,18 +40,23 @@ public class SellerProtocol extends TradeProtocol {
                 .flatMap(ea -> walletManager.fundEscrow(ea, trade.getBtcAmount())).cache();
 
         // 2. create refund tx address and signature
-        Maybe<Address> refundTxAddress = walletManager.getDepositAddress().cache();
+        Maybe<String> refundAddressBase58 = walletManager.getDepositAddressBase58().cache();
 
         Maybe<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
                 .singleElement().cache();
 
-        Maybe<String> refundTxSignature = Maybe.zip(fundingTx, refundTxAddress, (ftx, ra) ->
-                walletManager.getRefundSignature(trade, ftx, ra)).flatMap(rs -> rs);
+        Maybe<String> refundTxSignature = Maybe.zip(fundingTx, refundAddressBase58, (ftx, refundAddress) ->
+                walletManager.getPayoutSignature(trade.getBtcAmount(), ftx,
+                        trade.getArbitratorProfilePubKey(),
+                        trade.getSellerEscrowPubKey(),
+                        trade.getBuyerEscrowPubKey(),
+                        refundAddress))
+                .flatMap(rs -> rs);
 
         // 3. create payment request
-        Maybe<PaymentRequest> paymentRequest = Maybe.zip(fundingTx, refundTxAddress, paymentDetails, refundTxSignature,
-                (ftx, ra, pd, rs) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra.toBase58(), rs));
+        Maybe<PaymentRequest> paymentRequest = Maybe.zip(fundingTx, refundAddressBase58, paymentDetails, refundTxSignature,
+                (ftx, ra, pd, rs) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra, rs));
 
         return paymentRequest.map(pr -> trade.copyBuilder().paymentRequest(pr).build().withStatus());
     }
@@ -87,7 +91,13 @@ public class SellerProtocol extends TradeProtocol {
     Maybe<Trade> confirmPaymentReceived(Trade trade) {
 
         // 1. sign and broadcast payout tx
-        Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade);
+        Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade.getBtcAmount(),
+                trade.getFundingTransactionWithAmt().getTransaction(),
+                trade.getArbitratorProfilePubKey(),
+                trade.getSellerEscrowPubKey(),
+                trade.getBuyerEscrowPubKey(),
+                trade.getPayoutAddress(),
+                trade.getPayoutTxSignature());
 
         // 2. confirm payout tx and create payout completed
         Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT));

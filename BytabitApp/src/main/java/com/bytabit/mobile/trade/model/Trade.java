@@ -5,11 +5,15 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import lombok.*;
+import org.bitcoinj.core.Base58;
+import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZonedDateTime;
 
+import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
+import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
@@ -22,7 +26,7 @@ public class Trade {
 
     public enum Status {
 
-        CREATED, FUNDING, FUNDED, PAID, COMPLETING, // happy path
+        CREATED, CONFIRMED, FUNDING, FUNDED, PAID, COMPLETING, // happy path
         CANCELING, ARBITRATING,
         COMPLETED, CANCELED
     }
@@ -42,6 +46,10 @@ public class Trade {
         }
     }
 
+    @Getter(AccessLevel.NONE)
+    @EqualsAndHashCode.Include
+    private String id;
+
     @EqualsAndHashCode.Exclude
     @Builder.Default
     private final Long version = 0L;
@@ -56,9 +64,13 @@ public class Trade {
 
     private final ZonedDateTime createdTimestamp;
 
-    private final Offer sellOffer;
+    @NonNull
+    private final Offer offer;
 
-    private final BuyRequest buyRequest;
+    @NonNull
+    private final TakeOfferRequest takeOfferRequest;
+
+    private final Confirmation confirmation;
 
     @EqualsAndHashCode.Exclude
     private TransactionWithAmt fundingTransactionWithAmt;
@@ -76,16 +88,121 @@ public class Trade {
 
     private PayoutCompleted payoutCompleted;
 
-    // Sell Offer
+    // Use Hex encoded Sha256 Hash of Offer.id and TakeOfferRequest properties
+    public String getId() {
+        if (id == null && hasOffer() && hasTakeOfferRequest()) {
+            String idString = String.format("|%s|%s|%s|%s|%s|", offer.getId(),
+                    takeOfferRequest.getTakerProfilePubKey(),
+                    takeOfferRequest.getTakerEscrowPubKey(),
+                    takeOfferRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP),
+                    takeOfferRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
 
-    public boolean hasSellOffer() {
-        return sellOffer != null;
+            id = Base58.encode(Sha256Hash.of(idString.getBytes()).getBytes());
+        }
+        return id;
+    }
+
+    // Offer
+
+    public boolean hasOffer() {
+        return offer != null;
+    }
+
+    public String getMakerProfilePubKey() {
+        if (hasOffer()) {
+            return offer.getMakerProfilePubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public CurrencyCode getCurrencyCode() {
+        if (hasOffer()) {
+            return offer.getCurrencyCode();
+        } else {
+            return null;
+        }
+    }
+
+    public PaymentMethod getPaymentMethod() {
+        if (hasOffer()) {
+            return offer.getPaymentMethod();
+        } else {
+            return null;
+        }
+    }
+
+    public BigDecimal getPrice() {
+        if (hasOffer()) {
+            return offer.getPrice().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
+        } else {
+            return null;
+        }
+    }
+
+    // Take Offer Request
+
+    public boolean hasTakeOfferRequest() {
+        return takeOfferRequest != null;
+    }
+
+    public String getTakerProfilePubKey() {
+        if (hasTakeOfferRequest()) {
+            return takeOfferRequest.getTakerProfilePubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public String getTakerEscrowPubKey() {
+        if (hasTakeOfferRequest()) {
+            return takeOfferRequest.getTakerEscrowPubKey();
+        } else {
+            return null;
+        }
+    }
+
+    public BigDecimal getBtcAmount() {
+        if (hasTakeOfferRequest()) {
+            return takeOfferRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP);
+        } else {
+            return null;
+        }
+    }
+
+    public String getPayoutAddress() {
+        if (hasPayoutRequest()) {
+            return payoutRequest.getPayoutAddress();
+        } else {
+            return null;
+        }
+    }
+
+    public BigDecimal getPaymentAmount() {
+        if (hasOffer() && hasTakeOfferRequest()) {
+            return takeOfferRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
+        } else {
+            return null;
+        }
+    }
+
+    // Confirmation
+
+    public boolean hasConfirmation() {
+        return confirmation != null;
+    }
+
+    public String getMakerEscrowPubKey() {
+        if (hasConfirmation()) {
+            return confirmation.getMakerEscrowPubKey();
+        } else {
+            return null;
+        }
     }
 
     public String getArbitratorProfilePubKey() {
-
-        if (hasSellOffer()) {
-            return sellOffer.getArbitratorProfilePubKey();
+        if (hasConfirmation()) {
+            return confirmation.getArbitratorProfilePubKey();
         } else {
             return null;
         }
@@ -93,91 +210,37 @@ public class Trade {
 
     public String getSellerProfilePubKey() {
 
-        if (hasSellOffer()) {
-            return sellOffer.getTraderProfilePubKey();
+        return getProfilePubKey(SELL);
+    }
+
+    public String getBuyerProfilePubKey() {
+
+        return getProfilePubKey(BUY);
+    }
+
+    private String getProfilePubKey(Offer.OfferType offerType) {
+        if (offer.getOfferType().equals(offerType)) {
+            return getMakerProfilePubKey();
         } else {
-            return null;
+            return getTakerProfilePubKey();
         }
     }
 
     public String getSellerEscrowPubKey() {
 
-        if (hasSellOffer()) {
-            return sellOffer.getTraderEscrowPubKey();
-        } else {
-            return null;
-        }
-    }
-
-    public CurrencyCode getCurrencyCode() {
-        if (hasSellOffer()) {
-            return sellOffer.getCurrencyCode();
-        } else {
-            return null;
-        }
-    }
-
-    public PaymentMethod getPaymentMethod() {
-        if (hasSellOffer()) {
-            return sellOffer.getPaymentMethod();
-        } else {
-            return null;
-        }
-    }
-
-    public BigDecimal getPrice() {
-        if (hasSellOffer()) {
-            return sellOffer.getPrice().setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
-        } else {
-            return null;
-        }
-    }
-
-    public BigDecimal getPaymentAmount() {
-        if (hasSellOffer() && hasBuyRequest()) {
-            return buyRequest.getPaymentAmount().setScale(sellOffer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
-        } else {
-            return null;
-        }
-    }
-
-    // Buy Request
-
-    public boolean hasBuyRequest() {
-        return buyRequest != null;
-    }
-
-    public String getBuyerProfilePubKey() {
-
-        if (hasBuyRequest()) {
-            return buyRequest.getBuyerProfilePubKey();
-        } else {
-            return null;
-        }
+        return getEscrowPubKey(SELL);
     }
 
     public String getBuyerEscrowPubKey() {
 
-        if (hasBuyRequest()) {
-            return buyRequest.getBuyerEscrowPubKey();
-        } else {
-            return null;
-        }
+        return getEscrowPubKey(BUY);
     }
 
-    public BigDecimal getBtcAmount() {
-        if (hasBuyRequest()) {
-            return buyRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP);
+    private String getEscrowPubKey(Offer.OfferType offerType) {
+        if (offer.getOfferType().equals(offerType)) {
+            return getMakerEscrowPubKey();
         } else {
-            return null;
-        }
-    }
-
-    public String getBuyerPayoutAddress() {
-        if (hasBuyRequest()) {
-            return buyRequest.getBuyerPayoutAddress();
-        } else {
-            return null;
+            return getTakerEscrowPubKey();
         }
     }
 
@@ -294,8 +357,8 @@ public class Trade {
                 .role(this.role)
                 .escrowAddress(this.escrowAddress)
                 .createdTimestamp(this.createdTimestamp)
-                .sellOffer(this.sellOffer)
-                .buyRequest(this.buyRequest)
+                .offer(this.offer)
+                .takeOfferRequest(this.takeOfferRequest)
                 .fundingTransactionWithAmt(this.fundingTransactionWithAmt)
                 .paymentRequest(this.paymentRequest)
                 .payoutRequest(this.payoutRequest)
@@ -309,7 +372,7 @@ public class Trade {
 
         Trade tradeWithRole;
 
-        if (getSellerProfilePubKey().equals(profilePubKey)) {
+        if (getMakerProfilePubKey().equals(profilePubKey)) {
             tradeWithRole = this.copyBuilder().role(SELLER).build();
         } else if (getBuyerProfilePubKey().equals(profilePubKey)) {
             tradeWithRole = this.copyBuilder().role(BUYER).build();
@@ -324,10 +387,13 @@ public class Trade {
     public Trade withStatus() {
 
         Trade.Status newStatus = null;
-        if (this.getEscrowAddress() != null && hasSellOffer() && hasBuyRequest()) {
+        if (hasOffer() && hasTakeOfferRequest()) {
             newStatus = CREATED;
         }
-        if (newStatus == CREATED && hasPaymentRequest()) {
+        if (newStatus == CREATED && hasConfirmation()) {
+            newStatus = CONFIRMED;
+        }
+        if (newStatus == CONFIRMED && hasPaymentRequest()) {
             newStatus = FUNDING;
         }
         if (newStatus == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {

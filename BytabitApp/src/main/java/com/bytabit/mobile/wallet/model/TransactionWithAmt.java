@@ -1,9 +1,6 @@
 package com.bytabit.mobile.wallet.model;
 
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 
@@ -40,7 +37,9 @@ public class TransactionWithAmt {
     private String escrowAddress;
 
     @Builder
-    TransactionWithAmt(Transaction tx, Coin transactionAmt, String outputAddress, String inputTxHash, Coin walletBalance, String escrowAddress) {
+    TransactionWithAmt(@NonNull Transaction tx, @NonNull Coin transactionAmt,
+                       String outputAddress, String inputTxHash,
+                       @NonNull Coin walletBalance, @NonNull String escrowAddress) {
 
         this.transaction = tx;
         this.hash = tx.getHashAsString();

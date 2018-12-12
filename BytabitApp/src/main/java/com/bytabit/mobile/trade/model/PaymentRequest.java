@@ -11,8 +11,15 @@ import lombok.*;
 @ToString
 public class PaymentRequest {
 
+    @NonNull
     private String fundingTxHash;
+
+    @NonNull
     private String paymentDetails;
+
+    @NonNull
     private String refundAddress;
+
+    @NonNull
     private String refundTxSignature;
 }

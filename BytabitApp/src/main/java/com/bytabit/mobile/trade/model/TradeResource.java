@@ -18,7 +18,7 @@ public class TradeResource {
     private Offer sellOffer;
 
     // Buy Request
-    private BuyRequest buyRequest;
+    private TakeOfferRequest buyRequest;
 
     // Funding, Payment Request
     private PaymentRequest paymentRequest;
@@ -38,8 +38,8 @@ public class TradeResource {
     public static Trade toTrade(TradeResource tr) {
         return Trade.builder()
                 .escrowAddress(tr.getEscrowAddress())
-                .sellOffer(tr.getSellOffer())
-                .buyRequest(tr.getBuyRequest())
+                .offer(tr.getSellOffer())
+                .takeOfferRequest(tr.getBuyRequest())
                 .paymentRequest(tr.getPaymentRequest())
                 .payoutRequest(tr.getPayoutRequest())
                 .arbitrateRequest(tr.getArbitrateRequest())
@@ -51,8 +51,8 @@ public class TradeResource {
     public static TradeResource fromTrade(Trade t) {
         return TradeResource.builder()
                 .escrowAddress(t.getEscrowAddress())
-                .sellOffer(t.getSellOffer())
-                .buyRequest(t.getBuyRequest())
+                .sellOffer(t.getOffer())
+                .buyRequest(t.getTakeOfferRequest())
                 .paymentRequest(t.getPaymentRequest())
                 .payoutRequest(t.getPayoutRequest())
                 .arbitrateRequest(t.getArbitrateRequest())

@@ -15,6 +15,9 @@ public class PayoutCompleted {
         SELLER_BUYER_PAYOUT, ARBITRATOR_SELLER_REFUND, ARBITRATOR_BUYER_PAYOUT, BUYER_SELLER_REFUND
     }
 
+    @NonNull
     private String payoutTxHash;
+
+    @NonNull
     private Reason reason;
 }

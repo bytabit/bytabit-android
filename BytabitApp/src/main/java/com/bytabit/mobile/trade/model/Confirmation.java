@@ -9,15 +9,11 @@ import lombok.*;
 @Builder
 @EqualsAndHashCode
 @ToString
-public class CancelCompleted {
-
-    public enum Reason {
-        CANCEL_CREATED, CANCEL_FUNDED
-    }
+public class Confirmation {
 
     @NonNull
-    private String payoutTxHash;
+    private String makerEscrowPubKey;
 
     @NonNull
-    private Reason reason;
+    private String arbitratorProfilePubKey;
 }

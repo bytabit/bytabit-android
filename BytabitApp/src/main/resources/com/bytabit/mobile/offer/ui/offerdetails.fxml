@@ -6,7 +6,7 @@
 <?import javafx.scene.layout.*?>
 <View fx:id="offerDetailsView" maxHeight="-Infinity" maxWidth="-Infinity"
       minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
-      xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bytabit.mobile.offer.ui.OfferDetailsPresenter">
     <center>
         <VBox alignment="TOP_CENTER" BorderPane.alignment="CENTER">
@@ -27,26 +27,28 @@
                                         vgrow="SOMETIMES"/>
                         <RowConstraints minHeight="10.0" prefHeight="30.0"
                                         vgrow="SOMETIMES"/>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0"
+                                        vgrow="SOMETIMES"/>
                         <RowConstraints vgrow="SOMETIMES"/>
                     </rowConstraints>
                     <children>
-                        <Label text="Currency"/>
-                        <Label text="Payment Method" GridPane.rowIndex="1"/>
+                        <Label text="Currency" GridPane.rowIndex="1"/>
+                        <Label text="Payment Method" GridPane.rowIndex="2"/>
                         <Label focusTraversable="false" text="Min Trade Amt"
-                               GridPane.rowIndex="2"/>
-                        <Label focusTraversable="false" text="Max Trade Amt"
                                GridPane.rowIndex="3"/>
-                        <Label focusTraversable="false" text="Price per BTC"
+                        <Label focusTraversable="false" text="Max Trade Amt"
                                GridPane.rowIndex="4"/>
+                        <Label focusTraversable="false" text="Price per BTC"
+                               GridPane.rowIndex="5"/>
                         <Button fx:id="removeOfferButton" mnemonicParsing="false"
                                 text="REMOVE" GridPane.columnIndex="1"
-                                GridPane.rowIndex="5">
+                                GridPane.rowIndex="6">
                             <GridPane.margin>
                                 <Insets top="10.0"/>
                             </GridPane.margin>
                         </Button>
                         <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1"
-                              GridPane.rowIndex="2">
+                              GridPane.rowIndex="3">
                             <children>
                                 <Label fx:id="minTradeAmtLabel" text="TBD"/>
                                 <Label fx:id="minTradeAmtCurrencyLabel" contentDisplay="CENTER" text="CUR">
@@ -57,7 +59,7 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1"
-                              GridPane.rowIndex="3">
+                              GridPane.rowIndex="4">
                             <children>
                                 <Label fx:id="maxTradeAmtLabel" text="TBD"/>
                                 <Label fx:id="maxTradeAmtCurrencyLabel" contentDisplay="CENTER" text="CUR">
@@ -68,7 +70,7 @@
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" GridPane.columnIndex="1"
-                              GridPane.rowIndex="4">
+                              GridPane.rowIndex="5">
                             <children>
                                 <Label fx:id="priceLabel" text="TBD"/>
                                 <Label fx:id="priceCurrencyLabel" contentDisplay="CENTER" text="CUR">
@@ -78,9 +80,12 @@
                                 </Label>
                             </children>
                         </HBox>
-                        <Label fx:id="currencyLabel" text="TBD" GridPane.columnIndex="1"/>
+                        <Label fx:id="currencyLabel" text="TBD" GridPane.columnIndex="1"
+                               GridPane.rowIndex="1"/>
                         <Label fx:id="paymentMethodLabel" text="TBD"
-                               GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                               GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        <Label text="Type"/>
+                        <Label fx:id="typeLabel" text="TBD" GridPane.columnIndex="1"/>
                     </children>
                     <opaqueInsets>
                         <Insets top="10.0"/>
@@ -105,7 +110,7 @@
                         <Label focusTraversable="false" text="Currency Amt"/>
                         <Label focusTraversable="false" text="BTC Amt"
                                GridPane.rowIndex="1"/>
-                        <Button fx:id="buyBtcButton" mnemonicParsing="false" text="BUY"
+                        <Button fx:id="tradeBtcButton" mnemonicParsing="false" text="BUY"
                                 GridPane.columnIndex="1" GridPane.rowIndex="2">
                             <GridPane.margin>
                                 <Insets top="10.0"/>

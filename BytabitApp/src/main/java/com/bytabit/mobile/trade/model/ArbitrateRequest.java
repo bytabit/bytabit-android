@@ -15,5 +15,6 @@ public class ArbitrateRequest {
         NO_PAYMENT, NO_BTC
     }
 
+    @NonNull
     private Reason reason;
 }

@@ -8,12 +8,12 @@ import java.util.List;
 
 public interface OfferServiceApi {
 
-    @PUT("/offers/{traderEscrowPubKey}")
-    Single<Offer> put(@Path("traderEscrowPubKey") String sellerEscrowPubKey, @Body Offer sellOffer);
+    @PUT("/offers/{id}")
+    Single<Offer> put(@Path("id") String id, @Body Offer sellOffer);
 
     @GET("/offers")
     Single<List<Offer>> get();
 
-    @DELETE("/offers/{traderEscrowPubKey}")
-    Single<Offer> delete(@Path("traderEscrowPubKey") String sellerEscrowPubKey);
+    @DELETE("/offers/{id}")
+    Single<Offer> delete(@Path("id") String id);
 }

@@ -14,8 +14,8 @@ import io.reactivex.Flowable;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
+import io.reactivex.subjects.BehaviorSubject;
 import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,17 +32,17 @@ public class OfferManager {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final PublishSubject<Offer> selectedOfferSubject;
+    private final BehaviorSubject<Offer> selectedOfferSubject;
 
-    private final Observable<Offer> selectedOffer;
+    //private final Observable<Offer> selectedOffer;
 
-    private final ConnectableObservable<Offer> lastSelectedOffer;
+    //private final Observable<Offer> lastSelectedOffer;
 
     private final PublishSubject<Offer> createdOffer;
 
     private final PublishSubject<Offer> removedOffer;
 
-    private final OfferService sellOfferService;
+    private final OfferService offerService;
 
     private Observable<List<Offer>> offers;
 
@@ -64,13 +64,20 @@ public class OfferManager {
                 .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
                 .create();
 
-        sellOfferService = new OfferService();
+        offerService = new OfferService();
 
-        selectedOfferSubject = PublishSubject.create();
+        selectedOfferSubject = BehaviorSubject.create();
 
-        selectedOffer = selectedOfferSubject.share();
+//        selectedOffer = selectedOfferSubject
+//                //.replay(1).autoConnect()
+//                .doOnSubscribe(d -> log.debug("selectedOffer: subscribe"))
+//                .doOnDispose(() -> log.debug("selectedOffer: dispose"))
+//                .doOnNext(o -> log.debug("selectedOffer: {}", o));
 
-        lastSelectedOffer = selectedOffer.replay(1);
+//        lastSelectedOffer = selectedOfferSubject.replay(1)
+//                .autoConnect()
+//                .doOnSubscribe(d -> log.debug("lastSelectedOffer: subscribe"))
+//                .doOnNext(o -> log.debug("lastSelectedOffer: {}", o));
 
         createdOffer = PublishSubject.create();
 
@@ -85,7 +92,7 @@ public class OfferManager {
     }
 
     public Observable<List<Offer>> getLoadedOffers() {
-        return sellOfferService.getAll().retryWhen(errors ->
+        return offerService.getAll().retryWhen(errors ->
                 errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
                 .toObservable();
     }
@@ -97,63 +104,62 @@ public class OfferManager {
     public void createOffer(Offer.OfferType offerType, CurrencyCode currencyCode, PaymentMethod paymentMethod,
                             BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
 
-        Maybe.zip(walletManager.getProfilePubKeyBase58(), walletManager.getEscrowPubKeyBase58(), (ppk, epk) ->
+        walletManager.getProfilePubKeyBase58().map(profilePubKey ->
                 Offer.builder()
                         .offerType(offerType)
-                        .traderProfilePubKey(ppk)
-                        .traderEscrowPubKey(epk)
-                        .arbitratorProfilePubKey(arbitratorManager.getArbitrator().getPubkey())
+                        .makerProfilePubKey(profilePubKey)
                         .currencyCode(currencyCode)
                         .paymentMethod(paymentMethod)
                         .minAmount(minAmount)
                         .maxAmount(maxAmount)
                         .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
-                        .build()
-        )
-                .flatMapSingle(sellOfferService::put)
+                        .build())
+                .flatMapSingle(offerService::put)
                 .subscribe(createdOffer::onNext);
     }
 
     public void deleteOffer() {
-        selectedOffer.map(Offer::getTraderEscrowPubKey)
-                .flatMapSingle(sellOfferService::delete)
+        selectedOfferSubject.map(Offer::getId)
+                .flatMapSingle(offerService::delete)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(removedOffer::onNext);
     }
 
-    public void setSelectedOffer(Offer sellOffer) {
-        selectedOfferSubject.onNext(sellOffer);
+    public void setSelectedOffer(Offer offer) {
+        selectedOfferSubject.onNext(offer);
     }
 
     public Observable<Offer> getSelectedOffer() {
-        return selectedOffer
-                .doOnNext(sellOffer -> log.debug("Selected: {}", sellOffer));
+        return selectedOfferSubject
+                .doOnSubscribe(d -> log.debug("selectedOffer: subscribe"))
+                .doOnDispose(() -> log.debug("selectedOffer: dispose"))
+                .doOnNext(o -> log.debug("selectedOffer: {}", o));
     }
 
-    public ConnectableObservable<Offer> getLastSelectedOffer() {
-        return lastSelectedOffer;
-    }
+//    public Observable<Offer> getLastSelectedOffer() {
+//        return lastSelectedOffer;
+//    }
 
     public Observable<Offer> getCreatedOffer() {
         return createdOffer
-                .doOnNext(sellOffer -> log.debug("Created: {}", sellOffer))
+                .doOnNext(offer -> log.debug("Created: {}", offer))
                 .share();
     }
 
     public Observable<Offer> getRemovedOffer() {
         return removedOffer
-                .doOnNext(sellOffer -> log.debug("Removed: {}", sellOffer))
+                .doOnNext(id -> log.debug("Removed: {}", id))
                 .share();
     }
 
     public Maybe<Trade> createTrade(BigDecimal btcAmount) {
-        return getLastSelectedOffer().autoConnect().firstOrError()
+        return getSelectedOffer().firstOrError()
                 .flatMapMaybe(sellOffer -> tradeManager.buyerCreateTrade(sellOffer, btcAmount));
     }
 
     public Single<String> getSelectedOfferAsJson() {
-        return getLastSelectedOffer().autoConnect().firstOrError()
+        return getSelectedOffer().firstOrError()
                 .map(gson::toJson);
     }
 }

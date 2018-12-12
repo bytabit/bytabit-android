@@ -291,17 +291,17 @@ public class TradeManager {
 
     private Trade createdFromReceivedTrade(Trade receivedTrade) {
 
-        // TODO validate escrowAddress, sellOffer, buyRequest
+        // TODO validate escrowAddress, offer, takeOfferRequest
         String escrowAddress = walletManager.escrowAddress(receivedTrade.getArbitratorProfilePubKey(),
-                receivedTrade.getSellerEscrowPubKey(),
+                receivedTrade.getMakerEscrowPubKey(),
                 receivedTrade.getBuyerEscrowPubKey());
 
         return Trade.builder()
                 .status(CREATED)
                 .escrowAddress(escrowAddress)
                 .createdTimestamp(ZonedDateTime.now())
-                .sellOffer(receivedTrade.getSellOffer())
-                .buyRequest(receivedTrade.getBuyRequest())
+                .offer(receivedTrade.getOffer())
+                .takeOfferRequest(receivedTrade.getTakeOfferRequest())
                 .build();
     }
 
