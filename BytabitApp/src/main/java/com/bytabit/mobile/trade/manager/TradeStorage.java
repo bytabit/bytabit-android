@@ -66,9 +66,9 @@ public class TradeStorage {
     Single<Trade> write(Trade trade) {
 
         return Single.<Trade>create(source -> {
-            File tradeFile = new File(TRADES_PATH + trade.getEscrowAddress() + File.separator + CURRENT_TRADE_JSON);
+            File tradeFile = new File(TRADES_PATH + trade.getId() + File.separator + CURRENT_TRADE_JSON);
             try {
-                File dir = new File(TRADES_PATH + trade.getEscrowAddress());
+                File dir = new File(TRADES_PATH + trade.getId());
                 if (!dir.exists()) {
                     dir.mkdirs();
                 }

@@ -1,17 +1,43 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.PaymentDetails;
-import com.bytabit.mobile.trade.model.CancelCompleted;
-import com.bytabit.mobile.trade.model.PaymentRequest;
-import com.bytabit.mobile.trade.model.PayoutCompleted;
-import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.*;
 import io.reactivex.Maybe;
 import org.bitcoinj.core.Transaction;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.ZonedDateTime;
+
+import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
+import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
 
 public class SellerProtocol extends TradeProtocol {
 
     public SellerProtocol() {
         super();
+    }
+
+    // 1.B: create trade, post created trade
+    Maybe<Trade> createTrade(Offer offer, BigDecimal sellBtcAmount) {
+        if (!BUY.equals(offer.getOfferType())) {
+            throw new TradeProtocolException("Seller protocol can only create trade from buy offer.");
+        }
+        return Maybe.zip(walletManager.getEscrowPubKeyBase58(),
+                walletManager.getProfilePubKeyBase58(),
+                (takerEscrowPubKey, takerProfilePubKey) -> Trade.builder()
+                        .role(Trade.Role.SELLER)
+                        .status(Trade.Status.CREATED)
+                        .createdTimestamp(ZonedDateTime.now())
+                        .offer(offer)
+                        .takeOfferRequest(TakeOfferRequest.builder()
+                                .takerProfilePubKey(takerProfilePubKey)
+                                .takerEscrowPubKey(takerEscrowPubKey)
+                                .btcAmount(sellBtcAmount)
+                                .paymentAmount(sellBtcAmount.setScale(8, RoundingMode.UP).multiply(offer.getPrice()).setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
+                                .build())
+                        .build());
     }
 
     // 1.S: seller receives created trade with sell offer + buy request
@@ -24,6 +50,26 @@ public class SellerProtocol extends TradeProtocol {
         if (receivedTrade.hasCancelCompleted()) {
             tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
+        } else if (BUY.equals(trade.getOffer().getOfferType()) && receivedTrade.hasConfirmation()) {
+            tradeBuilder.confirmation(receivedTrade.getConfirmation());
+            updatedTrade = Maybe.just(tradeBuilder.build())
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade));
+        } else if (SELL.equals(trade.getOffer().getOfferType())) {
+            // confirm wallet has enough btc, if so update trade with confirmation
+            updatedTrade = walletManager.getTradeWalletBalance()
+                    .filter(walletBalance -> trade.getTakeOfferRequest().getBtcAmount().compareTo(walletBalance) <= 0)
+                    .flatMap(walletBalance -> walletManager.getEscrowPubKeyBase58().map(makerEscrowPubKey -> {
+                        String arbitratorProfilePubKey = arbitratorManager.getArbitrator().getPubkey();
+                        String escrowAddress = walletManager.escrowAddress(arbitratorProfilePubKey, makerEscrowPubKey, trade.getTakerEscrowPubKey());
+                        Confirmation confirmation = Confirmation.builder()
+                                .arbitratorProfilePubKey(arbitratorProfilePubKey)
+                                .makerEscrowPubKey(makerEscrowPubKey)
+                                .escrowAddress(escrowAddress)
+                                .build();
+                        return tradeBuilder.confirmation(confirmation).build();
+                    }))
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade))
+                    .flatMapSingleElement(tradeService::put);
         }
 
         return updatedTrade;
@@ -33,11 +79,10 @@ public class SellerProtocol extends TradeProtocol {
     Maybe<Trade> fundEscrow(Trade trade) {
 
         // 0. watch escrow address
-        Maybe<String> watchedEscrowAddress = walletManager.watchNewEscrowAddress(trade.getEscrowAddress());
+        //Maybe<String> watchedEscrowAddress = walletManager.watchNewEscrowAddress(trade.getEscrowAddress());
 
         // 1. fund escrow
-        Maybe<Transaction> fundingTx = watchedEscrowAddress
-                .flatMap(ea -> walletManager.fundEscrow(ea, trade.getBtcAmount())).cache();
+        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getConfirmation().getEscrowAddress(), trade.getBtcAmount()).cache();
 
         // 2. create refund tx address and signature
         Maybe<String> refundAddressBase58 = walletManager.getDepositAddressBase58().cache();

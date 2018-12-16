@@ -12,7 +12,6 @@ import java.math.RoundingMode;
 @NoArgsConstructor
 @Getter
 @Setter
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString
 public class Offer {
 
@@ -38,7 +37,6 @@ public class Offer {
     }
 
     @Getter(AccessLevel.NONE)
-    @EqualsAndHashCode.Include
     private String id;
 
     private OfferType offerType;
@@ -67,5 +65,35 @@ public class Offer {
             id = Base58.encode(Sha256Hash.of(idString.getBytes()).getBytes());
         }
         return id;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Offer offer = (Offer) o;
+
+        if (!id.equals(offer.id)) return false;
+        if (offerType != offer.offerType) return false;
+        if (!makerProfilePubKey.equals(offer.makerProfilePubKey)) return false;
+        if (currencyCode != offer.currencyCode) return false;
+        if (paymentMethod != offer.paymentMethod) return false;
+        if (minAmount.compareTo(offer.minAmount) != 0) return false;
+        if (maxAmount.compareTo(offer.maxAmount) != 0) return false;
+        return price.compareTo(offer.price) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id.hashCode();
+        result = 31 * result + offerType.hashCode();
+        result = 31 * result + makerProfilePubKey.hashCode();
+        result = 31 * result + currencyCode.hashCode();
+        result = 31 * result + paymentMethod.hashCode();
+        result = 31 * result + minAmount.stripTrailingZeros().hashCode();
+        result = 31 * result + maxAmount.stripTrailingZeros().hashCode();
+        result = 31 * result + price.stripTrailingZeros().hashCode();
+        return result;
     }
 }

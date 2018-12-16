@@ -1,16 +1,15 @@
 package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.offer.model.Offer;
-import com.bytabit.mobile.trade.model.CancelCompleted;
-import com.bytabit.mobile.trade.model.PayoutRequest;
-import com.bytabit.mobile.trade.model.TakeOfferRequest;
-import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.trade.model.*;
 import io.reactivex.Maybe;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZonedDateTime;
 
+import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
+import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
 import static com.bytabit.mobile.trade.model.Trade.Role.ARBITRATOR;
 
 public class BuyerProtocol extends TradeProtocol {
@@ -21,25 +20,24 @@ public class BuyerProtocol extends TradeProtocol {
 
     // 1.B: create trade, post created trade
     Maybe<Trade> createTrade(Offer offer, BigDecimal buyBtcAmount) {
-
-        return Maybe.zip(walletManager.getEscrowPubKeyBase58(),
-                walletManager.getProfilePubKeyBase58(),
-                walletManager.getDepositAddressBase58(),
-                (takerEscrowPubKey, takerProfilePubKey, takerPayoutAddress) ->
-                        Trade.builder()
-                                .role(Trade.Role.BUYER)
-                                .status(Trade.Status.CREATED)
-                                //.escrowAddress(walletManager.escrowAddress(sellOffer.getArbitratorProfilePubKey(), sellOffer.getTraderEscrowPubKey(), buyerEscrowPubKey))
-                                .createdTimestamp(ZonedDateTime.now())
-                                .offer(offer)
-                                .takeOfferRequest(TakeOfferRequest.builder()
-                                        .takerProfilePubKey(takerProfilePubKey)
-                                        .takerEscrowPubKey(takerEscrowPubKey)
-                                        .btcAmount(buyBtcAmount)
-                                        .paymentAmount(buyBtcAmount.setScale(8, RoundingMode.UP).multiply(offer.getPrice()).setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
-                                        .build())
+        if (!SELL.equals(offer.getOfferType())) {
+            throw new TradeProtocolException("Buyer protocol can only create trade from sell offer.");
+        }
+        return Maybe.zip(walletManager.getEscrowPubKeyBase58(), walletManager.getProfilePubKeyBase58(),
+                (takerEscrowPubKey, takerProfilePubKey) -> Trade.builder()
+                        .role(Trade.Role.BUYER)
+                        .status(Trade.Status.CREATED)
+                        .createdTimestamp(ZonedDateTime.now())
+                        .offer(offer)
+                        .takeOfferRequest(TakeOfferRequest.builder()
+                                .takerProfilePubKey(takerProfilePubKey)
+                                .takerEscrowPubKey(takerEscrowPubKey)
+                                .btcAmount(buyBtcAmount)
+                                .paymentAmount(buyBtcAmount.setScale(8, RoundingMode.UP)
+                                        .multiply(offer.getPrice())
+                                        .setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
                                 .build())
-                .flatMap(t -> walletManager.watchNewEscrowAddress(t.getEscrowAddress()).map(e -> t.withStatus()));
+                        .build());
     }
 
     // 1.B: create trade, post created trade
@@ -49,12 +47,28 @@ public class BuyerProtocol extends TradeProtocol {
         Maybe<Trade> updatedTrade = Maybe.empty();
         Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion());
 
-        if (receivedTrade.hasPaymentRequest()) {
-            tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
-            updatedTrade = Maybe.just(tradeBuilder.build());
-        } else if (receivedTrade.hasCancelCompleted()) {
+        if (receivedTrade.hasCancelCompleted()) {
             tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
+        } else if (SELL.equals(trade.getOffer().getOfferType()) && receivedTrade.hasConfirmation()) {
+            tradeBuilder.confirmation(receivedTrade.getConfirmation());
+            updatedTrade = Maybe.just(tradeBuilder.build())
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade));
+        } else if (BUY.equals(trade.getOffer().getOfferType())) {
+            // TODO in future confirm we have enough fiat
+            updatedTrade = walletManager.getEscrowPubKeyBase58().map(escrowPubKey -> {
+                String arbitratorPubKey = arbitratorManager.getArbitrator().getPubkey();
+                String escrowAddress = walletManager.escrowAddress(arbitratorPubKey, escrowPubKey, trade.getTakerEscrowPubKey());
+                Confirmation confirmation = Confirmation.builder()
+                        .arbitratorProfilePubKey(arbitratorPubKey)
+                        .makerEscrowPubKey(escrowPubKey)
+                        .escrowAddress(escrowAddress)
+                        .build();
+                tradeBuilder.confirmation(confirmation);
+                return tradeBuilder.build();
+            })
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade))
+                    .flatMapSingleElement(tradeService::put);
         }
 
         return updatedTrade;

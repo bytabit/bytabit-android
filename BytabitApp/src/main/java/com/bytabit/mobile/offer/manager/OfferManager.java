@@ -34,10 +34,6 @@ public class OfferManager {
 
     private final BehaviorSubject<Offer> selectedOfferSubject;
 
-    //private final Observable<Offer> selectedOffer;
-
-    //private final Observable<Offer> lastSelectedOffer;
-
     private final PublishSubject<Offer> createdOffer;
 
     private final PublishSubject<Offer> removedOffer;
@@ -67,17 +63,6 @@ public class OfferManager {
         offerService = new OfferService();
 
         selectedOfferSubject = BehaviorSubject.create();
-
-//        selectedOffer = selectedOfferSubject
-//                //.replay(1).autoConnect()
-//                .doOnSubscribe(d -> log.debug("selectedOffer: subscribe"))
-//                .doOnDispose(() -> log.debug("selectedOffer: dispose"))
-//                .doOnNext(o -> log.debug("selectedOffer: {}", o));
-
-//        lastSelectedOffer = selectedOfferSubject.replay(1)
-//                .autoConnect()
-//                .doOnSubscribe(d -> log.debug("lastSelectedOffer: subscribe"))
-//                .doOnNext(o -> log.debug("lastSelectedOffer: {}", o));
 
         createdOffer = PublishSubject.create();
 
@@ -137,10 +122,6 @@ public class OfferManager {
                 .doOnNext(o -> log.debug("selectedOffer: {}", o));
     }
 
-//    public Observable<Offer> getLastSelectedOffer() {
-//        return lastSelectedOffer;
-//    }
-
     public Observable<Offer> getCreatedOffer() {
         return createdOffer
                 .doOnNext(offer -> log.debug("Created: {}", offer))
@@ -155,7 +136,7 @@ public class OfferManager {
 
     public Maybe<Trade> createTrade(BigDecimal btcAmount) {
         return getSelectedOffer().firstOrError()
-                .flatMapMaybe(sellOffer -> tradeManager.buyerCreateTrade(sellOffer, btcAmount));
+                .flatMapMaybe(offer -> tradeManager.createTrade(offer, btcAmount));
     }
 
     public Single<String> getSelectedOfferAsJson() {

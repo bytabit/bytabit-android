@@ -24,6 +24,8 @@ import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
 
+import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
+import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
 import static com.bytabit.mobile.trade.model.Trade.Role.*;
 import static com.bytabit.mobile.trade.model.Trade.Status.*;
 
@@ -81,26 +83,26 @@ public class TradeManager {
 
         createdTrade = createdTradeSubject
                 .doOnSubscribe(d -> log.debug("createdTrade: subscribe"))
-                .doOnNext(ct -> log.debug("createdTrade: {}", ct.getEscrowAddress()))
+                .doOnNext(ct -> log.debug("createdTrade: {}", ct.getId()))
                 .replay();
 
         updatedTradeSubject = PublishSubject.create();
 
         updatedTrade = updatedTradeSubject
                 .doOnSubscribe(d -> log.debug("updatedTrade: subscribe"))
-                .doOnNext(ut -> log.debug("updatedTrade: {}", ut.getEscrowAddress()))
+                .doOnNext(ut -> log.debug("updatedTrade: {}", ut.getId()))
                 .share();
 
         selectedTradeSubject = PublishSubject.create();
 
         selectedTrade = selectedTradeSubject
                 .doOnSubscribe(d -> log.debug("selectedTrade: subscribe"))
-                .doOnNext(st -> log.debug("selectedTrade: {}", st.getEscrowAddress()))
+                .doOnNext(st -> log.debug("selectedTrade: {}", st.getId()))
                 .share();
 
         lastSelectedTrade = selectedTrade
                 .doOnSubscribe(d -> log.debug("lastSelectedTrade: subscribe"))
-                .doOnNext(ct -> log.debug("lastSelectedTrade: {}", ct.getEscrowAddress()))
+                .doOnNext(ct -> log.debug("lastSelectedTrade: {}", ct.getId()))
                 .replay(1);
     }
 
@@ -143,12 +145,21 @@ public class TradeManager {
                 .subscribe(updatedTradeSubject::onNext);
     }
 
-    public Maybe<Trade> buyerCreateTrade(Offer sellOffer, BigDecimal btcAmount) {
+    public Maybe<Trade> createTrade(Offer offer, BigDecimal btcAmount) {
+        Maybe<Trade> createdTrade = Maybe.empty();
 
-        return buyerProtocol.createTrade(sellOffer, btcAmount)
-                .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
+        if (SELL.equals(offer.getOfferType())) {
+            createdTrade = buyerProtocol.createTrade(offer, btcAmount)
+                    .flatMapSingleElement(tradeStorage::write)
+                    .flatMapSingleElement(tradeService::put)
+                    .doOnSuccess(updatedTradeSubject::onNext);
+        } else if (BUY.equals(offer.getOfferType())) {
+            createdTrade = sellerProtocol.createTrade(offer, btcAmount)
+                    .flatMapSingleElement(tradeStorage::write)
+                    .flatMapSingleElement(tradeService::put)
+                    .doOnSuccess(updatedTradeSubject::onNext);
+        }
+        return createdTrade;
     }
 
     public ConnectableObservable<Trade> getCreatedTrade() {
@@ -271,7 +282,7 @@ public class TradeManager {
 
     private Maybe<Trade> handleReceivedTrade(String profilePubKey, Trade receivedTrade) {
 
-        Single<Trade> currentTrade = tradeStorage.read(receivedTrade.getEscrowAddress())
+        Single<Trade> currentTrade = tradeStorage.read(receivedTrade.getId())
                 .toSingle(createdFromReceivedTrade(receivedTrade))
                 // add role
                 .map(ct -> ct.withRole(profilePubKey))
@@ -292,13 +303,13 @@ public class TradeManager {
     private Trade createdFromReceivedTrade(Trade receivedTrade) {
 
         // TODO validate escrowAddress, offer, takeOfferRequest
-        String escrowAddress = walletManager.escrowAddress(receivedTrade.getArbitratorProfilePubKey(),
-                receivedTrade.getMakerEscrowPubKey(),
-                receivedTrade.getBuyerEscrowPubKey());
+//        String escrowAddress = walletManager.escrowAddress(receivedTrade.getArbitratorProfilePubKey(),
+//                receivedTrade.getMakerEscrowPubKey(),
+//                receivedTrade.getBuyerEscrowPubKey());
 
         return Trade.builder()
                 .status(CREATED)
-                .escrowAddress(escrowAddress)
+                //.escrowAddress(escrowAddress)
                 .createdTimestamp(ZonedDateTime.now())
                 .offer(receivedTrade.getOffer())
                 .takeOfferRequest(receivedTrade.getTakeOfferRequest())
@@ -325,6 +336,10 @@ public class TradeManager {
 
             case CREATED:
                 tradeUpdated = tradeProtocol.handleCreated(trade, receivedTrade);
+                break;
+
+            case CONFIRMED:
+                tradeUpdated = tradeProtocol.handleConfirmed(trade, receivedTrade);
                 break;
 
             case FUNDING:

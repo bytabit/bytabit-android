@@ -306,8 +306,10 @@ public class TradeDetailsPresenter {
         switch (status) {
 
             case CREATED:
-                fundEscrowButton.setDisable(false);
                 cancelButton.setDisable(false);
+                break;
+            case CONFIRMED:
+                fundEscrowButton.setDisable(false);
                 break;
             case FUNDING:
             case FUNDED:

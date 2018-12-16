@@ -1,7 +1,7 @@
 package com.bytabit.mobile.trade.manager;
 
+import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
-import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.CancelCompleted;
 import com.bytabit.mobile.trade.model.Trade;
@@ -17,14 +17,30 @@ abstract class TradeProtocol {
     WalletManager walletManager;
 
     @Inject
-    ProfileManager profileManager;
+    PaymentDetailsManager paymentDetailsManager;
 
     @Inject
-    PaymentDetailsManager paymentDetailsManager;
+    ArbitratorManager arbitratorManager;
+
+    @Inject
+    TradeService tradeService;
 
     // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
     abstract Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
+
+    Maybe<Trade> handleConfirmed(Trade trade, Trade receivedTrade) {
+
+        Maybe<Trade> updatedTrade = Maybe.empty();
+        Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion());
+
+        if (receivedTrade.hasPaymentRequest()) {
+            tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
+        }
+
+        return updatedTrade;
+    }
 
     Maybe<Trade> handleFunding(Trade trade) {
 

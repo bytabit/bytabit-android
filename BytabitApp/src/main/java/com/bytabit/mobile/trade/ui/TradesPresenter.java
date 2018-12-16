@@ -87,7 +87,7 @@ public class TradesPresenter {
                     int index = 0;
                     boolean found = false;
                     for (Trade existingTrade : tradesListView.itemsProperty()) {
-                        if (existingTrade.getEscrowAddress().equals(updatedTrade.getEscrowAddress())) {
+                        if (existingTrade.getId().equals(updatedTrade.getId())) {
                             found = true;
                             break;
                         }

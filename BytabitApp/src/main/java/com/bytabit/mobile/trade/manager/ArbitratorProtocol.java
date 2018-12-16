@@ -24,6 +24,11 @@ public class ArbitratorProtocol extends TradeProtocol {
             Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion())
                     .arbitrateRequest(receivedTrade.getArbitrateRequest());
 
+            if (receivedTrade.hasConfirmation()) {
+                tradeBuilder.confirmation(receivedTrade.getConfirmation());
+                walletManager.watchNewEscrowAddressAndResetBlockchain(trade.getConfirmation().getEscrowAddress());
+            }
+
             if (receivedTrade.hasPaymentRequest()) {
                 tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
             }
@@ -32,12 +37,15 @@ public class ArbitratorProtocol extends TradeProtocol {
                 tradeBuilder.payoutRequest(receivedTrade.getPayoutRequest());
             }
 
-            walletManager.watchNewEscrowAddressAndResetBlockchain(trade.getEscrowAddress());
-
             updatedTrade = Maybe.just(tradeBuilder.build().withStatus());
         }
 
         return updatedTrade;
+    }
+
+    @Override
+    Maybe<Trade> handleConfirmed(Trade trade, Trade receivedTrade) {
+        return Maybe.empty();
     }
 
     @Override

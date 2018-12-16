@@ -39,7 +39,7 @@ public class TransactionWithAmt {
     @Builder
     TransactionWithAmt(@NonNull Transaction tx, @NonNull Coin transactionAmt,
                        String outputAddress, String inputTxHash,
-                       @NonNull Coin walletBalance, @NonNull String escrowAddress) {
+                       @NonNull Coin walletBalance, String escrowAddress) {
 
         this.transaction = tx;
         this.hash = tx.getHashAsString();

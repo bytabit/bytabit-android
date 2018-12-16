@@ -11,6 +11,6 @@ public interface TradeServiceApi {
     @GET("/trades")
     Single<List<TradeServiceResource>> get(@Query("profilePubKey") String profilePubKey);
 
-    @PUT("/trades/{escrowAddress}")
-    Single<TradeServiceResource> put(@Path("escrowAddress") String escrowAddress, @Body TradeServiceResource trade);
+    @PUT("/trades/{id}")
+    Single<TradeServiceResource> put(@Path("id") String id, @Body TradeServiceResource trade);
 }

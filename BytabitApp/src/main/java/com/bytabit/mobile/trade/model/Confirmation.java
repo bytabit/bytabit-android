@@ -16,4 +16,7 @@ public class Confirmation {
 
     @NonNull
     private String arbitratorProfilePubKey;
+
+    @NonNull
+    private String escrowAddress;
 }

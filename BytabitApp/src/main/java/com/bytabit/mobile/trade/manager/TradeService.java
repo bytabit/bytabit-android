@@ -33,7 +33,7 @@ public class TradeService extends RetrofitService {
 
     Single<Trade> put(Trade trade) {
 
-        return tradeServiceApi.put(trade.getEscrowAddress(), TradeServiceResource.fromTrade(trade))
+        return tradeServiceApi.put(trade.getId(), TradeServiceResource.fromTrade(trade))
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("put error: {}", t.getMessage()))
                 .map(tr -> TradeServiceResource.toTrade(tr, trade))

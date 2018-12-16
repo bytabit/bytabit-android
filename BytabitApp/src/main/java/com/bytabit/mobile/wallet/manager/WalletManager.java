@@ -249,6 +249,13 @@ public class WalletManager {
                 .map(this::getTradeWalletInfo);
     }
 
+    public Maybe<BigDecimal> getTradeWalletBalance() {
+        return tradeWalletAppKit.firstElement()
+                .map(WalletAppKit::wallet)
+                .map(Wallet::getBalance)
+                .map(c -> new BigDecimal(c.toPlainString()));
+    }
+
     public Observable<TransactionWithAmt> getTradeUpdatedWalletTx() {
         return tradeUpdatedWalletTx;
     }
@@ -265,7 +272,9 @@ public class WalletManager {
     }
 
     public Maybe<String> getProfilePubKeyBase58() {
-        return profilePubKey.firstElement();
+        return profilePubKey.firstElement()
+                .doOnSubscribe(d -> log.debug("profilePubKeyBase58: subscribe"))
+                .doOnSuccess(p -> log.debug("profilePubKeyBase58: {}", p));
     }
 
     public Observable<String> getProfilePubKey() {
@@ -274,7 +283,9 @@ public class WalletManager {
 
     public Maybe<String> getEscrowPubKeyBase58() {
         return tradeWalletAppKit.firstElement()
-                .map(WalletAppKit::wallet).map(this::getFreshBase58ReceivePubKey);
+                .map(WalletAppKit::wallet).map(this::getFreshBase58ReceivePubKey)
+                .doOnSubscribe(d -> log.debug("escrowPubKeyBase58: subscribe"))
+                .doOnSuccess(p -> log.debug("escrowPubKeyBase58: {}", p));
     }
 
     public Maybe<String> getDepositAddressBase58() {
@@ -477,20 +488,6 @@ public class WalletManager {
                 .map(TransactionSignature::encodeToBitcoin)
                 .map(Base58::encode);
     }
-
-//    private Maybe<String> getPayoutSignature(Trade trade, Transaction
-//            fundingTx, Address payoutAddress) {
-//        Coin payoutAmount = Coin.parseCoin(trade.getBtcAmount().toPlainString());
-//        ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(trade.getArbitratorProfilePubKey()));
-//        ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getSellerEscrowPubKey()));
-//        ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(trade.getBuyerEscrowPubKey()));
-//
-//        Maybe<TransactionSignature> signature = getPayoutSignature(payoutAmount, fundingTx,
-//                arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
-//                payoutAddress);
-//
-//        return signature.map(sig -> Base58.encode(sig.encodeToBitcoin()));
-//    }
 
     private Maybe<TransactionSignature> getPayoutSignature(Coin payoutAmount,
                                                            Transaction fundingTx,

@@ -60,8 +60,6 @@ public class Trade {
     @EqualsAndHashCode.Exclude
     private final Role role;
 
-    private final String escrowAddress;
-
     private final ZonedDateTime createdTimestamp;
 
     @NonNull
@@ -355,10 +353,10 @@ public class Trade {
                 .version(this.version)
                 .status(this.status)
                 .role(this.role)
-                .escrowAddress(this.escrowAddress)
                 .createdTimestamp(this.createdTimestamp)
                 .offer(this.offer)
                 .takeOfferRequest(this.takeOfferRequest)
+                .confirmation(this.confirmation)
                 .fundingTransactionWithAmt(this.fundingTransactionWithAmt)
                 .paymentRequest(this.paymentRequest)
                 .payoutRequest(this.payoutRequest)
@@ -372,11 +370,15 @@ public class Trade {
 
         Trade tradeWithRole;
 
-        if (getMakerProfilePubKey().equals(profilePubKey)) {
+        if (SELL.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
             tradeWithRole = this.copyBuilder().role(SELLER).build();
-        } else if (getBuyerProfilePubKey().equals(profilePubKey)) {
+        } else if (BUY.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
             tradeWithRole = this.copyBuilder().role(BUYER).build();
-        } else if (getArbitratorProfilePubKey().equals(profilePubKey)) {
+        } else if (SELL.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
+            tradeWithRole = this.copyBuilder().role(BUYER).build();
+        } else if (BUY.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
+            tradeWithRole = this.copyBuilder().role(SELLER).build();
+        } else if (hasConfirmation() && getArbitratorProfilePubKey().equals(profilePubKey)) {
             tradeWithRole = this.copyBuilder().role(ARBITRATOR).build();
         } else {
             throw new TradeManagerException("Unable to determine trade role.");

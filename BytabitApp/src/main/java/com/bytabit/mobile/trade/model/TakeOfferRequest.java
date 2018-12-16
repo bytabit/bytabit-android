@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @Builder
-@EqualsAndHashCode
 @ToString
 public class TakeOfferRequest {
 
@@ -24,4 +23,26 @@ public class TakeOfferRequest {
 
     @NonNull
     private BigDecimal paymentAmount;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TakeOfferRequest that = (TakeOfferRequest) o;
+
+        if (!takerProfilePubKey.equals(that.takerProfilePubKey)) return false;
+        if (!takerEscrowPubKey.equals(that.takerEscrowPubKey)) return false;
+        if (btcAmount.compareTo(that.btcAmount) != 0) return false;
+        return paymentAmount.compareTo(that.paymentAmount) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = takerProfilePubKey.hashCode();
+        result = 31 * result + takerEscrowPubKey.hashCode();
+        result = 31 * result + btcAmount.stripTrailingZeros().hashCode();
+        result = 31 * result + paymentAmount.stripTrailingZeros().hashCode();
+        return result;
+    }
 }

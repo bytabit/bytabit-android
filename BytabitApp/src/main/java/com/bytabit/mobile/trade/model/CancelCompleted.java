@@ -15,7 +15,6 @@ public class CancelCompleted {
         CANCEL_CREATED, CANCEL_FUNDED
     }
 
-    @NonNull
     private String payoutTxHash;
 
     @NonNull
