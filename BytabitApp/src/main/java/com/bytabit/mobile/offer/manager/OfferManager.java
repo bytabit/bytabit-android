@@ -104,8 +104,8 @@ public class OfferManager {
     }
 
     public void deleteOffer() {
-        selectedOfferSubject.map(Offer::getId)
-                .flatMapSingle(offerService::delete)
+        getSelectedOffer().firstOrError().map(Offer::getId)
+                .flatMap(offerService::delete)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(removedOffer::onNext);

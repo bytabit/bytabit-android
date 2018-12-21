@@ -26,7 +26,7 @@ public class Trade {
 
     public enum Status {
 
-        CREATED, CONFIRMED, FUNDING, FUNDED, PAID, COMPLETING, // happy path
+        CREATED, ACCEPTED, FUNDING, FUNDED, PAID, COMPLETING, // happy path
         CANCELING, ARBITRATING,
         COMPLETED, CANCELED
     }
@@ -66,9 +66,9 @@ public class Trade {
     private final Offer offer;
 
     @NonNull
-    private final TakeOfferRequest takeOfferRequest;
+    private final TradeRequest tradeRequest;
 
-    private final Confirmation confirmation;
+    private final TradeAcceptance tradeAcceptance;
 
     @EqualsAndHashCode.Exclude
     private TransactionWithAmt fundingTransactionWithAmt;
@@ -90,10 +90,10 @@ public class Trade {
     public String getId() {
         if (id == null && hasOffer() && hasTakeOfferRequest()) {
             String idString = String.format("|%s|%s|%s|%s|%s|", offer.getId(),
-                    takeOfferRequest.getTakerProfilePubKey(),
-                    takeOfferRequest.getTakerEscrowPubKey(),
-                    takeOfferRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP),
-                    takeOfferRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
+                    tradeRequest.getTakerProfilePubKey(),
+                    tradeRequest.getTakerEscrowPubKey(),
+                    tradeRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP),
+                    tradeRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
 
             id = Base58.encode(Sha256Hash.of(idString.getBytes()).getBytes());
         }
@@ -141,12 +141,12 @@ public class Trade {
     // Take Offer Request
 
     public boolean hasTakeOfferRequest() {
-        return takeOfferRequest != null;
+        return tradeRequest != null;
     }
 
     public String getTakerProfilePubKey() {
         if (hasTakeOfferRequest()) {
-            return takeOfferRequest.getTakerProfilePubKey();
+            return tradeRequest.getTakerProfilePubKey();
         } else {
             return null;
         }
@@ -154,7 +154,7 @@ public class Trade {
 
     public String getTakerEscrowPubKey() {
         if (hasTakeOfferRequest()) {
-            return takeOfferRequest.getTakerEscrowPubKey();
+            return tradeRequest.getTakerEscrowPubKey();
         } else {
             return null;
         }
@@ -162,7 +162,7 @@ public class Trade {
 
     public BigDecimal getBtcAmount() {
         if (hasTakeOfferRequest()) {
-            return takeOfferRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP);
+            return tradeRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP);
         } else {
             return null;
         }
@@ -178,7 +178,7 @@ public class Trade {
 
     public BigDecimal getPaymentAmount() {
         if (hasOffer() && hasTakeOfferRequest()) {
-            return takeOfferRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
+            return tradeRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
         } else {
             return null;
         }
@@ -187,12 +187,12 @@ public class Trade {
     // Confirmation
 
     public boolean hasConfirmation() {
-        return confirmation != null;
+        return tradeAcceptance != null;
     }
 
     public String getMakerEscrowPubKey() {
         if (hasConfirmation()) {
-            return confirmation.getMakerEscrowPubKey();
+            return tradeAcceptance.getMakerEscrowPubKey();
         } else {
             return null;
         }
@@ -200,7 +200,7 @@ public class Trade {
 
     public String getArbitratorProfilePubKey() {
         if (hasConfirmation()) {
-            return confirmation.getArbitratorProfilePubKey();
+            return tradeAcceptance.getArbitratorProfilePubKey();
         } else {
             return null;
         }
@@ -355,8 +355,8 @@ public class Trade {
                 .role(this.role)
                 .createdTimestamp(this.createdTimestamp)
                 .offer(this.offer)
-                .takeOfferRequest(this.takeOfferRequest)
-                .confirmation(this.confirmation)
+                .tradeRequest(this.tradeRequest)
+                .tradeAcceptance(this.tradeAcceptance)
                 .fundingTransactionWithAmt(this.fundingTransactionWithAmt)
                 .paymentRequest(this.paymentRequest)
                 .payoutRequest(this.payoutRequest)
@@ -393,9 +393,9 @@ public class Trade {
             newStatus = CREATED;
         }
         if (newStatus == CREATED && hasConfirmation()) {
-            newStatus = CONFIRMED;
+            newStatus = ACCEPTED;
         }
-        if (newStatus == CONFIRMED && hasPaymentRequest()) {
+        if (newStatus == ACCEPTED && hasPaymentRequest()) {
             newStatus = FUNDING;
         }
         if (newStatus == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {

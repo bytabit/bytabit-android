@@ -85,11 +85,11 @@ public class TradeStorage {
                 .doOnError(t -> log.error("write error: {}", t.getMessage()));
     }
 
-    Maybe<Trade> read(String escrowAddress) {
+    Maybe<Trade> read(String id) {
 
         return Maybe.<Trade>create(source -> {
             try {
-                File tradeFile = new File(TRADES_PATH + escrowAddress + File.separator + CURRENT_TRADE_JSON);
+                File tradeFile = new File(TRADES_PATH + id + File.separator + CURRENT_TRADE_JSON);
                 if (tradeFile.exists()) {
                     // create a FileClient to the specified File
                     FileClient fileClient = FileClient.create(tradeFile);

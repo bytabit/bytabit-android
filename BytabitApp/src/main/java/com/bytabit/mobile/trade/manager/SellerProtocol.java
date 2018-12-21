@@ -31,7 +31,7 @@ public class SellerProtocol extends TradeProtocol {
                         .status(Trade.Status.CREATED)
                         .createdTimestamp(ZonedDateTime.now())
                         .offer(offer)
-                        .takeOfferRequest(TakeOfferRequest.builder()
+                        .tradeRequest(TradeRequest.builder()
                                 .takerProfilePubKey(takerProfilePubKey)
                                 .takerEscrowPubKey(takerEscrowPubKey)
                                 .btcAmount(sellBtcAmount)
@@ -51,24 +51,24 @@ public class SellerProtocol extends TradeProtocol {
             tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
         } else if (BUY.equals(trade.getOffer().getOfferType()) && receivedTrade.hasConfirmation()) {
-            tradeBuilder.confirmation(receivedTrade.getConfirmation());
+            tradeBuilder.tradeAcceptance(receivedTrade.getTradeAcceptance());
             updatedTrade = Maybe.just(tradeBuilder.build())
-                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade));
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getTradeAcceptance().getEscrowAddress()).map(ea -> confirmedTrade));
         } else if (SELL.equals(trade.getOffer().getOfferType())) {
-            // confirm wallet has enough btc, if so update trade with confirmation
+            // confirm wallet has enough btc, if so update trade with tradeAcceptance
             updatedTrade = walletManager.getTradeWalletBalance()
-                    .filter(walletBalance -> trade.getTakeOfferRequest().getBtcAmount().compareTo(walletBalance) <= 0)
+                    .filter(walletBalance -> trade.getTradeRequest().getBtcAmount().compareTo(walletBalance) <= 0)
                     .flatMap(walletBalance -> walletManager.getEscrowPubKeyBase58().map(makerEscrowPubKey -> {
                         String arbitratorProfilePubKey = arbitratorManager.getArbitrator().getPubkey();
                         String escrowAddress = walletManager.escrowAddress(arbitratorProfilePubKey, makerEscrowPubKey, trade.getTakerEscrowPubKey());
-                        Confirmation confirmation = Confirmation.builder()
+                        TradeAcceptance confirmation = TradeAcceptance.builder()
                                 .arbitratorProfilePubKey(arbitratorProfilePubKey)
                                 .makerEscrowPubKey(makerEscrowPubKey)
                                 .escrowAddress(escrowAddress)
                                 .build();
-                        return tradeBuilder.confirmation(confirmation).build();
+                        return tradeBuilder.tradeAcceptance(confirmation).build();
                     }))
-                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade))
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getTradeAcceptance().getEscrowAddress()).map(ea -> confirmedTrade))
                     .flatMapSingleElement(tradeService::put);
         }
 
@@ -78,18 +78,17 @@ public class SellerProtocol extends TradeProtocol {
     // 2.S: seller fund escrow and post payment request
     Maybe<Trade> fundEscrow(Trade trade) {
 
-        // 0. watch escrow address
-        //Maybe<String> watchedEscrowAddress = walletManager.watchNewEscrowAddress(trade.getEscrowAddress());
-
-        // 1. fund escrow
-        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getConfirmation().getEscrowAddress(), trade.getBtcAmount()).cache();
-
-        // 2. create refund tx address and signature
-        Maybe<String> refundAddressBase58 = walletManager.getDepositAddressBase58().cache();
-
         Maybe<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
                 .singleElement().cache();
+
+        // TODO don't fund escrow if payment details are not configured
+
+        // 1. fund escrow
+        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getTradeAcceptance().getEscrowAddress(), trade.getBtcAmount()).cache();
+
+        // 2. create refund tx address and signature
+        Maybe<String> refundAddressBase58 = walletManager.getDepositAddressBase58().cache();
 
         Maybe<String> refundTxSignature = Maybe.zip(fundingTx, refundAddressBase58, (ftx, refundAddress) ->
                 walletManager.getPayoutSignature(trade.getBtcAmount(), ftx,

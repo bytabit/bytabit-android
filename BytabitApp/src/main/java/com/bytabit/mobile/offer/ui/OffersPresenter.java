@@ -89,15 +89,27 @@ public class OffersPresenter {
         offerManager.getCreatedOffer()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(sellOffer ->
-                        offersListView.itemsProperty().add(sellOffer)
+                .subscribe(offer ->
+                        offersListView.itemsProperty().add(offer)
                 );
 
         offerManager.getRemovedOffer()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(offer ->
-                        offersListView.itemsProperty().remove(offer)
+                .subscribe(offer -> {
+                            int index = 0;
+                            boolean found = false;
+                            for (Offer existingOffer : offersListView.itemsProperty()) {
+                                if (existingOffer.getId().equals(offer.getId())) {
+                                    found = true;
+                                    break;
+                                }
+                                index = index + 1;
+                            }
+                            if (found) {
+                                offersListView.itemsProperty().remove(index);
+                            }
+                        }
                 );
     }
 

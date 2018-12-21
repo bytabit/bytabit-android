@@ -41,8 +41,8 @@ public class TradeServiceResource {
         return Trade.builder()
                 .version(receivedTradeServiceResource.getVersion())
                 .offer(receivedTradeServiceResource.getTrade().getOffer())
-                .takeOfferRequest(receivedTradeServiceResource.getTrade().getTakeOfferRequest())
-                .confirmation(receivedTradeServiceResource.getTrade().getConfirmation())
+                .tradeRequest(receivedTradeServiceResource.getTrade().getTakeOfferRequest())
+                .tradeAcceptance(receivedTradeServiceResource.getTrade().getConfirmation())
                 .paymentRequest(receivedTradeServiceResource.getTrade().getPaymentRequest())
                 .payoutRequest(receivedTradeServiceResource.getTrade().getPayoutRequest())
                 .arbitrateRequest(receivedTradeServiceResource.getTrade().getArbitrateRequest())
@@ -55,11 +55,11 @@ public class TradeServiceResource {
         TradeServiceResourceBuilder builder = TradeServiceResource.builder()
                 .version(t.getVersion())
                 .sellerProfilePubKey(t.getOffer().getMakerProfilePubKey())
-                .buyerProfilePubKey(t.getTakeOfferRequest().getTakerProfilePubKey())
+                .buyerProfilePubKey(t.getTradeRequest().getTakerProfilePubKey())
                 .trade(TradeResource.fromTrade(t));
 
         if (t.hasConfirmation()) {
-            builder.arbitratorProfilePubKey(t.getConfirmation().getArbitratorProfilePubKey());
+            builder.arbitratorProfilePubKey(t.getTradeAcceptance().getArbitratorProfilePubKey());
         }
 
         return builder.build();

@@ -112,7 +112,7 @@ public class TradeDetailsPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(c -> setAppBar());
 
-        tradeManager.getLastSelectedTrade().autoConnect()
+        tradeManager.getSelectedTrade()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(this::showTrade);
@@ -121,7 +121,7 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(ae -> {
-                    tradeManager.sellerFundEscrow().subscribe();
+                    tradeManager.fundEscrow().subscribe();
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -308,7 +308,7 @@ public class TradeDetailsPresenter {
             case CREATED:
                 cancelButton.setDisable(false);
                 break;
-            case CONFIRMED:
+            case ACCEPTED:
                 fundEscrowButton.setDisable(false);
                 break;
             case FUNDING:

@@ -13,6 +13,7 @@ import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
+import io.reactivex.subjects.BehaviorSubject;
 import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,11 +61,7 @@ public class TradeManager {
 
     private final Observable<Trade> updatedTrade;
 
-    private final PublishSubject<Trade> selectedTradeSubject;
-
-    private final Observable<Trade> selectedTrade;
-
-    private final ConnectableObservable<Trade> lastSelectedTrade;
+    private final BehaviorSubject<Trade> selectedTradeSubject;
 
     private final Gson gson;
 
@@ -93,17 +90,8 @@ public class TradeManager {
                 .doOnNext(ut -> log.debug("updatedTrade: {}", ut.getId()))
                 .share();
 
-        selectedTradeSubject = PublishSubject.create();
+        selectedTradeSubject = BehaviorSubject.create();
 
-        selectedTrade = selectedTradeSubject
-                .doOnSubscribe(d -> log.debug("selectedTrade: subscribe"))
-                .doOnNext(st -> log.debug("selectedTrade: {}", st.getId()))
-                .share();
-
-        lastSelectedTrade = selectedTrade
-                .doOnSubscribe(d -> log.debug("lastSelectedTrade: subscribe"))
-                .doOnNext(ct -> log.debug("lastSelectedTrade: {}", ct.getId()))
-                .replay(1);
     }
 
     @PostConstruct
@@ -146,20 +134,20 @@ public class TradeManager {
     }
 
     public Maybe<Trade> createTrade(Offer offer, BigDecimal btcAmount) {
-        Maybe<Trade> createdTrade = Maybe.empty();
+        Maybe<Trade> trade = Maybe.empty();
 
         if (SELL.equals(offer.getOfferType())) {
-            createdTrade = buyerProtocol.createTrade(offer, btcAmount)
+            trade = buyerProtocol.createTrade(offer, btcAmount)
                     .flatMapSingleElement(tradeStorage::write)
                     .flatMapSingleElement(tradeService::put)
                     .doOnSuccess(updatedTradeSubject::onNext);
         } else if (BUY.equals(offer.getOfferType())) {
-            createdTrade = sellerProtocol.createTrade(offer, btcAmount)
+            trade = sellerProtocol.createTrade(offer, btcAmount)
                     .flatMapSingleElement(tradeStorage::write)
                     .flatMapSingleElement(tradeService::put)
                     .doOnSuccess(updatedTradeSubject::onNext);
         }
-        return createdTrade;
+        return trade;
     }
 
     public ConnectableObservable<Trade> getCreatedTrade() {
@@ -174,12 +162,15 @@ public class TradeManager {
         selectedTradeSubject.onNext(trade);
     }
 
-    public ConnectableObservable<Trade> getLastSelectedTrade() {
-        return lastSelectedTrade;
+    public Observable<Trade> getSelectedTrade() {
+        return selectedTradeSubject
+                .doOnSubscribe(d -> log.debug("selectedTrade: subscribe"))
+                .doOnDispose(() -> log.debug("selectedTrade: dispose"))
+                .doOnNext(t -> log.debug("selectedTrade: {}", t));
     }
 
     public Maybe<Trade> buyerSendPayment(String paymentReference) {
-        return getLastSelectedTrade().autoConnect().firstOrError()
+        return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getStatus().equals(FUNDED))
                 .flatMapSingleElement(this::updateTradeTx)
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
@@ -189,9 +180,9 @@ public class TradeManager {
                 .doOnSuccess(updatedTradeSubject::onNext);
     }
 
-    public Maybe<Trade> sellerFundEscrow() {
-        return getLastSelectedTrade().autoConnect().firstOrError()
-                .filter(trade -> CREATED.equals(trade.getStatus()))
+    public Maybe<Trade> fundEscrow() {
+        return getSelectedTrade().firstOrError()
+                .filter(trade -> ACCEPTED.equals(trade.getStatus()))
                 .flatMap(st -> sellerProtocol.fundEscrow(st))
                 .flatMapSingleElement(tradeStorage::write)
                 .flatMapSingleElement(tradeService::put)
@@ -199,7 +190,7 @@ public class TradeManager {
     }
 
     public Maybe<Trade> sellerPaymentReceived() {
-        return getLastSelectedTrade().autoConnect().firstOrError()
+        return getSelectedTrade().firstOrError()
                 .filter(trade -> PAID.equals(trade.getStatus()))
                 .flatMapSingleElement(this::updateTradeTx)
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
@@ -211,7 +202,7 @@ public class TradeManager {
 
     public Maybe<Trade> requestArbitrate() {
 
-        return getLastSelectedTrade().autoConnect().firstOrError()
+        return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) != 0)
                 .filter(trade -> trade.getStatus().compareTo(CREATED) > 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) < 0)
@@ -223,7 +214,7 @@ public class TradeManager {
 
     public Maybe<Trade> arbitratorRefundSeller() {
 
-        return getLastSelectedTrade().autoConnect().firstOrError()
+        return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
                 .flatMapSingleElement(this::updateTradeTx)
@@ -236,7 +227,7 @@ public class TradeManager {
 
     public Maybe<Trade> arbitratorPayoutBuyer() {
 
-        return getLastSelectedTrade().autoConnect().firstOrError()
+        return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
                 .flatMapSingleElement(this::updateTradeTx)
@@ -249,7 +240,7 @@ public class TradeManager {
 
     public Maybe<Trade> cancelTrade() {
 
-        Single<Trade> trade = getLastSelectedTrade().autoConnect().firstOrError();
+        Single<Trade> trade = getSelectedTrade().firstOrError();
 
         Maybe<Trade> sellerCancelCreated = trade
                 .filter(t -> t.getRole().compareTo(SELLER) == 0)
@@ -276,7 +267,7 @@ public class TradeManager {
     }
 
     public Single<String> getSelectedTradeAsJson() {
-        return getLastSelectedTrade().autoConnect().firstOrError()
+        return getSelectedTrade().firstOrError()
                 .map(gson::toJson);
     }
 
@@ -302,17 +293,14 @@ public class TradeManager {
 
     private Trade createdFromReceivedTrade(Trade receivedTrade) {
 
-        // TODO validate escrowAddress, offer, takeOfferRequest
-//        String escrowAddress = walletManager.escrowAddress(receivedTrade.getArbitratorProfilePubKey(),
-//                receivedTrade.getMakerEscrowPubKey(),
-//                receivedTrade.getBuyerEscrowPubKey());
+        // TODO validate escrowAddress, offer, tradeRequest
 
         return Trade.builder()
                 .status(CREATED)
                 //.escrowAddress(escrowAddress)
                 .createdTimestamp(ZonedDateTime.now())
                 .offer(receivedTrade.getOffer())
-                .takeOfferRequest(receivedTrade.getTakeOfferRequest())
+                .tradeRequest(receivedTrade.getTradeRequest())
                 .build();
     }
 
@@ -338,7 +326,7 @@ public class TradeManager {
                 tradeUpdated = tradeProtocol.handleCreated(trade, receivedTrade);
                 break;
 
-            case CONFIRMED:
+            case ACCEPTED:
                 tradeUpdated = tradeProtocol.handleConfirmed(trade, receivedTrade);
                 break;
 

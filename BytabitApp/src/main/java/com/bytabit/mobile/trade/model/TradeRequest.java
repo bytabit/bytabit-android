@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Setter
 @Builder
 @ToString
-public class TakeOfferRequest {
+public class TradeRequest {
 
     @NonNull
     private String takerProfilePubKey;
@@ -29,7 +29,7 @@ public class TakeOfferRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TakeOfferRequest that = (TakeOfferRequest) o;
+        TradeRequest that = (TradeRequest) o;
 
         if (!takerProfilePubKey.equals(that.takerProfilePubKey)) return false;
         if (!takerEscrowPubKey.equals(that.takerEscrowPubKey)) return false;

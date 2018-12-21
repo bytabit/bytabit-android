@@ -9,7 +9,7 @@ import lombok.*;
 @Builder
 @EqualsAndHashCode
 @ToString
-public class Confirmation {
+public class TradeAcceptance {
 
     @NonNull
     private String makerEscrowPubKey;

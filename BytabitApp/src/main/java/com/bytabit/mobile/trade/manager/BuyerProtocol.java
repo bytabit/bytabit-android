@@ -29,7 +29,7 @@ public class BuyerProtocol extends TradeProtocol {
                         .status(Trade.Status.CREATED)
                         .createdTimestamp(ZonedDateTime.now())
                         .offer(offer)
-                        .takeOfferRequest(TakeOfferRequest.builder()
+                        .tradeRequest(TradeRequest.builder()
                                 .takerProfilePubKey(takerProfilePubKey)
                                 .takerEscrowPubKey(takerEscrowPubKey)
                                 .btcAmount(buyBtcAmount)
@@ -51,23 +51,23 @@ public class BuyerProtocol extends TradeProtocol {
             tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
         } else if (SELL.equals(trade.getOffer().getOfferType()) && receivedTrade.hasConfirmation()) {
-            tradeBuilder.confirmation(receivedTrade.getConfirmation());
+            tradeBuilder.tradeAcceptance(receivedTrade.getTradeAcceptance());
             updatedTrade = Maybe.just(tradeBuilder.build())
-                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade));
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getTradeAcceptance().getEscrowAddress()).map(ea -> confirmedTrade));
         } else if (BUY.equals(trade.getOffer().getOfferType())) {
             // TODO in future confirm we have enough fiat
             updatedTrade = walletManager.getEscrowPubKeyBase58().map(escrowPubKey -> {
                 String arbitratorPubKey = arbitratorManager.getArbitrator().getPubkey();
-                String escrowAddress = walletManager.escrowAddress(arbitratorPubKey, escrowPubKey, trade.getTakerEscrowPubKey());
-                Confirmation confirmation = Confirmation.builder()
+                String escrowAddress = walletManager.escrowAddress(arbitratorPubKey, trade.getTakerEscrowPubKey(), escrowPubKey);
+                TradeAcceptance confirmation = TradeAcceptance.builder()
                         .arbitratorProfilePubKey(arbitratorPubKey)
                         .makerEscrowPubKey(escrowPubKey)
                         .escrowAddress(escrowAddress)
                         .build();
-                tradeBuilder.confirmation(confirmation);
+                tradeBuilder.tradeAcceptance(confirmation);
                 return tradeBuilder.build();
             })
-                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getConfirmation().getEscrowAddress()).map(ea -> confirmedTrade))
+                    .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getTradeAcceptance().getEscrowAddress()).map(ea -> confirmedTrade))
                     .flatMapSingleElement(tradeService::put);
         }
 
@@ -94,14 +94,14 @@ public class BuyerProtocol extends TradeProtocol {
 
         // 1. create payout request with buyer payout signature
 
-        return walletManager.getPayoutSignature(trade.getBtcAmount(), trade.getFundingTransactionWithAmt().getTransaction(),
-                trade.getArbitratorProfilePubKey(), trade.getSellerEscrowPubKey(), trade.getBuyerEscrowPubKey(),
-                trade.getPayoutAddress()).zipWith(walletManager.getDepositAddressBase58(),
-                (payoutSignature, payoutAddress) -> PayoutRequest.builder()
+        return walletManager.getDepositAddressBase58().flatMap(payoutAddress ->
+                walletManager.getPayoutSignature(trade.getBtcAmount(), trade.getFundingTransactionWithAmt().getTransaction(),
+                        trade.getArbitratorProfilePubKey(), trade.getSellerEscrowPubKey(), trade.getBuyerEscrowPubKey(),
+                        payoutAddress).map(payoutSignature -> PayoutRequest.builder()
                         .paymentReference(paymentReference)
                         .payoutAddress(payoutAddress)
                         .payoutTxSignature(payoutSignature).build())
-                .map(pr -> trade.copyBuilder().payoutRequest(pr).build().withStatus());
+                        .map(pr -> trade.copyBuilder().payoutRequest(pr).build().withStatus()));
     }
 
     Maybe<Trade> cancelFundingTrade(Trade trade) {
