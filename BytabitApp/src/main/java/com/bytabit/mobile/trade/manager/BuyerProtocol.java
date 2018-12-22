@@ -74,6 +74,15 @@ public class BuyerProtocol extends TradeProtocol {
         return updatedTrade;
     }
 
+    Maybe<Trade> cancelUnfundedTrade(Trade trade) {
+
+        // create cancel completed
+        CancelCompleted cancelCompleted = CancelCompleted.builder().reason(CancelCompleted.Reason.BUYER_CANCEL_UNFUNDED).build();
+
+        // post cancel completed
+        return Maybe.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build().withStatus());
+    }
+
     // 2.B: buyer receives payment request, confirm funding tx
     @Override
     Maybe<Trade> handleFunded(Trade trade, Trade receivedTrade) {
@@ -83,6 +92,11 @@ public class BuyerProtocol extends TradeProtocol {
 
         if (receivedTrade.hasArbitrateRequest()) {
             tradeBuilder.arbitrateRequest(receivedTrade.getArbitrateRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
+        }
+
+        if (receivedTrade.hasCancelCompleted() && receivedTrade.getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)) {
+            tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
@@ -113,9 +127,22 @@ public class BuyerProtocol extends TradeProtocol {
                 trade.getRefundAddress(), trade.getRefundTxSignature(), ARBITRATOR.equals(trade.getRole()));
 
         // 2. confirm refund tx and create cancel completed
-        Maybe<CancelCompleted> cancelCompleted = refundTxHash.map(ph -> new CancelCompleted(ph, CancelCompleted.Reason.CANCEL_FUNDED));
+        Maybe<CancelCompleted> cancelCompleted = refundTxHash.map(ph -> new CancelCompleted(ph, CancelCompleted.Reason.BUYER_CANCEL_FUNDED));
 
         // 5. post cancel completed
         return cancelCompleted.map(pc -> trade.copyBuilder().cancelCompleted(pc).build().withStatus());
+    }
+
+    Maybe<Trade> handleCanceled(Trade trade, Trade receivedTrade) {
+
+        Maybe<Trade> updatedTrade = Maybe.empty();
+
+        if (trade.getCancelCompleted().getPayoutTxHash() == null
+                && !trade.hasPayoutRequest()
+                && receivedTrade.hasPaymentRequest()) {
+            updatedTrade = cancelFundingTrade(trade);
+        }
+
+        return updatedTrade;
     }
 }

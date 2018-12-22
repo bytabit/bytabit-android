@@ -228,7 +228,7 @@ public class TradeDetailsPresenter {
         paymentMethodLabel.setText(trade.getPaymentMethod().displayName());
         paymentAmountCurrencyLabel.setText(currencyCode);
         priceCurrencyLabel.setText(currencyCode);
-        priceLabel.setText(trade.getPaymentAmount().toPlainString());
+        priceLabel.setText(trade.getOffer().getPrice().toPlainString());
 
         // buy request
         purchasedAmountLabel.setText(trade.getBtcAmount().toPlainString());
@@ -281,6 +281,7 @@ public class TradeDetailsPresenter {
         switch (status) {
 
             case CREATED:
+            case ACCEPTED:
             case FUNDING:
                 cancelButton.setDisable(false);
                 break;
@@ -309,6 +310,7 @@ public class TradeDetailsPresenter {
                 cancelButton.setDisable(false);
                 break;
             case ACCEPTED:
+                cancelButton.setDisable(false);
                 fundEscrowButton.setDisable(false);
                 break;
             case FUNDING:

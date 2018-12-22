@@ -3,7 +3,6 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
-import com.bytabit.mobile.trade.model.CancelCompleted;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeProtocolException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -29,13 +28,18 @@ abstract class TradeProtocol {
 
     abstract Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
 
-    Maybe<Trade> handleConfirmed(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleAccepted(Trade trade, Trade receivedTrade) {
 
         Maybe<Trade> updatedTrade = Maybe.empty();
         Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion());
 
         if (receivedTrade.hasPaymentRequest()) {
             tradeBuilder.paymentRequest(receivedTrade.getPaymentRequest());
+            updatedTrade = Maybe.just(tradeBuilder.build());
+        }
+
+        if (receivedTrade.hasCancelCompleted()) {
+            tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
@@ -113,12 +117,8 @@ abstract class TradeProtocol {
         return updatedTrade;
     }
 
-    Maybe<Trade> cancelCreatedTrade(Trade trade) {
+    Maybe<Trade> handleCanceled(Trade trade, Trade receivedTrade) {
 
-        // create cancel completed
-        CancelCompleted cancelCompleted = CancelCompleted.builder().reason(CancelCompleted.Reason.CANCEL_CREATED).build();
-
-        // post cancel completed
-        return Maybe.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build().withStatus());
+        return Maybe.empty();
     }
 }

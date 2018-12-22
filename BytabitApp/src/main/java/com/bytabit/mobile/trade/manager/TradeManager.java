@@ -242,24 +242,24 @@ public class TradeManager {
 
         Single<Trade> trade = getSelectedTrade().firstOrError();
 
-        Maybe<Trade> sellerCancelCreated = trade
+        Maybe<Trade> sellerCancelUnfunded = trade
                 .filter(t -> t.getRole().compareTo(SELLER) == 0)
-                .filter(t -> t.getStatus().compareTo(CREATED) == 0)
-                .flatMap(t -> sellerProtocol.cancelCreatedTrade(t));
+                .filter(t -> !t.hasPaymentRequest())
+                .flatMap(t -> sellerProtocol.cancelUnfundedTrade(t));
 
-        Maybe<Trade> buyerCancelCreated = trade
+        Maybe<Trade> buyerCancelUnfunded = trade
                 .filter(t -> t.getRole().compareTo(BUYER) == 0)
-                .filter(t -> t.getStatus().compareTo(CREATED) == 0)
-                .flatMap(t -> buyerProtocol.cancelCreatedTrade(t));
+                .filter(t -> !t.hasPaymentRequest())
+                .flatMap(t -> buyerProtocol.cancelUnfundedTrade(t));
 
         Maybe<Trade> buyerCancelFunding = trade
                 .filter(t -> t.getRole().compareTo(BUYER) == 0)
-                .filter(t -> t.getStatus().compareTo(FUNDING) == 0 || t.getStatus().compareTo(FUNDED) == 0)
+                .filter(Trade::hasPaymentRequest)
                 .flatMapSingleElement(this::updateTradeTx)
                 .filter(t -> t.getFundingTransactionWithAmt() != null)
                 .flatMap(t -> buyerProtocol.cancelFundingTrade(t));
 
-        return Maybe.concat(sellerCancelCreated, buyerCancelCreated, buyerCancelFunding)
+        return Maybe.concat(sellerCancelUnfunded, buyerCancelUnfunded, buyerCancelFunding)
                 .lastElement()
                 .flatMapSingleElement(tradeStorage::write)
                 .flatMapSingleElement(tradeService::put)
@@ -327,7 +327,7 @@ public class TradeManager {
                 break;
 
             case ACCEPTED:
-                tradeUpdated = tradeProtocol.handleConfirmed(trade, receivedTrade);
+                tradeUpdated = tradeProtocol.handleAccepted(trade, receivedTrade);
                 break;
 
             case FUNDING:
@@ -343,7 +343,7 @@ public class TradeManager {
                 break;
 
             case CANCELED:
-                tradeUpdated = Maybe.empty();
+                tradeUpdated = tradeProtocol.handleCanceled(trade, receivedTrade);
                 break;
 
             case PAID:

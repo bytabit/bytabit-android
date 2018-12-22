@@ -12,7 +12,7 @@ import lombok.*;
 public class CancelCompleted {
 
     public enum Reason {
-        CANCEL_CREATED, CANCEL_FUNDED
+        SELLER_CANCEL_UNFUNDED, BUYER_CANCEL_UNFUNDED, BUYER_CANCEL_FUNDED
     }
 
     private String payoutTxHash;

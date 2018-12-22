@@ -44,7 +44,7 @@ public class ArbitratorProtocol extends TradeProtocol {
     }
 
     @Override
-    Maybe<Trade> handleConfirmed(Trade trade, Trade receivedTrade) {
+    Maybe<Trade> handleAccepted(Trade trade, Trade receivedTrade) {
         return Maybe.empty();
     }
 

@@ -416,12 +416,13 @@ public class Trade {
         if (newStatus == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
             newStatus = COMPLETED;
         }
-        if (newStatus == CREATED && getCancelCompleted() != null &&
-                getCancelCompleted().getReason().equals(CancelCompleted.Reason.CANCEL_CREATED)) {
+        if ((newStatus == CREATED || newStatus == ACCEPTED) && hasCancelCompleted() &&
+                (getCancelCompleted().getReason().equals(CancelCompleted.Reason.SELLER_CANCEL_UNFUNDED) ||
+                        getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_UNFUNDED))) {
             newStatus = CANCELED;
         }
-        if ((newStatus == FUNDING || newStatus == FUNDED) && getCancelCompleted() != null &&
-                getCancelCompleted().getReason().equals(CancelCompleted.Reason.CANCEL_FUNDED)) {
+        if ((newStatus == FUNDING || newStatus == FUNDED) && hasCancelCompleted() &&
+                getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)) {
             newStatus = CANCELING;
         }
         if (newStatus == CANCELING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {

@@ -75,6 +75,15 @@ public class SellerProtocol extends TradeProtocol {
         return updatedTrade;
     }
 
+    Maybe<Trade> cancelUnfundedTrade(Trade trade) {
+
+        // create cancel completed
+        CancelCompleted cancelCompleted = CancelCompleted.builder().reason(CancelCompleted.Reason.SELLER_CANCEL_UNFUNDED).build();
+
+        // post cancel completed
+        return Maybe.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build().withStatus());
+    }
+
     // 2.S: seller fund escrow and post payment request
     Maybe<Trade> fundEscrow(Trade trade) {
 
@@ -118,7 +127,7 @@ public class SellerProtocol extends TradeProtocol {
             updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
-        if (receivedTrade.hasCancelCompleted() && receivedTrade.getCancelCompleted().getReason().equals(CancelCompleted.Reason.CANCEL_FUNDED)) {
+        if (receivedTrade.hasCancelCompleted() && receivedTrade.getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)) {
             tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
         }
