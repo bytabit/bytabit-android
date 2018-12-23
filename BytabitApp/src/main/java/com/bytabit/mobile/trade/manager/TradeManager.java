@@ -2,7 +2,6 @@ package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.common.LocalDateTimeConverter;
 import com.bytabit.mobile.offer.model.Offer;
-import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -36,9 +35,6 @@ public class TradeManager {
 
     @Inject
     WalletManager walletManager;
-
-    @Inject
-    ProfileManager profileManager;
 
     @Inject
     SellerProtocol sellerProtocol;
@@ -293,14 +289,14 @@ public class TradeManager {
 
     private Trade createdFromReceivedTrade(Trade receivedTrade) {
 
-        // TODO validate escrowAddress, offer, tradeRequest
+        // TODO validate offer, tradeRequest
 
         return Trade.builder()
                 .status(CREATED)
-                //.escrowAddress(escrowAddress)
                 .createdTimestamp(ZonedDateTime.now())
                 .offer(receivedTrade.getOffer())
                 .tradeRequest(receivedTrade.getTradeRequest())
+                .tradeAcceptance(receivedTrade.getTradeAcceptance())
                 .build();
     }
 
