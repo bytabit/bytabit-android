@@ -23,9 +23,9 @@ public class TradeService extends RetrofitService {
         this.tradeServiceApi = retrofit.create(TradeServiceApi.class);
     }
 
-    Single<List<Trade>> get(String profilePubKey) {
+    Single<List<Trade>> get(String profilePubKey, Long version) {
 
-        return tradeServiceApi.get(profilePubKey)
+        return tradeServiceApi.get(profilePubKey, version)
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("get error: {}", t.getMessage()))
                 .flatMap(l -> Observable.fromIterable(l).map(TradeServiceResource::toTrade).toList());

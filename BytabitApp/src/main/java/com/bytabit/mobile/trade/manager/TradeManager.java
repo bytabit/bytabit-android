@@ -53,7 +53,7 @@ public class TradeManager {
 
     private final ConnectableObservable<Trade> createdTrade;
 
-    private final PublishSubject<Trade> updatedTradeSubject;
+    private final BehaviorSubject<Trade> updatedTradeSubject;
 
     private final Observable<Trade> updatedTrade;
 
@@ -79,7 +79,7 @@ public class TradeManager {
                 .doOnNext(ct -> log.debug("createdTrade: {}", ct.getId()))
                 .replay();
 
-        updatedTradeSubject = PublishSubject.create();
+        updatedTradeSubject = BehaviorSubject.create();
 
         updatedTrade = updatedTradeSubject
                 .doOnSubscribe(d -> log.debug("updatedTrade: subscribe"))
@@ -116,10 +116,20 @@ public class TradeManager {
                 .observeOn(Schedulers.io())
                 .subscribe(createdTradeSubject::onNext);
 
+        Observable<Long> maxVersion = updatedTradeSubject
+                .doOnSubscribe(d -> log.debug("updatedTradeSubject: subscribe"))
+                .doOnNext(p -> log.debug("updatedTradeSubject: {}", p))
+                .map(Trade::getVersion)
+                .scan(0L, Long::max)
+                .replay(1).autoConnect()
+                .doOnSubscribe(d -> log.debug("maxVersion: subscribe"))
+                .doOnDispose(() -> log.debug("maxVersion: dispose"))
+                .doOnNext(p -> log.debug("maxVersion: {}", p));
+
         // get update and store trades from received data after download started
         walletManager.getProfilePubKey()
                 .flatMap(profilePubKey -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-                        .flatMap(t -> tradeService.get(profilePubKey)
+                        .flatMap(t -> maxVersion.firstOrError().flatMap(version -> tradeService.get(profilePubKey, version - 1))
                                 .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))
                                 .flattenAsObservable(l -> l))
                         .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade)))

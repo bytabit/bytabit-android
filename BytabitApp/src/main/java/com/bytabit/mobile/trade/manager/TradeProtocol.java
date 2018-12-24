@@ -24,7 +24,7 @@ abstract class TradeProtocol {
     @Inject
     TradeService tradeService;
 
-    // CREATED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
+    // CREATED, ACCEPTED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
     abstract Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
 
