@@ -137,10 +137,7 @@ public class TradeManager {
                 .doOnNext(p -> log.debug("updatedTradeSubject: {}", p))
                 .map(Trade::getVersion)
                 .scan(0L, Long::max)
-                .replay(1).autoConnect()
-                .doOnSubscribe(d -> log.debug("maxVersion: subscribe"))
-                .doOnDispose(() -> log.debug("maxVersion: dispose"))
-                .doOnNext(p -> log.debug("maxVersion: {}", p));
+                .replay(1).autoConnect();
 
         // get update and store trades from received data after download started
         walletManager.getProfilePubKey()
