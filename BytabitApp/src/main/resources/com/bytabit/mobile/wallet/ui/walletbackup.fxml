@@ -23,11 +23,15 @@
 <?import javafx.scene.layout.VBox?>
 <View fx:id="walletBackupView" maxHeight="-Infinity" maxWidth="-Infinity"
       minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="350.0"
-      xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bytabit.mobile.wallet.ui.WalletBackupPresenter">
     <center>
         <VBox alignment="TOP_CENTER" spacing="10.0" BorderPane.alignment="CENTER">
             <children>
+                <TextArea fx:id="profilePubKeyTextArea" editable="false" prefHeight="60.0"
+                          text="PROFILE PUBKEY" wrapText="true"/>
+                <Button fx:id="copyProfilePubKeyButton" mnemonicParsing="false"
+                        text="COPY PROFILE PUBKEY"/>
                 <TextArea fx:id="seedWordsTextArea" editable="false" prefHeight="60.0"
                           text="SEED WORDS" wrapText="true"/>
                 <Button fx:id="copySeedWordsButton" mnemonicParsing="false"

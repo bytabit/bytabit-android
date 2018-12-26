@@ -18,6 +18,7 @@ package com.bytabit.mobile.wallet.manager;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.config.AppConfig;
+import com.bytabit.mobile.wallet.model.TradeWalletInfo;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.bytabit.mobile.wallet.model.WalletKitConfig;
 import com.bytabit.mobile.wallet.model.WalletManagerException;
@@ -383,7 +384,12 @@ public class WalletManager {
 
     private TradeWalletInfo getTradeWalletInfo(Wallet tradeWallet) {
         Context.propagate(btcContext);
-        return new TradeWalletInfo(getSeedWords(tradeWallet), getXpubKey(tradeWallet), getXprvKey(tradeWallet));
+        return TradeWalletInfo.builder()
+                .profilePubKey(getBase58ProfilePubKey(tradeWallet))
+                .seedWords(getSeedWords(tradeWallet))
+                .xpubKey(getXpubKey(tradeWallet))
+                .xprvKey(getXprvKey(tradeWallet))
+                .build();
     }
 
     private String getFreshBase58ReceivePubKey(Wallet wallet) {
@@ -724,30 +730,5 @@ public class WalletManager {
 
     private String getXpubKey(Wallet wallet) {
         return wallet.getWatchingKey().serializePubB58(netParams);
-    }
-
-    public class TradeWalletInfo {
-
-        private final String seedWords;
-        private final String xpubKey;
-        private final String xprvKey;
-
-        public TradeWalletInfo(String seedWords, String xpubKey, String xprvKey) {
-            this.seedWords = seedWords;
-            this.xpubKey = xpubKey;
-            this.xprvKey = xprvKey;
-        }
-
-        public String getSeedWords() {
-            return seedWords;
-        }
-
-        public String getXpubKey() {
-            return xpubKey;
-        }
-
-        public String getXprvKey() {
-            return xprvKey;
-        }
     }
 }

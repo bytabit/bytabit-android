@@ -27,15 +27,10 @@ public class ArbitratorManager {
 
         String btcNetwork = AppConfig.getBtcNetwork();
 
-        if (btcNetwork.equals("regtest")) {
+        if (btcNetwork.equals("regtest") || btcNetwork.equals("test")) {
             arbitrator = Arbitrator.builder()
                     .pubkey("egR53oLfKiyuh81eQJEa4pbJYqSncPQz8oLxTcEkjddd")
                     .feeAddress("mzyUFtqhQxGtn4fsDRVAK3EUXPPjkhjgKC")
-                    .build();
-        } else if (btcNetwork.equals("test")) {
-            arbitrator = Arbitrator.builder()
-                    .pubkey("cu4xcxY1dC3Zum4q6xYRXM1vHEjE4gnhL7Jx5DQ7vXyH")
-                    .feeAddress("mueVAJ928TUJwPruKPjzp2d2roPHDhsnRv")
                     .build();
         }
     }

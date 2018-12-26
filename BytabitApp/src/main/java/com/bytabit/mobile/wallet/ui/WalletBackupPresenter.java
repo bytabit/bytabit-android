@@ -17,6 +17,7 @@
 package com.bytabit.mobile.wallet.ui;
 
 import com.bytabit.mobile.wallet.manager.WalletManager;
+import com.bytabit.mobile.wallet.model.TradeWalletInfo;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -38,6 +39,12 @@ public class WalletBackupPresenter {
 
     @FXML
     private View walletBackupView;
+
+    @FXML
+    private TextArea profilePubKeyTextArea;
+
+    @FXML
+    private Button copyProfilePubKeyButton;
 
     @FXML
     private TextArea seedWordsTextArea;
@@ -71,7 +78,8 @@ public class WalletBackupPresenter {
                 .subscribe(this::setInfo);
     }
 
-    private void setInfo(WalletManager.TradeWalletInfo walletInfo) {
+    private void setInfo(TradeWalletInfo walletInfo) {
+        profilePubKeyTextArea.setText(walletInfo.getProfilePubKey());
         seedWordsTextArea.setText(walletInfo.getSeedWords());
         xprvTextArea.setText(walletInfo.getXprvKey());
         xpubTextArea.setText(walletInfo.getXpubKey());
