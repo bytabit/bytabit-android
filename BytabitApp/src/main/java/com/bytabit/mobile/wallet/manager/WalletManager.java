@@ -324,7 +324,7 @@ public class WalletManager {
                     Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
                     SendRequest request = SendRequest.to(address, amount);
                     Wallet.SendResult sendResult = w.sendCoins(request);
-                    return createTransactionWithAmt(w, sendResult.tx);
+                    return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
                 });
     }
 
@@ -427,7 +427,7 @@ public class WalletManager {
                         Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
                 sendRequest.feePerKb = defaultTxFeeCoin();
                 Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
-                source.onSuccess(sendResult.tx);
+                source.onSuccess(sendResult.broadcastComplete.get());
             } catch (InsufficientMoneyException ex) {
                 log.error("Insufficient BTC to fund trade escrow.");
                 // TODO let user know not enough BTC in wallet
@@ -715,8 +715,7 @@ public class WalletManager {
         return Maybe.zip(getEscrowWallet(), getEscrowPeerGroup(), (ew, pg) -> {
             Context.propagate(btcContext);
             ew.commitTx(payoutTx);
-            pg.broadcastTransaction(payoutTx);
-            return payoutTx.getHash();
+            return pg.broadcastTransaction(payoutTx).broadcast().get().getHash();
         });
     }
 
