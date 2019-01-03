@@ -427,10 +427,13 @@ public class WalletManager {
                         Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
                 sendRequest.feePerKb = defaultTxFeeCoin();
                 Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
-                source.onSuccess(sendResult.broadcastComplete.get());
+                source.onSuccess(sendResult.tx);
             } catch (InsufficientMoneyException ex) {
                 log.error("Insufficient BTC to fund trade escrow.");
                 // TODO let user know not enough BTC in wallet
+                source.onError(ex);
+            } catch (Exception ex) {
+                log.error("Error while broadcasting trade escrow funding tx.", ex);
                 source.onError(ex);
             }
         }));
@@ -715,7 +718,8 @@ public class WalletManager {
         return Maybe.zip(getEscrowWallet(), getEscrowPeerGroup(), (ew, pg) -> {
             Context.propagate(btcContext);
             ew.commitTx(payoutTx);
-            return pg.broadcastTransaction(payoutTx).broadcast().get().getHash();
+            pg.broadcastTransaction(payoutTx);
+            return payoutTx.getHash();
         });
     }
 

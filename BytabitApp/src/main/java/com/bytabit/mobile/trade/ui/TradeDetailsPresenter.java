@@ -134,10 +134,11 @@ public class TradeDetailsPresenter {
                 .subscribe(this::showTrade);
 
         JavaFxObservable.actionEventsOf(fundEscrowButton)
+                .flatMapMaybe(ae -> tradeManager.fundEscrow())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(ae -> {
-                    tradeManager.fundEscrow().subscribe();
+                .subscribe(t -> {
+                    log.debug("Trade escrow funded for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -174,10 +175,11 @@ public class TradeDetailsPresenter {
                 });
 
         JavaFxObservable.actionEventsOf(payoutBuyerButton)
+                .flatMapMaybe(ae -> tradeManager.arbitratorPayoutBuyer())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
-                    tradeManager.arbitratorPayoutBuyer().subscribe();
+                .subscribe(t -> {
+                    log.debug("Trade escrow paid out for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
