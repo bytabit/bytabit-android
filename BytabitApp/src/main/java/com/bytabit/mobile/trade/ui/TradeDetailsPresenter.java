@@ -143,34 +143,38 @@ public class TradeDetailsPresenter {
                 });
 
         JavaFxObservable.actionEventsOf(paymentSentButton)
+                .flatMapMaybe(ae -> tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get()))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(ae -> {
-                    tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get()).subscribe();
+                .subscribe(t -> {
+                    log.debug("Buyer sent payment for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
         JavaFxObservable.actionEventsOf(paymentReceivedButton)
+                .flatMapMaybe(ae -> tradeManager.sellerPaymentReceived())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
-                    tradeManager.sellerPaymentReceived().subscribe();
+                .subscribe(t -> {
+                    log.debug("Seller payment received for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
         JavaFxObservable.actionEventsOf(arbitrateButton)
+                .flatMapMaybe(ae -> tradeManager.requestArbitrate())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
-                    tradeManager.requestArbitrate().subscribe();
+                .subscribe(t -> {
+                    log.debug("Request arbitrate for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
         JavaFxObservable.actionEventsOf(refundSellerButton)
+                .flatMapMaybe(ae -> tradeManager.arbitratorRefundSeller())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
-                    tradeManager.arbitratorRefundSeller().subscribe();
+                .subscribe(t -> {
+                    log.debug("Arbitrator refund seller for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -179,15 +183,16 @@ public class TradeDetailsPresenter {
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(t -> {
-                    log.debug("Trade escrow paid out for trade {}", t);
+                    log.debug("Arbitrator payout buyer for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
         JavaFxObservable.actionEventsOf(cancelButton)
+                .flatMapMaybe(ae -> tradeManager.cancelTrade())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
-                    tradeManager.cancelTrade().subscribe();
+                .subscribe(t -> {
+                    log.debug("Cancel trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
     }

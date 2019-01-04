@@ -130,10 +130,11 @@ public class OfferDetailsPresenter {
 
 
         JavaFxObservable.actionEventsOf(tradeBtcButton)
+                .flatMapMaybe(ae -> offerManager.createTrade(new BigDecimal(buyBtcAmtTextField.textProperty().getValue())))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(action -> {
-                    offerManager.createTrade(new BigDecimal(buyBtcAmtTextField.textProperty().getValue())).subscribe();
+                .subscribe(t -> {
+                    log.debug("Create trade ", t);
                     MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);
                 });
 
