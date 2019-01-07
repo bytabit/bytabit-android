@@ -12,40 +12,36 @@ git clone git@bitbucket.org:bytabit/bytabit-mobile.git
 
 ### Install projects dependencies
 
-1. Install [JDK 8u111](https://jdk8.java.net/download.html)
-2. Install [Gradle version 3.3] or later (https://gradle.org/gradle-download/)
+1. Install Java JDK [version 8](https://jdk8.java.net/download.html)
+2. Install Gradle [version 4 or later ](https://gradle.org/releases/)
 3. Verify your JAVA_HOME environment variable is set to your JDK home
+4. Install
 4. Set a gradle property with the name ANDROID_HOME: defined in ~/.gradle/gradle.properties 
-   or a system environment variable with the name ANDROID_HOME. For example:
+   or a system environment variable with the name ANDROID_HOME. Also increase max
+   gradle memory. For example:
    
-   ```  
-     more ~/.gradle/gradle.properties 
-     ANDROID_HOME=/Users/steve/Library/Android/sdk
+   ```   
+     echo org.gradle.jvmargs=-Xms256m -Xmx4096m -Xss2m >> ~/.gradle/gradle.properties
+     echo ANDROID_HOME=`echo $HOME`/Library/Android/sdk >> ~/.gradle/gradle.properties
    ```
 
-### Run trader client with Gradle using default (testnet) config
+### Run Bytabit app on desktop with Gradle using default (testnet) config
 
 ```
-gradle run
+./gradlew run
 ```
 
 ### Run client on regtest network with Grade using custom config pubName
 
 ```
-gradle clean run -PbtcNetwork=regtest -PconfigName=tester2
+./gradlew clean run -PbtcNetwork=regtest -PconfigName=tester2
 ```
 
 ### Create android APK
 
 ```
-gradle clean zipalignDebug
+./gradlew clean zipalignDebug
 ```
-
-### IntelliJ Setup
-
-1. Install scala and gradle plugins (if not already installed)
-2. Import gradle project in IntelliJ
-3. Verify the project JDK and Java Inspections settings are correct
 
 ### JavaFX Scene Builder
 
