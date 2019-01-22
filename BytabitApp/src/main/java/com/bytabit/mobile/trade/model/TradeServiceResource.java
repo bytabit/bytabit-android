@@ -26,15 +26,9 @@ import lombok.*;
 @ToString
 public class TradeServiceResource {
 
-    private String escrowAddress;
-
     private Long version;
 
-    private String sellerProfilePubKey;
-
-    private String buyerProfilePubKey;
-
-    private String arbitratorProfilePubKey;
+    private String offerId;
 
     private TradeResource trade;
 
@@ -70,13 +64,8 @@ public class TradeServiceResource {
 
         TradeServiceResourceBuilder builder = TradeServiceResource.builder()
                 .version(t.getVersion())
-                .sellerProfilePubKey(t.getOffer().getMakerProfilePubKey())
-                .buyerProfilePubKey(t.getTradeRequest().getTakerProfilePubKey())
+                .offerId(t.getOffer().getId())
                 .trade(TradeResource.fromTrade(t));
-
-        if (t.hasConfirmation()) {
-            builder.arbitratorProfilePubKey(t.getTradeAcceptance().getArbitratorProfilePubKey());
-        }
 
         return builder.build();
     }

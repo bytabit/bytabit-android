@@ -26,6 +26,7 @@ import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -37,14 +38,6 @@ public class TradeService extends RetrofitService {
 
         // create an instance of the ApiService
         this.tradeServiceApi = retrofit.create(TradeServiceApi.class);
-    }
-
-    Single<List<Trade>> get(String profilePubKey, Long version) {
-
-        return tradeServiceApi.get(profilePubKey, version)
-                .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
-                .doOnError(t -> log.error("get error: {}", t.getMessage()))
-                .flatMap(l -> Observable.fromIterable(l).map(TradeServiceResource::toTrade).toList());
     }
 
     Single<Trade> put(Trade trade) {
@@ -62,5 +55,30 @@ public class TradeService extends RetrofitService {
                         throw new TradeManagerException("Received trade version less than or equal to trade sent.");
                     }
                 });
+    }
+
+    Single<List<Trade>> getByOfferId(String offerId, Long version) {
+
+        return tradeServiceApi.getByOfferId(offerId, version)
+                .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
+                .doOnError(t -> log.error("get error: {}", t.getMessage()))
+                .flatMap(l -> Observable.fromIterable(l).map(TradeServiceResource::toTrade).toList());
+    }
+
+    Single<List<Trade>> get(String id, Long version) {
+
+        return tradeServiceApi.get(id, version)
+                .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
+                .doOnError(t -> log.error("get error: {}", t.getMessage()))
+                .flatMap(l -> Observable.fromIterable(l).map(TradeServiceResource::toTrade).toList());
+    }
+
+    Single<List<Trade>> get(Set<String> ids, Long version) {
+
+        return Observable.fromIterable(ids).flatMap(id -> tradeServiceApi.get(id, version)
+                .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
+                .doOnError(t -> log.error("get error: {}", t.getMessage()))
+                .flatMapObservable(l -> Observable.fromIterable(l).map(TradeServiceResource::toTrade)))
+                .toList();
     }
 }

@@ -30,6 +30,9 @@ public interface OfferServiceApi {
     @GET("/offers")
     Single<List<Offer>> get();
 
+    @GET("/offers/{id}")
+    Single<Offer> get(@Path("id") String id);
+
     @DELETE("/offers/{id}")
     Single<Offer> delete(@Path("id") String id);
 }

@@ -16,7 +16,6 @@
 
 package com.bytabit.mobile.offer.manager;
 
-import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.common.LocalDateTimeConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
@@ -61,9 +60,6 @@ public class OfferManager {
     private final Gson gson;
 
     @Inject
-    ArbitratorManager arbitratorManager;
-
-    @Inject
     WalletManager walletManager;
 
     @Inject
@@ -90,6 +86,15 @@ public class OfferManager {
 
         offers = Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
                 .flatMap(tick -> getLoadedOffers());
+
+        // get trades for offers I created
+        walletManager.getProfilePubKey().switchMap(profilePubKey ->
+                getUpdatedOffers().flatMapIterable(l -> l)
+                        .filter(o -> o.getMakerProfilePubKey().equals(profilePubKey))
+                        .flatMap(o -> tradeManager.addTradesCreatedFromOffer(profilePubKey, o)))
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(trade -> log.debug("added trade from my offer: {}", trade));
     }
 
     public Observable<List<Offer>> getLoadedOffers() {

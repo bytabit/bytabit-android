@@ -58,11 +58,11 @@ public class BytabitMobile extends MobileApplication {
     public static final String WALLET_WITHDRAW_VIEW = "Withdraw";
     public static final String WALLET_RESTORE_VIEW = "Restore";
 
-    public static final String OFFERS_VIEW = "Offers";
+    public static final String OFFERS_VIEW = HOME_VIEW;
     public static final String ADD_OFFER_VIEW = "AddOffer";
     public static final String OFFER_DETAILS_VIEW = "OfferDetails";
 
-    public static final String TRADE_VIEW = HOME_VIEW;
+    public static final String TRADE_VIEW = "Trades";
     public static final String TRADE_DETAILS_VIEW = "TradeDetails";
 
     public static final String PROFILE_VIEW = "Profile";

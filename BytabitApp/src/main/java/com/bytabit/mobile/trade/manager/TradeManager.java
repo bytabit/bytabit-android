@@ -30,6 +30,7 @@ import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.BehaviorSubject;
 import io.reactivex.subjects.PublishSubject;
+import io.reactivex.subjects.ReplaySubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,8 @@ import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
@@ -65,7 +68,7 @@ public class TradeManager {
 
     private final TradeStorage tradeStorage;
 
-    private final PublishSubject<Trade> createdTradeSubject;
+    private final ReplaySubject<Trade> createdTradeSubject;
 
     private final ConnectableObservable<Trade> createdTrade;
 
@@ -74,6 +77,8 @@ public class TradeManager {
     private final Observable<Trade> updatedTrade;
 
     private final BehaviorSubject<Trade> selectedTradeSubject;
+
+    private final Observable<Long> maxVersion;
 
     private final Gson gson;
 
@@ -88,7 +93,7 @@ public class TradeManager {
 
         tradeStorage = new TradeStorage();
 
-        createdTradeSubject = PublishSubject.create();
+        createdTradeSubject = ReplaySubject.create();
 
         createdTrade = createdTradeSubject
                 .doOnSubscribe(d -> log.debug("createdTrade: subscribe"))
@@ -104,6 +109,12 @@ public class TradeManager {
 
         selectedTradeSubject = BehaviorSubject.create();
 
+        maxVersion = updatedTradeSubject
+                .doOnSubscribe(d -> log.debug("maxVersion updatedTradeSubject: subscribe"))
+                .doOnNext(p -> log.debug("maxVersion updatedTradeSubject: {}", p))
+                .map(Trade::getVersion)
+                .scan(0L, Long::max)
+                .replay(1).autoConnect();
     }
 
     @PostConstruct
@@ -128,24 +139,32 @@ public class TradeManager {
                         .map(txa -> t.copyBuilder().payoutTransactionWithAmt(txa).build())
                         .defaultIfEmpty(t))
                 .map(Trade::withStatus)
+                .doOnNext(t -> log.debug("created trade: {}", t))
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .subscribe(createdTradeSubject::onNext);
 
-        Observable<Long> maxVersion = updatedTradeSubject
-                .doOnSubscribe(d -> log.debug("updatedTradeSubject: subscribe"))
-                .doOnNext(p -> log.debug("updatedTradeSubject: {}", p))
-                .map(Trade::getVersion)
-                .scan(0L, Long::max)
+        Observable<Set<String>> activeTradeIds = Observable.merge(createdTradeSubject, updatedTradeSubject)
+                .doOnSubscribe(d -> log.debug("activeTradeIds updatedTradeSubject: subscribe"))
+                .doOnNext(p -> log.debug("activeTradeIds updatedTradeSubject: {}", p))
+                .scan((Set<String>) new HashSet<String>(), (ts, t) -> {
+                    if (t.getStatus().compareTo(COMPLETED) < 0) {
+                        ts.add(t.getId());
+                    } else {
+                        ts.remove(t.getId());
+                    }
+                    return ts;
+                })
                 .replay(1).autoConnect();
 
         // get update and store trades from received data after download started
         walletManager.getProfilePubKey()
                 .flatMap(profilePubKey -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-                        .flatMap(t -> maxVersion.firstOrError().flatMap(version -> tradeService.get(profilePubKey, version - 1))
+                        .flatMap(t -> maxVersion.firstOrError().flatMapObservable(version -> activeTradeIds.firstElement()
+                                .flatMapSingle(tids -> tradeService.get(tids, version - 1))
                                 .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))
                                 .flattenAsObservable(l -> l))
-                        .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade)))
+                                .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade))))
                 .flatMapSingle(tradeStorage::write)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
@@ -167,6 +186,20 @@ public class TradeManager {
                     .doOnSuccess(updatedTradeSubject::onNext);
         }
         return trade;
+    }
+
+    public Observable<Trade> addTradesCreatedFromOffer(String profilePubKey, Offer offer) {
+
+        return tradeService.getByOfferId(offer.getId(), 0L)
+                .flattenAsObservable(l -> l)
+                .filter(t -> t.getMakerProfilePubKey().equals(profilePubKey))
+                .map(Trade::withStatus)
+                .filter(t -> t.getStatus().equals(CREATED))
+                .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade))
+                .flatMapSingle(tradeStorage::write)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .doOnNext(updatedTradeSubject::onNext);
     }
 
     public ConnectableObservable<Trade> getCreatedTrade() {

@@ -28,8 +28,6 @@ import lombok.*;
 @ToString
 public class TradeResource {
 
-    private String escrowAddress;
-
     // Offer
     private Offer offer;
 

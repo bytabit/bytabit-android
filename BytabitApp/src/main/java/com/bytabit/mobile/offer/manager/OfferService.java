@@ -44,6 +44,11 @@ public class OfferService extends RetrofitService {
                 .doOnError(t -> log.error("get error: {}", t.getMessage()));
     }
 
+    Single<Offer> get(String id) {
+        return offerServiceApi.get(id)
+                .doOnError(t -> log.error("get error: {}", t.getMessage()));
+    }
+
     Single<Offer> delete(String id) {
 
         return offerServiceApi.delete(id)

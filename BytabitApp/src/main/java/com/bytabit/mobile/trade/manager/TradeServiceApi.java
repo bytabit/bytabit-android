@@ -24,9 +24,12 @@ import java.util.List;
 
 public interface TradeServiceApi {
 
-    @GET("/trades")
-    Single<List<TradeServiceResource>> get(@Query("profilePubKey") String profilePubKey, @Query("version") Long version);
-
     @PUT("/trades/{id}")
     Single<TradeServiceResource> put(@Path("id") String id, @Body TradeServiceResource trade);
+
+    @GET("/offers/{offerId}/trades")
+    Single<List<TradeServiceResource>> getByOfferId(@Path("offerId") String offerId, @Query("version") Long version);
+
+    @GET("/trades/{id}")
+    Single<List<TradeServiceResource>> get(@Path("id") String id, @Query("version") Long version);
 }
