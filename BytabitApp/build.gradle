@@ -118,7 +118,7 @@ jfxmobile {
     android {
         manifest = 'src/android/AndroidManifest.xml'
         applicationPackage = 'com.bytabit.mobile'
-        compileSdkVersion = 26
+        compileSdkVersion = 28
 
         dexOptions {
             incremental true

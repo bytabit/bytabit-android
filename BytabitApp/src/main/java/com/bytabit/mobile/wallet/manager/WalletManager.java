@@ -139,7 +139,10 @@ public class WalletManager {
 
         // triggers for wallet start and synced
 
-        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, Double::min)
+        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
+            if (tp > ep) return ep;
+            else return tp;
+        })
                 .throttleLast(1, TimeUnit.SECONDS)
                 .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
                 .doOnNext(p -> log.debug("walletsDownloadProgress: {}", p))

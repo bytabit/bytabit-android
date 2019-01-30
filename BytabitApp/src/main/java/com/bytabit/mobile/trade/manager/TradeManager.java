@@ -136,14 +136,25 @@ public class TradeManager {
                 .doOnSubscribe(d -> log.debug("updatedTradeSubject: subscribe"))
                 .doOnNext(p -> log.debug("updatedTradeSubject: {}", p))
                 .map(Trade::getVersion)
-                .scan(0L, Long::max)
+                .scan(0L, (i, n) -> {
+                    if (i > n) return i;
+                    else return n;
+                })
                 .replay(1).autoConnect();
+
+        Comparator<Trade> tradeVersionComparator = new Comparator<Trade>() {
+            @Override
+            public int compare(Trade o1, Trade o2) {
+                return o1.getVersion().compareTo(o2.getVersion());
+            }
+        };
 
         // get update and store trades from received data after download started
         walletManager.getProfilePubKey()
                 .flatMap(profilePubKey -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
                         .flatMap(t -> maxVersion.firstOrError().flatMap(version -> tradeService.get(profilePubKey, version - 1))
-                                .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))
+                                .flatMapObservable(Observable::fromIterable)
+                                .toSortedList(tradeVersionComparator)
                                 .flattenAsObservable(l -> l))
                         .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade)))
                 .flatMapSingle(tradeStorage::write)
