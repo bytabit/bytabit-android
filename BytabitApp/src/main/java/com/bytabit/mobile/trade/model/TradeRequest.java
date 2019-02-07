@@ -26,7 +26,7 @@ import java.math.BigDecimal;
 @Setter
 @Builder
 @ToString
-public class TradeRequest {
+public class    TradeRequest {
 
     @NonNull
     private String takerProfilePubKey;

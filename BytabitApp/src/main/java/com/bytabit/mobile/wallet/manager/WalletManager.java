@@ -662,10 +662,6 @@ public class WalletManager {
         return tradeWalletConfig;
     }
 
-    public Observable<WalletKitConfig> getEscrowWalletConfig() {
-        return escrowWalletConfig;
-    }
-
     private Maybe<Sha256Hash> payoutEscrow(Coin payoutAmount, Transaction fundingTx,
                                            ECKey arbitratorProfilePubKey,
                                            ECKey sellerEscrowPubKey,

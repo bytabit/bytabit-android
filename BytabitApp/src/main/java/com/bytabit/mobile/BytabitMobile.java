@@ -33,7 +33,6 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.layout.layer.SidePopupView;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.Swatch;
-import io.reactivex.Observable;
 import io.reactivex.subjects.PublishSubject;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
@@ -137,7 +136,4 @@ public class BytabitMobile extends MobileApplication {
         return navEventsSubject;
     }
 
-    public static Observable<NavEvent> getNavEvents() {
-        return navEventsSubject.share();
-    }
 }
