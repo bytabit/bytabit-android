@@ -76,6 +76,8 @@ if (project.hasProperty('baseUrl')) {
 println net
 println config
 
+version = semver
+
 processResources {
     filesMatching("*.properties") {
         filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config, BASEURL: url]
@@ -118,6 +120,8 @@ jfxmobile {
     android {
         manifest = 'src/android/AndroidManifest.xml'
         applicationPackage = 'com.bytabit.mobile'
+
+        minSdkVersion = 21
         compileSdkVersion = 28
 
         dexOptions {
@@ -127,6 +131,14 @@ jfxmobile {
         packagingOptions {
             exclude 'META-INF/LICENSE'
             exclude 'META-INF/NOTICE'
+        }
+
+        signingConfig {
+            keyAlias 'testnet'
+            keyPassword "${project.properties['keyPassword']}"
+            storeFile "${System.properties['user.home']}${File.separator}.android${File.separator}release.keystore" as File
+            storePassword "${project.properties['storePassword']}"
+            storeType 'jks'
         }
     }
     ios {
