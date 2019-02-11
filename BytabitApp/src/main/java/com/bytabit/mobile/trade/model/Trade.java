@@ -26,7 +26,7 @@ import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZonedDateTime;
+import java.util.Date;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
@@ -76,7 +76,7 @@ public class Trade {
     @EqualsAndHashCode.Exclude
     private final Role role;
 
-    private final ZonedDateTime createdTimestamp;
+    private final Date createdTimestamp;
 
     @NonNull
     private final Offer offer;

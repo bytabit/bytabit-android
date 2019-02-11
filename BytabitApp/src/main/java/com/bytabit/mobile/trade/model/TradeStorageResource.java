@@ -18,7 +18,9 @@ package com.bytabit.mobile.trade.model;
 
 import lombok.*;
 
-import java.time.ZonedDateTime;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -38,21 +40,29 @@ public class TradeStorageResource {
 
     private TradeResource trade;
 
+    private static DateFormat dateFormat = SimpleDateFormat.getInstance();
+
     public static Trade toTrade(TradeStorageResource tr) {
-        return Trade.builder()
-                .version(tr.getVersion())
-                .status(tr.getStatus())
-                .role(tr.getRole())
-                .createdTimestamp(ZonedDateTime.parse(tr.getCreatedTimestamp()))
-                .offer(tr.getTrade().getOffer())
-                .tradeRequest(tr.getTrade().getTakeOfferRequest())
-                .tradeAcceptance(tr.getTrade().getConfirmation())
-                .paymentRequest(tr.getTrade().getPaymentRequest())
-                .payoutRequest(tr.getTrade().getPayoutRequest())
-                .arbitrateRequest(tr.getTrade().getArbitrateRequest())
-                .cancelCompleted(tr.getTrade().getCancelCompleted())
-                .payoutCompleted(tr.getTrade().getPayoutCompleted())
-                .build();
+
+        try {
+            return Trade.builder()
+                    .version(tr.getVersion())
+                    .status(tr.getStatus())
+                    .role(tr.getRole())
+                    .createdTimestamp(dateFormat.parse(tr.getCreatedTimestamp()))
+                    .offer(tr.getTrade().getOffer())
+                    .tradeRequest(tr.getTrade().getTakeOfferRequest())
+                    .tradeAcceptance(tr.getTrade().getConfirmation())
+                    .paymentRequest(tr.getTrade().getPaymentRequest())
+                    .payoutRequest(tr.getTrade().getPayoutRequest())
+                    .arbitrateRequest(tr.getTrade().getArbitrateRequest())
+                    .cancelCompleted(tr.getTrade().getCancelCompleted())
+                    .payoutCompleted(tr.getTrade().getPayoutCompleted())
+                    .build();
+
+        } catch (ParseException e) {
+            throw new TradeManagerException(e);
+        }
     }
 
     public static TradeStorageResource fromTrade(Trade t) {
@@ -60,7 +70,7 @@ public class TradeStorageResource {
                 .version(t.getVersion())
                 .status(t.getStatus())
                 .role(t.getRole())
-                .createdTimestamp(t.getCreatedTimestamp().toString())
+                .createdTimestamp(dateFormat.format(t.getCreatedTimestamp()))
                 .trade(TradeResource.fromTrade(t))
                 .build();
     }

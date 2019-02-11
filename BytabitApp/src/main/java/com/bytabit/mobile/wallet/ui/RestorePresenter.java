@@ -35,9 +35,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.bitcoinj.crypto.MnemonicCode;
 
 import javax.inject.Inject;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 @Slf4j
@@ -127,7 +127,7 @@ public class RestorePresenter {
                             break;
                         }
                     }
-                    LocalDate selectedDate = datePicker.getValue();
+                    Date selectedDate = new Date(datePicker.getValue().toEpochDay());
                     walletManager.restoreTradeWallet(selectedWords, selectedDate);
                 })
                 .doOnError(t -> log.error("Error restoring: {}", t))

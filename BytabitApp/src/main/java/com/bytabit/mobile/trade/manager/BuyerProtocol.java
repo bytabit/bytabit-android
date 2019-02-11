@@ -22,7 +22,7 @@ import io.reactivex.Maybe;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZonedDateTime;
+import java.util.Date;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
@@ -43,7 +43,7 @@ public class BuyerProtocol extends TradeProtocol {
                 (takerEscrowPubKey, takerProfilePubKey) -> Trade.builder()
                         .role(Trade.Role.BUYER)
                         .status(Trade.Status.CREATED)
-                        .createdTimestamp(ZonedDateTime.now())
+                        .createdTimestamp(new Date())
                         .offer(offer)
                         .tradeRequest(TradeRequest.builder()
                                 .takerProfilePubKey(takerProfilePubKey)

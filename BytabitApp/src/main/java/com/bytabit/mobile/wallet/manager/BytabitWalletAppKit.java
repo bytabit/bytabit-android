@@ -25,7 +25,6 @@ import org.bitcoinj.wallet.DeterministicSeed;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.ZonedDateTime;
 
 public class BytabitWalletAppKit extends WalletAppKit {
 
@@ -73,9 +72,11 @@ public class BytabitWalletAppKit extends WalletAppKit {
     @Override
     protected void onSetupCompleted() {
 
+        long ONE_MONTH_MILLISECONDS = 60000 * 60 * 24 * 30;
+
         WalletKitConfig config = getWalletKitConfig();
         if (config.getWatchAddresses() != null && !config.getWatchAddresses().isEmpty()) {
-            wallet().addWatchedAddresses(config.getWatchAddresses(), ZonedDateTime.now().minusMonths(2).toEpochSecond());
+            wallet().addWatchedAddresses(config.getWatchAddresses(), System.currentTimeMillis() - ONE_MONTH_MILLISECONDS * 2);
         }
 
         File walletBackupFile = new File(String.format("%s/%s.wallet.bkp", directory.getPath(), filePrefix));

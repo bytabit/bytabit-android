@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.LocalDateTimeConverter;
+import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeManagerException;
@@ -36,8 +36,8 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
@@ -81,7 +81,7 @@ public class TradeManager {
 
         gson = new GsonBuilder()
                 .setPrettyPrinting()
-                .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
+                .registerTypeAdapter(Date.class, new DateConverter())
                 .create();
 
         tradeService = new TradeService();
@@ -327,7 +327,7 @@ public class TradeManager {
 
         return Trade.builder()
                 .status(CREATED)
-                .createdTimestamp(ZonedDateTime.now())
+                .createdTimestamp(new Date())
                 .offer(receivedTrade.getOffer())
                 .tradeRequest(receivedTrade.getTradeRequest())
                 .tradeAcceptance(receivedTrade.getTradeAcceptance())

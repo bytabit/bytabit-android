@@ -33,6 +33,8 @@ import javafx.geometry.Side;
 import javafx.scene.control.Label;
 
 import javax.inject.Inject;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 public class WalletPresenter {
@@ -56,6 +58,8 @@ public class WalletPresenter {
 
     private FloatingActionButton withdrawButton = new FloatingActionButton();
 
+    private DateFormat dateFormat = SimpleDateFormat.getInstance();
+
     public void initialize() {
 
         // setup transaction list view
@@ -65,7 +69,7 @@ public class WalletPresenter {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC, %s", tx.getTransactionAmt().toPlainString(), tx.getDate().toLocalDateTime());
+                    String amount = String.format("%s BTC, %s", tx.getTransactionAmt().toPlainString(), dateFormat.format(tx.getDate()));
                     String details = String.format(Locale.US, "%s (%d), Hash: %s", tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());
                     setText(null);

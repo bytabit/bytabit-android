@@ -17,7 +17,7 @@
 package com.bytabit.mobile.offer.manager;
 
 import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
-import com.bytabit.mobile.common.LocalDateTimeConverter;
+import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
@@ -40,7 +40,7 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -73,7 +73,7 @@ public class OfferManager {
 
         gson = new GsonBuilder()
                 .setPrettyPrinting()
-                .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
+                .registerTypeAdapter(Date.class, new DateConverter())
                 .create();
 
         offerService = new OfferService();

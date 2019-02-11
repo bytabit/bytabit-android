@@ -48,8 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -61,6 +59,8 @@ import static org.bitcoinj.wallet.DeterministicKeyChain.BIP44_ACCOUNT_ZERO_PATH;
 public class WalletManager {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
+
+    private final long ONE_MONTH_MILLISECONDS = 60000 * 60 * 24 * 30;
 
     private final NetworkParameters netParams;
     private final Context btcContext;
@@ -338,14 +338,14 @@ public class WalletManager {
                         .netParams(netParams)
                         .directory(AppConfig.getPrivateStorage())
                         .filePrefix("escrow")
-                        .creationDate(LocalDate.now().minusMonths(2))
+                        .creationDate(new Date(System.currentTimeMillis() - ONE_MONTH_MILLISECONDS * 2))
                         .watchAddresses(eal)
                         .build()));
     }
 
     public Maybe<String> watchNewEscrowAddress(String escrowAddress) {
         return getEscrowWallet()
-                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), ZonedDateTime.now().toEpochSecond()))
+                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), System.currentTimeMillis() - ONE_MONTH_MILLISECONDS * 2))
                 .filter(s -> s.equals(true))
                 .map(s -> escrowAddress);
     }
@@ -648,7 +648,7 @@ public class WalletManager {
         return walletSynced;
     }
 
-    public void restoreTradeWallet(List<String> mnemonicCode, LocalDate creationDate) {
+    public void restoreTradeWallet(List<String> mnemonicCode, Date creationDate) {
 
         WalletKitConfig walletKitConfig = WalletKitConfig.builder()
                 .netParams(netParams)

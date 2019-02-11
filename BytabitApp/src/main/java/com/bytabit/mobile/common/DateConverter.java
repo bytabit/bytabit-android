@@ -19,17 +19,26 @@ package com.bytabit.mobile.common;
 import com.google.gson.*;
 
 import java.lang.reflect.Type;
-import java.time.ZonedDateTime;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
-public class LocalDateTimeConverter implements JsonSerializer<ZonedDateTime>, JsonDeserializer<ZonedDateTime> {
+public class DateConverter implements JsonSerializer<Date>, JsonDeserializer<Date> {
+
+    private DateFormat dateFormat = SimpleDateFormat.getInstance();
 
     @Override
-    public JsonElement serialize(ZonedDateTime localDateTime, Type type, JsonSerializationContext context) {
-        return new JsonPrimitive(localDateTime.toString());
+    public JsonElement serialize(Date date, Type type, JsonSerializationContext context) {
+        return new JsonPrimitive(dateFormat.format(date));
     }
 
     @Override
-    public ZonedDateTime deserialize(JsonElement json, Type type, JsonDeserializationContext context) {
-        return ZonedDateTime.parse(json.getAsString());
+    public Date deserialize(JsonElement json, Type type, JsonDeserializationContext context) {
+        try {
+            return dateFormat.parse(json.getAsString());
+        } catch (ParseException e) {
+            throw new JsonParseException(e.getCause());
+        }
     }
 }
