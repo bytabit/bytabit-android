@@ -200,6 +200,11 @@ public class TradeManager {
     }
 
     public Maybe<Trade> buyerSendPayment(String paymentReference) {
+
+        if (paymentReference == null || paymentReference.length() == 0) {
+            return Maybe.error(new TradeManagerException("No payment reference."));
+
+        }
         return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getStatus().equals(FUNDED))
                 .flatMapSingleElement(this::updateTradeTx)
