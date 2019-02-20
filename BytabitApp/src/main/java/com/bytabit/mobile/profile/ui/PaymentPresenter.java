@@ -16,10 +16,12 @@
 
 package com.bytabit.mobile.profile.ui;
 
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.profile.model.ProfileManagerException;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -101,14 +103,14 @@ public class PaymentPresenter {
 
         JavaFxObservable.actionEventsOf(addPaymentDetailButton)
                 .map(actionEvent -> getPaymentDetails())
+                .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .subscribe(paymentDetailsManager::updatePaymentDetails);
-
-        JavaFxObservable.actionEventsOf(addPaymentDetailButton)
-                .subscribeOn(Schedulers.io())
+                .doOnNext(paymentDetailsManager::updatePaymentDetails)
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(action -> MobileApplication.getInstance().switchToPreviousView());
+                .subscribe(details -> MobileApplication.getInstance().switchToPreviousView());
 
         JavaFxObservable.actionEventsOf(removePaymentDetailButton)
                 .map(actionEvent -> getPaymentDetails())
@@ -147,6 +149,15 @@ public class PaymentPresenter {
     }
 
     private PaymentDetails getPaymentDetails() {
+        if (currencyChoiceBox.getValue() == null) {
+            throw new ProfileManagerException("Currency is required for payment details.");
+        }
+        if (paymentMethodChoiceBox.getValue() == null) {
+            throw new ProfileManagerException("Payment method is required for payment details.");
+        }
+        if (paymentDetailsTextField.getText() == null || paymentDetailsTextField.getText().length() == 0) {
+            throw new ProfileManagerException("Payment details are required.");
+        }
         return PaymentDetails.builder()
                 .currencyCode(currencyChoiceBox.getValue())
                 .paymentMethod(paymentMethodChoiceBox.getValue())
