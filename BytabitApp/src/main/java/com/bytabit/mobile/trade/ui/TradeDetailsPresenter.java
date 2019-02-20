@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.trade.ui;
 
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.down.Platform;
@@ -23,7 +24,6 @@ import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.ShareService;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
-import com.gluonhq.charm.glisten.control.Dialog;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
 import io.reactivex.rxjavafx.observables.JavaFxObservable;
@@ -138,17 +138,7 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.fundEscrow())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .doOnError(throwable -> {
-                    Dialog dialog = new Dialog();
-                    dialog.setTitle(new Label(throwable.getMessage()));
-                    dialog.setContent(new Label());
-                    Button okButton = new Button("OK");
-                    okButton.setOnAction(evt -> {
-                        dialog.hide();
-                    });
-                    dialog.getButtons().add(okButton);
-                    dialog.showAndWait();
-                })
+                .doOnError(UiUtils::showErrorDialog)
                 .retry()
                 .subscribe(trade -> {
                     log.debug("Trade escrow funded for trade {}", trade);
@@ -159,17 +149,7 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get()))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .doOnError(throwable -> {
-                    Dialog dialog = new Dialog();
-                    dialog.setTitle(new Label(throwable.getMessage()));
-                    dialog.setContent(new Label());
-                    Button okButton = new Button("OK");
-                    okButton.setOnAction(evt -> {
-                        dialog.hide();
-                    });
-                    dialog.getButtons().add(okButton);
-                    dialog.showAndWait();
-                })
+                .doOnError(UiUtils::showErrorDialog)
                 .retry()
                 .subscribe(t -> {
                     log.debug("Buyer sent payment for trade {}", t);

@@ -17,8 +17,10 @@
 package com.bytabit.mobile.wallet.ui;
 
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
+import com.bytabit.mobile.wallet.model.WalletManagerException;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -75,12 +77,18 @@ public class WithdrawPresenter {
 
         JavaFxObservable.actionEventsOf(withdrawButton)
                 .flatMapMaybe(actionEvent -> {
-                    String address = withdrawAddressField.getText();
-                    BigDecimal amount = new BigDecimal(withdrawAmountField.getText());
-                    return walletManager.withdrawFromTradeWallet(address, amount);
+                    try {
+                        String address = withdrawAddressField.getText();
+                        BigDecimal amount = new BigDecimal(withdrawAmountField.getText());
+                        return walletManager.withdrawFromTradeWallet(address, amount);
+                    } catch (NumberFormatException nfe) {
+                        throw new WalletManagerException("Invalid number format for withdraw amount.");
+                    }
                 })
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(tx -> MobileApplication.getInstance().switchToPreviousView());
     }
 

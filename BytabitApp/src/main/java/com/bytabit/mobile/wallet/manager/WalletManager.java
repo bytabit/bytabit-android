@@ -323,11 +323,21 @@ public class WalletManager {
     public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount) {
         return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(w -> {
-                    Address address = Address.fromBase58(netParams, withdrawAddress);
-                    Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
-                    SendRequest request = SendRequest.to(address, amount);
-                    Wallet.SendResult sendResult = w.sendCoins(request);
-                    return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
+                    try {
+                        Address address = Address.fromBase58(netParams, withdrawAddress);
+                        Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
+                        SendRequest request = SendRequest.to(address, amount);
+                        Wallet.SendResult sendResult = w.sendCoins(request);
+                        return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
+                    } catch (AddressFormatException afe) {
+                        throw new WalletManagerException("Invalid withdraw address format.");
+                    } catch (IllegalArgumentException iae) {
+                        throw new WalletManagerException("Invalid withdraw amount.");
+                    } catch (InsufficientMoneyException ime) {
+                        throw new WalletManagerException("Insufficient wallet balance for withdraw amount.");
+                    } catch (Wallet.DustySendRequested dsr) {
+                        throw new WalletManagerException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ").");
+                    }
                 });
     }
 
