@@ -96,8 +96,6 @@ public class RestorePresenter {
     @Inject
     ProfileManager profileManager;
 
-    private final int completerWaitMs = 200;
-
     public void initialize() {
 
         words.addAll(Arrays.asList(word1, word2, word3, word4, word5, word6,
@@ -143,7 +141,7 @@ public class RestorePresenter {
 
         for (AutoCompleteTextField<String> word : words) {
             word.setCompleter(s -> matching(wordList, s));
-            word.setCompleterWaitDuration(Duration.millis(completerWaitMs));
+            word.setCompleterWaitDuration(Duration.millis(200));
         }
     }
 
