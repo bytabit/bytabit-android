@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.wallet.ui;
 
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -120,15 +121,20 @@ public class RestorePresenter {
                     for (AutoCompleteTextField<String> word : words) {
                         selectedWords.add(word.getText());
                         if (word.getText() == null || word.getText().isEmpty()) {
-                            // TODO warn user incomplete words, restoring from curent seed
-                            selectedWords = null;
-                            break;
+                            throw new RestorePresenterException("All words must be entered.");
                         }
                     }
-                    Date selectedDate = new Date(datePicker.getValue().toEpochDay());
+                    Date selectedDate;
+                    if (datePicker.getValue() == null) {
+                        throw new RestorePresenterException("Wallet creation date must be entered.");
+                    } else {
+                        selectedDate = new Date(datePicker.getValue().toEpochDay());
+                    }
                     walletManager.restoreTradeWallet(selectedWords, selectedDate);
                 })
-                .doOnError(t -> log.error("Error restoring: {}", t))
+                .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(tx -> MobileApplication.getInstance().switchToPreviousView());
