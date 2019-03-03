@@ -21,7 +21,6 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import io.reactivex.Observable;
-import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,23 +43,18 @@ public class PaymentDetailsManager {
     @Inject
     StorageManager storageManager;
 
-    public void updatePaymentDetails(PaymentDetails paymentDetails) {
-        Observable.fromCallable(() -> {
-            storageManager.store(paymentDetailsKey(paymentDetails.getCurrencyCode(),
-                    paymentDetails.getPaymentMethod()), paymentDetails.getDetails());
-            return paymentDetails;
-        }).subscribeOn(Schedulers.io()).observeOn(Schedulers.io())
-                .subscribe(updatedPaymentDetails::onNext);
+    public Observable<PaymentDetails> updatePaymentDetails(PaymentDetails paymentDetails) {
+        return Observable.just(paymentDetails)
+                .doOnNext(pd -> storageManager.store(paymentDetailsKey(paymentDetails.getCurrencyCode(),
+                        paymentDetails.getPaymentMethod()), paymentDetails.getDetails()))
+                .doOnNext(updatedPaymentDetails::onNext);
     }
 
-    public void removePaymentDetails(PaymentDetails paymentDetails) {
-        Observable.fromCallable(() -> {
-                    storageManager.remove(paymentDetailsKey(paymentDetails.getCurrencyCode(),
-                            paymentDetails.getPaymentMethod()));
-                    return paymentDetails;
-                }
-        ).subscribeOn(Schedulers.io()).observeOn(Schedulers.io())
-                .subscribe(removedPaymentDetails::onNext);
+    public Observable<PaymentDetails> removePaymentDetails(PaymentDetails paymentDetails) {
+        return Observable.just(paymentDetails)
+                .doOnNext(pd -> storageManager.remove(paymentDetailsKey(paymentDetails.getCurrencyCode(),
+                        paymentDetails.getPaymentMethod())))
+                .doOnNext(removedPaymentDetails::onNext);
     }
 
     public void setSelectedPaymentDetails(PaymentDetails paymentDetails) {

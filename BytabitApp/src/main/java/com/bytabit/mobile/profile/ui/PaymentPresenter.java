@@ -108,20 +108,20 @@ public class PaymentPresenter {
                 .retry()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .doOnNext(paymentDetailsManager::updatePaymentDetails)
+                .flatMap(paymentDetailsManager::updatePaymentDetails)
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(details -> MobileApplication.getInstance().switchToPreviousView());
 
         JavaFxObservable.actionEventsOf(removePaymentDetailButton)
                 .map(actionEvent -> getPaymentDetails())
+                .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
-                .subscribe(paymentDetailsManager::removePaymentDetails);
-
-        JavaFxObservable.actionEventsOf(removePaymentDetailButton)
-                .subscribeOn(Schedulers.io())
+                .flatMap(paymentDetailsManager::removePaymentDetails)
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(action -> MobileApplication.getInstance().switchToPreviousView());
+                .subscribe(details -> MobileApplication.getInstance().switchToPreviousView());
 
         paymentDetailsManager.getSelectedPaymentDetails()
                 .subscribeOn(Schedulers.io())
