@@ -221,7 +221,8 @@ public class AddOfferPresenter {
                 .subscribe(pd -> {
                     CurrencyCode cc = pd.getCurrencyCode();
                     PaymentMethod pm = pd.getPaymentMethod();
-                    if (currencyChoiceBox.getSelectionModel().getSelectedItem().equals(cc)) {
+                    if (currencyChoiceBox.getSelectionModel().getSelectedItem() != null &&
+                            currencyChoiceBox.getSelectionModel().getSelectedItem().equals(cc)) {
                         paymentMethodChoiceBox.getItems().remove(pm);
                         if (paymentMethodChoiceBox.getItems().isEmpty()) {
                             currencyChoiceBox.getItems().remove(cc);
