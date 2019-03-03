@@ -19,7 +19,6 @@ package com.bytabit.mobile.trade.manager;
 import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

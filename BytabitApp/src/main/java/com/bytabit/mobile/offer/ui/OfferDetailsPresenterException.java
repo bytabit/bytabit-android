@@ -14,27 +14,27 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.trade.model;
+package com.bytabit.mobile.offer.ui;
 
-public class TradeManagerException extends RuntimeException {
+public class OfferDetailsPresenterException extends RuntimeException {
 
-    public TradeManagerException() {
+    public OfferDetailsPresenterException() {
         super();
     }
 
-    public TradeManagerException(String message) {
+    public OfferDetailsPresenterException(String message) {
         super(message);
     }
 
-    public TradeManagerException(String message, Throwable cause) {
+    public OfferDetailsPresenterException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public TradeManagerException(Throwable cause) {
+    public OfferDetailsPresenterException(Throwable cause) {
         super(cause);
     }
 
-    protected TradeManagerException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected OfferDetailsPresenterException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

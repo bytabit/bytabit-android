@@ -21,7 +21,6 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.wallet.model.TradeWalletInfo;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.bytabit.mobile.wallet.model.WalletKitConfig;
-import com.bytabit.mobile.wallet.model.WalletManagerException;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Service.Listener;

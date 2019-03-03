@@ -20,7 +20,6 @@ import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import com.bytabit.mobile.wallet.model.WalletManagerException;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -82,7 +81,7 @@ public class WithdrawPresenter {
                         BigDecimal amount = new BigDecimal(withdrawAmountField.getText());
                         return walletManager.withdrawFromTradeWallet(address, amount);
                     } catch (NumberFormatException nfe) {
-                        throw new WalletManagerException("Invalid number format for withdraw amount.");
+                        throw new WalletPresenterException("Invalid number format for withdraw amount.");
                     }
                 })
                 .subscribeOn(Schedulers.io())

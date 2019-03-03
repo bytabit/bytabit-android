@@ -17,6 +17,7 @@
 package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
@@ -127,18 +128,36 @@ public class AddOfferPresenter {
     }
 
     private void handleAddOffer() {
-        Observable.create(source ->
-                addOfferButton.setOnAction(source::onNext))
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(sellOffer -> {
+        JavaFxObservable.actionEventsOf(addOfferButton)
+                .flatMapMaybe(ea -> {
                     Offer.OfferType offerType = offerTypeChoiceBox.selectionModelProperty().getValue().getSelectedItem();
                     CurrencyCode currencyCode = currencyChoiceBox.selectionModelProperty().getValue().getSelectedItem();
                     PaymentMethod paymentMethod = paymentMethodChoiceBox.selectionModelProperty().getValue().getSelectedItem();
-                    BigDecimal maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
-                    BigDecimal minAmount = new BigDecimal(minTradeAmtTextField.getText());
-                    BigDecimal price = new BigDecimal(btcPriceTextField.getText());
-                    offerManager.createOffer(offerType, currencyCode, paymentMethod, minAmount, maxAmount, price);
+                    BigDecimal maxAmount;
+                    BigDecimal minAmount;
+                    BigDecimal price;
+                    try {
+                        maxAmount = new BigDecimal(maxTradeAmtTextField.getText());
+                    } catch (NumberFormatException nfe) {
+                        throw new AddOfferPresenterException("Max amount has invalid number format.");
+                    }
+                    try {
+                        minAmount = new BigDecimal(minTradeAmtTextField.getText());
+                    } catch (NumberFormatException nfe) {
+                        throw new AddOfferPresenterException("Min amount has invalid number format.");
+                    }
+                    try {
+                        price = new BigDecimal(btcPriceTextField.getText());
+                    } catch (NumberFormatException nfe) {
+                        throw new AddOfferPresenterException("BTC price has invalid number format.");
+                    }
+                    return offerManager.createOffer(offerType, currencyCode, paymentMethod, minAmount, maxAmount, price);
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
+                .subscribe(offer -> {
                     MobileApplication.getInstance().switchToPreviousView();
                 });
     }

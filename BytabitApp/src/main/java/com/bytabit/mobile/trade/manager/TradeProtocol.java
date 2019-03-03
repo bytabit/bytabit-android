@@ -20,7 +20,6 @@ import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.trade.model.ArbitrateRequest;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.trade.model.TradeProtocolException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import io.reactivex.Maybe;
 

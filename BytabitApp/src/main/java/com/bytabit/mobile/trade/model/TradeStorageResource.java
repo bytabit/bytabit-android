@@ -61,7 +61,7 @@ public class TradeStorageResource {
                     .build();
 
         } catch (ParseException e) {
-            throw new TradeManagerException(e);
+            throw new TradeModelException(e);
         }
     }
 

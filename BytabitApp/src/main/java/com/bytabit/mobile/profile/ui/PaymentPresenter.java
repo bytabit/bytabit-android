@@ -18,10 +18,10 @@ package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
+import com.bytabit.mobile.profile.manager.ProfileManagerException;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
-import com.bytabit.mobile.profile.model.ProfileManagerException;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;

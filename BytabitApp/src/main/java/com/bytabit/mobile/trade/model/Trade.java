@@ -397,7 +397,7 @@ public class Trade {
         } else if (hasConfirmation() && getArbitratorProfilePubKey().equals(profilePubKey)) {
             tradeWithRole = this.copyBuilder().role(ARBITRATOR).build();
         } else {
-            throw new TradeManagerException("Unable to determine trade role.");
+            throw new TradeModelException("Unable to determine trade role.");
         }
         return tradeWithRole;
     }
@@ -446,7 +446,7 @@ public class Trade {
         }
 
         if (newStatus == null) {
-            throw new TradeManagerException("Unable to determine trade status.");
+            throw new TradeModelException("Unable to determine trade status.");
         }
         return this.copyBuilder().status(newStatus).build();
     }

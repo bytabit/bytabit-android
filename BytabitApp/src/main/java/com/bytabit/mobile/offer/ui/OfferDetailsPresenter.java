@@ -18,6 +18,7 @@ package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -130,9 +131,18 @@ public class OfferDetailsPresenter {
 
 
         JavaFxObservable.actionEventsOf(tradeBtcButton)
-                .flatMapMaybe(ae -> offerManager.createTrade(new BigDecimal(buyBtcAmtTextField.textProperty().getValue())))
+                .flatMapMaybe(ae -> {
+                    try {
+                        BigDecimal buyBtcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().getValue());
+                        return offerManager.createTrade(buyBtcAmount);
+                    } catch (NumberFormatException nfe) {
+                        throw new OfferDetailsPresenterException("Invalid number format for amount.");
+                    }
+                })
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(t -> {
                     log.debug("Create trade ", t);
                     MobileApplication.getInstance().switchView(BytabitMobile.TRADE_VIEW);

@@ -217,7 +217,7 @@ public class TradeDetailsPresenter {
             content.putString(tradeJson);
             clipboard.setContent(content);
         } else {
-            ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new RuntimeException("ShareService not available."));
+            ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new TradeDetailsPresenterException("ShareService not available."));
             shareService.share(tradeJson);
         }
     }

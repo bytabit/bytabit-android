@@ -14,27 +14,27 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.profile.model;
+package com.bytabit.mobile.trade.manager;
 
-public class ProfileManagerException extends RuntimeException {
+public class TradeProtocolException extends RuntimeException {
 
-    public ProfileManagerException() {
+    public TradeProtocolException() {
         super();
     }
 
-    public ProfileManagerException(String message) {
+    public TradeProtocolException(String message) {
         super(message);
     }
 
-    public ProfileManagerException(String message, Throwable cause) {
+    public TradeProtocolException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public ProfileManagerException(Throwable cause) {
+    public TradeProtocolException(Throwable cause) {
         super(cause);
     }
 
-    protected ProfileManagerException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected TradeProtocolException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }
