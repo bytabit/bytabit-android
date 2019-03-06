@@ -18,7 +18,7 @@ package com.bytabit.mobile.badge.manager;
 
 import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.badge.model.Badge;
-import com.bytabit.mobile.common.LocalDateTimeConverter;
+import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
-import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -57,7 +57,7 @@ public class BadgeManager {
 
         gson = new GsonBuilder()
                 .setPrettyPrinting()
-                .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
+                .registerTypeAdapter(Date.class, new DateConverter())
                 .create();
 
         badgeService = new BadgeService();

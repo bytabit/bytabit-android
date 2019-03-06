@@ -21,7 +21,6 @@ import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.wallet.model.TradeWalletInfo;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.bytabit.mobile.wallet.model.WalletKitConfig;
-import com.bytabit.mobile.wallet.model.WalletManagerException;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Service.Listener;
@@ -48,8 +47,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -61,6 +58,8 @@ import static org.bitcoinj.wallet.DeterministicKeyChain.BIP44_ACCOUNT_ZERO_PATH;
 public class WalletManager {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
+
+    private final long ONE_MONTH_MILLISECONDS = 60000 * 60 * 24 * 30;
 
     private final NetworkParameters netParams;
     private final Context btcContext;
@@ -139,7 +138,10 @@ public class WalletManager {
 
         // triggers for wallet start and synced
 
-        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, Double::min)
+        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
+            if (tp > ep) return ep;
+            else return tp;
+        })
                 .throttleLast(1, TimeUnit.SECONDS)
                 .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
                 .doOnNext(p -> log.debug("walletsDownloadProgress: {}", p))
@@ -320,11 +322,21 @@ public class WalletManager {
     public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount) {
         return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet).map(w -> {
-                    Address address = Address.fromBase58(netParams, withdrawAddress);
-                    Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
-                    SendRequest request = SendRequest.to(address, amount);
-                    Wallet.SendResult sendResult = w.sendCoins(request);
-                    return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
+                    try {
+                        Address address = Address.fromBase58(netParams, withdrawAddress);
+                        Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
+                        SendRequest request = SendRequest.to(address, amount);
+                        Wallet.SendResult sendResult = w.sendCoins(request);
+                        return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
+                    } catch (AddressFormatException afe) {
+                        throw new WalletManagerException("Invalid withdraw address format.");
+                    } catch (IllegalArgumentException iae) {
+                        throw new WalletManagerException("Invalid withdraw amount.");
+                    } catch (InsufficientMoneyException ime) {
+                        throw new WalletManagerException("Insufficient wallet balance for withdraw amount.");
+                    } catch (Wallet.DustySendRequested dsr) {
+                        throw new WalletManagerException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ").");
+                    }
                 });
     }
 
@@ -335,14 +347,14 @@ public class WalletManager {
                         .netParams(netParams)
                         .directory(AppConfig.getPrivateStorage())
                         .filePrefix("escrow")
-                        .creationDate(LocalDate.now().minusMonths(2))
+                        .creationDate(new Date(System.currentTimeMillis() - ONE_MONTH_MILLISECONDS * 2))
                         .watchAddresses(eal)
                         .build()));
     }
 
     public Maybe<String> watchNewEscrowAddress(String escrowAddress) {
         return getEscrowWallet()
-                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), ZonedDateTime.now().toEpochSecond()))
+                .map(ew -> ew.addWatchedAddress(Address.fromBase58(netParams, escrowAddress), System.currentTimeMillis() - ONE_MONTH_MILLISECONDS * 2))
                 .filter(s -> s.equals(true))
                 .map(s -> escrowAddress);
     }
@@ -645,7 +657,7 @@ public class WalletManager {
         return walletSynced;
     }
 
-    public void restoreTradeWallet(List<String> mnemonicCode, LocalDate creationDate) {
+    public void restoreTradeWallet(List<String> mnemonicCode, Date creationDate) {
 
         WalletKitConfig walletKitConfig = WalletKitConfig.builder()
                 .netParams(netParams)

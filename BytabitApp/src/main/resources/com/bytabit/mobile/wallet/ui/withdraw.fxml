@@ -74,7 +74,7 @@
                             </padding>
                         </Label>
                         <TextField fx:id="withdrawAmountField" maxWidth="150.0"
-                                   prefWidth="150.0">
+                                   prefWidth="150.0" text="0.0">
                             <opaqueInsets>
                                 <Insets/>
                             </opaqueInsets>

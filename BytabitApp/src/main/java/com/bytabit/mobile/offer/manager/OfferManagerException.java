@@ -14,26 +14,27 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.wallet.model;
+package com.bytabit.mobile.offer.manager;
 
-public class WalletManagerException extends RuntimeException {
+public class OfferManagerException extends RuntimeException {
 
-    public WalletManagerException() {
+    public OfferManagerException() {
+        super();
     }
 
-    public WalletManagerException(String message) {
+    public OfferManagerException(String message) {
         super(message);
     }
 
-    public WalletManagerException(String message, Throwable cause) {
+    public OfferManagerException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public WalletManagerException(Throwable cause) {
+    public OfferManagerException(Throwable cause) {
         super(cause);
     }
 
-    public WalletManagerException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected OfferManagerException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

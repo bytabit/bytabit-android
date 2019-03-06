@@ -20,14 +20,16 @@ import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.trade.model.*;
 import io.reactivex.Maybe;
+import io.reactivex.Single;
 import org.bitcoinj.core.Transaction;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZonedDateTime;
+import java.util.Date;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
+import static io.reactivex.Single.error;
 
 public class SellerProtocol extends TradeProtocol {
 
@@ -45,7 +47,7 @@ public class SellerProtocol extends TradeProtocol {
                 (takerEscrowPubKey, takerProfilePubKey) -> Trade.builder()
                         .role(Trade.Role.SELLER)
                         .status(Trade.Status.CREATED)
-                        .createdTimestamp(ZonedDateTime.now())
+                        .createdTimestamp(new Date())
                         .offer(offer)
                         .tradeRequest(TradeRequest.builder()
                                 .takerProfilePubKey(takerProfilePubKey)
@@ -103,9 +105,11 @@ public class SellerProtocol extends TradeProtocol {
     // 2.S: seller fund escrow and post payment request
     Maybe<Trade> fundEscrow(Trade trade) {
 
-        Maybe<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
+        Single<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
-                .singleElement().cache();
+                .singleOrError()
+                .onErrorResumeNext(error(new TradeManagerException("No payment details found to fund trade.")))
+                .cache();
 
         // TODO don't fund escrow if payment details are not configured
 
@@ -124,8 +128,8 @@ public class SellerProtocol extends TradeProtocol {
                 .flatMap(rs -> rs);
 
         // 3. create payment request
-        Maybe<PaymentRequest> paymentRequest = Maybe.zip(fundingTx, refundAddressBase58, paymentDetails, refundTxSignature,
-                (ftx, ra, pd, rs) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra, rs));
+        Maybe<PaymentRequest> paymentRequest = Maybe.zip(paymentDetails.toMaybe(), refundAddressBase58,  refundTxSignature, fundingTx,
+                (pd, ra,  rs, ftx) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra, rs));
 
         return paymentRequest.map(pr -> trade.copyBuilder().paymentRequest(pr).build().withStatus());
     }

@@ -16,18 +16,15 @@
 
 package com.bytabit.mobile.wallet.manager;
 
+import com.bytabit.mobile.common.FileUtils;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.wallet.model.WalletKitConfig;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.wallet.DeterministicSeed;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.ZonedDateTime;
-
-import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 
 public class BytabitWalletAppKit extends WalletAppKit {
 
@@ -75,18 +72,20 @@ public class BytabitWalletAppKit extends WalletAppKit {
     @Override
     protected void onSetupCompleted() {
 
+        long ONE_MONTH_MILLISECONDS = 60000 * 60 * 24 * 30;
+
         WalletKitConfig config = getWalletKitConfig();
         if (config.getWatchAddresses() != null && !config.getWatchAddresses().isEmpty()) {
-            wallet().addWatchedAddresses(config.getWatchAddresses(), ZonedDateTime.now().minusMonths(2).toEpochSecond());
+            wallet().addWatchedAddresses(config.getWatchAddresses(), System.currentTimeMillis() - ONE_MONTH_MILLISECONDS * 2);
         }
 
-        Path walletBackupFilePath = directory.toPath().resolve(String.format("%s.wallet.bkp", filePrefix));
+        File walletBackupFile = new File(String.format("%s/%s.wallet.bkp", directory.getPath(), filePrefix));
 
-        if (!walletBackupFilePath.toFile().exists()) {
+        if (!walletBackupFile.exists()) {
             try {
-                Files.copy(vWalletFile.toPath(), walletBackupFilePath, COPY_ATTRIBUTES);
+                FileUtils.copy(vWalletFile, walletBackupFile);
             } catch (IOException ioe) {
-                log.error("Could not make backup copy of {} to {}", vWalletFile.toPath(), walletBackupFilePath);
+                log.error("Could not make backup copy of {} to {}", vWalletFile.getPath(), walletBackupFile.getPath());
             }
         }
     }

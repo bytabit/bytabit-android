@@ -26,7 +26,7 @@ import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZonedDateTime;
+import java.util.Date;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
@@ -76,7 +76,7 @@ public class Trade {
     @EqualsAndHashCode.Exclude
     private final Role role;
 
-    private final ZonedDateTime createdTimestamp;
+    private final Date createdTimestamp;
 
     @NonNull
     private final Offer offer;
@@ -397,7 +397,7 @@ public class Trade {
         } else if (hasConfirmation() && getArbitratorProfilePubKey().equals(profilePubKey)) {
             tradeWithRole = this.copyBuilder().role(ARBITRATOR).build();
         } else {
-            throw new TradeManagerException("Unable to determine trade role.");
+            throw new TradeModelException("Unable to determine trade role.");
         }
         return tradeWithRole;
     }
@@ -446,7 +446,7 @@ public class Trade {
         }
 
         if (newStatus == null) {
-            throw new TradeManagerException("Unable to determine trade status.");
+            throw new TradeModelException("Unable to determine trade status.");
         }
         return this.copyBuilder().status(newStatus).build();
     }

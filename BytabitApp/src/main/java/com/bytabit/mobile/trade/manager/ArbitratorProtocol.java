@@ -18,7 +18,6 @@ package com.bytabit.mobile.trade.manager;
 
 import com.bytabit.mobile.trade.model.PayoutCompleted;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.trade.model.TradeProtocolException;
 import io.reactivex.Maybe;
 
 import static com.bytabit.mobile.trade.model.Trade.Role.ARBITRATOR;

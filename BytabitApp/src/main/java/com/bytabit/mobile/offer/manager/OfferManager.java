@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.offer.manager;
 
-import com.bytabit.mobile.common.LocalDateTimeConverter;
+import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
@@ -39,7 +39,7 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -69,7 +69,7 @@ public class OfferManager {
 
         gson = new GsonBuilder()
                 .setPrettyPrinting()
-                .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
+                .registerTypeAdapter(Date.class, new DateConverter())
                 .create();
 
         offerService = new OfferService();
@@ -107,10 +107,33 @@ public class OfferManager {
         return offers.share();
     }
 
-    public void createOffer(Offer.OfferType offerType, CurrencyCode currencyCode, PaymentMethod paymentMethod,
-                            BigDecimal minAmount, BigDecimal maxAmount, BigDecimal price) {
+    public Maybe<Offer> createOffer(Offer.OfferType offerType,
+                            CurrencyCode currencyCode,
+                            PaymentMethod paymentMethod,
+                            BigDecimal minAmount,
+                            BigDecimal maxAmount,
+                            BigDecimal price) {
 
-        walletManager.getProfilePubKeyBase58().map(profilePubKey ->
+        if (offerType == null) {
+            throw new OfferManagerException("Offer type is required.");
+        }
+        if (currencyCode == null) {
+            throw new OfferManagerException("Currency code is required.");
+        }
+        if (paymentMethod == null) {
+            throw new OfferManagerException("Payment method is required.");
+        }
+        if (minAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new OfferManagerException("Minimum amount must be greater than zero.");
+        }
+        if (maxAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new OfferManagerException("Maximum amount must be greater than zero.");
+        }
+        if (price.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new OfferManagerException("Price must be greater than zero.");
+        }
+
+        return walletManager.getProfilePubKeyBase58().map(profilePubKey ->
                 Offer.builder()
                         .offerType(offerType)
                         .makerProfilePubKey(profilePubKey)
@@ -120,8 +143,8 @@ public class OfferManager {
                         .maxAmount(maxAmount)
                         .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
                         .build())
-                .flatMapSingle(offerService::put)
-                .subscribe(createdOffer::onNext);
+                .flatMapSingleElement(offerService::put)
+                .doOnSuccess(createdOffer::onNext);
     }
 
     public void deleteOffer() {
@@ -156,6 +179,9 @@ public class OfferManager {
     }
 
     public Maybe<Trade> createTrade(BigDecimal btcAmount) {
+        if (btcAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new OfferManagerException("Trade amount must be greater than zero.");
+        }
         return getSelectedOffer().firstOrError()
                 .flatMapMaybe(offer -> tradeManager.createTrade(offer, btcAmount));
     }

@@ -16,10 +16,9 @@
 
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.LocalDateTimeConverter;
+import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.trade.model.Trade;
-import com.bytabit.mobile.trade.model.TradeManagerException;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -29,7 +28,6 @@ import io.reactivex.Single;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.BehaviorSubject;
-import io.reactivex.subjects.PublishSubject;
 import io.reactivex.subjects.ReplaySubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,10 +35,8 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
@@ -86,7 +82,7 @@ public class TradeManager {
 
         gson = new GsonBuilder()
                 .setPrettyPrinting()
-                .registerTypeAdapter(ZonedDateTime.class, new LocalDateTimeConverter())
+                .registerTypeAdapter(Date.class, new DateConverter())
                 .create();
 
         tradeService = new TradeService();
@@ -144,27 +140,31 @@ public class TradeManager {
                 .observeOn(Schedulers.io())
                 .subscribe(createdTradeSubject::onNext);
 
-        Observable<Set<String>> activeTradeIds = Observable.merge(createdTradeSubject, updatedTradeSubject)
-                .doOnSubscribe(d -> log.debug("activeTradeIds updatedTradeSubject: subscribe"))
-                .doOnNext(p -> log.debug("activeTradeIds updatedTradeSubject: {}", p))
-                .scan((Set<String>) new HashSet<String>(), (ts, t) -> {
-                    if (t.getStatus().compareTo(COMPLETED) < 0) {
-                        ts.add(t.getId());
-                    } else {
-                        ts.remove(t.getId());
-                    }
-                    return ts;
+        Observable<Long> maxVersion = updatedTradeSubject
+                .doOnSubscribe(d -> log.debug("updatedTradeSubject: subscribe"))
+                .doOnNext(p -> log.debug("updatedTradeSubject: {}", p))
+                .map(Trade::getVersion)
+                .scan(0L, (i, n) -> {
+                    if (i > n) return i;
+                    else return n;
                 })
                 .replay(1).autoConnect();
+
+        Comparator<Trade> tradeVersionComparator = new Comparator<Trade>() {
+            @Override
+            public int compare(Trade o1, Trade o2) {
+                return o1.getVersion().compareTo(o2.getVersion());
+            }
+        };
 
         // get update and store trades from received data after download started
         walletManager.getProfilePubKey()
                 .flatMap(profilePubKey -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-                        .flatMap(t -> maxVersion.firstOrError().flatMapObservable(version -> activeTradeIds.firstElement()
-                                .flatMapSingle(tids -> tradeService.get(tids, version - 1))
-                                .doOnSuccess(l -> l.sort(Comparator.comparing(Trade::getVersion)))
+                        .flatMap(t -> maxVersion.firstOrError().flatMap(version -> tradeService.get(profilePubKey, version - 1))
+                                .flatMapObservable(Observable::fromIterable)
+                                .toSortedList(tradeVersionComparator)
                                 .flattenAsObservable(l -> l))
-                                .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade))))
+                                .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade)))
                 .flatMapSingle(tradeStorage::write)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
@@ -222,6 +222,11 @@ public class TradeManager {
     }
 
     public Maybe<Trade> buyerSendPayment(String paymentReference) {
+
+        if (paymentReference == null || paymentReference.length() == 0) {
+            return Maybe.error(new TradeManagerException("No payment reference."));
+
+        }
         return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getStatus().equals(FUNDED))
                 .flatMapSingleElement(this::updateTradeTx)
@@ -349,7 +354,7 @@ public class TradeManager {
 
         return Trade.builder()
                 .status(CREATED)
-                .createdTimestamp(ZonedDateTime.now())
+                .createdTimestamp(new Date())
                 .offer(receivedTrade.getOffer())
                 .tradeRequest(receivedTrade.getTradeRequest())
                 .tradeAcceptance(receivedTrade.getTradeAcceptance())

@@ -27,7 +27,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath 'org.javafxports:jfxmobile-plugin:1.3.11'
+        classpath 'org.javafxports:jfxmobile-plugin:1.3.16'
         classpath 'com.palantir:gradle-gitsemver:0.6.0'
         classpath 'io.franzbecker:gradle-lombok:1.14'
     }
@@ -76,6 +76,8 @@ if (project.hasProperty('baseUrl')) {
 println net
 println config
 
+version = semver
+
 processResources {
     filesMatching("*.properties") {
         filter ReplaceTokens, tokens: [VERSION: semver, BTCNETWORK: net, CONFIGNAME: config, BASEURL: url]
@@ -89,7 +91,7 @@ dependencies {
     compile 'com.airhacks:afterburner.mfx:1.6.3'
     compile "org.bitcoinj:bitcoinj-core:0.14.7"
     compile 'io.reactivex.rxjava2:rxjavafx:2.2.0'
-    compile 'org.slf4j:slf4j-api:1.7.21'
+    compile 'org.slf4j:slf4j-api:1.7.25'
 
     compile 'com.squareup.retrofit2:retrofit:2.4.0'
     compile 'com.squareup.retrofit2:converter-gson:2.4.0'
@@ -112,13 +114,14 @@ dependencies {
 
 jfxmobile {
     downConfig {
-        version = '3.8.0'
+        version = '3.8.5'
         plugins 'display', 'lifecycle', 'statusbar', 'storage', 'settings', 'share', 'device'
     }
     android {
         manifest = 'src/android/AndroidManifest.xml'
         applicationPackage = 'com.bytabit.mobile'
-        compileSdkVersion = 26
+
+        compileSdkVersion = 28
 
         dexOptions {
             incremental true
@@ -127,6 +130,14 @@ jfxmobile {
         packagingOptions {
             exclude 'META-INF/LICENSE'
             exclude 'META-INF/NOTICE'
+        }
+
+        signingConfig {
+            keyAlias 'testnet'
+            keyPassword "${project.properties['keyPassword']}"
+            storeFile "${System.properties['user.home']}${File.separator}.android${File.separator}release.keystore" as File
+            storePassword "${project.properties['storePassword']}"
+            storeType 'jks'
         }
     }
     ios {

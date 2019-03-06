@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.trade.ui;
 
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.gluonhq.charm.down.Platform;
@@ -137,8 +138,10 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.fundEscrow())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(t -> {
-                    log.debug("Trade escrow funded for trade {}", t);
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
+                .subscribe(trade -> {
+                    log.debug("Trade escrow funded for trade {}", trade);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
 
@@ -146,6 +149,8 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.buyerSendPayment(paymentReferenceField.textProperty().get()))
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(t -> {
                     log.debug("Buyer sent payment for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
@@ -212,7 +217,7 @@ public class TradeDetailsPresenter {
             content.putString(tradeJson);
             clipboard.setContent(content);
         } else {
-            ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new RuntimeException("ShareService not available."));
+            ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new TradeDetailsPresenterException("ShareService not available."));
             shareService.share(tradeJson);
         }
     }

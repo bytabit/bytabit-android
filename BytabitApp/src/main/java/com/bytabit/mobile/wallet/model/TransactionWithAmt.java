@@ -22,8 +22,7 @@ import org.bitcoinj.core.Transaction;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.util.Date;
 
 @Getter
 @EqualsAndHashCode(of = "hash")
@@ -38,7 +37,7 @@ public class TransactionWithAmt {
 
     private Integer depth;
 
-    private ZonedDateTime date;
+    private Date date;
 
     private String memo;
 
@@ -61,7 +60,7 @@ public class TransactionWithAmt {
         this.hash = tx.getHashAsString();
         this.confidenceType = tx.getConfidence().getConfidenceType().name();
         this.depth = tx.getConfidence().getDepthInBlocks();
-        this.date = ZonedDateTime.ofInstant(tx.getUpdateTime().toInstant(), ZoneId.systemDefault());
+        this.date = tx.getUpdateTime();
         this.memo = tx.getMemo();
 
         this.transactionAmt = transactionAmt;

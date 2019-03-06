@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.wallet.ui;
 
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
@@ -35,9 +36,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.bitcoinj.crypto.MnemonicCode;
 
 import javax.inject.Inject;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 @Slf4j
@@ -96,8 +97,6 @@ public class RestorePresenter {
     @Inject
     ProfileManager profileManager;
 
-    private final int completerWaitMs = 200;
-
     public void initialize() {
 
         words.addAll(Arrays.asList(word1, word2, word3, word4, word5, word6,
@@ -122,15 +121,20 @@ public class RestorePresenter {
                     for (AutoCompleteTextField<String> word : words) {
                         selectedWords.add(word.getText());
                         if (word.getText() == null || word.getText().isEmpty()) {
-                            // TODO warn user incomplete words, restoring from curent seed
-                            selectedWords = null;
-                            break;
+                            throw new RestorePresenterException("All words must be entered.");
                         }
                     }
-                    LocalDate selectedDate = datePicker.getValue();
+                    Date selectedDate;
+                    if (datePicker.getValue() == null) {
+                        throw new RestorePresenterException("Wallet creation date must be entered.");
+                    } else {
+                        selectedDate = new Date(datePicker.getValue().toEpochDay());
+                    }
                     walletManager.restoreTradeWallet(selectedWords, selectedDate);
                 })
-                .doOnError(t -> log.error("Error restoring: {}", t))
+                .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(tx -> MobileApplication.getInstance().switchToPreviousView());
@@ -143,7 +147,7 @@ public class RestorePresenter {
 
         for (AutoCompleteTextField<String> word : words) {
             word.setCompleter(s -> matching(wordList, s));
-            word.setCompleterWaitDuration(Duration.millis(completerWaitMs));
+            word.setCompleterWaitDuration(Duration.millis(200));
         }
     }
 
