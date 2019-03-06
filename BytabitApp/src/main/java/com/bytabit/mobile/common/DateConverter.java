@@ -26,7 +26,12 @@ import java.util.Date;
 
 public class DateConverter implements JsonSerializer<Date>, JsonDeserializer<Date> {
 
-    private DateFormat dateFormat = SimpleDateFormat.getInstance();
+    private DateFormat dateFormat;
+
+    public DateConverter() {
+        dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+        //dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
 
     @Override
     public JsonElement serialize(Date date, Type type, JsonSerializationContext context) {

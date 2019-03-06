@@ -6,7 +6,7 @@ import lombok.*;
 import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Sha256Hash;
 
-import java.time.ZonedDateTime;
+import java.util.Date;
 
 @NoArgsConstructor
 @Getter
@@ -23,7 +23,7 @@ public class Badge {
 
     @Builder
     public Badge(@NonNull String profilePubKey, @NonNull BadgeType badgeType,
-                 @NonNull ZonedDateTime validFrom, @NonNull ZonedDateTime validTo,
+                 @NonNull Date validFrom, @NonNull Date validTo,
                  CurrencyCode currencyCode, PaymentMethod paymentMethod, String detailsHash) {
 
         this.profilePubKey = profilePubKey;
@@ -43,9 +43,9 @@ public class Badge {
 
     private BadgeType badgeType;
 
-    private ZonedDateTime validFrom;
+    private Date validFrom;
 
-    private ZonedDateTime validTo;
+    private Date validTo;
 
     private CurrencyCode currencyCode;
 
