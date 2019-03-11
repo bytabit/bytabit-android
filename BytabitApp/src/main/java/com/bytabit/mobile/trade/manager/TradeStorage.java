@@ -45,7 +45,7 @@ public class TradeStorage {
     private static final String TRADES_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
             "trades" + File.separator;
 
-    private static final String CURRENT_TRADE_JSON = "currentTrade.json";
+    private static final String JSON_EXT = ".json";
 
     private final InputStreamInputConverter<TradeStorageResource> tradeInputConverter;
 
@@ -75,6 +75,8 @@ public class TradeStorage {
         }
 
         return Observable.fromArray(tradesDir.list())
+                .filter(fileName -> fileName != null && fileName.endsWith(".json"))
+                .map(fileName -> fileName.substring(0, fileName.lastIndexOf('.')))
                 .flatMapMaybe(this::read)
                 .toList().toObservable();
     }
@@ -82,12 +84,8 @@ public class TradeStorage {
     Single<Trade> write(Trade trade) {
 
         return Single.<Trade>create(source -> {
-            File tradeFile = new File(TRADES_PATH + trade.getId() + File.separator + CURRENT_TRADE_JSON);
+            File tradeFile = new File(TRADES_PATH + trade.getId() + JSON_EXT);
             try {
-                File dir = new File(TRADES_PATH + trade.getId());
-                if (!dir.exists()) {
-                    dir.mkdirs();
-                }
                 // create a FileClient to the specified File
                 FileClient fileClient = FileClient.create(tradeFile);
                 ObjectDataWriter<TradeStorageResource> objectWriter = fileClient.createObjectDataWriter(tradeOutputConverter);
@@ -105,7 +103,7 @@ public class TradeStorage {
 
         return Maybe.<Trade>create(source -> {
             try {
-                File tradeFile = new File(TRADES_PATH + id + File.separator + CURRENT_TRADE_JSON);
+                File tradeFile = new File(TRADES_PATH + id + JSON_EXT);
                 if (tradeFile.exists()) {
                     // create a FileClient to the specified File
                     FileClient fileClient = FileClient.create(tradeFile);
