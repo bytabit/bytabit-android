@@ -92,10 +92,10 @@ public class OfferManager {
                 .flatMap(tick -> getLoadedOffers());
 
         // get trades for offers I created
-        walletManager.getProfilePubKey().switchMap(profilePubKey ->
-                getUpdatedOffers().flatMapIterable(l -> l)
-                        .filter(o -> o.getMakerProfilePubKey().equals(profilePubKey))
-                        .flatMap(o -> tradeManager.addTradesCreatedFromOffer(profilePubKey, o)))
+        Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
+                .flatMap(t -> offerStorage.getAll())
+                .flatMapIterable(ol -> ol)
+                .flatMap(o -> tradeManager.addTradesCreatedFromOffer(o))
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(trade -> log.debug("added trade from my offer: {}", trade));

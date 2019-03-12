@@ -248,6 +248,9 @@ public class TradeDetailsPresenter {
 
     private void showTradeDetails(Trade trade) {
 
+        paymentReferenceField.setDisable(true);
+        paymentReferenceField.setEditable(false);
+
         tradeStatusLabel.setText(trade.getStatus().toString());
         tradeRoleLabel.setText(trade.getRole().toString());
 

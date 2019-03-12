@@ -131,6 +131,7 @@ public class OfferDetailsPresenter {
 
 
         JavaFxObservable.actionEventsOf(tradeBtcButton)
+                .observeOn(Schedulers.io())
                 .flatMapMaybe(ae -> {
                     try {
                         BigDecimal buyBtcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().getValue());

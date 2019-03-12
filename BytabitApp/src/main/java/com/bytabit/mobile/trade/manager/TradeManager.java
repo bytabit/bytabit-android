@@ -189,9 +189,10 @@ public class TradeManager {
         return trade;
     }
 
-    public Observable<Trade> addTradesCreatedFromOffer(String profilePubKey, Offer offer) {
+    public Observable<Trade> addTradesCreatedFromOffer(Offer offer) {
 
-        return tradeService.getByOfferId(offer.getId(), 0L)
+        return walletManager.getProfilePubKey()
+                .flatMap(profilePubKey -> tradeService.getByOfferId(offer.getId(), 0L)
                 .flattenAsObservable(l -> l)
                 .filter(t -> t.getMakerProfilePubKey().equals(profilePubKey))
                 .map(Trade::withStatus)
@@ -200,7 +201,7 @@ public class TradeManager {
                 .flatMapSingle(tradeStorage::write)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
-                .doOnNext(updatedTradeSubject::onNext);
+                .doOnNext(updatedTradeSubject::onNext));
     }
 
     public ConnectableObservable<Trade> getCreatedTrade() {
