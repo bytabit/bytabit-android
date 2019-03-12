@@ -65,6 +65,8 @@ public class OfferManager {
     @Inject
     TradeManager tradeManager;
 
+    OfferStorage offerStorage;
+
     public OfferManager() {
 
         gson = new GsonBuilder()
@@ -73,6 +75,8 @@ public class OfferManager {
                 .create();
 
         offerService = new OfferService();
+
+        offerStorage = new OfferStorage();
 
         selectedOfferSubject = BehaviorSubject.create();
 
@@ -98,9 +102,9 @@ public class OfferManager {
     }
 
     public Observable<List<Offer>> getLoadedOffers() {
-        return offerService.getAll().retryWhen(errors ->
+        return Observable.concat(offerStorage.getAll(), offerService.getAll().retryWhen(errors ->
                 errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-                .toObservable();
+                .toObservable());
     }
 
     public Observable<List<Offer>> getUpdatedOffers() {
@@ -108,11 +112,11 @@ public class OfferManager {
     }
 
     public Maybe<Offer> createOffer(Offer.OfferType offerType,
-                            CurrencyCode currencyCode,
-                            PaymentMethod paymentMethod,
-                            BigDecimal minAmount,
-                            BigDecimal maxAmount,
-                            BigDecimal price) {
+                                    CurrencyCode currencyCode,
+                                    PaymentMethod paymentMethod,
+                                    BigDecimal minAmount,
+                                    BigDecimal maxAmount,
+                                    BigDecimal price) {
 
         if (offerType == null) {
             throw new OfferManagerException("Offer type is required.");
@@ -143,12 +147,15 @@ public class OfferManager {
                         .maxAmount(maxAmount)
                         .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
                         .build())
+                .observeOn(Schedulers.io())
+                .flatMapSingleElement(offerStorage::write)
                 .flatMapSingleElement(offerService::put)
                 .doOnSuccess(createdOffer::onNext);
     }
 
     public void deleteOffer() {
         getSelectedOffer().firstOrError().map(Offer::getId)
+                .flatMap(offerStorage::delete)
                 .flatMap(offerService::delete)
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
