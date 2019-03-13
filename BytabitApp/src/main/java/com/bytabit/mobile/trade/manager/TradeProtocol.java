@@ -100,7 +100,7 @@ abstract class TradeProtocol {
         } else if (trade.getRole().equals(Trade.Role.BUYER)) {
             reason = ArbitrateRequest.Reason.NO_BTC;
         } else {
-            throw new TradeProtocolException("Invalid role, can't request arbitrate");
+            throw new TradeException("Invalid role, can't request arbitrate");
         }
 
         ArbitrateRequest arbitrateRequest = new ArbitrateRequest(reason);

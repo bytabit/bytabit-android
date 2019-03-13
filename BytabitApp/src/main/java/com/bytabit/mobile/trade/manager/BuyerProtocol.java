@@ -37,7 +37,7 @@ public class BuyerProtocol extends TradeProtocol {
     // 1.B: create trade, post created trade
     Maybe<Trade> createTrade(Offer offer, BigDecimal buyBtcAmount) {
         if (!SELL.equals(offer.getOfferType())) {
-            throw new TradeProtocolException("Buyer protocol can only create trade from sell offer.");
+            throw new TradeException("Buyer protocol can only create trade from sell offer.");
         }
         return Maybe.zip(walletManager.getEscrowPubKeyBase58(), walletManager.getProfilePubKeyBase58(),
                 (takerEscrowPubKey, takerProfilePubKey) -> Trade.builder()

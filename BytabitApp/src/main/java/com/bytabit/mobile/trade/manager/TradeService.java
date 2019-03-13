@@ -48,10 +48,10 @@ public class TradeService extends RetrofitService {
                 .doOnSuccess(rt -> {
                     // validate sent and received trades are equal except for version, which must be higher
                     if (!rt.equals(trade)) {
-                        throw new TradeManagerException("Received trade from put that isn't equal to trade sent.");
+                        throw new TradeException("Received trade from put that isn't equal to trade sent.");
                     }
                     if (rt.getVersion() <= trade.getVersion()) {
-                        throw new TradeManagerException("Received trade version less than or equal to trade sent.");
+                        throw new TradeException("Received trade version less than or equal to trade sent.");
                     }
                 });
     }

@@ -19,9 +19,6 @@ package com.bytabit.mobile.trade.ui;
 import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
-import com.gluonhq.charm.down.Platform;
-import com.gluonhq.charm.down.Services;
-import com.gluonhq.charm.down.plugins.ShareService;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -34,8 +31,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import lombok.extern.slf4j.Slf4j;
@@ -206,20 +201,6 @@ public class TradeDetailsPresenter {
         AppBar appBar = MobileApplication.getInstance().getAppBar();
         appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
         appBar.setTitleText("Trade Details");
-        appBar.getActionItems().add(MaterialDesignIcon.BUG_REPORT.button(e ->
-                tradeManager.getSelectedTradeAsJson().subscribe(this::debugTrade)));
-    }
-
-    private void debugTrade(String tradeJson) {
-        if (Platform.isDesktop()) {
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-            ClipboardContent content = new ClipboardContent();
-            content.putString(tradeJson);
-            clipboard.setContent(content);
-        } else {
-            ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new TradeDetailsPresenterException("ShareService not available."));
-            shareService.share(tradeJson);
-        }
     }
 
     private void showTrade(Trade trade) {

@@ -226,7 +226,7 @@ public class TradeManager {
     public Maybe<Trade> buyerSendPayment(String paymentReference) {
 
         if (paymentReference == null || paymentReference.length() == 0) {
-            return Maybe.error(new TradeManagerException("No payment reference."));
+            return Maybe.error(new TradeException("No payment reference."));
 
         }
         return getSelectedTrade().firstOrError()
@@ -422,7 +422,7 @@ public class TradeManager {
                 break;
 
             default:
-                throw new TradeManagerException("Invalid status, can't update trade");
+                throw new TradeException("Invalid status, can't update trade");
         }
 
         return tradeUpdated.map(Trade::withStatus);
@@ -439,7 +439,7 @@ public class TradeManager {
         } else if (role.equals(ARBITRATOR)) {
             return arbitratorProtocol;
         } else {
-            throw new TradeManagerException("Unable to determine trade protocol.");
+            throw new TradeException("Unable to determine trade protocol.");
         }
     }
 }

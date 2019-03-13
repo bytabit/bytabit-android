@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.offer.manager;
+package com.bytabit.mobile.badge.manager;
 
+import com.bytabit.mobile.badge.model.Badge;
 import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.common.RetryWithDelay;
 import com.bytabit.mobile.config.AppConfig;
-import com.bytabit.mobile.offer.model.Offer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.reactivex.Maybe;
@@ -36,71 +36,70 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class OfferStorage {
+public class BadgeStorage {
 
     private final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private static final String OFFERS_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
-            "offers" + File.separator;
+    private static final String BADGE_PATH = AppConfig.getPrivateStorage().getPath() + File.separator +
+            "badges" + File.separator;
 
     private static final String JSON_EXT = "json";
 
     private final Gson gson;
 
-    private final File offersDir;
+    private final File badgesDir;
 
-    OfferStorage() {
+    BadgeStorage() {
 
         gson = new GsonBuilder()
                 .setPrettyPrinting()
                 .registerTypeAdapter(Date.class, new DateConverter())
                 .create();
 
-        offersDir = new File(OFFERS_PATH);
+        badgesDir = new File(BADGE_PATH);
 
-        if (!offersDir.exists()) {
-            offersDir.mkdirs();
+        if (!badgesDir.exists()) {
+            badgesDir.mkdirs();
         }
     }
 
-    Observable<List<Offer>> getAll() {
+    Observable<List<Badge>> getAll() {
 
-        return Observable.fromArray(offersDir.list())
+        return Observable.fromArray(badgesDir.list())
                 .filter(fileName -> fileName != null && fileName.endsWith(".json"))
                 .map(fileName -> fileName.substring(0, fileName.lastIndexOf('.')))
                 .flatMapMaybe(this::read)
                 .toList().toObservable();
     }
 
-    Single<Offer> write(Offer offer) {
+    Single<Badge> write(Badge badge) {
 
-        return Single.<Offer>create(source -> {
+        return Single.<Badge>create(source -> {
             try {
-                String offerFileName = String.format("%s%s.%s", OFFERS_PATH, offer.getId(), JSON_EXT);
-                File offerFile = new File(offerFileName);
-                //byte[] encoded = Files.readAllBytes(offerFile.toPath());
-                String offerJson = gson.toJson(offer);
-                Files.write(offerFile.toPath(), Strings.toByteArray(offerJson));
-                source.onSuccess(offer);
+                String badgeFileName = String.format("%s%s.%s", BADGE_PATH, badge.getId(), JSON_EXT);
+                File badgeFile = new File(badgeFileName);
+                String badgeJson = gson.toJson(badge);
+                Files.write(badgeFile.toPath(), Strings.toByteArray(badgeJson));
+                source.onSuccess(badge);
             } catch (Exception e) {
-                source.onError(new OfferException(String.format("Could not write offer: %s", offer)));
+                source.onError(new BadgeException(String.format("Could not write badge: %s", badge)));
             }
         }).retryWhen(new RetryWithDelay(3, 500, TimeUnit.MILLISECONDS))
                 .doOnError(t -> log.error("write error: {}", t.getMessage()));
     }
 
-    Maybe<Offer> read(String id) {
+    Maybe<Badge> read(String id) {
 
-        return Maybe.<Offer>create(source -> {
+        return Maybe.<Badge>create(source -> {
             try {
-                String offerFileName = String.format("%s%s.%s", OFFERS_PATH, id, JSON_EXT);
-                File offerFile = new File(offerFileName);
-                byte[] encoded = Files.readAllBytes(offerFile.toPath());
-                String offerJson = new String(encoded, Charset.defaultCharset());
-                Offer offer = gson.fromJson(offerJson, Offer.class);
-                source.onSuccess(offer);
+                String badgeFileName = String.format("%s%s.%s", BADGE_PATH, id, JSON_EXT);
+                File badgeFile = new File(badgeFileName);
+                byte[] encoded = Files.readAllBytes(badgeFile.toPath());
+                String badgeJson = new String(encoded, Charset.defaultCharset());
+                Badge badge = gson.fromJson(badgeJson, Badge.class);
+                source.onSuccess(badge);
             } catch (Exception e) {
-                source.onError(new OfferException(String.format("Could not read offer id: %s", id)));
+                source.onError(new BadgeException(String.format("Could not read badge id: %s", id)));
             }
         })
                 .retryWhen(new RetryWithDelay(3, 500, TimeUnit.MILLISECONDS))
@@ -110,12 +109,12 @@ public class OfferStorage {
     Single<String> delete(String id) {
         return Single.create(source -> {
             try {
-                String offerFileName = String.format("%s%s.%s", OFFERS_PATH, id, JSON_EXT);
-                File offerFile = new File(offerFileName);
-                Files.delete(offerFile.toPath());
+                String badgeFileName = String.format("%s%s.%s", BADGE_PATH, id, JSON_EXT);
+                File badgeFile = new File(badgeFileName);
+                Files.delete(badgeFile.toPath());
                 source.onSuccess(id);
             } catch (Exception ex) {
-                log.error("Could not delete offer id: {}", id);
+                log.error("Could not delete badge id: {}", id);
                 source.onSuccess(id);
             }
         });

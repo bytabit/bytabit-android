@@ -119,22 +119,22 @@ public class OfferManager {
                                     BigDecimal price) {
 
         if (offerType == null) {
-            throw new OfferManagerException("Offer type is required.");
+            throw new OfferException("Offer type is required.");
         }
         if (currencyCode == null) {
-            throw new OfferManagerException("Currency code is required.");
+            throw new OfferException("Currency code is required.");
         }
         if (paymentMethod == null) {
-            throw new OfferManagerException("Payment method is required.");
+            throw new OfferException("Payment method is required.");
         }
         if (minAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferManagerException("Minimum amount must be greater than zero.");
+            throw new OfferException("Minimum amount must be greater than zero.");
         }
         if (maxAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferManagerException("Maximum amount must be greater than zero.");
+            throw new OfferException("Maximum amount must be greater than zero.");
         }
         if (price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferManagerException("Price must be greater than zero.");
+            throw new OfferException("Price must be greater than zero.");
         }
 
         return walletManager.getProfilePubKeyBase58().map(profilePubKey ->
@@ -187,7 +187,7 @@ public class OfferManager {
 
     public Maybe<Trade> createTrade(BigDecimal btcAmount) {
         if (btcAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferManagerException("Trade amount must be greater than zero.");
+            throw new OfferException("Trade amount must be greater than zero.");
         }
         return getSelectedOffer().firstOrError()
                 .flatMapMaybe(offer -> tradeManager.createTrade(offer, btcAmount));

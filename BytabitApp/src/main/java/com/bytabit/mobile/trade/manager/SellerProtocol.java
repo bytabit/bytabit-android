@@ -40,7 +40,7 @@ public class SellerProtocol extends TradeProtocol {
     // 1.B: create trade, post created trade
     Maybe<Trade> createTrade(Offer offer, BigDecimal sellBtcAmount) {
         if (!BUY.equals(offer.getOfferType())) {
-            throw new TradeProtocolException("Seller protocol can only create trade from buy offer.");
+            throw new TradeException("Seller protocol can only create trade from buy offer.");
         }
         return Maybe.zip(walletManager.getEscrowPubKeyBase58(),
                 walletManager.getProfilePubKeyBase58(),
@@ -108,7 +108,7 @@ public class SellerProtocol extends TradeProtocol {
         Single<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
                 .singleOrError()
-                .onErrorResumeNext(error(new TradeManagerException("No payment details found to fund trade.")))
+                .onErrorResumeNext(error(new TradeException("No payment details found to fund trade.")))
                 .cache();
 
         // TODO don't fund escrow if payment details are not configured

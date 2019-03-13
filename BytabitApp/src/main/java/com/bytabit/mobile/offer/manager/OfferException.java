@@ -14,27 +14,27 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.trade.manager;
+package com.bytabit.mobile.offer.manager;
 
-public class TradeProtocolException extends RuntimeException {
+public class OfferException extends RuntimeException {
 
-    public TradeProtocolException() {
+    public OfferException() {
         super();
     }
 
-    public TradeProtocolException(String message) {
+    public OfferException(String message) {
         super(message);
     }
 
-    public TradeProtocolException(String message, Throwable cause) {
+    public OfferException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public TradeProtocolException(Throwable cause) {
+    public OfferException(Throwable cause) {
         super(cause);
     }
 
-    protected TradeProtocolException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected OfferException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

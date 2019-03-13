@@ -22,9 +22,6 @@ import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.wallet.manager.WalletManager;
-import com.gluonhq.charm.down.Platform;
-import com.gluonhq.charm.down.Services;
-import com.gluonhq.charm.down.plugins.ShareService;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -37,8 +34,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.GridPane;
 import lombok.extern.slf4j.Slf4j;
 
@@ -185,20 +180,6 @@ public class OfferDetailsPresenter {
         AppBar appBar = MobileApplication.getInstance().getAppBar();
         appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
         appBar.setTitleText("Offer Details");
-        appBar.getActionItems().add(MaterialDesignIcon.BUG_REPORT.button(e ->
-                offerManager.getSelectedOfferAsJson().subscribe(this::debugOffer)));
-    }
-
-    private void debugOffer(String offerJson) {
-        if (Platform.isDesktop()) {
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-            ClipboardContent content = new ClipboardContent();
-            content.putString(offerJson);
-            clipboard.setContent(content);
-        } else {
-            ShareService shareService = Services.get(ShareService.class).orElseThrow(() -> new RuntimeException("ShareService not available."));
-            shareService.share(offerJson);
-        }
     }
 
     private void showOffer(Offer offer) {

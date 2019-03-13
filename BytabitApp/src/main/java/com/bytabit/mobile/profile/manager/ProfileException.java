@@ -16,25 +16,25 @@
 
 package com.bytabit.mobile.profile.manager;
 
-public class ProfileManagerException extends RuntimeException {
+public class ProfileException extends RuntimeException {
 
-    public ProfileManagerException() {
+    public ProfileException() {
         super();
     }
 
-    public ProfileManagerException(String message) {
+    public ProfileException(String message) {
         super(message);
     }
 
-    public ProfileManagerException(String message, Throwable cause) {
+    public ProfileException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public ProfileManagerException(Throwable cause) {
+    public ProfileException(Throwable cause) {
         super(cause);
     }
 
-    protected ProfileManagerException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected ProfileException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

@@ -329,13 +329,13 @@ public class WalletManager {
                         Wallet.SendResult sendResult = w.sendCoins(request);
                         return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
                     } catch (AddressFormatException afe) {
-                        throw new WalletManagerException("Invalid withdraw address format.");
+                        throw new WalletException("Invalid withdraw address format.");
                     } catch (IllegalArgumentException iae) {
-                        throw new WalletManagerException("Invalid withdraw amount.");
+                        throw new WalletException("Invalid withdraw amount.");
                     } catch (InsufficientMoneyException ime) {
-                        throw new WalletManagerException("Insufficient wallet balance for withdraw amount.");
+                        throw new WalletException("Insufficient wallet balance for withdraw amount.");
                     } catch (Wallet.DustySendRequested dsr) {
-                        throw new WalletManagerException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ").");
+                        throw new WalletException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ").");
                     }
                 });
     }
@@ -573,7 +573,7 @@ public class WalletManager {
                 Sha256Hash unlockSigHash = payoutTx.hashForSignature(0, redeemScript, Transaction.SigHash.ALL, false);
                 return Single.just(new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false)).toMaybe();
             } else {
-                throw new WalletManagerException("Can not create payout signature, no signing key found.");
+                throw new WalletException("Can not create payout signature, no signing key found.");
             }
         });
     }
@@ -713,13 +713,13 @@ public class WalletManager {
             try {
                 if (input.getConnectedOutput() == null) {
                     log.error("Null connectedOutput for payoutTx");
-                    throw new WalletManagerException("Null connectedOutput for payoutTx");
+                    throw new WalletException("Null connectedOutput for payoutTx");
                 }
                 input.verify(input.getConnectedOutput());
                 log.debug("Input valid for payoutTx: {}", input);
             } catch (VerificationException ve) {
                 log.error("Input not valid for payoutTx, {}", ve.getMessage());
-                throw new WalletManagerException(String.format("Input not valid for payoutTx, %s", ve.getMessage()));
+                throw new WalletException(String.format("Input not valid for payoutTx, %s", ve.getMessage()));
             }
         }
 

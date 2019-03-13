@@ -16,25 +16,25 @@
 
 package com.bytabit.mobile.trade.manager;
 
-public class TradeManagerException extends RuntimeException {
+public class TradeException extends RuntimeException {
 
-    public TradeManagerException() {
+    public TradeException() {
         super();
     }
 
-    public TradeManagerException(String message) {
+    public TradeException(String message) {
         super(message);
     }
 
-    public TradeManagerException(String message, Throwable cause) {
+    public TradeException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public TradeManagerException(Throwable cause) {
+    public TradeException(Throwable cause) {
         super(cause);
     }
 
-    protected TradeManagerException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected TradeException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

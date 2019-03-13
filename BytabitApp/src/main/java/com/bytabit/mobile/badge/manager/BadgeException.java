@@ -14,26 +14,27 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.wallet.manager;
+package com.bytabit.mobile.badge.manager;
 
-public class WalletManagerException extends RuntimeException {
+public class BadgeException extends RuntimeException {
 
-    public WalletManagerException() {
+    public BadgeException() {
+        super();
     }
 
-    public WalletManagerException(String message) {
+    public BadgeException(String message) {
         super(message);
     }
 
-    public WalletManagerException(String message, Throwable cause) {
+    public BadgeException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public WalletManagerException(Throwable cause) {
+    public BadgeException(Throwable cause) {
         super(cause);
     }
 
-    public WalletManagerException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    protected BadgeException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

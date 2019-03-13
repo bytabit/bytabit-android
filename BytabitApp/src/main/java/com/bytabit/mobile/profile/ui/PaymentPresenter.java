@@ -18,7 +18,7 @@ package com.bytabit.mobile.profile.ui;
 
 import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
-import com.bytabit.mobile.profile.manager.ProfileManagerException;
+import com.bytabit.mobile.profile.manager.ProfileException;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;
@@ -150,13 +150,13 @@ public class PaymentPresenter {
 
     private PaymentDetails getPaymentDetails() {
         if (currencyChoiceBox.getValue() == null) {
-            throw new ProfileManagerException("Currency is required for payment details.");
+            throw new ProfileException("Currency is required for payment details.");
         }
         if (paymentMethodChoiceBox.getValue() == null) {
-            throw new ProfileManagerException("Payment method is required for payment details.");
+            throw new ProfileException("Payment method is required for payment details.");
         }
         if (paymentDetailsTextField.getText() == null || paymentDetailsTextField.getText().length() == 0) {
-            throw new ProfileManagerException("Payment details are required.");
+            throw new ProfileException("Payment details are required.");
         }
         return PaymentDetails.builder()
                 .currencyCode(currencyChoiceBox.getValue())
