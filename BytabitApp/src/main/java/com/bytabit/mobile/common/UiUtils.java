@@ -26,6 +26,7 @@ public class UiUtils {
 
     public static void showErrorDialog(Throwable throwable) {
         log.warn(throwable.getMessage());
+        throwable.printStackTrace();
         Dialog<Label> dialog = new Dialog<>();
         dialog.setTitle(new Label(throwable.getMessage()));
         dialog.setContent(new Label());

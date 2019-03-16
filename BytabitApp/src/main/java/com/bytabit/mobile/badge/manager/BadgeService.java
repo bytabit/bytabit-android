@@ -36,7 +36,7 @@ public class BadgeService extends RetrofitService {
     }
 
     Single<Badge> put(BadgeRequest badgeRequest) {
-        return badgeServiceApi.put(badgeRequest.getBadge().getId(), badgeRequest)
+        return badgeServiceApi.put(badgeRequest.getBadge().getProfilePubKey(), badgeRequest.getBadge().getId(), badgeRequest)
                 .doOnError(t -> log.error("put error: {}", t.getMessage()));
     }
 

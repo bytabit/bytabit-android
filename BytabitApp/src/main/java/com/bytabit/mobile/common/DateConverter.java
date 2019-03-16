@@ -23,6 +23,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.TimeZone;
 
 public class DateConverter implements JsonSerializer<Date>, JsonDeserializer<Date> {
 
@@ -30,7 +31,7 @@ public class DateConverter implements JsonSerializer<Date>, JsonDeserializer<Dat
 
     public DateConverter() {
         dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-        //dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     @Override

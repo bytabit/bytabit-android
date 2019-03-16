@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.offer.manager;
 
+import com.bytabit.mobile.badge.manager.BadgeManager;
 import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
@@ -41,6 +42,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
 public class OfferManager {
@@ -64,6 +66,9 @@ public class OfferManager {
 
     @Inject
     TradeManager tradeManager;
+
+    @Inject
+    BadgeManager badgeManager;
 
     OfferStorage offerStorage;
 
@@ -137,20 +142,28 @@ public class OfferManager {
             throw new OfferException("Price must be greater than zero.");
         }
 
-        return walletManager.getProfilePubKeyBase58().map(profilePubKey ->
-                Offer.builder()
-                        .offerType(offerType)
-                        .makerProfilePubKey(profilePubKey)
-                        .currencyCode(currencyCode)
-                        .paymentMethod(paymentMethod)
-                        .minAmount(minAmount)
-                        .maxAmount(maxAmount)
-                        .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
-                        .build())
-                .observeOn(Schedulers.io())
-                .flatMapSingleElement(offerStorage::write)
-                .flatMapSingleElement(offerService::put)
-                .doOnSuccess(createdOffer::onNext);
+        return badgeManager.getOfferMakerBadge(currencyCode).toSingle()
+                .onErrorResumeNext(t -> {
+                    if (t instanceof NoSuchElementException) {
+                        //return Single.error(new OfferException(String.format("No Offer Maker Badge Found for %s", currencyCode)));
+                        return badgeManager.createOfferMakerBadge(currencyCode).toSingle();
+                    } else {
+                        return Single.error(t);
+                    }
+                }).flatMapMaybe(b -> walletManager.getProfilePubKeyBase58().map(profilePubKey ->
+                        Offer.builder()
+                                .offerType(offerType)
+                                .makerProfilePubKey(profilePubKey)
+                                .currencyCode(currencyCode)
+                                .paymentMethod(paymentMethod)
+                                .minAmount(minAmount)
+                                .maxAmount(maxAmount)
+                                .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
+                                .build())
+                        .observeOn(Schedulers.io())
+                        .flatMapSingleElement(offerStorage::write)
+                        .flatMapSingleElement(offerService::put)
+                        .doOnSuccess(createdOffer::onNext));
     }
 
     public void deleteOffer() {

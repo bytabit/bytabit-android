@@ -25,8 +25,8 @@ import java.util.List;
 
 public interface BadgeServiceApi {
 
-    @PUT("/badges/{id}")
-    Single<Badge> put(@Path("id") String id, @Body BadgeRequest badgeRequest);
+    @PUT("/badges/{profilePubKey}/{id}")
+    Single<Badge> put(@Path("profilePubKey") String profilePubKey, @Path("id") String id, @Body BadgeRequest badgeRequest);
 
     @GET("/badges")
     Single<List<Badge>> get(@Query("profilePubKey") String profilePubKey);

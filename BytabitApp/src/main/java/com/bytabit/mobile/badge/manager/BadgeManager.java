@@ -18,11 +18,14 @@ package com.bytabit.mobile.badge.manager;
 
 import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.badge.model.Badge;
+import com.bytabit.mobile.badge.model.BadgeRequest;
 import com.bytabit.mobile.common.DateConverter;
+import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.wallet.manager.WalletManager;
+import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.reactivex.Flowable;
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
@@ -31,9 +34,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
+import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class BadgeManager {
 
@@ -43,7 +46,9 @@ public class BadgeManager {
 
     private final BadgeService badgeService;
 
-    private Observable<List<Badge>> badges;
+    private final BadgeStorage badgeStorage;
+
+    private Observable<Badge> badges;
 
     private final Gson gson;
 
@@ -62,19 +67,63 @@ public class BadgeManager {
 
         badgeService = new BadgeService();
 
+        badgeStorage = new BadgeStorage();
+
         createdBadge = PublishSubject.create();
     }
 
     @PostConstruct
     public void initialize() {
 
-        badges = Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .flatMap(tick -> getBadges());
+        badges = badgeStorage.getAll().flattenAsObservable(bl -> bl).concatWith(createdBadge).share();
     }
 
-    public Observable<List<Badge>> getBadges() {
-        return walletManager.getProfilePubKey().flatMap(pk -> badgeService.getAll(pk)
-                .retryWhen(errors -> errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-                .toObservable());
+    public Maybe<Badge> getOfferMakerBadge(CurrencyCode currencyCode) {
+
+        return badgeStorage.getAll().flattenAsObservable(b -> b)
+                .filter(b -> b.getBadgeType().equals(Badge.BadgeType.OFFER_MAKER))
+                .filter(b -> b.getCurrencyCode().equals(currencyCode))
+                .filter(b -> b.getValidFrom().compareTo(new Date()) <= 0)
+                .filter(b -> b.getValidTo().compareTo(new Date()) >= 0)
+                .firstElement();
+    }
+
+    public Maybe<Badge> createOfferMakerBadge(CurrencyCode currencyCode) {
+
+        if (currencyCode == null) {
+            throw new BadgeException("Currency code required to create offer maker badge.");
+        }
+
+        BigDecimal badgePrice = BigDecimal.valueOf(0.0025); // TODO need calculate badge btc price
+
+        Maybe<TransactionWithAmt> paymentTransaction = walletManager.withdrawFromTradeWallet(arbitratorManager.getArbitrator().getFeeAddress(), badgePrice);
+        Maybe<String> profilePubKeyBase58 = walletManager.getProfilePubKeyBase58();
+
+        return Maybe.zip(paymentTransaction, profilePubKeyBase58, (tx, pubKey) -> {
+
+            Date validFrom = new Date();
+            Calendar c = Calendar.getInstance();
+            c.setTime(validFrom);
+            c.add(Calendar.YEAR, 1);
+            Date validTo = c.getTime();
+
+            Badge badge = Badge.builder()
+                    .profilePubKey(pubKey)
+                    .badgeType(Badge.BadgeType.OFFER_MAKER)
+                    .currencyCode(currencyCode)
+                    .validFrom(validFrom)
+                    .validTo(validTo)
+                    .build();
+
+            return BadgeRequest.builder()
+                    .badge(badge)
+                    .btcAmount(tx.getTransactionBigDecimalAmt())
+                    .transactionHash(tx.getHash())
+                    .build();
+        })
+                .observeOn(Schedulers.io())
+                .flatMapSingleElement(badgeService::put)
+                .flatMapSingleElement(badgeStorage::write)
+                .doOnSuccess(createdBadge::onNext);
     }
 }

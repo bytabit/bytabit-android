@@ -35,7 +35,7 @@ public class BadgeRequest {
     @NonNull
     private BigDecimal btcAmount;
 
-    private String transactionId;
+    private String transactionHash;
 
     @Override
     public boolean equals(Object o) {
@@ -44,11 +44,11 @@ public class BadgeRequest {
         BadgeRequest that = (BadgeRequest) o;
         return badge.equals(that.badge) &&
                 btcAmount.compareTo(that.btcAmount) == 0 &&
-                Objects.equals(transactionId, that.transactionId);
+                Objects.equals(transactionHash, that.transactionHash);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(badge, btcAmount, transactionId);
+        return Objects.hash(badge, btcAmount, transactionHash);
     }
 }

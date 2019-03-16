@@ -31,7 +31,8 @@ public class OfferService extends RetrofitService {
     public OfferService() {
 
         // create an instance of the ApiService
-        offerServiceApi = retrofit.create(OfferServiceApi.class);
+        offerServiceApi = retrofit
+                .create(OfferServiceApi.class);
     }
 
     Single<Offer> put(Offer sellOffer) {

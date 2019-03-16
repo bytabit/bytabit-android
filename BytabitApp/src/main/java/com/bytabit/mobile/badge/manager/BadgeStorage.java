@@ -63,13 +63,13 @@ public class BadgeStorage {
         }
     }
 
-    Observable<List<Badge>> getAll() {
+    Single<List<Badge>> getAll() {
 
         return Observable.fromArray(badgesDir.list())
                 .filter(fileName -> fileName != null && fileName.endsWith(".json"))
                 .map(fileName -> fileName.substring(0, fileName.lastIndexOf('.')))
                 .flatMapMaybe(this::read)
-                .toList().toObservable();
+                .toList();
     }
 
     Single<Badge> write(Badge badge) {
