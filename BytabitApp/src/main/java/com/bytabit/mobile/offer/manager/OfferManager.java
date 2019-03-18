@@ -42,7 +42,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
 public class OfferManager {
@@ -143,14 +142,7 @@ public class OfferManager {
         }
 
         return badgeManager.getOfferMakerBadge(currencyCode).toSingle()
-                .onErrorResumeNext(t -> {
-                    if (t instanceof NoSuchElementException) {
-                        //return Single.error(new OfferException(String.format("No Offer Maker Badge Found for %s", currencyCode)));
-                        return badgeManager.createOfferMakerBadge(currencyCode).toSingle();
-                    } else {
-                        return Single.error(t);
-                    }
-                }).flatMapMaybe(b -> walletManager.getProfilePubKeyBase58().map(profilePubKey ->
+                .flatMapMaybe(b -> walletManager.getProfilePubKeyBase58().map(profilePubKey ->
                         Offer.builder()
                                 .offerType(offerType)
                                 .makerProfilePubKey(profilePubKey)

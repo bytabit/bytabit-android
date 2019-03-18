@@ -19,14 +19,12 @@ package com.bytabit.mobile.badge.manager;
 import com.bytabit.mobile.arbitrate.manager.ArbitratorManager;
 import com.bytabit.mobile.badge.model.Badge;
 import com.bytabit.mobile.badge.model.BadgeRequest;
-import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
+import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 import org.slf4j.Logger;
@@ -35,8 +33,8 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
-import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
 public class BadgeManager {
 
@@ -48,9 +46,9 @@ public class BadgeManager {
 
     private final BadgeStorage badgeStorage;
 
-    private Observable<Badge> badges;
+//    private Observable<Badge> badges;
 
-    private final Gson gson;
+//    private final Gson gson;
 
     @Inject
     ArbitratorManager arbitratorManager;
@@ -60,10 +58,10 @@ public class BadgeManager {
 
     public BadgeManager() {
 
-        gson = new GsonBuilder()
-                .setPrettyPrinting()
-                .registerTypeAdapter(Date.class, new DateConverter())
-                .create();
+//        gson = new GsonBuilder()
+//                .setPrettyPrinting()
+//                .registerTypeAdapter(Date.class, new DateConverter())
+//                .create();
 
         badgeService = new BadgeService();
 
@@ -75,7 +73,7 @@ public class BadgeManager {
     @PostConstruct
     public void initialize() {
 
-        badges = badgeStorage.getAll().flattenAsObservable(bl -> bl).concatWith(createdBadge).share();
+        //badges = badgeStorage.getAll().flattenAsObservable(bl -> bl).concatWith(createdBadge).share();
     }
 
     public Maybe<Badge> getOfferMakerBadge(CurrencyCode currencyCode) {
@@ -88,24 +86,41 @@ public class BadgeManager {
                 .firstElement();
     }
 
-    public Maybe<Badge> createOfferMakerBadge(CurrencyCode currencyCode) {
+    public Single<List<Badge>> getLoadedBadges() {
+        return badgeStorage.getAll();
+    }
 
-        if (currencyCode == null) {
-            throw new BadgeException("Currency code required to create offer maker badge.");
+    public Observable<Badge> getCreatedBadges() {
+        return createdBadge.share();
+    }
+
+    public Maybe<Badge> buyBadge(Badge.BadgeType badgeType, CurrencyCode currencyCode, BigDecimal priceBtcAmount,
+                                 Date validFrom, Date validTo) {
+
+        if (badgeType == null) {
+            throw new BadgeException("Badge type required to create badge.");
         }
 
-        BigDecimal badgePrice = BigDecimal.valueOf(0.0025); // TODO need calculate badge btc price
+        if (currencyCode == null) {
+            throw new BadgeException("Currency code required to create badge.");
+        }
 
-        Maybe<TransactionWithAmt> paymentTransaction = walletManager.withdrawFromTradeWallet(arbitratorManager.getArbitrator().getFeeAddress(), badgePrice);
+        if (priceBtcAmount == null) {
+            throw new BadgeException("Price BTC amount required to create badge.");
+        }
+
+        if (validFrom == null) {
+            throw new BadgeException("Valid from date required to create badge.");
+        }
+
+        if (validTo == null) {
+            throw new BadgeException("Valid to date required to create badge.");
+        }
+
+        Maybe<TransactionWithAmt> paymentTransaction = walletManager.withdrawFromTradeWallet(arbitratorManager.getArbitrator().getFeeAddress(), priceBtcAmount);
         Maybe<String> profilePubKeyBase58 = walletManager.getProfilePubKeyBase58();
 
         return Maybe.zip(paymentTransaction, profilePubKeyBase58, (tx, pubKey) -> {
-
-            Date validFrom = new Date();
-            Calendar c = Calendar.getInstance();
-            c.setTime(validFrom);
-            c.add(Calendar.YEAR, 1);
-            Date validTo = c.getTime();
 
             Badge badge = Badge.builder()
                     .profilePubKey(pubKey)
@@ -117,7 +132,7 @@ public class BadgeManager {
 
             return BadgeRequest.builder()
                     .badge(badge)
-                    .btcAmount(tx.getTransactionBigDecimalAmt())
+                    .btcAmount(priceBtcAmount)
                     .transactionHash(tx.getHash())
                     .build();
         })

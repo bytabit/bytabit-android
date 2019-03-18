@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.offer.ui;
 
+import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.common.DecimalTextFieldFormatter;
 import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.offer.manager.OfferManager;
@@ -153,6 +154,8 @@ public class AddOfferPresenter {
                     }
                     return offerManager.createOffer(offerType, currencyCode, paymentMethod, minAmount, maxAmount, price);
                 })
+                .doOnError(t -> MobileApplication.getInstance().switchView(BytabitMobile.BUY_BADGE))
+                .retry()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .doOnError(UiUtils::showErrorDialog)

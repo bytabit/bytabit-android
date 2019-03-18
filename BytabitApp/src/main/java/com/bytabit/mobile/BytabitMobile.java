@@ -16,6 +16,8 @@
 
 package com.bytabit.mobile;
 
+import com.bytabit.mobile.badge.ui.BadgesView;
+import com.bytabit.mobile.badge.ui.BuyBadgeView;
 import com.bytabit.mobile.nav.NavDrawer;
 import com.bytabit.mobile.offer.ui.AddOfferView;
 import com.bytabit.mobile.offer.ui.OfferDetailsView;
@@ -65,6 +67,10 @@ public class BytabitMobile extends MobileApplication {
     public static final String TRADE_DETAILS_VIEW = "TradeDetails";
 
     public static final String PROFILE_VIEW = "Profile";
+
+    public static final String BADGE_VIEW = "Badge";
+    public static final String BUY_BADGE = "BuyBadge";
+
     public static final String PAYMENT_VIEW = "PaymentDetails";
     public static final String ADD_PAYMENT_VIEW = "AddPaymentDetail";
 
@@ -99,6 +105,9 @@ public class BytabitMobile extends MobileApplication {
         addViewFactory(ADD_PAYMENT_VIEW, () -> (View) new PaymentView().getView());
 
         addViewFactory(PROFILE_VIEW, () -> (View) new ProfileView().getView());
+
+        addViewFactory(BADGE_VIEW, () -> (View) new BadgesView().getView());
+        addViewFactory(BUY_BADGE, () -> (View) new BuyBadgeView().getView());
 
         addLayerFactory(MENU_LAYER, () -> new SidePopupView(new NavDrawer().getDrawer()));
     }
