@@ -92,8 +92,8 @@ public class OfferManager {
     @PostConstruct
     public void initialize() {
 
-        offers = Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
-                .flatMap(tick -> getLoadedOffers());
+        offers = Observable.interval(0, 30, TimeUnit.SECONDS, Schedulers.io())
+                .flatMapSingle(tick -> getLoadedOffers());
 
         // get trades for offers I created
         Observable.interval(30, TimeUnit.SECONDS, Schedulers.io())
@@ -103,12 +103,22 @@ public class OfferManager {
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(trade -> log.debug("added trade from my offer: {}", trade));
+
+        // update my offers on the server so they don't get removed
+        Observable.interval(0, 150, TimeUnit.SECONDS, Schedulers.io())
+                .flatMap(t -> offerStorage.getAll())
+                .flatMapIterable(ol -> ol)
+                .flatMapSingle(offerService::put)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
+                .subscribe(trade -> log.debug("updated my offer: {}", trade));
     }
 
-    public Observable<List<Offer>> getLoadedOffers() {
-        return Observable.concat(offerStorage.getAll(), offerService.getAll().retryWhen(errors ->
-                errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-                .toObservable());
+    public Single<List<Offer>> getLoadedOffers() {
+        return offerStorage.getAll().flatMapIterable(o -> o)
+                .concatWith(offerService.getAll().retryWhen(errors ->
+                        errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
+                        .flattenAsObservable(o -> o)).distinct().toList();
     }
 
     public Observable<List<Offer>> getUpdatedOffers() {

@@ -95,7 +95,7 @@ public class OffersPresenter {
                     offerManager.setSelectedOffer(offer);
                 });
 
-        Observable.concat(offerManager.getLoadedOffers(), offerManager.getUpdatedOffers())
+        offerManager.getUpdatedOffers()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(offers ->
