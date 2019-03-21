@@ -19,6 +19,7 @@ package com.bytabit.mobile.offer.ui;
 import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.Offer;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -29,13 +30,18 @@ import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
 import io.reactivex.schedulers.Schedulers;
 import javafx.fxml.FXML;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
 
+@Slf4j
 public class OffersPresenter {
 
     @Inject
     OfferManager offerManager;
+
+    @Inject
+    WalletManager walletManager;
 
     @FXML
     View offersView;
@@ -50,6 +56,7 @@ public class OffersPresenter {
         // setup view components
 
         addOfferButton.showOn(offersView);
+        addOfferButton.hide();
 
         offersListView.setCellFactory(view -> new CharmListCell<Offer>() {
             @Override
@@ -70,6 +77,18 @@ public class OffersPresenter {
         });
 
         // setup event observables
+
+        walletManager.getWalletSynced()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(synced -> {
+                    offersView.setDisable(!synced);
+                    if (!synced) {
+                        addOfferButton.hide();
+                    } else {
+                        addOfferButton.show();
+                    }
+                });
 
         JavaFxObservable.changesOf(offersView.showingProperty())
                 .filter(Change::getNewVal)
