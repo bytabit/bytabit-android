@@ -58,22 +58,28 @@ public class OffersPresenter {
         addOfferButton.showOn(offersView);
         addOfferButton.hide();
 
-        offersListView.setCellFactory(view -> new CharmListCell<Offer>() {
-            @Override
-            public void updateItem(Offer o, boolean empty) {
-                super.updateItem(o, empty);
-                if (o != null && !empty) {
-                    ListTile tile = new ListTile();
-                    String amount = String.format("%s @ %s %s per BTC", o.getOfferType().toString(), o.getPrice().toPlainString(), o.getCurrencyCode().toString());
-                    String details = String.format("%s to %s %s via %s", o.getMinAmount(), o.getMaxAmount(), o.getCurrencyCode(), o.getPaymentMethod().displayName());
-                    tile.textProperty().addAll(amount, details);
-                    setText(null);
-                    setGraphic(tile);
-                } else {
-                    setText(null);
-                    setGraphic(null);
+        walletManager.getProfilePubKey().subscribe(p -> {
+
+            offersListView.setCellFactory(view -> new CharmListCell<Offer>() {
+                @Override
+                public void updateItem(Offer o, boolean empty) {
+                    super.updateItem(o, empty);
+                    if (o != null && !empty) {
+                        ListTile tile = new ListTile();
+                        if (o.getMakerProfilePubKey().equals(p)) {
+                            tile.getStyleClass().add("my-offer");
+                        }
+                        String amount = String.format("%s @ %s %s per BTC", o.getOfferType().toString(), o.getPrice().toPlainString(), o.getCurrencyCode().toString());
+                        String details = String.format("%s to %s %s via %s", o.getMinAmount(), o.getMaxAmount(), o.getCurrencyCode(), o.getPaymentMethod().displayName());
+                        tile.textProperty().addAll(amount, details);
+                        setText(null);
+                        setGraphic(tile);
+                    } else {
+                        setText(null);
+                        setGraphic(null);
+                    }
                 }
-            }
+            });
         });
 
         // setup event observables

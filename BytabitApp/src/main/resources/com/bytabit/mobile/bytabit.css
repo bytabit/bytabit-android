@@ -29,3 +29,7 @@
     -fx-font-family: 'Material Icons';
     -fx-font-size: 2em;
 }
+
+.my-offer {
+    -fx-background-color: #f0f0f0;
+}
