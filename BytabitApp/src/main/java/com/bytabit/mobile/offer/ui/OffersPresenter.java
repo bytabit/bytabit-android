@@ -33,6 +33,7 @@ import javafx.fxml.FXML;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
+import java.util.Comparator;
 
 @Slf4j
 public class OffersPresenter {
@@ -81,6 +82,15 @@ public class OffersPresenter {
                 }
             });
         });
+
+        offersListView.setComparator(new Comparator<Offer>() {
+            @Override
+            public int compare(Offer o1, Offer o2) {
+                return o1.getPrice().compareTo(o2.getPrice());
+            }
+        });
+
+        offersListView.setHeadersFunction(o -> o.getCurrencyCode().toString());
 
         // setup event observables
 
