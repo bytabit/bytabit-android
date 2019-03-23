@@ -74,6 +74,8 @@ public class TradesPresenter {
 
         tradesListView.setComparator((t1, t2) -> t2.getCreatedTimestamp().compareTo(t1.getCreatedTimestamp()));
 
+        tradesListView.setHeadersFunction(t -> t.getCurrencyCode().toString());
+
         // setup event observables
 
         JavaFxObservable.changesOf(tradesView.showingProperty())

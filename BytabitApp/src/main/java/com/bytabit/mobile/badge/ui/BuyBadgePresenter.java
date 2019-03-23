@@ -26,6 +26,7 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.Maybe;
 import io.reactivex.rxjavafx.observables.JavaFxObservable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
@@ -124,17 +125,17 @@ public class BuyBadgePresenter {
                     try {
                         priceBtcAmount = new BigDecimal(priceBtcTextField.getText());
                     } catch (NumberFormatException nfe) {
-                        throw new BadgeException("Max amount has invalid number format.");
+                        return Maybe.error(new BadgeException("Max amount has invalid number format."));
                     }
                     try {
                         validFrom = dateFormat.parse(validFromTextField.getText());
                     } catch (ParseException pe) {
-                        throw new BadgeException("Valid from date has invalid format.");
+                        return Maybe.error(new BadgeException("Valid from date has invalid format."));
                     }
                     try {
                         validTo = dateFormat.parse(validToTextField.getText());
                     } catch (ParseException pe) {
-                        throw new BadgeException("Valid to date has invalid format.");
+                        return Maybe.error(new BadgeException("Valid to date has invalid format."));
                     }
                     return badgeManager.buyBadge(badgeType, currencyCode, priceBtcAmount, validFrom, validTo);
                 })

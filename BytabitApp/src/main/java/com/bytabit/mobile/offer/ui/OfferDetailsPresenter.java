@@ -192,7 +192,7 @@ public class OfferDetailsPresenter {
         currencyAmtLabel.setText(currencyCode);
         minTradeAmtLabel.setText(offer.getMinAmount().toPlainString());
         minTradeAmtCurrencyLabel.setText(currencyCode);
-        maxTradeAmtLabel.setText(offer.getMinAmount().toPlainString());
+        maxTradeAmtLabel.setText(offer.getMaxAmount().toPlainString());
         maxTradeAmtCurrencyLabel.setText(currencyCode);
         priceLabel.setText(offer.getPrice().toPlainString());
         priceCurrencyLabel.setText(currencyCode);

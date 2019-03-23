@@ -58,7 +58,7 @@ public class WalletPresenter {
 
     private FloatingActionButton withdrawButton = new FloatingActionButton();
 
-    private DateFormat dateFormat = SimpleDateFormat.getInstance();
+    private DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     public void initialize() {
 
@@ -69,7 +69,7 @@ public class WalletPresenter {
                 super.updateItem(tx, empty);
                 if (tx != null && !empty) {
                     ListTile tile = new ListTile();
-                    String amount = String.format("%s BTC, %s", tx.getTransactionAmt().toPlainString(), dateFormat.format(tx.getDate()));
+                    String amount = String.format("%s, %s BTC", dateFormat.format(tx.getDate()), tx.getTransactionAmt().toPlainString());
                     String details = String.format(Locale.US, "%s (%d), Hash: %s", tx.getConfidenceType(), tx.getDepth(), tx.getHash());
                     tile.textProperty().addAll(amount, details, tx.getMemo());
                     setText(null);
@@ -81,7 +81,7 @@ public class WalletPresenter {
             }
         });
 
-        transactionListView.setComparator((s1, s2) -> -1 * Integer.compare(s2.getDepth(), s1.getDepth()));
+        transactionListView.setComparator((t1,t2) -> t2.getDate().compareTo(t1.getDate()));
 
         walletManager.getWalletsDownloadProgress()
                 .subscribeOn(Schedulers.io())

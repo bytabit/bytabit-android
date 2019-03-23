@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
@@ -174,6 +175,14 @@ public class TradeManager {
 
     public Maybe<Trade> createTrade(Offer offer, BigDecimal btcAmount) {
         Maybe<Trade> trade = Maybe.empty();
+
+        BigDecimal currencyAmount = offer.getPrice().multiply(btcAmount).setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
+        if (currencyAmount.compareTo(offer.getMinAmount()) < 0) {
+            return Maybe.error(new TradeException(String.format("Trade amount can not be less than %s %s.", offer.getMinAmount(), offer.getCurrencyCode())));
+        }
+        if (currencyAmount.compareTo(offer.getMaxAmount()) > 0 || currencyAmount.compareTo(offer.getCurrencyCode().getMaxTradeAmount()) > 0) {
+            return Maybe.error(new TradeException(String.format("Trade amount can not be more than %s %s.", offer.getMaxAmount(), offer.getCurrencyCode())));
+        }
 
         if (SELL.equals(offer.getOfferType())) {
             trade = buyerProtocol.createTrade(offer, btcAmount)
@@ -422,7 +431,7 @@ public class TradeManager {
                 break;
 
             default:
-                throw new TradeException("Invalid status, can't update trade");
+                return Maybe.error(new TradeException("Invalid status, can't update trade"));
         }
 
         return tradeUpdated.map(Trade::withStatus);

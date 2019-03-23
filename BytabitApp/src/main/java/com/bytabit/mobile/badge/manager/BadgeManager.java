@@ -35,6 +35,7 @@ import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class BadgeManager {
 
@@ -76,14 +77,21 @@ public class BadgeManager {
         //badges = badgeStorage.getAll().flattenAsObservable(bl -> bl).concatWith(createdBadge).share();
     }
 
-    public Maybe<Badge> getOfferMakerBadge(CurrencyCode currencyCode) {
+    public Single<Badge> getOfferMakerBadge(CurrencyCode currencyCode) {
 
         return badgeStorage.getAll().flattenAsObservable(b -> b)
                 .filter(b -> b.getBadgeType().equals(Badge.BadgeType.OFFER_MAKER))
                 .filter(b -> b.getCurrencyCode().equals(currencyCode))
                 .filter(b -> b.getValidFrom().compareTo(new Date()) <= 0)
                 .filter(b -> b.getValidTo().compareTo(new Date()) >= 0)
-                .firstElement();
+                .firstElement().toSingle()
+                .onErrorResumeNext(t -> {
+                    if (t instanceof NoSuchElementException) {
+                        return Single.error(new BadgeException(String.format("No offer maker badge found for %s.", currencyCode)));
+                    } else {
+                        return Single.error(t);
+                    }
+                });
     }
 
     public Single<List<Badge>> getLoadedBadges() {
@@ -98,23 +106,23 @@ public class BadgeManager {
                                  Date validFrom, Date validTo) {
 
         if (badgeType == null) {
-            throw new BadgeException("Badge type required to create badge.");
+            return Maybe.error(new BadgeException("Badge type required to create badge."));
         }
 
         if (currencyCode == null) {
-            throw new BadgeException("Currency code required to create badge.");
+            return Maybe.error(new BadgeException("Currency code required to create badge."));
         }
 
         if (priceBtcAmount == null) {
-            throw new BadgeException("Price BTC amount required to create badge.");
+            return Maybe.error(new BadgeException("Price BTC amount required to create badge."));
         }
 
         if (validFrom == null) {
-            throw new BadgeException("Valid from date required to create badge.");
+            return Maybe.error(new BadgeException("Valid from date required to create badge."));
         }
 
         if (validTo == null) {
-            throw new BadgeException("Valid to date required to create badge.");
+            return Maybe.error(new BadgeException("Valid to date required to create badge."));
         }
 
         Maybe<TransactionWithAmt> paymentTransaction = walletManager.withdrawFromTradeWallet(arbitratorManager.getArbitrator().getFeeAddress(), priceBtcAmount);

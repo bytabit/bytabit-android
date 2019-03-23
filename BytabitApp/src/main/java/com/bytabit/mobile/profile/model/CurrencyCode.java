@@ -29,6 +29,7 @@ public enum CurrencyCode {
 
     CurrencyCode(int scale, BigDecimal maxTradeAmount, PaymentMethod... paymentMethods) {
         this.scale = scale;
+        this.maxTradeAmount = maxTradeAmount;
         this.paymentMethods = Arrays.asList(paymentMethods);
     }
 

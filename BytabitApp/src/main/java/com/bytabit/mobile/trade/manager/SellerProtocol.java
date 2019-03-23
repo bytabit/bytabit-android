@@ -40,7 +40,15 @@ public class SellerProtocol extends TradeProtocol {
     // 1.B: create trade, post created trade
     Maybe<Trade> createTrade(Offer offer, BigDecimal sellBtcAmount) {
         if (!BUY.equals(offer.getOfferType())) {
-            throw new TradeException("Seller protocol can only create trade from buy offer.");
+            return Maybe.error(new TradeException("Seller protocol can only create trade from buy offer."));
+        }
+
+        BigDecimal currencyAmount = offer.getPrice().multiply(sellBtcAmount).setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP);
+        if (currencyAmount.compareTo(offer.getMinAmount()) < 0) {
+            return Maybe.error(new TradeException(String.format("Trade amount can not be less than %s %s.", offer.getMinAmount(), offer.getCurrencyCode())));
+        }
+        if (currencyAmount.compareTo(offer.getMaxAmount()) > 0 || currencyAmount.compareTo(offer.getCurrencyCode().getMaxTradeAmount()) > 0) {
+            return Maybe.error(new TradeException(String.format("Trade amount can not be more than %s %s.", offer.getMaxAmount(), offer.getCurrencyCode())));
         }
         return Maybe.zip(walletManager.getEscrowPubKeyBase58(),
                 walletManager.getProfilePubKeyBase58(),

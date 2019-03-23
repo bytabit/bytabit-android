@@ -133,25 +133,28 @@ public class OfferManager {
                                     BigDecimal price) {
 
         if (offerType == null) {
-            throw new OfferException("Offer type is required.");
+            return Maybe.error(new OfferException("Offer type is required."));
         }
         if (currencyCode == null) {
-            throw new OfferException("Currency code is required.");
+            return Maybe.error(new OfferException("Currency code is required."));
         }
         if (paymentMethod == null) {
-            throw new OfferException("Payment method is required.");
+            return Maybe.error(new OfferException("Payment method is required."));
         }
         if (minAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferException("Minimum amount must be greater than zero.");
+            return Maybe.error(new OfferException("Minimum amount must be greater than zero."));
         }
         if (maxAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferException("Maximum amount must be greater than zero.");
+            return Maybe.error(new OfferException("Maximum amount must be greater than zero."));
         }
         if (price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferException("Price must be greater than zero.");
+            return Maybe.error(new OfferException("Price must be greater than zero."));
+        }
+        if (maxAmount.compareTo(currencyCode.getMaxTradeAmount()) > 0) {
+            return Maybe.error(new OfferException(String.format("Max offer amount can not be more than %s %s.", currencyCode.getMaxTradeAmount(), currencyCode)));
         }
 
-        return badgeManager.getOfferMakerBadge(currencyCode).toSingle()
+        return badgeManager.getOfferMakerBadge(currencyCode)
                 .flatMapMaybe(b -> walletManager.getProfilePubKeyBase58().map(profilePubKey ->
                         Offer.builder()
                                 .offerType(offerType)
@@ -202,7 +205,7 @@ public class OfferManager {
 
     public Maybe<Trade> createTrade(BigDecimal btcAmount) {
         if (btcAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OfferException("Trade amount must be greater than zero.");
+            return Maybe.error(new OfferException("Trade amount must be greater than zero."));
         }
         return getSelectedOffer().firstOrError()
                 .flatMapMaybe(offer -> tradeManager.createTrade(offer, btcAmount));

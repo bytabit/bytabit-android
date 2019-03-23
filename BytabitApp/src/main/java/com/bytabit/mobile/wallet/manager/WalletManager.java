@@ -713,13 +713,13 @@ public class WalletManager {
             try {
                 if (input.getConnectedOutput() == null) {
                     log.error("Null connectedOutput for payoutTx");
-                    throw new WalletException("Null connectedOutput for payoutTx");
+                    return Maybe.error(new WalletException("Null connectedOutput for payoutTx"));
                 }
                 input.verify(input.getConnectedOutput());
                 log.debug("Input valid for payoutTx: {}", input);
             } catch (VerificationException ve) {
                 log.error("Input not valid for payoutTx, {}", ve.getMessage());
-                throw new WalletException(String.format("Input not valid for payoutTx, %s", ve.getMessage()));
+                return Maybe.error(new WalletException(String.format("Input not valid for payoutTx, %s", ve.getMessage())));
             }
         }
 
