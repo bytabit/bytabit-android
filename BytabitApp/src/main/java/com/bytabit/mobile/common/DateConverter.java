@@ -30,7 +30,7 @@ public class DateConverter implements JsonSerializer<Date>, JsonDeserializer<Dat
     private DateFormat dateFormat;
 
     public DateConverter() {
-        dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+        dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ");
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
