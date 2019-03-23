@@ -101,6 +101,12 @@ public class PaymentPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(this::updatePaymentMethods);
 
+        JavaFxObservable.changesOf(paymentMethodChoiceBox.valueProperty())
+                .map(Change::getNewVal)
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(this::updatePaymentDetails);
+
         JavaFxObservable.actionEventsOf(addPaymentDetailButton)
                 .map(actionEvent -> getPaymentDetails())
                 .observeOn(JavaFxScheduler.platform())
@@ -146,6 +152,10 @@ public class PaymentPresenter {
         paymentMethodChoiceBox.getItems().setAll(currencyCode.paymentMethods());
         paymentMethodChoiceBox.getSelectionModel().select(0);
         paymentMethodChoiceBox.requestFocus();
+    }
+
+    private void updatePaymentDetails(PaymentMethod paymentMethod) {
+        paymentDetailsTextField.promptTextProperty().setValue(paymentMethod.requiredDetails());
     }
 
     private PaymentDetails getPaymentDetails() {

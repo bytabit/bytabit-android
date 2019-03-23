@@ -19,7 +19,8 @@ package com.bytabit.mobile.profile.model;
 public enum PaymentMethod {
     SWISH("Swish", "Full name and phone number"),
     WU("Western Union", "Full name and ID number"),
-    MG("Moneygram", "Full name and ID number");
+    MG("Moneygram", "Full name and ID number"),
+    SEPA("SEPA (EU)", "Full name and IBAN number");
 
     PaymentMethod(String displayName, String requiredDetails) {
         this.displayName = displayName;
