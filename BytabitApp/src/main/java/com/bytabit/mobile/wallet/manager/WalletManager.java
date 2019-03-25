@@ -320,25 +320,58 @@ public class WalletManager {
     }
 
     public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount) {
-        return tradeWalletAppKit.firstElement()
-                .map(WalletAppKit::wallet).map(w -> {
+
+        return tradeWalletAppKit.firstElement().map(WalletAppKit::wallet).flatMap(w ->
+//                        {
+//                            try {
+//                                Address address = Address.fromBase58(netParams, withdrawAddress);
+//                                Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
+//                                SendRequest request = SendRequest.to(address, amount);
+//                                Wallet.SendResult sendResult = w.sendCoins(request);
+//                                return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
+//                            } catch (AddressFormatException afe) {
+//                                throw new WalletException("Invalid withdraw address format.");
+//                            } catch (IllegalArgumentException iae) {
+//                                throw new WalletException("Invalid withdraw amount.");
+//                            } catch (InsufficientMoneyException ime) {
+//                                throw new WalletException("Insufficient wallet balance for withdraw amount.");
+//                            } catch (Wallet.DustySendRequested dsr) {
+//                                throw new WalletException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ").");
+//                            }
+//                        }
+                {
                     try {
-                        Address address = Address.fromBase58(netParams, withdrawAddress);
-                        Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
-                        SendRequest request = SendRequest.to(address, amount);
-                        Wallet.SendResult sendResult = w.sendCoins(request);
-                        return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
+                        Context.propagate(btcContext);
+                        return broadcastTransaction(w, Coin.parseCoin(withdrawAmount.toPlainString()), Address.fromBase58(netParams, withdrawAddress))
+                                .map(tx -> createTransactionWithAmt(w, tx));
                     } catch (AddressFormatException afe) {
                         throw new WalletException("Invalid withdraw address format.");
                     } catch (IllegalArgumentException iae) {
-                        throw new WalletException("Invalid withdraw amount.");
-                    } catch (InsufficientMoneyException ime) {
-                        throw new WalletException("Insufficient wallet balance for withdraw amount.");
-                    } catch (Wallet.DustySendRequested dsr) {
-                        throw new WalletException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ").");
+                        throw new WalletException("Invalid bitcoin amount.");
                     }
-                });
+                }
+        );
     }
+
+    /*
+    // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
+        return notFundedWallet.flatMap(tw -> Maybe.create(source -> {
+            try {
+                SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
+                        Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
+                sendRequest.feePerKb = defaultTxFeeCoin();
+                Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
+                source.onSuccess(sendResult.tx);
+            } catch (InsufficientMoneyException ex) {
+                log.error("Insufficient BTC to fund trade escrow.");
+                // TODO let user know not enough BTC in wallet
+                source.onError(ex);
+            } catch (Exception ex) {
+                log.error("Error while broadcasting trade escrow funding tx.", ex);
+                source.onError(ex);
+            }
+        }));
+     */
 
     public void watchNewEscrowAddressAndResetBlockchain(String escrowAddress) {
         getWatchedEscrowAddresses()
@@ -433,22 +466,46 @@ public class WalletManager {
                 .flatMap(f -> getTradeWallet());
 
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
-        return notFundedWallet.flatMap(tw -> Maybe.create(source -> {
+        return notFundedWallet.flatMap(tw ->
+//                Maybe.create(source -> {
+//                    try {
+//                        SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
+//                                Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
+//                        sendRequest.feePerKb = defaultTxFeeCoin();
+//                        Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
+//                        source.onSuccess(sendResult.tx);
+//                    } catch (InsufficientMoneyException ex) {
+//                        log.error("Insufficient BTC to fund trade escrow.");
+//                        // TODO let user know not enough BTC in wallet
+//                        source.onError(ex);
+//                    } catch (Exception ex) {
+//                        log.error("Error while broadcasting trade escrow funding tx.", ex);
+//                        source.onError(ex);
+//                    }
+//                })
+                        broadcastTransaction(tw, Coin.parseCoin(amount.toString()), Address.fromBase58(netParams, escrowAddress))
+        );
+    }
+
+    private Maybe<Transaction> broadcastTransaction(Wallet wallet, Coin amount, Address address) {
+        return Maybe.create(source -> {
             try {
-                SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
-                        Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
+                Context.propagate(btcContext);
+                SendRequest sendRequest = SendRequest.to(address, amount.add(defaultTxFeeCoin()));
                 sendRequest.feePerKb = defaultTxFeeCoin();
-                Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
+                Wallet.SendResult sendResult = wallet.sendCoins(sendRequest);
                 source.onSuccess(sendResult.tx);
             } catch (InsufficientMoneyException ex) {
-                log.error("Insufficient BTC to fund trade escrow.");
+                log.error("Insufficient wallet balance to create transaction for {} BTC.", amount.toPlainString());
                 // TODO let user know not enough BTC in wallet
-                source.onError(ex);
+                source.onError(new WalletException(String.format("Insufficient wallet balance to create transaction for %s BTC.", amount.toPlainString())));
+            } catch (Wallet.DustySendRequested dsr) {
+                source.onError(new WalletException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ")."));
             } catch (Exception ex) {
-                log.error("Error while broadcasting trade escrow funding tx.", ex);
+                log.error("Error while broadcasting transaction.", ex);
                 source.onError(ex);
             }
-        }));
+        });
     }
 
     private Address escrowAddress(ECKey arbitratorProfilePubKey,

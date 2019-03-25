@@ -144,9 +144,10 @@ public class BadgeManager {
                     .transactionHash(tx.getHash())
                     .build();
         })
-                .observeOn(Schedulers.io())
                 .flatMapSingleElement(badgeService::put)
                 .flatMapSingleElement(badgeStorage::write)
+                .observeOn(Schedulers.io())
+                .subscribeOn(Schedulers.io())
                 .doOnSuccess(createdBadge::onNext);
     }
 }

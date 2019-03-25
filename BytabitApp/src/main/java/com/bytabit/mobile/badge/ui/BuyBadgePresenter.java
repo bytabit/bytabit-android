@@ -85,7 +85,7 @@ public class BuyBadgePresenter {
 
         // setup event observables
         handleShowing();
-        handleAddOffer();
+        handleAddBadge();
     }
 
     private void setupViewComponents() {
@@ -111,7 +111,7 @@ public class BuyBadgePresenter {
                 });
     }
 
-    private void handleAddOffer() {
+    private void handleAddBadge() {
         JavaFxObservable.actionEventsOf(buyBadgeButton)
                 .flatMapMaybe(ea -> {
 

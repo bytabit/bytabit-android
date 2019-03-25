@@ -75,6 +75,7 @@ public class WithdrawPresenter {
                 .subscribe(this::showAvailableAmount);
 
         JavaFxObservable.actionEventsOf(withdrawButton)
+                .observeOn(Schedulers.io())
                 .flatMapMaybe(actionEvent -> {
                     try {
                         String address = withdrawAddressField.getText();

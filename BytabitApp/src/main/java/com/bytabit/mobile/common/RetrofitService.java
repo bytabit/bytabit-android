@@ -23,7 +23,6 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-import java.time.ZonedDateTime;
 import java.util.Date;
 
 public abstract class RetrofitService {
@@ -35,7 +34,6 @@ public abstract class RetrofitService {
         Gson gson = new GsonBuilder()
                 .setPrettyPrinting()
                 .registerTypeAdapter(Date.class, new DateConverter())
-                .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeConverter())
                 .create();
 
         retrofit = new Retrofit.Builder()
