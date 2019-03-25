@@ -162,7 +162,8 @@ public class OfferDetailsPresenter {
                 .doOnNext(offer ->
                         walletManager.getProfilePubKeyBase58()
                                 .subscribe(profilePubKey -> {
-                                    if (profilePubKey.equals(offer.getMakerProfilePubKey())) {
+                                    boolean isMyOffer = profilePubKey.equals(offer.getMakerProfilePubKey());
+                                    if (isMyOffer) {
                                         // my offer
                                         buyGridPane.setVisible(false);
                                         removeOfferButton.setVisible(true);
@@ -171,8 +172,9 @@ public class OfferDetailsPresenter {
                                         buyGridPane.setVisible(true);
                                         removeOfferButton.setVisible(false);
                                     }
+                                    showOffer(isMyOffer, offer);
                                 }))
-                .subscribe(this::showOffer);
+                .subscribe();
 
     }
 
@@ -182,11 +184,17 @@ public class OfferDetailsPresenter {
         appBar.setTitleText("Offer Details");
     }
 
-    private void showOffer(Offer offer) {
+    private void showOffer(boolean isMyOffer, Offer offer) {
 
         paymentMethodLabel.setText(offer.getPaymentMethod().displayName());
-        typeLabel.setText(offer.getOfferType().toString());
-        tradeBtcButton.setText(SELL.equals(offer.getOfferType()) ? BUY.toString() : SELL.toString());
+        Offer.OfferType offerType = offer.getOfferType();
+        // if not my offer swap offer type
+        if (!isMyOffer) {
+            offerType = SELL.equals(offer.getOfferType()) ? BUY : SELL;
+        }
+        typeLabel.setText(offerType.toString());
+        tradeBtcButton.setText(offerType.toString());
+
         String currencyCode = offer.getCurrencyCode().toString();
         currencyLabel.setText(currencyCode);
         currencyAmtLabel.setText(currencyCode);

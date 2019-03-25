@@ -35,6 +35,9 @@ import lombok.extern.slf4j.Slf4j;
 import javax.inject.Inject;
 import java.util.Comparator;
 
+import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
+import static com.bytabit.mobile.offer.model.Offer.OfferType.SELL;
+
 @Slf4j
 public class OffersPresenter {
 
@@ -67,10 +70,15 @@ public class OffersPresenter {
                     super.updateItem(o, empty);
                     if (o != null && !empty) {
                         ListTile tile = new ListTile();
+                        Offer.OfferType offerType = o.getOfferType();
                         if (o.getMakerProfilePubKey().equals(p)) {
+                            // use different style if my offer
                             tile.getStyleClass().add("my-offer");
+                        } else {
+                            // swap offer type if not my offer
+                            offerType = SELL.equals(o.getOfferType()) ? BUY : SELL;
                         }
-                        String amount = String.format("%s @ %s %s per BTC", o.getOfferType().toString(), o.getPrice().toPlainString(), o.getCurrencyCode().toString());
+                        String amount = String.format("%s @ %s %s per BTC", offerType.toString(), o.getPrice().toPlainString(), o.getCurrencyCode().toString());
                         String details = String.format("%s to %s %s via %s", o.getMinAmount(), o.getMaxAmount(), o.getCurrencyCode(), o.getPaymentMethod().displayName());
                         tile.textProperty().addAll(amount, details);
                         setText(null);
