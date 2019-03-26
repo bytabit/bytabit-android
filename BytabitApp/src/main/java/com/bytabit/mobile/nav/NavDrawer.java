@@ -51,11 +51,10 @@ public class NavDrawer {
         final Item paymentDetailsItem = new ViewItem("Payment Details", MaterialDesignIcon.ACCOUNT_BALANCE.graphic(), PAYMENT_VIEW);
         final Item profileItem = new ViewItem("Profile", MaterialDesignIcon.ACCOUNT_CIRCLE.graphic(), PROFILE_VIEW);
         final Item badgeItem = new ViewItem("Badges", MaterialDesignIcon.STAR.graphic(), BADGE_VIEW);
-        final Item aboutItem = new ViewItem("Help", MaterialDesignIcon.HELP.graphic(), HELP_VIEW);
-        aboutItem.setDisable(true);
+        final Item helpItem = new ViewItem("Help", MaterialDesignIcon.HELP.graphic(), HELP_VIEW);
 
         ObservableList<Node> items = FXCollections.observableArrayList();
-        items.addAll(tradesItem, offersItem, walletItem, paymentDetailsItem, profileItem, badgeItem, aboutItem);
+        items.addAll(tradesItem, offersItem, walletItem, paymentDetailsItem, profileItem, badgeItem, helpItem);
         this.drawer = new NavigationDrawer(header, items);
 
         if (Platform.isDesktop()) {
