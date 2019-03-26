@@ -158,6 +158,7 @@ public class AddOfferPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .doOnError(t -> {
                     if (t instanceof BadgeException) {
+                        UiUtils.showErrorDialog(t);
                         MobileApplication.getInstance().switchView(BytabitMobile.BUY_BADGE);
                     }
                 })

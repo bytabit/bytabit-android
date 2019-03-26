@@ -87,7 +87,7 @@ public class BadgeManager {
                 .firstElement().toSingle()
                 .onErrorResumeNext(t -> {
                     if (t instanceof NoSuchElementException) {
-                        return Single.error(new BadgeException(String.format("No offer maker badge found for %s.", currencyCode)));
+                        return Single.error(new BadgeException(String.format("Please buy an offer maker badge for %s.", currencyCode)));
                     } else {
                         return Single.error(t);
                     }
