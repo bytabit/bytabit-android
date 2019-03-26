@@ -35,8 +35,8 @@ public class OfferService extends RetrofitService {
                 .create(OfferServiceApi.class);
     }
 
-    Single<Offer> put(Offer sellOffer) {
-        return offerServiceApi.put(sellOffer.getId(), sellOffer)
+    Single<Offer> put(Offer offer) {
+        return offerServiceApi.put(offer.getId(), offer)
                 .doOnError(t -> log.error("put error: {}", t.getMessage()));
     }
 

@@ -108,7 +108,7 @@ public class OfferManager {
         Observable.interval(0, 150, TimeUnit.SECONDS, Schedulers.io())
                 .flatMap(t -> offerStorage.getAll())
                 .flatMapIterable(ol -> ol)
-                .flatMapSingle(offerService::put)
+                .flatMapMaybe(o -> offerService.put(o).toMaybe().onErrorResumeNext(Maybe.empty()))
                 .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
                 .subscribe(trade -> log.debug("updated my offer: {}", trade));
