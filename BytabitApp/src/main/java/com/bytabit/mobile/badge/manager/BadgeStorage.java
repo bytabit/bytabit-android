@@ -20,6 +20,7 @@ import com.bytabit.mobile.badge.model.Badge;
 import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.common.RetryWithDelay;
 import com.bytabit.mobile.config.AppConfig;
+import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.reactivex.Maybe;
@@ -27,11 +28,9 @@ import io.reactivex.Observable;
 import io.reactivex.Single;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongycastle.util.Strings;
 
 import java.io.File;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -79,7 +78,7 @@ public class BadgeStorage {
                 String badgeFileName = String.format("%s%s.%s", BADGE_PATH, badge.getId(), JSON_EXT);
                 File badgeFile = new File(badgeFileName);
                 String badgeJson = gson.toJson(badge);
-                Files.write(badgeFile.toPath(), Strings.toByteArray(badgeJson));
+                Files.write(badgeJson.getBytes(Charset.defaultCharset()), badgeFile);
                 source.onSuccess(badge);
             } catch (Exception e) {
                 source.onError(new BadgeException(String.format("Could not write badge: %s", badge)));
@@ -94,8 +93,7 @@ public class BadgeStorage {
             try {
                 String badgeFileName = String.format("%s%s.%s", BADGE_PATH, id, JSON_EXT);
                 File badgeFile = new File(badgeFileName);
-                byte[] encoded = Files.readAllBytes(badgeFile.toPath());
-                String badgeJson = new String(encoded, Charset.defaultCharset());
+                String badgeJson = Files.toString(badgeFile, Charset.defaultCharset());
                 Badge badge = gson.fromJson(badgeJson, Badge.class);
                 source.onSuccess(badge);
             } catch (Exception e) {
@@ -111,7 +109,7 @@ public class BadgeStorage {
             try {
                 String badgeFileName = String.format("%s%s.%s", BADGE_PATH, id, JSON_EXT);
                 File badgeFile = new File(badgeFileName);
-                Files.delete(badgeFile.toPath());
+                badgeFile.delete();
                 source.onSuccess(id);
             } catch (Exception ex) {
                 log.error("Could not delete badge id: {}", id);

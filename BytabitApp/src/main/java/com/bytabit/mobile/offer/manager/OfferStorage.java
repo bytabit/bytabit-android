@@ -20,6 +20,7 @@ import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.common.RetryWithDelay;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.offer.model.Offer;
+import com.google.common.io.Files;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.reactivex.Maybe;
@@ -27,11 +28,9 @@ import io.reactivex.Observable;
 import io.reactivex.Single;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongycastle.util.Strings;
 
 import java.io.File;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -78,9 +77,8 @@ public class OfferStorage {
             try {
                 String offerFileName = String.format("%s%s.%s", OFFERS_PATH, offer.getId(), JSON_EXT);
                 File offerFile = new File(offerFileName);
-                //byte[] encoded = Files.readAllBytes(offerFile.toPath());
                 String offerJson = gson.toJson(offer);
-                Files.write(offerFile.toPath(), Strings.toByteArray(offerJson));
+                Files.write(offerJson.getBytes(Charset.defaultCharset()), offerFile);
                 source.onSuccess(offer);
             } catch (Exception e) {
                 source.onError(new OfferException(String.format("Could not write offer: %s", offer)));
@@ -95,8 +93,7 @@ public class OfferStorage {
             try {
                 String offerFileName = String.format("%s%s.%s", OFFERS_PATH, id, JSON_EXT);
                 File offerFile = new File(offerFileName);
-                byte[] encoded = Files.readAllBytes(offerFile.toPath());
-                String offerJson = new String(encoded, Charset.defaultCharset());
+                String offerJson = Files.toString(offerFile, Charset.defaultCharset());
                 Offer offer = gson.fromJson(offerJson, Offer.class);
                 source.onSuccess(offer);
             } catch (Exception e) {
@@ -112,7 +109,7 @@ public class OfferStorage {
             try {
                 String offerFileName = String.format("%s%s.%s", OFFERS_PATH, id, JSON_EXT);
                 File offerFile = new File(offerFileName);
-                Files.delete(offerFile.toPath());
+                offerFile.delete();
                 source.onSuccess(id);
             } catch (Exception ex) {
                 log.error("Could not delete offer id: {}", id);

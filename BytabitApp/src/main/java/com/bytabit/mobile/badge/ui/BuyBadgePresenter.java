@@ -41,9 +41,7 @@ import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimeZone;
+import java.util.*;
 
 public class BuyBadgePresenter {
 
@@ -155,12 +153,28 @@ public class BuyBadgePresenter {
     }
 
     private void clearForm() {
+        Date now = new Date();
+
+        badgeManager.getLoadedBadges().flattenAsObservable(b -> b)
+                .filter(b -> b.getBadgeType().equals(Badge.BadgeType.OFFER_MAKER))
+                .filter(b -> b.getValidFrom().compareTo(now) <=0  && b.getValidTo().compareTo(now) >= 0)
+                .map(b -> b.getCurrencyCode()).distinct().toSortedList()
+                .subscribeOn(Schedulers.io())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(cl -> {
+                    List<CurrencyCode> filtered = new ArrayList<>(Arrays.asList(CurrencyCode.values()));
+                    filtered.removeAll(cl);
+                    currencyChoiceBox.getItems().setAll(filtered);
+
+                    if (currencyChoiceBox.getSelectionModel().isEmpty()) {
+                        currencyChoiceBox.getSelectionModel().selectFirst();
+                    }
+                });
+
         if (badgeTypeChoiceBox.getSelectionModel().isEmpty()) {
             badgeTypeChoiceBox.getSelectionModel().selectFirst();
         }
-        if (currencyChoiceBox.getSelectionModel().isEmpty()) {
-            currencyChoiceBox.getSelectionModel().selectFirst();
-        }
+
         priceBtcTextField.setText("0.0025");
 
         Date validFrom = new Date();
