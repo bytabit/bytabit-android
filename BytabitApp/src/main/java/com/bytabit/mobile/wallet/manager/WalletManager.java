@@ -467,23 +467,7 @@ public class WalletManager {
 
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
         return notFundedWallet.flatMap(tw ->
-//                Maybe.create(source -> {
-//                    try {
-//                        SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
-//                                Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
-//                        sendRequest.feePerKb = defaultTxFeeCoin();
-//                        Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
-//                        source.onSuccess(sendResult.tx);
-//                    } catch (InsufficientMoneyException ex) {
-//                        log.error("Insufficient BTC to fund trade escrow.");
-//                        // TODO let user know not enough BTC in wallet
-//                        source.onError(ex);
-//                    } catch (Exception ex) {
-//                        log.error("Error while broadcasting trade escrow funding tx.", ex);
-//                        source.onError(ex);
-//                    }
-//                })
-                        broadcastTransaction(tw, Coin.parseCoin(amount.toString()), Address.fromBase58(netParams, escrowAddress))
+                broadcastTransaction(tw, Coin.parseCoin(amount.toString()), Address.fromBase58(netParams, escrowAddress))
         );
     }
 
@@ -604,7 +588,7 @@ public class WalletManager {
 
                 // verify output from fundingTx exists and equals required payout amounts
                 if (outputAddress != null && outputAddress.equals(escrowAddress)
-                        && txo.getValue().equals(outputAmount)) {
+                        && txo.getValue().compareTo(outputAmount) == 0) {
 
                     // post payout input and funding output with empty unlock scripts
                     TransactionInput input = payoutTx.addInput(txo);
@@ -612,6 +596,10 @@ public class WalletManager {
                     input.setScriptSig(emptyUnlockScript);
                     break;
                 }
+            }
+
+            if (payoutTx.getInputs().size() != 1) {
+                return Maybe.error(new WalletException(String.format("Did not find escrow funding TX %s or matching output to address %s with amount %s", fundingTx.getHashAsString(), escrowAddress, payoutAmount.toFriendlyString())));
             }
 
             // add output to payout tx
@@ -628,9 +616,9 @@ public class WalletManager {
             if (escrowKey != null) {
                 // sign tx input
                 Sha256Hash unlockSigHash = payoutTx.hashForSignature(0, redeemScript, Transaction.SigHash.ALL, false);
-                return Single.just(new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false)).toMaybe();
+                return Maybe.just(new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false));
             } else {
-                throw new WalletException("Can not create payout signature, no signing key found.");
+                return Maybe.error(new WalletException("Can not create payout signature, no signing key found."));
             }
         });
     }

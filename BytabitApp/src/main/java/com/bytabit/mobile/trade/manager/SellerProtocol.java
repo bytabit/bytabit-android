@@ -119,8 +119,6 @@ public class SellerProtocol extends TradeProtocol {
                 .onErrorResumeNext(error(new TradeException("No payment details found to fund trade.")))
                 .cache();
 
-        // TODO don't fund escrow if payment details are not configured
-
         // 1. fund escrow
         Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getTradeAcceptance().getEscrowAddress(), trade.getBtcAmount()).cache();
 

@@ -24,6 +24,6 @@
       xmlns="http://javafx.com/javafx/8.0.111" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.bytabit.mobile.trade.ui.TradesPresenter">
     <center>
-        <CharmListView fx:id="tradesListView" BorderPane.alignment="CENTER"/>
+        <CharmListView disable="true" fx:id="tradesListView" BorderPane.alignment="CENTER"/>
     </center>
 </View>
