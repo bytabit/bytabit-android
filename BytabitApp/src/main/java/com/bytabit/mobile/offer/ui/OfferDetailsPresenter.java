@@ -26,6 +26,7 @@ import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
 import com.gluonhq.charm.glisten.visual.MaterialDesignIcon;
+import io.reactivex.Maybe;
 import io.reactivex.rxjavafx.observables.JavaFxObservable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.rxjavafx.sources.Change;
@@ -129,10 +130,10 @@ public class OfferDetailsPresenter {
                 .observeOn(Schedulers.io())
                 .flatMapMaybe(ae -> {
                     try {
-                        BigDecimal buyBtcAmount = new BigDecimal(buyBtcAmtTextField.textProperty().getValue());
+                        BigDecimal buyBtcAmount = getBtcAmount(buyCurrencyAmtTextField.getText(), priceCurrencyLabel.getText());
                         return offerManager.createTrade(buyBtcAmount);
                     } catch (NumberFormatException nfe) {
-                        throw new OfferDetailsPresenterException("Invalid number format for amount.");
+                        return Maybe.error(new OfferDetailsPresenterException("Invalid number format for amount."));
                     }
                 })
                 .subscribeOn(Schedulers.io())
@@ -148,11 +149,8 @@ public class OfferDetailsPresenter {
                 .map(change -> change.getNewVal() == null || change.getNewVal().isEmpty() ? "0.00" : change.getNewVal())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .map(BigDecimal::new)
                 .subscribe(newCurrencyAmount -> {
-                    BigDecimal priceAmount = new BigDecimal(priceLabel.getText());
-                    BigDecimal btcAmount = newCurrencyAmount.divide(priceAmount, MathContext.DECIMAL32)
-                            .setScale(8, BigDecimal.ROUND_UP);
+                    BigDecimal btcAmount = getBtcAmount(newCurrencyAmount, priceLabel.getText());
                     buyBtcAmtTextField.setText(btcAmount.toPlainString());
                 });
 
@@ -176,6 +174,12 @@ public class OfferDetailsPresenter {
                                 }))
                 .subscribe();
 
+    }
+
+    private BigDecimal getBtcAmount(String currencyAmountString, String priceAmountString) {
+        BigDecimal currencyAmount = new BigDecimal(currencyAmountString.trim());
+        BigDecimal priceAmount = new BigDecimal(priceAmountString.trim());
+        return currencyAmount.divide(priceAmount, MathContext.DECIMAL64).setScale(8, MathContext.DECIMAL64.getRoundingMode());
     }
 
     private void setAppBar() {
