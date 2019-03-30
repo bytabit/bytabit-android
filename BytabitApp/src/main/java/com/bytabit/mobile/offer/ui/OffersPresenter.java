@@ -60,7 +60,6 @@ public class OffersPresenter {
         // setup view components
 
         addOfferButton.showOn(offersView);
-        addOfferButton.hide();
 
         walletManager.getProfilePubKey().subscribe(p -> {
 
@@ -105,14 +104,7 @@ public class OffersPresenter {
         walletManager.getWalletSynced()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(synced -> {
-                    offersView.setDisable(!synced);
-                    if (!synced) {
-                        addOfferButton.hide();
-                    } else {
-                        addOfferButton.show();
-                    }
-                });
+                .subscribe(synced -> offersView.setDisable(!synced));
 
         JavaFxObservable.changesOf(offersView.showingProperty())
                 .filter(Change::getNewVal)
