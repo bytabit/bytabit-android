@@ -146,6 +146,7 @@ public class BuyerProtocol extends TradeProtocol {
 
         // 1. sign and broadcast refund tx
         Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade.getBtcAmount(),
+                trade.getTxFeePerKb(),
                 trade.getFundingTransactionWithAmt().getTransaction(),
                 trade.getArbitratorProfilePubKey(), trade.getSellerEscrowPubKey(), trade.getBuyerEscrowPubKey(),
                 trade.getRefundAddress(), trade.getRefundTxSignature(), ARBITRATOR.equals(trade.getRole()));

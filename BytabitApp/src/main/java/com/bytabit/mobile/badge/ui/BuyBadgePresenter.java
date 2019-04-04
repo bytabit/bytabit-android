@@ -155,12 +155,14 @@ public class BuyBadgePresenter {
     private void clearForm() {
         Date now = new Date();
 
-        badgeManager.getLoadedBadges().flattenAsObservable(b -> b)
+        badgeManager.getStoredBadges().flattenAsObservable(b -> b)
                 .filter(b -> b.getBadgeType().equals(Badge.BadgeType.OFFER_MAKER))
                 .filter(b -> b.getValidFrom().compareTo(now) <=0  && b.getValidTo().compareTo(now) >= 0)
                 .map(b -> b.getCurrencyCode()).distinct().toSortedList()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(cl -> {
                     List<CurrencyCode> filtered = new ArrayList<>(Arrays.asList(CurrencyCode.values()));
                     filtered.removeAll(cl);

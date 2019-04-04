@@ -17,6 +17,8 @@
 package com.bytabit.mobile.trade.ui;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -42,6 +44,9 @@ public class TradesPresenter {
 
     @Inject
     WalletManager walletManager;
+
+    @Inject
+    OfferManager offerManager;
 
     @FXML
     private View tradesView;
@@ -81,8 +86,12 @@ public class TradesPresenter {
         JavaFxObservable.changesOf(tradesView.showingProperty())
                 .filter(Change::getNewVal)
                 .subscribeOn(Schedulers.io())
+                .flatMapSingle(c -> tradeManager.getStoredTrades())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> {
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
+                .subscribe(tl -> {
+                    tradesListView.itemsProperty().setAll(tl);
                     setAppBar();
                     clearSelection();
                 });
@@ -92,15 +101,12 @@ public class TradesPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(synced -> tradesListView.setDisable(!synced));
 
-        tradeManager.getCreatedTrade()
-                .autoConnect()
+        tradeManager.getUpdatedTrades()
+                .mergeWith(offerManager.getAddedTrades())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(trade -> tradesListView.itemsProperty().add(trade));
-
-        tradeManager.getUpdatedTrade()
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(updatedTrade -> {
                     int index = 0;
                     boolean found = false;

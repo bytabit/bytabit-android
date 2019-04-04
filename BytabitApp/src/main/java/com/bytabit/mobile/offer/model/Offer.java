@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.offer.model;
 
+import com.bytabit.mobile.common.Entity;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import lombok.*;
@@ -29,7 +30,7 @@ import java.math.RoundingMode;
 @Getter
 @Setter
 @ToString
-public class Offer {
+public class Offer implements Entity {
 
     public enum OfferType {
         BUY,

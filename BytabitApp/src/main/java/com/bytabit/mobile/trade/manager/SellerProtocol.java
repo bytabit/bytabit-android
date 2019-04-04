@@ -120,11 +120,11 @@ public class SellerProtocol extends TradeProtocol {
                 .cache();
 
         // 1. fund escrow
-        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getTradeAcceptance().getEscrowAddress(), trade.getBtcAmount()).cache();
+        BigDecimal txFeePerKb = walletManager.defaultTxFee();
+        Maybe<Transaction> fundingTx = walletManager.fundEscrow(trade.getTradeAcceptance().getEscrowAddress(), trade.getBtcAmount(), txFeePerKb).cache();
 
         // 2. create refund tx address and signature
         Maybe<String> refundAddressBase58 = walletManager.getDepositAddressBase58().cache();
-
         Maybe<String> refundTxSignature = Maybe.zip(fundingTx, refundAddressBase58, (ftx, refundAddress) ->
                 walletManager.getPayoutSignature(trade.getBtcAmount(), ftx,
                         trade.getArbitratorProfilePubKey(),
@@ -135,7 +135,7 @@ public class SellerProtocol extends TradeProtocol {
 
         // 3. create payment request
         Maybe<PaymentRequest> paymentRequest = Maybe.zip(paymentDetails.toMaybe(), refundAddressBase58,  refundTxSignature, fundingTx,
-                (pd, ra,  rs, ftx) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra, rs));
+                (pd, ra,  rs, ftx) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra, rs, txFeePerKb));
 
         return paymentRequest.map(pr -> trade.copyBuilder().paymentRequest(pr).build().withStatus());
     }
@@ -171,6 +171,7 @@ public class SellerProtocol extends TradeProtocol {
 
         // 1. sign and broadcast payout tx
         Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade.getBtcAmount(),
+                trade.getTxFeePerKb(),
                 trade.getFundingTransactionWithAmt().getTransaction(),
                 trade.getArbitratorProfilePubKey(),
                 trade.getSellerEscrowPubKey(),

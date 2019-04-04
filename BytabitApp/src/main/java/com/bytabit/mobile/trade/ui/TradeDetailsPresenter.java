@@ -19,6 +19,7 @@ package com.bytabit.mobile.trade.ui;
 import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
+import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.AppBar;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -45,6 +46,9 @@ public class TradeDetailsPresenter {
     @Inject
     TradeManager tradeManager;
 
+    @Inject
+    WalletManager walletManager;
+
     @FXML
     View tradeDetailsView;
 
@@ -68,6 +72,9 @@ public class TradeDetailsPresenter {
 
     @FXML
     Label paymentAmountLabel;
+
+    @FXML
+    Label txFeePerKbLabel;
 
     @FXML
     Label paymentAmountCurrencyLabel;
@@ -155,6 +162,8 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.sellerPaymentReceived())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(t -> {
                     log.debug("Seller payment received for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
@@ -164,6 +173,8 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.requestArbitrate())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(t -> {
                     log.debug("Request arbitrate for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
@@ -173,6 +184,8 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.arbitratorRefundSeller())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(t -> {
                     log.debug("Arbitrator refund seller for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
@@ -182,6 +195,8 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.arbitratorPayoutBuyer())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(t -> {
                     log.debug("Arbitrator payout buyer for trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
@@ -191,6 +206,8 @@ public class TradeDetailsPresenter {
                 .flatMapMaybe(ae -> tradeManager.cancelTrade())
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(t -> {
                     log.debug("Cancel trade {}", t);
                     MobileApplication.getInstance().switchToPreviousView();
@@ -253,6 +270,9 @@ public class TradeDetailsPresenter {
 
         if (trade.hasPaymentRequest()) {
             paymentDetailsLabel.textProperty().setValue(trade.getPaymentDetails());
+            txFeePerKbLabel.setText(trade.getTxFeePerKb().toPlainString());
+        } else {
+            txFeePerKbLabel.setText(walletManager.defaultTxFee().toPlainString());
         }
 
         if (trade.hasPayoutRequest()) {

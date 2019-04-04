@@ -23,12 +23,8 @@ import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import io.reactivex.Maybe;
-import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
-import io.reactivex.subjects.PublishSubject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
@@ -39,17 +35,9 @@ import java.util.NoSuchElementException;
 
 public class BadgeManager {
 
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
-
-    private final PublishSubject<Badge> createdBadge;
-
     private final BadgeService badgeService;
 
     private final BadgeStorage badgeStorage;
-
-//    private Observable<Badge> badges;
-
-//    private final Gson gson;
 
     @Inject
     ArbitratorManager arbitratorManager;
@@ -59,22 +47,14 @@ public class BadgeManager {
 
     public BadgeManager() {
 
-//        gson = new GsonBuilder()
-//                .setPrettyPrinting()
-//                .registerTypeAdapter(Date.class, new DateConverter())
-//                .create();
-
         badgeService = new BadgeService();
 
         badgeStorage = new BadgeStorage();
-
-        createdBadge = PublishSubject.create();
     }
 
     @PostConstruct
     public void initialize() {
 
-        //badges = badgeStorage.getAll().flattenAsObservable(bl -> bl).concatWith(createdBadge).share();
     }
 
     public Single<Badge> getOfferMakerBadge(CurrencyCode currencyCode) {
@@ -94,12 +74,8 @@ public class BadgeManager {
                 });
     }
 
-    public Single<List<Badge>> getLoadedBadges() {
+    public Single<List<Badge>> getStoredBadges() {
         return badgeStorage.getAll();
-    }
-
-    public Observable<Badge> getCreatedBadges() {
-        return createdBadge.share();
     }
 
     public Maybe<Badge> buyBadge(Badge.BadgeType badgeType, CurrencyCode currencyCode, BigDecimal priceBtcAmount,
@@ -125,7 +101,7 @@ public class BadgeManager {
             return Maybe.error(new BadgeException("Valid to date required to create badge."));
         }
 
-        Maybe<TransactionWithAmt> paymentTransaction = walletManager.withdrawFromTradeWallet(arbitratorManager.getArbitrator().getFeeAddress(), priceBtcAmount);
+        Maybe<TransactionWithAmt> paymentTransaction = walletManager.withdrawFromTradeWallet(arbitratorManager.getArbitrator().getFeeAddress(), priceBtcAmount, walletManager.defaultTxFee());
         Maybe<String> profilePubKeyBase58 = walletManager.getProfilePubKeyBase58();
 
         return Maybe.zip(paymentTransaction, profilePubKeyBase58, (tx, pubKey) -> {
@@ -147,7 +123,6 @@ public class BadgeManager {
                 .flatMapSingleElement(badgeService::put)
                 .flatMapSingleElement(badgeStorage::write)
                 .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .doOnSuccess(createdBadge::onNext);
+                .subscribeOn(Schedulers.io());
     }
 }

@@ -84,9 +84,10 @@ public class WalletManager {
     @PostConstruct
     public void initialize() {
 
-        // setup trade wallet
+        // setup trade wallet progress monitoring
 
         BehaviorSubject<Double> tradeDownloadProgressSubject = BehaviorSubject.create();
+
         Observable<Double> tradeDownloadProgress = tradeDownloadProgressSubject
                 .doOnSubscribe(d -> log.debug("tradeDownloadProgress: subscribe"))
                 .doOnNext(progress -> log.debug("tradeDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
@@ -94,6 +95,28 @@ public class WalletManager {
 
         WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("trade").build();
+
+        // setup escrow wallet progress monitoring
+
+        BehaviorSubject<Double> escrowDownloadProgressSubject = BehaviorSubject.create();
+
+        Observable<Double> escrowDownloadProgress = escrowDownloadProgressSubject
+                .doOnSubscribe(d -> log.debug("escrowDownloadProgress: subscribe"))
+                .doOnNext(progress -> log.debug("escrowDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
+                .replay(1).autoConnect();
+
+        // monitor download progress
+
+        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
+            if (tp > ep) return ep;
+            else return tp;
+        })
+                .throttleLast(1, TimeUnit.SECONDS)
+                .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
+                .doOnNext(p -> log.debug("walletsDownloadProgress: {}", p))
+                .replay(100).autoConnect();
+
+        // start trade wallet
 
         tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig, null), this::reloadWallet)
                 .doOnNext(tw -> setDownloadListener(tw, tradeDownloadProgressSubject))
@@ -120,13 +143,7 @@ public class WalletManager {
                 .observeOn(Schedulers.io())
                 .replay(20, TimeUnit.MINUTES).autoConnect();
 
-        // setup escrow wallet
-
-        BehaviorSubject<Double> escrowDownloadProgressSubject = BehaviorSubject.create();
-        Observable<Double> escrowDownloadProgress = escrowDownloadProgressSubject
-                .doOnSubscribe(d -> log.debug("escrowDownloadProgress: subscribe"))
-                .doOnNext(progress -> log.debug("escrowDownloadProgress: {}%", BigDecimal.valueOf(progress * 100.00).setScale(0, BigDecimal.ROUND_DOWN)))
-                .replay(1).autoConnect();
+        // start escrow wallet
 
         WalletKitConfig escrowConfig = WalletKitConfig.builder().netParams(netParams)
                 .directory(AppConfig.getPrivateStorage()).filePrefix("escrow").build();
@@ -137,15 +154,6 @@ public class WalletManager {
                 .replay(1).autoConnect();
 
         // triggers for wallet start and synced
-
-        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
-            if (tp > ep) return ep;
-            else return tp;
-        })
-                .throttleLast(1, TimeUnit.SECONDS)
-                .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
-                .doOnNext(p -> log.debug("walletsDownloadProgress: {}", p))
-                .replay(100).autoConnect();
 
         Observable<Boolean> tradeWalletsRunning = tradeWalletAppKit
                 .switchMap(tw -> Observable.<Boolean>create(source -> {
@@ -190,12 +198,13 @@ public class WalletManager {
         walletsRunning = Observable.zip(tradeWalletsRunning, escrowWalletsRunning, (tr, er) -> tr && er)
                 .replay(1).autoConnect();
 
-        walletSynced = walletsDownloadProgress
+        walletSynced = walletsRunning.filter(r -> r.equals(true))
+                .flatMap(r -> walletsDownloadProgress)
                 .map(p -> p == 1.0)
                 .distinctUntilChanged()
-                .observeOn(Schedulers.io())
                 .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
                 .doOnNext(p -> log.debug("walletSynced: {}", p))
+                .observeOn(Schedulers.io())
                 .replay(1).autoConnect();
 
         profilePubKey = tradeWalletAppKit.map(BytabitWalletAppKit::wallet)
@@ -319,30 +328,14 @@ public class WalletManager {
                 .map(WalletAppKit::wallet).map(this::getDepositAddress);
     }
 
-    public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount) {
+    public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount, BigDecimal txFeePerKb) {
 
         return tradeWalletAppKit.firstElement().map(WalletAppKit::wallet).flatMap(w ->
-//                        {
-//                            try {
-//                                Address address = Address.fromBase58(netParams, withdrawAddress);
-//                                Coin amount = Coin.parseCoin(withdrawAmount.toPlainString());
-//                                SendRequest request = SendRequest.to(address, amount);
-//                                Wallet.SendResult sendResult = w.sendCoins(request);
-//                                return createTransactionWithAmt(w, sendResult.broadcastComplete.get());
-//                            } catch (AddressFormatException afe) {
-//                                throw new WalletException("Invalid withdraw address format.");
-//                            } catch (IllegalArgumentException iae) {
-//                                throw new WalletException("Invalid withdraw amount.");
-//                            } catch (InsufficientMoneyException ime) {
-//                                throw new WalletException("Insufficient wallet balance for withdraw amount.");
-//                            } catch (Wallet.DustySendRequested dsr) {
-//                                throw new WalletException("Withdraw amount must be greater than dust limit (" + Transaction.REFERENCE_DEFAULT_MIN_TX_FEE.multiply(3).toFriendlyString() + ").");
-//                            }
-//                        }
                 {
                     try {
                         Context.propagate(btcContext);
-                        return broadcastTransaction(w, Coin.parseCoin(withdrawAmount.toPlainString()), Address.fromBase58(netParams, withdrawAddress))
+                        return broadcastTransaction(w, Coin.parseCoin(withdrawAmount.toPlainString()),
+                                Coin.parseCoin(txFeePerKb.toString()), Address.fromBase58(netParams, withdrawAddress))
                                 .map(tx -> createTransactionWithAmt(w, tx));
                     } catch (AddressFormatException afe) {
                         throw new WalletException("Invalid withdraw address format.");
@@ -446,11 +439,11 @@ public class WalletManager {
         return new BigDecimal(defaultTxFeeCoin().toPlainString());
     }
 
-    private Coin defaultTxFeeCoin() {
+    public Coin defaultTxFeeCoin() {
         return Coin.valueOf(106000);
     }
 
-    public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount) {
+    public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount, BigDecimal txFeePerKb) {
         Context.propagate(btcContext);
 
         Address address = Address.fromBase58(netParams, escrowAddress);
@@ -466,17 +459,19 @@ public class WalletManager {
                 .flatMap(f -> getTradeWallet());
 
         // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
+        BigDecimal amountPlusPayoutTxFee = amount.add(txFeePerKb);
+
         return notFundedWallet.flatMap(tw ->
-                broadcastTransaction(tw, Coin.parseCoin(amount.toString()), Address.fromBase58(netParams, escrowAddress))
+                broadcastTransaction(tw, Coin.parseCoin(amountPlusPayoutTxFee.toString()), Coin.parseCoin(txFeePerKb.toString()), Address.fromBase58(netParams, escrowAddress))
         );
     }
 
-    private Maybe<Transaction> broadcastTransaction(Wallet wallet, Coin amount, Address address) {
+    private Maybe<Transaction> broadcastTransaction(Wallet wallet, Coin amount, Coin txFeePerKb, Address address) {
         return Maybe.create(source -> {
             try {
                 Context.propagate(btcContext);
-                SendRequest sendRequest = SendRequest.to(address, amount.add(defaultTxFeeCoin()));
-                sendRequest.feePerKb = defaultTxFeeCoin();
+                SendRequest sendRequest = SendRequest.to(address, amount);
+                sendRequest.feePerKb = txFeePerKb;
                 Wallet.SendResult sendResult = wallet.sendCoins(sendRequest);
                 source.onSuccess(sendResult.tx);
             } catch (InsufficientMoneyException ex) {
@@ -632,7 +627,7 @@ public class WalletManager {
     // TODO make sure trades always have funding tx with amount added when loaded
     // TODO handle InsufficientMoneyException
 
-    public Maybe<String> payoutEscrowToBuyer(BigDecimal btcAmount,
+    public Maybe<String> payoutEscrowToBuyer(BigDecimal btcAmount, BigDecimal txFeePerKb,
                                              Transaction fundingTransaction,
                                              String arbitratorProfilePubKeyBase58,
                                              String sellerEscrowPubKeyBase58,
@@ -641,6 +636,7 @@ public class WalletManager {
                                              String payoutTxSignatureBase58) {
 
         Coin payoutAmount = Coin.parseCoin(btcAmount.toPlainString());
+        Coin txFeePerKbAmount = Coin.parseCoin(txFeePerKb.toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKeyBase58));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKeyBase58));
         ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKeyBase58));
@@ -655,12 +651,12 @@ public class WalletManager {
 
         Single<List<TransactionSignature>> signatures = mySignature.concatWith(buyerSignature).toList();
 
-        return signatures.flatMapMaybe(sl -> payoutEscrow(payoutAmount, fundingTransaction,
+        return signatures.flatMapMaybe(sl -> payoutEscrow(payoutAmount, txFeePerKbAmount, fundingTransaction,
                 arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
                 payoutAddress, sl).map(Sha256Hash::toString));
     }
 
-    public Maybe<String> refundEscrowToSeller(BigDecimal btcAmount,
+    public Maybe<String> refundEscrowToSeller(BigDecimal btcAmount, BigDecimal txFeePerKb,
                                               Transaction fundingTransaction,
                                               String arbitratorProfilePubKeyBase58,
                                               String sellerEscrowPubKeyBase58,
@@ -670,6 +666,7 @@ public class WalletManager {
                                               boolean isArbitrator) {
 
         Coin payoutAmount = Coin.parseCoin(btcAmount.toPlainString());
+        Coin txFeePerKbAmount = Coin.parseCoin(txFeePerKb.toPlainString());
         ECKey arbitratorProfilePubKey = ECKey.fromPublicOnly(Base58.decode(arbitratorProfilePubKeyBase58));
         ECKey sellerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(sellerEscrowPubKeyBase58));
         ECKey buyerEscrowPubKey = ECKey.fromPublicOnly(Base58.decode(buyerEscrowPubKeyBase58));
@@ -689,7 +686,7 @@ public class WalletManager {
             signatures = sellerRefundSignature.concatWith(mySignature).toList();
         }
 
-        return signatures.flatMapMaybe(sl -> payoutEscrow(payoutAmount, fundingTransaction,
+        return signatures.flatMapMaybe(sl -> payoutEscrow(payoutAmount, txFeePerKbAmount, fundingTransaction,
                 arbitratorProfilePubKey, sellerEscrowPubKey, buyerEscrowPubKey,
                 refundAddress, sl).map(Sha256Hash::toString));
     }
@@ -719,7 +716,8 @@ public class WalletManager {
         return tradeWalletConfig;
     }
 
-    private Maybe<Sha256Hash> payoutEscrow(Coin payoutAmount, Transaction fundingTx,
+    private Maybe<Sha256Hash> payoutEscrow(Coin payoutAmount, Coin txFeePerKb,
+                                           Transaction fundingTx,
                                            ECKey arbitratorProfilePubKey,
                                            ECKey sellerEscrowPubKey,
                                            ECKey buyerEscrowPubKey,
@@ -735,11 +733,11 @@ public class WalletManager {
         // add input to payout tx from single matching funding tx output
         for (TransactionOutput txo : fundingTx.getOutputs()) {
             Address outputAddress = txo.getAddressFromP2SH(netParams);
-            Coin outputAmount = payoutAmount.plus(defaultTxFeeCoin());
+            Coin expectedOutputAmount = payoutAmount.plus(txFeePerKb);
 
             // verify output from fundingTx exists and equals required payout amounts
             if (outputAddress != null && outputAddress.equals(escrowAddress)
-                    && txo.getValue().equals(outputAmount)) {
+                    && txo.getValue().equals(expectedOutputAmount)) {
 
                 // post payout input and funding output with signed unlock script
                 TransactionInput input = payoutTx.addInput(txo);

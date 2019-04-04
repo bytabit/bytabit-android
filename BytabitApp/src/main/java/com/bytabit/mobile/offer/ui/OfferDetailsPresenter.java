@@ -118,19 +118,22 @@ public class OfferDetailsPresenter {
                 .subscribe(c -> setAppBar());
 
         JavaFxObservable.actionEventsOf(removeOfferButton)
+                .flatMapSingle(a -> offerManager.deleteOffer())
                 .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(actionEvent -> {
-                    offerManager.deleteOffer();
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
+                .subscribe(offerId -> {
+                    log.debug("removed offer {}", offerId);
                     MobileApplication.getInstance().switchToPreviousView();
                 });
-
 
         JavaFxObservable.actionEventsOf(tradeBtcButton)
                 .observeOn(Schedulers.io())
                 .flatMapMaybe(ae -> {
                     try {
-                        BigDecimal buyBtcAmount = getBtcAmount(buyCurrencyAmtTextField.getText(), priceCurrencyLabel.getText());
+                        BigDecimal buyBtcAmount = getBtcAmount(buyCurrencyAmtTextField.getText(), priceLabel.getText());
                         return offerManager.createTrade(buyBtcAmount);
                     } catch (NumberFormatException nfe) {
                         return Maybe.error(new OfferDetailsPresenterException("Invalid number format for amount."));

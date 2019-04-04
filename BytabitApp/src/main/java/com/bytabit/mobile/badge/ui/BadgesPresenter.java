@@ -20,6 +20,7 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.badge.manager.BadgeException;
 import com.bytabit.mobile.badge.manager.BadgeManager;
 import com.bytabit.mobile.badge.model.Badge;
+import com.bytabit.mobile.common.UiUtils;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.mvc.View;
@@ -104,10 +105,15 @@ public class BadgesPresenter {
         JavaFxObservable.changesOf(badgesView.showingProperty())
                 .filter(Change::getNewVal)
                 .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .flatMapSingle(c -> badgeManager.getStoredBadges())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> {
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
+                .subscribe(badges -> {
                     setAppBar();
                     clearSelection();
+                    badgesListView.itemsProperty().setAll(badges);
                 });
 
         Observable.create(source ->
@@ -117,47 +123,6 @@ public class BadgesPresenter {
                 .subscribe(a ->
                         MobileApplication.getInstance().switchView(BytabitMobile.BUY_BADGE)
                 );
-
-//        JavaFxObservable.changesOf(badgesListView.selectedItemProperty())
-//                .map(Change::getNewVal)
-//                .subscribe(offer -> {
-//                    MobileApplication.getInstance().switchView(BytabitMobile.OFFER_DETAILS_VIEW);
-//                    badgeManager.setSelectedOffer(offer);
-//                });
-//
-//        Observable.concat(badgeManager.getLoadedOffers(), offerManager.getUpdatedOffers())
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .subscribe(offers ->
-//                        badgesListView.itemsProperty().setAll(offers)
-//                );
-//
-        badgeManager.getLoadedBadges().flattenAsObservable(b -> b)
-                .concatWith(badgeManager.getCreatedBadges())
-                .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(offer ->
-                        badgesListView.itemsProperty().add(offer)
-                );
-//
-//        offerManager.getRemovedOffer()
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(JavaFxScheduler.platform())
-//                .subscribe(offer -> {
-//                            int index = 0;
-//                            boolean found = false;
-//                            for (Offer existingOffer : badgesListView.itemsProperty()) {
-//                                if (existingOffer.getId().equals(offer.getId())) {
-//                                    found = true;
-//                                    break;
-//                                }
-//                                index = index + 1;
-//                            }
-//                            if (found) {
-//                                badgesListView.itemsProperty().remove(index);
-//                            }
-//                        }
-//                );
     }
 
     private void setAppBar() {

@@ -75,6 +75,7 @@ public class ArbitratorProtocol extends TradeProtocol {
             return Maybe.error(new TradeException("Only arbitrator or buyer roles can refund escrow to seller."));
         }
         Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade.getBtcAmount(),
+                trade.getTxFeePerKb(),
                 trade.getFundingTransactionWithAmt().getTransaction(),
                 trade.getArbitratorProfilePubKey(),
                 trade.getSellerEscrowPubKey(),
@@ -94,6 +95,7 @@ public class ArbitratorProtocol extends TradeProtocol {
 
         // 1. sign and broadcast payout tx
         Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade.getBtcAmount(),
+                trade.getTxFeePerKb(),
                 trade.getFundingTransactionWithAmt().getTransaction(),
                 trade.getArbitratorProfilePubKey(),
                 trade.getSellerEscrowPubKey(),

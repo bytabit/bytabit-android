@@ -18,6 +18,8 @@ package com.bytabit.mobile.trade.model;
 
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -38,4 +40,7 @@ public class PaymentRequest {
 
     @NonNull
     private String refundTxSignature;
+
+    @NonNull
+    private BigDecimal txFeePerKb;
 }

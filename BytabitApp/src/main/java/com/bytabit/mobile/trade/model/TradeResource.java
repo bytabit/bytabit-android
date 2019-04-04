@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.trade.model;
 
+import com.bytabit.mobile.common.Entity;
 import com.bytabit.mobile.offer.model.Offer;
 import lombok.*;
 
@@ -26,7 +27,9 @@ import lombok.*;
 @Builder
 @EqualsAndHashCode
 @ToString
-public class TradeResource {
+public class TradeResource implements Entity {
+
+    private String id;
 
     // Offer
     private Offer offer;
@@ -54,6 +57,7 @@ public class TradeResource {
 
     public static Trade toTrade(TradeResource tr) {
         return Trade.builder()
+                .id(tr.getId())
                 .offer(tr.getOffer())
                 .tradeRequest(tr.getTakeOfferRequest())
                 .tradeAcceptance(tr.getConfirmation())
@@ -67,6 +71,7 @@ public class TradeResource {
 
     public static TradeResource fromTrade(Trade t) {
         return TradeResource.builder()
+                .id(t.getId())
                 .offer(t.getOffer())
                 .takeOfferRequest(t.getTradeRequest())
                 .confirmation(t.getTradeAcceptance())

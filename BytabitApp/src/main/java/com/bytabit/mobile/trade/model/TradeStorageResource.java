@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.trade.model;
 
+import com.bytabit.mobile.common.Entity;
 import lombok.*;
 
 import java.text.DateFormat;
@@ -28,7 +29,7 @@ import java.text.SimpleDateFormat;
 @Setter
 @Builder
 @ToString
-public class TradeStorageResource {
+public class TradeStorageResource implements Entity {
 
     private Long version;
 
@@ -41,6 +42,10 @@ public class TradeStorageResource {
     private TradeResource trade;
 
     private static DateFormat dateFormat = SimpleDateFormat.getInstance();
+
+    public String getId() {
+        return trade.getId();
+    }
 
     public static Trade toTrade(TradeStorageResource tr) {
 

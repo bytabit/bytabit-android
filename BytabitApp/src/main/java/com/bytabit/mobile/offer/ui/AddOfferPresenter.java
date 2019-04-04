@@ -125,7 +125,6 @@ public class AddOfferPresenter {
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(event -> {
                     setAppBar();
-//                    clearForm();
                 });
     }
 
@@ -248,13 +247,4 @@ public class AddOfferPresenter {
         appBar.setNavIcon(MaterialDesignIcon.ARROW_BACK.button(e -> MobileApplication.getInstance().switchToPreviousView()));
         appBar.setTitleText("Add Offer");
     }
-
-//    private void clearForm() {
-//        if (currencyChoiceBox.getSelectionModel().isEmpty()) {
-//            currencyChoiceBox.getSelectionModel().selectFirst();
-//        }
-//        minTradeAmtTextField.clear();
-//        maxTradeAmtTextField.clear();
-//        btcPriceTextField.clear();
-//    }
 }

@@ -80,7 +80,7 @@ public class WithdrawPresenter {
                     try {
                         String address = withdrawAddressField.getText();
                         BigDecimal amount = new BigDecimal(withdrawAmountField.getText());
-                        return walletManager.withdrawFromTradeWallet(address, amount);
+                        return walletManager.withdrawFromTradeWallet(address, amount, walletManager.defaultTxFee());
                     } catch (NumberFormatException nfe) {
                         throw new WalletPresenterException("Invalid number format for withdraw amount.");
                     }

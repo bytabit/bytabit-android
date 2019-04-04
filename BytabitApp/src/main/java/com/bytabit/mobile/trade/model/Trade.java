@@ -297,6 +297,14 @@ public class Trade {
         }
     }
 
+    public BigDecimal getTxFeePerKb() {
+        if (hasTakeOfferRequest()) {
+            return paymentRequest.getTxFeePerKb().setScale(8, RoundingMode.HALF_UP);
+        } else {
+            return null;
+        }
+    }
+
     // Payout Request
 
     public boolean hasPayoutRequest() {

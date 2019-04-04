@@ -16,28 +16,23 @@
 
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.DateConverter;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.BehaviorSubject;
-import io.reactivex.subjects.ReplaySubject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.bytabit.mobile.offer.model.Offer.OfferType.BUY;
@@ -65,91 +60,18 @@ public class TradeManager {
 
     private final TradeStorage tradeStorage;
 
-    private final ReplaySubject<Trade> createdTradeSubject;
-
-    private final ConnectableObservable<Trade> createdTrade;
-
-    private final BehaviorSubject<Trade> updatedTradeSubject;
-
-    private final Observable<Trade> updatedTrade;
-
     private final BehaviorSubject<Trade> selectedTradeSubject;
 
-    private final Observable<Long> maxVersion;
-
-    private final Gson gson;
-
     public TradeManager() {
-
-        gson = new GsonBuilder()
-                .setPrettyPrinting()
-                .registerTypeAdapter(Date.class, new DateConverter())
-                .create();
 
         tradeService = new TradeService();
 
         tradeStorage = new TradeStorage();
 
-        createdTradeSubject = ReplaySubject.create();
-
-        createdTrade = createdTradeSubject
-                .doOnSubscribe(d -> log.debug("createdTrade: subscribe"))
-                .doOnNext(ct -> log.debug("createdTrade: {}", ct.getId()))
-                .replay();
-
-        updatedTradeSubject = BehaviorSubject.create();
-
-        updatedTrade = updatedTradeSubject
-                .doOnSubscribe(d -> log.debug("updatedTrade: subscribe"))
-                .doOnNext(ut -> log.debug("updatedTrade: {}", ut.getId()))
-                .share();
-
         selectedTradeSubject = BehaviorSubject.create();
-
-        maxVersion = updatedTradeSubject
-                .doOnSubscribe(d -> log.debug("maxVersion updatedTradeSubject: subscribe"))
-                .doOnNext(p -> log.debug("maxVersion updatedTradeSubject: {}", p))
-                .map(Trade::getVersion)
-                .scan(0L, Long::max)
-                .replay(1).autoConnect();
     }
 
-    @PostConstruct
-    public void initialize() {
-
-        tradeStorage.createTradesDir();
-
-        Observable<Boolean> walletsRunning = walletManager.getWalletsRunning()
-                .filter(s -> s)
-                .observeOn(Schedulers.io())
-                .doOnSubscribe(d -> log.debug("walletsRunning: subscribe"))
-                .doOnNext(p -> log.debug("walletsRunning: {}", p))
-                .replay(1).autoConnect();
-
-        // get stored trades after download started
-        walletsRunning.flatMap(isRunning -> tradeStorage.getAll())
-                .flatMapIterable(t -> t)
-                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
-                        .map(txa -> t.copyBuilder().fundingTransactionWithAmt(txa).build())
-                        .defaultIfEmpty(t))
-                .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
-                        .map(txa -> t.copyBuilder().payoutTransactionWithAmt(txa).build())
-                        .defaultIfEmpty(t))
-                .map(Trade::withStatus)
-                .doOnNext(t -> log.debug("created trade: {}", t))
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .subscribe(createdTradeSubject::onNext);
-
-        Observable<Long> maxVersion = updatedTradeSubject
-                .doOnSubscribe(d -> log.debug("updatedTradeSubject: subscribe"))
-                .doOnNext(p -> log.debug("updatedTradeSubject: {}", p))
-                .map(Trade::getVersion)
-                .scan(0L, (i, n) -> {
-                    if (i > n) return i;
-                    else return n;
-                })
-                .replay(1).autoConnect();
+    public Observable<Trade> getUpdatedTrades() {
 
         Comparator<Trade> tradeVersionComparator = new Comparator<Trade>() {
             @Override
@@ -159,17 +81,16 @@ public class TradeManager {
         };
 
         // get update and store trades from received data after download started
-        walletManager.getProfilePubKey()
+        return walletManager.getProfilePubKey()
                 .flatMap(profilePubKey -> Observable.interval(15, TimeUnit.SECONDS, Schedulers.io())
-                        .flatMap(i -> tradeStorage.getAll())
+                        .flatMapSingle(i -> tradeStorage.getAll())
                         .flatMapIterable(trades -> trades)
                         .flatMapSingle(trade -> tradeService.get(trade.getId(), trade.getVersion() - 1).flattenAsObservable(t -> t).toSortedList(tradeVersionComparator))
                         .flatMapIterable(l -> l)
                         .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade)))
                 .flatMapSingle(tradeStorage::write)
                 .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .subscribe(updatedTradeSubject::onNext);
+                .subscribeOn(Schedulers.io());
     }
 
     public Maybe<Trade> createTrade(Offer offer, BigDecimal btcAmount) {
@@ -186,13 +107,11 @@ public class TradeManager {
         if (SELL.equals(offer.getOfferType())) {
             trade = buyerProtocol.createTrade(offer, btcAmount)
                     .flatMapSingleElement(tradeStorage::write)
-                    .flatMapSingleElement(tradeService::put)
-                    .doOnSuccess(updatedTradeSubject::onNext);
+                    .flatMapSingleElement(tradeService::put);
         } else if (BUY.equals(offer.getOfferType())) {
             trade = sellerProtocol.createTrade(offer, btcAmount)
                     .flatMapSingleElement(tradeStorage::write)
-                    .flatMapSingleElement(tradeService::put)
-                    .doOnSuccess(updatedTradeSubject::onNext);
+                    .flatMapSingleElement(tradeService::put);
         }
         return trade;
     }
@@ -201,23 +120,41 @@ public class TradeManager {
 
         return walletManager.getProfilePubKey()
                 .flatMap(profilePubKey -> tradeService.getByOfferId(offer.getId(), 0L)
-                .flattenAsObservable(l -> l)
-                .filter(t -> t.getMakerProfilePubKey().equals(profilePubKey))
-                .map(Trade::withStatus)
-                .filter(t -> t.getStatus().equals(CREATED))
-                .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade))
-                .flatMapSingle(tradeStorage::write)
+                        .flattenAsObservable(l -> l)
+                        .filter(t -> t.getMakerProfilePubKey().equals(profilePubKey))
+                        .map(Trade::withStatus)
+                        .filter(t -> t.getStatus().equals(CREATED))
+                        .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade))
+                        .flatMapSingle(tradeStorage::write)
+                        .observeOn(Schedulers.io())
+                        .subscribeOn(Schedulers.io()));
+    }
+
+    public Single<List<Trade>> getStoredTrades() {
+
+        Observable<Boolean> walletsRunning = walletManager.getWalletsRunning()
+                .filter(s -> s)
                 .observeOn(Schedulers.io())
-                .subscribeOn(Schedulers.io())
-                .doOnNext(updatedTradeSubject::onNext));
-    }
+                .doOnSubscribe(d -> log.debug("walletsRunning: subscribe"))
+                .doOnNext(p -> log.debug("walletsRunning: {}", p));
 
-    public ConnectableObservable<Trade> getCreatedTrade() {
-        return createdTrade;
-    }
-
-    public Observable<Trade> getUpdatedTrade() {
-        return updatedTrade;
+        // get stored trades after download started
+        return walletsRunning.filter(r -> r)
+                .flatMapSingle(r -> tradeStorage.getAll()
+                        .flattenAsObservable(t -> t)
+                        .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getFundingTxHash())
+                                .map(txa -> t.copyBuilder().fundingTransactionWithAmt(txa).build())
+                                .defaultIfEmpty(t))
+                        .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
+                                .map(txa -> t.copyBuilder().payoutTransactionWithAmt(txa).build())
+                                .defaultIfEmpty(t))
+                        .map(Trade::withStatus)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(Schedulers.io())
+                        .toList()
+                        .doOnSubscribe(d -> log.debug("storedTrades: subscribe"))
+                        .doOnSuccess(l -> log.debug("got storedTrades: {}", l)))
+                .firstOrError();
     }
 
     public void setSelectedTrade(Trade trade) {
@@ -243,8 +180,7 @@ public class TradeManager {
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
                 .flatMap(st -> buyerProtocol.sendPayment(st, paymentReference))
                 .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
+                .flatMapSingleElement(tradeService::put);
     }
 
     public Maybe<Trade> fundEscrow() {
@@ -252,8 +188,7 @@ public class TradeManager {
                 .filter(trade -> ACCEPTED.equals(trade.getStatus()))
                 .flatMap(st -> sellerProtocol.fundEscrow(st))
                 .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
+                .flatMapSingleElement(tradeService::put);
     }
 
     public Maybe<Trade> sellerPaymentReceived() {
@@ -263,8 +198,7 @@ public class TradeManager {
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
                 .flatMap(st -> sellerProtocol.confirmPaymentReceived(st))
                 .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
+                .flatMapSingleElement(tradeService::put);
     }
 
     public Maybe<Trade> requestArbitrate() {
@@ -275,8 +209,7 @@ public class TradeManager {
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) < 0)
                 .flatMap(trade -> getProtocol(trade).requestArbitrate(trade))
                 .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
+                .flatMapSingleElement(tradeService::put);
     }
 
     public Maybe<Trade> arbitratorRefundSeller() {
@@ -288,8 +221,7 @@ public class TradeManager {
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
                 .flatMap(trade -> arbitratorProtocol.refundSeller(trade))
                 .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
+                .flatMapSingleElement(tradeService::put);
     }
 
     public Maybe<Trade> arbitratorPayoutBuyer() {
@@ -301,8 +233,7 @@ public class TradeManager {
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
                 .flatMap(trade -> arbitratorProtocol.payoutBuyer(trade))
                 .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
+                .flatMapSingleElement(tradeService::put);
     }
 
     public Maybe<Trade> cancelTrade() {
@@ -329,13 +260,7 @@ public class TradeManager {
         return Maybe.concat(sellerCancelUnfunded, buyerCancelUnfunded, buyerCancelFunding)
                 .lastElement()
                 .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put)
-                .doOnSuccess(updatedTradeSubject::onNext);
-    }
-
-    public Single<String> getSelectedTradeAsJson() {
-        return getSelectedTrade().firstOrError()
-                .map(gson::toJson);
+                .flatMapSingleElement(tradeService::put);
     }
 
     private Maybe<Trade> handleReceivedTrade(String profilePubKey, Trade receivedTrade) {

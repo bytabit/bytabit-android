@@ -16,6 +16,7 @@
 
 package com.bytabit.mobile.badge.model;
 
+import com.bytabit.mobile.common.Entity;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import lombok.*;
@@ -29,7 +30,7 @@ import java.util.Date;
 @Setter
 @ToString
 @EqualsAndHashCode
-public class Badge {
+public class Badge implements Entity {
 
     public enum BadgeType {
         BETA_TESTER,

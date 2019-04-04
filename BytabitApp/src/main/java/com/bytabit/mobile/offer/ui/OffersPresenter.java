@@ -17,6 +17,7 @@
 package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.BytabitMobile;
+import com.bytabit.mobile.common.UiUtils;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.wallet.manager.WalletManager;
@@ -109,10 +110,15 @@ public class OffersPresenter {
         JavaFxObservable.changesOf(offersView.showingProperty())
                 .filter(Change::getNewVal)
                 .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .flatMapSingle(c -> offerManager.getStoredAndLoadedOffers())
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(c -> {
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
+                .subscribe(offers -> {
                     setAppBar();
                     clearSelection();
+                    offersListView.itemsProperty().setAll(offers);
                 });
 
         Observable.create(source ->
@@ -130,38 +136,20 @@ public class OffersPresenter {
                     offerManager.setSelectedOffer(offer);
                 });
 
-        offerManager.getUpdatedOffers()
+        offerManager.getOffers()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
                 .subscribe(offers ->
                         offersListView.itemsProperty().setAll(offers)
                 );
 
-        offerManager.getCreatedOffer()
-                .subscribeOn(Schedulers.io())
+        offerManager.getUpdatedOffers()
                 .observeOn(JavaFxScheduler.platform())
-                .subscribe(offer ->
-                        offersListView.itemsProperty().add(offer)
-                );
-
-        offerManager.getRemovedOffer()
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
+                .observeOn(Schedulers.io())
                 .subscribeOn(Schedulers.io())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(offer -> {
-                            int index = 0;
-                            boolean found = false;
-                            for (Offer existingOffer : offersListView.itemsProperty()) {
-                                if (existingOffer.getId().equals(offer.getId())) {
-                                    found = true;
-                                    break;
-                                }
-                                index = index + 1;
-                            }
-                            if (found) {
-                                offersListView.itemsProperty().remove(index);
-                            }
-                        }
-                );
+                .subscribe(trade -> log.debug("updated my offer: {}", trade));
     }
 
     private void setAppBar() {
