@@ -79,7 +79,7 @@ public class OfferManager {
     public Observable<Offer> getUpdatedOffers() {
 
         // update my offers on the server so they don't get removed
-        return Observable.interval(0, 150, TimeUnit.SECONDS, Schedulers.io())
+        return Observable.interval(0, 5, TimeUnit.MINUTES, Schedulers.io())
                 .flatMapSingle(t -> offerStorage.getAll())
                 .flatMapIterable(ol -> ol)
                 .flatMapMaybe(o -> offerService.put(o).toMaybe().onErrorResumeNext(Maybe.empty()));
