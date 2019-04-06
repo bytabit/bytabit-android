@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.help.ui;
 
-import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.common.ui.UiUtils;
 import com.gluonhq.charm.down.Services;
 import com.gluonhq.charm.down.plugins.BrowserService;
 import com.gluonhq.charm.glisten.application.MobileApplication;

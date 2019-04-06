@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.trade.ui;
 
-import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.common.ui.UiUtils;
 import com.bytabit.mobile.trade.manager.TradeManager;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.wallet.manager.WalletManager;

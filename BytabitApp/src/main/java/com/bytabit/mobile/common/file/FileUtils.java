@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.file;
 
 import java.io.*;
 
@@ -25,7 +25,6 @@ public class FileUtils {
      *
      * @param src source file
      * @param dst destination file
-     * @throws IOException
      */
     public static void copy(File src, File dst) throws IOException {
         InputStream in = new FileInputStream(src);

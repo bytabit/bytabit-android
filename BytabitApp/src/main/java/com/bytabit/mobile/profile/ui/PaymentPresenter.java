@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.profile.ui;
 
-import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.common.ui.UiUtils;
 import com.bytabit.mobile.profile.manager.PaymentDetailsManager;
 import com.bytabit.mobile.profile.manager.ProfileException;
 import com.bytabit.mobile.profile.model.CurrencyCode;

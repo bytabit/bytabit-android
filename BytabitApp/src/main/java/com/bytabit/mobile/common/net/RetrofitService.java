@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.net;
 
+import com.bytabit.mobile.common.json.DateConverter;
 import com.bytabit.mobile.config.AppConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

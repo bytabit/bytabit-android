@@ -14,9 +14,25 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.ui;
 
-public interface Entity {
+import javafx.util.StringConverter;
 
-    String getId();
+import java.math.BigDecimal;
+
+public class StringBigDecimalConverter extends StringConverter<BigDecimal> {
+
+    @Override
+    public String toString(BigDecimal object) {
+        return object != null ? object.toString() : null;
+    }
+
+    @Override
+    public BigDecimal fromString(String string) {
+        try {
+            return string != null && string.length() > 0 ? new BigDecimal(string) : null;
+        } catch (NumberFormatException nfe) {
+            return null;
+        }
+    }
 }

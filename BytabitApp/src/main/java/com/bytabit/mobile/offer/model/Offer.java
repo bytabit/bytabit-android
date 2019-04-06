@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.offer.model;
 
-import com.bytabit.mobile.common.Entity;
+import com.bytabit.mobile.common.file.Entity;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import lombok.*;
@@ -70,18 +70,24 @@ public class Offer implements Entity {
 
     private BigDecimal price;
 
+    private BigDecimal makerSignature;
+
     // Use Hex encoded Sha256 Hash of offer parameters
     public String getId() {
         if (id == null) {
-            String idString = String.format("|%s|%s|%s|%s|%s|%s|%s|", offerType,
-                    makerProfilePubKey, currencyCode, paymentMethod,
-                    minAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
-                    maxAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
-                    price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP));
-
-            id = Base58.encode(Sha256Hash.of(idString.getBytes()).getBytes());
+            id = Base58.encode(getIdHash());
         }
         return id;
+    }
+
+    private byte[] getIdHash() {
+        String idString = String.format("|%s|%s|%s|%s|%s|%s|%s|", offerType,
+                makerProfilePubKey, currencyCode, paymentMethod,
+                minAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
+                maxAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
+                price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP));
+
+        return Sha256Hash.of(idString.getBytes()).getBytes();
     }
 
     @Override
@@ -96,8 +102,10 @@ public class Offer implements Entity {
         if (!makerProfilePubKey.equals(offer.makerProfilePubKey)) return false;
         if (currencyCode != offer.currencyCode) return false;
         if (paymentMethod != offer.paymentMethod) return false;
-        if (minAmount.compareTo(offer.minAmount) != 0) return false;
-        if (maxAmount.compareTo(offer.maxAmount) != 0) return false;
+        if (minAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP)
+                .compareTo(offer.minAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP)) != 0) return false;
+        if (maxAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP)
+                .compareTo(offer.maxAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP)) != 0) return false;
         return price.compareTo(offer.price) == 0;
     }
 

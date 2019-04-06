@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.profile.manager;
 
-import com.bytabit.mobile.common.StorageManager;
+import com.bytabit.mobile.common.file.StorageManager;
 import com.bytabit.mobile.profile.model.Profile;
 import io.reactivex.Observable;
 import io.reactivex.schedulers.Schedulers;

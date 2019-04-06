@@ -16,8 +16,8 @@
 
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.RetrofitService;
 import com.bytabit.mobile.common.RetryWithDelay;
+import com.bytabit.mobile.common.net.RetrofitService;
 import com.bytabit.mobile.trade.model.Trade;
 import com.bytabit.mobile.trade.model.TradeServiceResource;
 import io.reactivex.Observable;

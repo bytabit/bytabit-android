@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.wallet.manager;
 
-import com.bytabit.mobile.common.FileUtils;
+import com.bytabit.mobile.common.file.FileUtils;
 import com.bytabit.mobile.config.AppConfig;
 import com.bytabit.mobile.wallet.model.WalletKitConfig;
 import org.bitcoinj.kits.WalletAppKit;

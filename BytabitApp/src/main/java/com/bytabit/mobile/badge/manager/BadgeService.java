@@ -18,7 +18,7 @@ package com.bytabit.mobile.badge.manager;
 
 import com.bytabit.mobile.badge.model.Badge;
 import com.bytabit.mobile.badge.model.BadgeRequest;
-import com.bytabit.mobile.common.RetrofitService;
+import com.bytabit.mobile.common.net.RetrofitService;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 

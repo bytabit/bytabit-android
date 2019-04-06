@@ -17,7 +17,7 @@
 package com.bytabit.mobile.offer.ui;
 
 import com.bytabit.mobile.BytabitMobile;
-import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.common.ui.UiUtils;
 import com.bytabit.mobile.offer.manager.OfferManager;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.wallet.manager.WalletManager;

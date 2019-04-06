@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.trade.model;
 
-import com.bytabit.mobile.common.Entity;
+import com.bytabit.mobile.common.file.Entity;
 import com.bytabit.mobile.offer.model.Offer;
 import lombok.*;
 

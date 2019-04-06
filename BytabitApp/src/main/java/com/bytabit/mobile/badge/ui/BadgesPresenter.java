@@ -20,7 +20,7 @@ import com.bytabit.mobile.BytabitMobile;
 import com.bytabit.mobile.badge.manager.BadgeException;
 import com.bytabit.mobile.badge.manager.BadgeManager;
 import com.bytabit.mobile.badge.model.Badge;
-import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.common.ui.UiUtils;
 import com.gluonhq.charm.glisten.application.MobileApplication;
 import com.gluonhq.charm.glisten.control.*;
 import com.gluonhq.charm.glisten.mvc.View;

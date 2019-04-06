@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.trade.manager;
 
-import com.bytabit.mobile.common.EntityFileStorage;
+import com.bytabit.mobile.common.file.EntityFileStorage;
 import com.bytabit.mobile.trade.model.TradeStorageResource;
 
 public class TradeResourceStorage extends EntityFileStorage<TradeStorageResource> {

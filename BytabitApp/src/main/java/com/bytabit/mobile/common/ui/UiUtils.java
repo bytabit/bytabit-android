@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.ui;
 
 import com.gluonhq.charm.glisten.control.Dialog;
 import javafx.scene.control.Button;

@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.offer.manager;
 
-import com.bytabit.mobile.common.RetrofitService;
+import com.bytabit.mobile.common.net.RetrofitService;
 import com.bytabit.mobile.offer.model.Offer;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;

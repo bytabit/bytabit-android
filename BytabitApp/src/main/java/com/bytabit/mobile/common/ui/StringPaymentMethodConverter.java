@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.ui;
 
+import com.bytabit.mobile.profile.model.PaymentMethod;
 import javafx.util.StringConverter;
 
-import java.math.BigDecimal;
-
-public class StringBigDecimalConverter extends StringConverter<BigDecimal> {
+public class StringPaymentMethodConverter extends StringConverter<PaymentMethod> {
 
     @Override
-    public String toString(BigDecimal object) {
+    public String toString(PaymentMethod object) {
         return object != null ? object.toString() : null;
     }
 
     @Override
-    public BigDecimal fromString(String string) {
+    public PaymentMethod fromString(String string) {
         try {
-            return string != null && string.length() > 0 ? new BigDecimal(string) : null;
-        } catch (NumberFormatException nfe) {
+            return string != null && string.length() > 0 ? PaymentMethod.valueOf(string) : null;
+        } catch (IllegalArgumentException iae) {
             return null;
         }
     }

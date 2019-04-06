@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.wallet.ui;
 
-import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.common.ui.UiUtils;
 import com.bytabit.mobile.profile.manager.ProfileManager;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.gluonhq.charm.glisten.application.MobileApplication;

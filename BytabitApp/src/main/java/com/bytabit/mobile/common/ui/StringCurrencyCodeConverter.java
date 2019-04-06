@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.ui;
 
-import com.bytabit.mobile.profile.model.PaymentMethod;
+import com.bytabit.mobile.profile.model.CurrencyCode;
 import javafx.util.StringConverter;
 
-public class StringPaymentMethodConverter extends StringConverter<PaymentMethod> {
+public class StringCurrencyCodeConverter extends StringConverter<CurrencyCode> {
 
     @Override
-    public String toString(PaymentMethod object) {
+    public String toString(CurrencyCode object) {
         return object != null ? object.toString() : null;
     }
 
     @Override
-    public PaymentMethod fromString(String string) {
+    public CurrencyCode fromString(String string) {
         try {
-            return string != null && string.length() > 0 ? PaymentMethod.valueOf(string) : null;
+            return string != null && string.length() > 0 ? CurrencyCode.valueOf(string) : null;
         } catch (IllegalArgumentException iae) {
             return null;
         }

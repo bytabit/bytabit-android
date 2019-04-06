@@ -14,14 +14,9 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.badge.manager;
+package com.bytabit.mobile.common.file;
 
-import com.bytabit.mobile.badge.model.Badge;
-import com.bytabit.mobile.common.file.EntityFileStorage;
+public interface Entity {
 
-public class BadgeStorage extends EntityFileStorage<Badge> {
-
-    public BadgeStorage() {
-        super(Badge.class);
-    }
+    String getId();
 }

@@ -16,8 +16,8 @@
 
 package com.bytabit.mobile.wallet.ui;
 
-import com.bytabit.mobile.common.DecimalTextFieldFormatter;
-import com.bytabit.mobile.common.UiUtils;
+import com.bytabit.mobile.common.ui.DecimalTextFieldFormatter;
+import com.bytabit.mobile.common.ui.UiUtils;
 import com.bytabit.mobile.wallet.manager.WalletManager;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import com.gluonhq.charm.glisten.application.MobileApplication;

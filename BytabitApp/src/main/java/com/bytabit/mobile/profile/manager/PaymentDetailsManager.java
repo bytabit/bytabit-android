@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.profile.manager;
 
-import com.bytabit.mobile.common.StorageManager;
+import com.bytabit.mobile.common.file.StorageManager;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentDetails;
 import com.bytabit.mobile.profile.model.PaymentMethod;

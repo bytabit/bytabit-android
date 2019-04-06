@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.file;
 
+import com.bytabit.mobile.common.RetryWithDelay;
+import com.bytabit.mobile.common.json.DateConverter;
 import com.bytabit.mobile.config.AppConfig;
 import com.google.common.io.Files;
 import com.google.gson.Gson;

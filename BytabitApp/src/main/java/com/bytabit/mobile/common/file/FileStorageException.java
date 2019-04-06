@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.bytabit.mobile.common;
+package com.bytabit.mobile.common.file;
 
 public class FileStorageException extends RuntimeException {
 

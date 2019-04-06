@@ -16,7 +16,7 @@
 
 package com.bytabit.mobile.offer.manager;
 
-import com.bytabit.mobile.common.EntityFileStorage;
+import com.bytabit.mobile.common.file.EntityFileStorage;
 import com.bytabit.mobile.offer.model.Offer;
 
 public class OfferStorage extends EntityFileStorage<Offer> {
