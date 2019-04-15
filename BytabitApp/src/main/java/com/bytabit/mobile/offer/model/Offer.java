@@ -41,7 +41,7 @@ public class Offer implements Entity {
     public Offer(@NonNull OfferType offerType, @NonNull String makerProfilePubKey,
                  @NonNull CurrencyCode currencyCode, @NonNull PaymentMethod paymentMethod,
                  @NonNull BigDecimal minAmount, @NonNull BigDecimal maxAmount,
-                 @NonNull BigDecimal price) {
+                 @NonNull BigDecimal price, String signature) {
 
         this.offerType = offerType;
         this.makerProfilePubKey = makerProfilePubKey;
@@ -51,6 +51,7 @@ public class Offer implements Entity {
         this.maxAmount = maxAmount;
         this.price = price;
         this.id = getId();
+        this.signature = signature;
     }
 
     @Getter(AccessLevel.NONE)
@@ -70,24 +71,24 @@ public class Offer implements Entity {
 
     private BigDecimal price;
 
-    private BigDecimal makerSignature;
+    private String signature;
 
     // Use Hex encoded Sha256 Hash of offer parameters
     public String getId() {
         if (id == null) {
-            id = Base58.encode(getIdHash());
+            id = Base58.encode(sha256Hash().getBytes());
         }
         return id;
     }
 
-    private byte[] getIdHash() {
+    public Sha256Hash sha256Hash() {
         String idString = String.format("|%s|%s|%s|%s|%s|%s|%s|", offerType,
                 makerProfilePubKey, currencyCode, paymentMethod,
                 minAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
                 maxAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
                 price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP));
 
-        return Sha256Hash.of(idString.getBytes()).getBytes();
+        return Sha256Hash.of(idString.getBytes());
     }
 
     @Override

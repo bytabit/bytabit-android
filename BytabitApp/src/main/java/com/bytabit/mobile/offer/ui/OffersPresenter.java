@@ -139,6 +139,8 @@ public class OffersPresenter {
         offerManager.getOffers()
                 .subscribeOn(Schedulers.io())
                 .observeOn(JavaFxScheduler.platform())
+                .doOnError(UiUtils::showErrorDialog)
+                .retry()
                 .subscribe(offers ->
                         offersListView.itemsProperty().setAll(offers)
                 );

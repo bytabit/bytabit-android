@@ -50,6 +50,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.Boolean.TRUE;
@@ -349,26 +350,6 @@ public class WalletManager {
         );
     }
 
-    /*
-    // TODO determine correct amount for extra tx fee for payout, current using DEFAULT_TX_FEE
-        return notFundedWallet.flatMap(tw -> Maybe.create(source -> {
-            try {
-                SendRequest sendRequest = SendRequest.to(Address.fromBase58(netParams, escrowAddress),
-                        Coin.parseCoin(amount.toString()).add(defaultTxFeeCoin()));
-                sendRequest.feePerKb = defaultTxFeeCoin();
-                Wallet.SendResult sendResult = tw.sendCoins(sendRequest);
-                source.onSuccess(sendResult.tx);
-            } catch (InsufficientMoneyException ex) {
-                log.error("Insufficient BTC to fund trade escrow.");
-                // TODO let user know not enough BTC in wallet
-                source.onError(ex);
-            } catch (Exception ex) {
-                log.error("Error while broadcasting trade escrow funding tx.", ex);
-                source.onError(ex);
-            }
-        }));
-     */
-
     public void watchNewEscrowAddressAndResetBlockchain(String escrowAddress) {
         getWatchedEscrowAddresses()
                 .doOnSuccess(eal -> eal.add(Address.fromBase58(netParams, escrowAddress)))
@@ -612,7 +593,7 @@ public class WalletManager {
                 escrowKey = getProfilePubKey(tw);
             }
             if (escrowKey != null) {
-                // sign tx input
+                // getPubKeySignature tx input
                 Sha256Hash unlockSigHash = payoutTx.hashForSignature(0, redeemScript, Transaction.SigHash.ALL, false);
                 return Maybe.just(new TransactionSignature(escrowKey.sign(unlockSigHash), Transaction.SigHash.ALL, false));
             } else {
@@ -787,5 +768,33 @@ public class WalletManager {
 
     private String getXpubKey(Wallet wallet) {
         return wallet.getWatchingKey().serializePubB58(netParams);
+    }
+
+    private Maybe<ECKey.ECDSASignature> getPubKeySignature(Sha256Hash hash) {
+
+        return getTradeWallet()
+                .map(this::getProfilePubKey)
+                .map(pk -> pk.sign(hash));
+    }
+
+    public Single<String> getBase58PubKeySignature(Sha256Hash hash) {
+        return getPubKeySignature(hash)
+                .map(ECKey.ECDSASignature::encodeToDER)
+                .map(Base58::encode)
+                .toSingle()
+                .onErrorResumeNext(t -> {
+                    if (t instanceof NoSuchElementException) {
+                        return Single.error(new WalletException("Unable to sign hash with pubkey"));
+                    } else {
+                        return Single.error(t);
+                    }
+                });
+    }
+
+    public boolean validateBase58PubKeySignature(String pubKey, String signature, Sha256Hash hash) {
+        ECKey pubECKey = ECKey.fromPublicOnly(Base58.decode(pubKey));
+        ECKey.ECDSASignature ecdsaSignature = ECKey.ECDSASignature.decodeFromDER(Base58.decode(signature));
+
+        return pubECKey.verify(hash, ecdsaSignature);
     }
 }

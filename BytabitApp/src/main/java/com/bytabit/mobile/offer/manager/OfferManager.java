@@ -89,7 +89,10 @@ public class OfferManager {
         return offerStorage.getAll().flattenAsObservable(o -> o)
                 .concatWith(offerService.getAll().retryWhen(errors ->
                         errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
-                        .flattenAsObservable(o -> o)).distinct().toList();
+                        .flattenAsObservable(o -> o))
+                .distinct()
+                .filter(this::validateSignature)
+                .toList();
     }
 
     public Observable<List<Offer>> getOffers() {
@@ -136,10 +139,31 @@ public class OfferManager {
                                 .minAmount(minAmount)
                                 .maxAmount(maxAmount)
                                 .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
-                                .build())
+                                .build()
+                )
+                        .flatMapSingleElement(o ->
+                                walletManager.getBase58PubKeySignature(o.sha256Hash()).map(s -> {
+                                    o.setSignature(s);
+                                    return o;
+                                })
+                        )
                         .observeOn(Schedulers.io())
                         .flatMapSingleElement(offerStorage::write)
                         .flatMapSingleElement(offerService::put));
+    }
+
+    private boolean validateSignature(Offer offer) {
+        if (offer.getSignature() != null) {
+            if (walletManager.validateBase58PubKeySignature(offer.getMakerProfilePubKey(), offer.getSignature(),
+                    offer.sha256Hash())) {
+                return true;
+            } else {
+                log.error("Invalid signature for offer {}.", offer.getId());
+            }
+        } else {
+            log.error("Missing signature for offer {}", offer.getId());
+        }
+        return false;
     }
 
     public Single<String> deleteOffer() {
