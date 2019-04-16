@@ -107,9 +107,12 @@ public class WalletManager {
 
         // monitor download progress
 
-        walletsDownloadProgress = Observable.zip(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
-            if (tp > ep) return ep;
-            else return tp;
+        walletsDownloadProgress = Observable.combineLatest(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
+            if (tp > ep) {
+                return ep;
+            } else {
+                return tp;
+            }
         })
                 .throttleLast(1, TimeUnit.SECONDS)
                 .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
