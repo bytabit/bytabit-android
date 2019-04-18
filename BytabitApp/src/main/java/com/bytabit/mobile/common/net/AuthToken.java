@@ -41,8 +41,7 @@ public class AuthToken {
     private String signature;
 
     public Sha256Hash sha256Hash() {
-        String idString = String.format("|%s|%s|%s|", pubKey, url, validTo);
-        return Sha256Hash.of(idString.getBytes());
+        return HashUtils.sha256Hash(pubKey, url, validTo);
     }
 
     public AuthToken withSignature(String signature) {

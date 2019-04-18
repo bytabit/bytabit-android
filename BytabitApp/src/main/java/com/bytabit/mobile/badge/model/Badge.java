@@ -17,11 +17,10 @@
 package com.bytabit.mobile.badge.model;
 
 import com.bytabit.mobile.common.file.Entity;
+import com.bytabit.mobile.common.net.HashUtils;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import lombok.*;
-import org.bitcoinj.core.Base58;
-import org.bitcoinj.core.Sha256Hash;
 
 import java.util.Date;
 
@@ -73,12 +72,8 @@ public class Badge implements Entity {
     // Use Hex encoded Sha256 Hash of badge parameters
     public String getId() {
         if (id == null) {
-            String idString = String.format("|%s|%s|%s|%s|%s|%s|%s|",
-                    profilePubKey, badgeType,
-                    validFrom, validTo,
-                    currencyCode, paymentMethod, detailsHash);
-
-            id = Base58.encode(Sha256Hash.of(idString.getBytes()).getBytes());
+            id = HashUtils.base58Sha256Hash(profilePubKey, badgeType.toString(), validFrom, validTo,
+                    currencyCode.toString(), paymentMethod.toString(), detailsHash);
         }
         return id;
     }

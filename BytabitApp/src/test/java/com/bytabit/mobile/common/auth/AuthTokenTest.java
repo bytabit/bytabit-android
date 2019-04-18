@@ -21,7 +21,6 @@ import com.bytabit.mobile.common.net.AuthToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.ECKey;
 import org.junit.Test;
 import org.spongycastle.util.encoders.Base64;
@@ -61,9 +60,7 @@ public class AuthTokenTest {
                 .create();
 
         String encodedSignedAuthToken = new String(Base64.encode(gson.toJson(signedAuthToken).getBytes()));
-        String encodedSignedAuthToken2 = Base58.encode(gson.toJson(signedAuthToken).getBytes());
 
-        log.debug("base58 size = {}", encodedSignedAuthToken2.length());
         log.debug("base64 size = {}", encodedSignedAuthToken.length());
 
         log.debug("Encoded signed auth token: {}", encodedSignedAuthToken);

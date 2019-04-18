@@ -16,13 +16,12 @@
 
 package com.bytabit.mobile.trade.model;
 
+import com.bytabit.mobile.common.net.HashUtils;
 import com.bytabit.mobile.offer.model.Offer;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import com.bytabit.mobile.wallet.model.TransactionWithAmt;
 import lombok.*;
-import org.bitcoinj.core.Base58;
-import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -105,13 +104,10 @@ public class Trade {
     // Use Hex encoded Sha256 Hash of Offer.id and TakeOfferRequest properties
     public String getId() {
         if (id == null && hasOffer() && hasTakeOfferRequest()) {
-            String idString = String.format("|%s|%s|%s|%s|%s|", offer.getId(),
-                    tradeRequest.getTakerProfilePubKey(),
-                    tradeRequest.getTakerEscrowPubKey(),
+            id = HashUtils.base58Sha256Hash(offer.getId(),
+                    tradeRequest.getTakerProfilePubKey(), tradeRequest.getTakerEscrowPubKey(),
                     tradeRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP),
                     tradeRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
-
-            id = Base58.encode(Sha256Hash.of(idString.getBytes()).getBytes());
         }
         return id;
     }

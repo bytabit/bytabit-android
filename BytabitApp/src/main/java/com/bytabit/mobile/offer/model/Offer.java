@@ -17,6 +17,7 @@
 package com.bytabit.mobile.offer.model;
 
 import com.bytabit.mobile.common.file.Entity;
+import com.bytabit.mobile.common.net.HashUtils;
 import com.bytabit.mobile.profile.model.CurrencyCode;
 import com.bytabit.mobile.profile.model.PaymentMethod;
 import lombok.*;
@@ -82,13 +83,11 @@ public class Offer implements Entity {
     }
 
     public Sha256Hash sha256Hash() {
-        String idString = String.format("|%s|%s|%s|%s|%s|%s|%s|", offerType,
-                makerProfilePubKey, currencyCode, paymentMethod,
+
+        return HashUtils.sha256Hash(offerType.toString(), makerProfilePubKey, currencyCode.toString(), paymentMethod.toString(),
                 minAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
                 maxAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
                 price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP));
-
-        return Sha256Hash.of(idString.getBytes());
     }
 
     @Override
