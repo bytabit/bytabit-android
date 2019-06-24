@@ -1,0 +1,34 @@
+<!--
+  ~ Copyright 2019 Bytabit AB
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<vector android:height="50dp"
+    android:viewportHeight="153"
+    android:viewportWidth="153"
+    android:width="50dp"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <path
+        android:fillColor="#FF9800"
+        android:fillType="evenOdd"
+        android:pathData="M76.364,76.636m0,76.364a76.364,76.364 0,1 1,0 -152.727a76.364,76.364 0,1 1,0 152.727"
+        android:strokeColor="#00000000"
+        android:strokeWidth="1" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M127.875,119.06L114.926,135.589C108.578,132.491 102.485,128.226 96.645,122.792C92.126,126.855 87.327,129.851 82.249,131.78C77.171,133.71 71.128,134.675 64.121,134.675C50.207,134.675 39.746,130.765 32.739,122.945C27.305,116.902 24.589,109.945 24.589,102.074C24.589,94.914 26.721,88.478 30.987,82.765C35.252,77.052 41.625,72.089 50.105,67.874C46.297,63.355 43.428,59.051 41.498,54.963C39.569,50.875 38.604,47.004 38.604,43.347C38.604,36.594 41.308,30.868 46.716,26.171C52.124,21.474 59.83,19.125 69.833,19.125C79.482,19.125 87.022,21.588 92.456,26.514C97.889,31.44 100.606,37.457 100.606,44.566C100.606,49.086 99.26,53.376 96.569,57.439C93.878,61.501 88.444,66.097 80.269,71.225L95.807,91.715C97.635,88.465 99.209,84.225 100.53,78.995L119.877,83.413C117.947,90.268 116.271,95.282 114.85,98.456C113.428,101.63 111.904,104.283 110.279,106.416C112.666,108.65 115.751,111.1 119.534,113.766C123.317,116.432 126.097,118.197 127.875,119.06ZM69.605,58.353L75.394,53.935C79.659,50.634 81.792,47.359 81.792,44.109C81.792,41.367 80.764,39.031 78.707,37.101C76.651,35.172 73.87,34.207 70.367,34.207C66.964,34.207 64.298,35.058 62.369,36.759C60.439,38.46 59.474,40.428 59.474,42.662C59.474,45.302 61.099,48.502 64.349,52.259L69.605,58.353ZM61.226,81.584C56.301,84.073 52.619,87.069 50.182,90.572C47.744,94.076 46.525,97.656 46.525,101.312C46.525,105.933 48.036,109.704 51.058,112.624C54.079,115.543 58.129,117.003 63.207,117.003C66.558,117.003 69.783,116.343 72.88,115.023C75.978,113.703 79.355,111.519 83.011,108.472L61.226,81.584Z"
+        android:strokeColor="#00000000"
+        android:strokeWidth="1" />
+</vector>

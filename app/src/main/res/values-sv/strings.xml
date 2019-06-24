@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright 2019 Bytabit AB
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<resources>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="menu_badge_list">Emblem</string>
+    <string name="menu_help">Hjälp</string>
+    <string name="offer_details_header">Erbjudande detaljer</string>
+    <string name="menu_offer_list">Erbjudanden</string>
+    <string name="menu_payment_list">Betalning</string>
+    <string name="menu_trade_list">Handel</string>
+    <string name="menu_wallet">Plånbok</string>
+
+    <string name="offer_btc_amt_label">BTC Belopp</string>
+    <string name="offer_buy_button_label">köpa</string>
+    <string name="offer_currency_amt_label">Valuta Belopp</string>
+    <string name="offer_currency_label">Valuta</string>
+    <string name="offer_remove_button_label">TA BORT</string>
+    <string name="offer_header">Erbjudande</string>
+    <string name="offer_max_trade_amt_label">Max Belopp</string>
+    <string name="offer_min_trade_amt_label">Minsta Belopp</string>
+    <string name="offer_payment_method_label">Betalningsmetod</string>
+    <string name="offer_price_per_btc_label">Pris per BTC</string>
+    <string name="offer_sell_button_label">SÄLJA</string>
+    <string name="offer_type_label">Typ</string>
+    <string name="wallet_deposit_share_button_label">DELGE</string>
+    <string name="wallet_deposit_btc_deposit_address_label">BTC Deponeringsadress</string>
+    <string name="wallet_deposit_header">Wallet Deposit</string>
+    <string name="payment_details_header">Betalningsinformation</string>
+    <string name="payment_add_button_label">LÄGG TILL</string>
+    <string name="payment_currency_label">Valuta</string>
+    <string name="payment_remove_button_label">TA BORT</string>
+    <string name="payment_details_label">Betalningsinformation</string>
+    <string name="payment_method_label">Betalningsmetod</string>
+    <string name="badge_buy_button_label">KÖPA</string>
+    <string name="badge_currency_label">Valuta</string>
+    <string name="badge_price_label">Pris</string>
+    <string name="badge_type_label">Bricka Typ</string>
+    <string name="badge_validfrom_label">Giltig från</string>
+    <string name="badge_validto_label">Giltig till</string>
+    <string name="badges_buy_header">Köp märke</string>
+    <string name="offer_add_button_label">LÄGG TILL</string>
+    <string name="offer_add_header">Lägg till erbjudande</string>
+    <string name="offer_list_mine_button">MIN</string>
+    <string name="trade_arbitrate_button_label">MEDLA</string>
+    <string name="trade_arbitrate_reason_label">Skiljeförklaring</string>
+    <string name="trade_cancel_button_label">ANNULLERA</string>
+    <string name="trade_details_header">Handelsdetaljer</string>
+    <string name="trade_fund_escrow_button_label">FOKUSSSKRIFT</string>
+    <string name="trade_payment_amt_label">Betalning Amt</string>
+    <string name="trade_payment_details_label">Betalningsinformation</string>
+    <string name="trade_payment_method_label">Betalningsmetod</string>
+    <string name="trade_payment_received_button_label">BETALNING MOTTAGEN</string>
+    <string name="trade_payment_ref_label">Betalningsreferens</string>
+    <string name="trade_payment_sent_button_label">BETALNING SKICKAD</string>
+    <string name="trade_payout_reason_label">Utbetalningsskäl</string>
+    <string name="trade_price_label">Pris per BTC</string>
+    <string name="trade_purchased_amt_label">Köpt Amt</string>
+    <string name="trade_role_label">Handelsroll</string>
+    <string name="trade_status_label">Handelsstatus</string>
+    <string name="trade_tx_fee_label">TX avgift per KB</string>
+    <string name="trade_payout_buyer_button_label">BETALAR KÖP</string>
+    <string name="trade_refund_seller_button_label">REFUNDSÄLJARE</string>
+    <string name="wallet_restore_button_label">ÅTERSTÄLLA</string>
+    <string name="wallet_restore_first_used_date">Första använd datum</string>
+    <string name="wallet_restore_header">Återställ Wallet</string>
+    <string name="wallet_restore_word1">Ord 1</string>
+    <string name="wallet_restore_word9">Ord 9</string>
+    <string name="wallet_restore_word8">Ord 8</string>
+    <string name="wallet_restore_word7">Ord 7</string>
+    <string name="wallet_restore_word6">Ord 6</string>
+    <string name="wallet_restore_word5">Ord 5</string>
+    <string name="wallet_restore_word4">Ord 4</string>
+    <string name="wallet_restore_word3">Ord 3</string>
+    <string name="wallet_restore_word2">Ord 2</string>
+    <string name="wallet_restore_word12">Ord 12</string>
+    <string name="wallet_restore_word11">Ord 11</string>
+    <string name="wallet_restore_word10">Ord 10</string>
+    <string name="wallet_restore_date_format">yyyy-MM-dd</string>
+    <string name="wallet_info_header">Wallet Information</string>
+    <string name="wallet_info_seed_words">Seed Words</string>
+    <string name="wallet_info_profile_pubkey">Profil PubKey</string>
+
+</resources>

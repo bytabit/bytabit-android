@@ -5,3 +5,5 @@ captures/
 gen/
 tmp/
 out/
+*.iml
+release/

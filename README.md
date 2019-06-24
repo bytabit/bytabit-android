@@ -1,49 +1,30 @@
-Bytabit Mobile
+Bytabit App
 ===================
 
 ### Clone Project
 
 ```
-git clone git@bitbucket.org:bytabit/bytabit-mobile.git 
+git clone git@bitbucket.org:bytabit/bytabit-android.git
 ```
 
-### Install projects dependencies
+### Install Android Studio
 
-1. Install Java JDK [version 8](https://jdk8.java.net/download.html)
-2. Install Gradle [version 4 or later ](https://gradle.org/releases/)
-3. Verify your JAVA_HOME environment variable is set to your JDK home
-4. Install
-4. Set a gradle property with the name ANDROID_HOME: defined in ~/.gradle/gradle.properties 
-   or a system environment variable with the name ANDROID_HOME. Also increase max
-   gradle memory. For example:
-   
-   ```   
-     echo org.gradle.jvmargs=-Xms256m -Xmx4096m -Xss2m >> ~/.gradle/gradle.properties
-     echo ANDROID_HOME=`echo $HOME`/Library/Android/sdk >> ~/.gradle/gradle.properties
-   ```
+- Android Gradle Plugin: 3.4.1
+- Gradle: 5.1.1
+    
+### Run app on regtest network from Android Studio
 
-### Run Bytabit app on desktop with Gradle using default (testnet) config
+Add the following to Build, Execution, Deployment -> Compiler -> Command-line Options
 
 ```
-./gradlew run
+-PbtcNetwork=regtest -PpeerAddr=<regtest node ip address> -PpeerPort=18444
 ```
 
-### Run client on regtest network with Grade using custom config pubName
+### Build signed release bundle for *testnet* config
 
 ```
-./gradlew clean run -PbtcNetwork=regtest -PconfigName=tester2
+gradle clean signReleaseBundle
 ```
-
-### Create android APK
-
-```
-./gradlew clean zipalignDebug
-```
-
-### JavaFX Scene Builder
-
-1. Install [JavaFX Scene Builder](https://gluonhq.com/products/scene-builder/)
-2. Open trades UI file: ```src/main/resources/com/bytabit/mobile/trade/ui/trades.fxml```
 
 ### Testnet In a Box via Docker
 
@@ -61,15 +42,17 @@ git clone git@bitbucket.org:bytabit/bytabit-mobile.git
 
 3. Follow bitcoin-testnet-box [README.md](https://github.com/freewil/bitcoin-testnet-box) instructions
 
+
 ### ADB file system debugging
 
-1. connect via adb shell and run as com.bytabit.mobile
-    ```
-    cd ~/Library/Android/sdk/platform-tools
-    ./adb shell 
-    run-as com.bytabit.mobile
-    cd /data/data/com.bytabit.mobile
-    ```
+1. connect via adb shell and run as com.bytabit.app
+    
+```
+cd ~/Library/Android/sdk/platform-tools
+./adb shell 
+run-as com.bytabit.app
+cd files
+```
     
 ### Versioning
 

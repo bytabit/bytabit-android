@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright 2019 Bytabit AB
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/margin_medium"
+    android:layout_marginStart="@dimen/text_margin"
+    android:layout_marginLeft="@dimen/text_margin"
+    android:orientation="vertical"
+    android:padding="@dimen/margin_medium">
+
+    <TableLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:stretchColumns="0,1,2"
+        tools:context=".ui.wallet.WalletRestoreFragment">
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/margin_medium">
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word1_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word1" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word2_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word2" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word3_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word3" />
+
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/margin_medium">
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word4_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word4" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word5_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word5" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word6_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word6" />
+
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/margin_medium">
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word7_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word7" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word8_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word8" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word9_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word9" />
+
+        </TableRow>
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/margin_medium">
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word10_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word10" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word11_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word11" />
+
+            <AutoCompleteTextView
+                android:id="@+id/wallet_restore_word12_auto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/wallet_restore_word12" />
+        </TableRow>
+
+
+    </TableLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/text_margin"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textStyle="bold"
+            android:text="@string/wallet_restore_first_used_date" />
+
+        <EditText
+            android:id="@+id/wallet_restore_first_use_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="date"
+            android:importantForAutofill="no"
+            android:hint="@string/wallet_restore_date_format" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/text_margin"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/wallet_restore_button"
+            style="@style/Widget.AppCompat.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/wallet_restore_button_label" />
+
+    </LinearLayout>
+
+</LinearLayout>

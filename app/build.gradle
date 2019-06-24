@@ -1,0 +1,199 @@
+/*
+ * Copyright 2019 Bytabit AB
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+plugins {
+    id 'com.gladed.androidgitversion' version '0.4.9'
+}
+
+apply plugin: 'com.android.application'
+
+def net = 'test'
+def config = 'default'
+
+if (project.hasProperty('btcNetwork')) {
+    net = btcNetwork
+}
+
+if (project.hasProperty('configName')) {
+    config = configName
+}
+
+def url = "https://" + net + ".bytabit.net"
+
+if (project.hasProperty('baseUrl')) {
+    url = baseUrl
+}
+
+def addr = ""
+def port = ""
+
+if (project.hasProperty('peerAddr')) {
+    addr = peerAddr
+}
+
+if (project.hasProperty('peerPort')) {
+    port = peerPort
+}
+
+println "btc_network = ${net}"
+println "config_name = ${config}"
+println "base_url = ${url}"
+
+println "version_name = ${androidGitVersion.name()}"
+println "version_code = ${androidGitVersion.code()}"
+
+println "version_info = ${androidGitVersion.name()} (${net})"
+
+println "peer_addr = ${addr}"
+println "peer_port = ${port}"
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        applicationId "com.bytabit.app"
+        minSdkVersion 21
+        targetSdkVersion 28
+        multiDexEnabled true
+        versionCode androidGitVersion.code()
+        versionName androidGitVersion.name()
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES.txt'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/dependencies.txt'
+        exclude 'META-INF/LGPL2.1'
+        exclude 'lib/x86_64/darwin/libscrypt.dylib'
+    }
+    signingConfigs {
+        release {
+            keyAlias 'testnet'
+            keyPassword "${project.properties['keyPassword']}"
+            storeFile "${System.properties['user.home']}${File.separator}.android${File.separator}release.keystore" as File
+            storePassword "${project.properties['storePassword']}"
+            storeType 'jks'
+        }
+    }
+    buildTypes {
+        debug {
+            // Use static values for incremental builds to ensure that
+            // resource files and BuildConfig aren't rebuilt with each run.
+            // If they were dynamic, they would prevent certain benefits of
+            // Instant Run as well as Gradle UP-TO-DATE checks.
+            buildConfigField("String", "BTC_NETWORK", "\"${net}\"")
+            resValue("string", "btc_network", "\"${net}\"")
+
+            buildConfigField("String", "CONFIG_NAME", "\"${config}\"")
+            resValue("string", "config_name", "\"${config}\"")
+
+            buildConfigField("String", "BASE_URL", "\"${url}\"")
+            resValue("string", "base_url", "\"${url}\"")
+
+            resValue("string", "version_info", "\"${androidGitVersion.name()} (${net})\"")
+            resValue("string", "version_code", "\"${androidGitVersion.code()}\"")
+
+            buildConfigField("String", "PEER_ADDRESS", "\"${addr}\"")
+            resValue("string", "peer_address", "\"${addr}\"")
+
+            buildConfigField("String", "PEER_PORT", "\"${port}\"")
+            resValue("string", "peer_port", "\"${port}\"")
+        }
+
+        release {
+            // These values are defined only for the release build, which
+            // is typically used for full builds and continuous builds.
+            buildConfigField("String", "BTC_NETWORK", "\"${net}\"")
+            resValue("string", "btc_network", "\"${net}\"")
+
+            buildConfigField("String", "CONFIG_NAME", "\"${config}\"")
+            resValue("string", "config_name", "\"${config}\"")
+
+            buildConfigField("String", "BASE_URL", "\"${url}\"")
+            resValue("string", "base_url", "\"${url}\"")
+
+            resValue("string", "version_info", "\"${androidGitVersion.name()} (${net})\"")
+            resValue("string", "version_code", "\"${androidGitVersion.code()}\"")
+
+            buildConfigField("String", "PEER_ADDRESS", "\"${addr}\"")
+            resValue("string", "peer_address", "\"${addr}\"")
+
+            buildConfigField("String", "PEER_PORT", "\"${port}\"")
+            resValue("string", "peer_port", "\"${port}\"")
+
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
+    }
+    buildToolsVersion = '28.0.3'
+}
+
+def androidVersion = '28.0.0'
+def lombokVersion = '1.18.6'
+def daggerVersion = '2.22.1'
+def retrofit2Version = '2.4.0'
+
+android.defaultConfig.vectorDrawables.useSupportLibrary = true
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "com.android.support:appcompat-v7:$androidVersion"
+    implementation "com.android.support:design:$androidVersion"
+    implementation "com.android.support:recyclerview-v7:$androidVersion"
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation 'com.android.support:multidex:1.0.3'
+
+    implementation 'com.android.support:support-v4:28.0.0'
+    implementation 'com.android.support:recyclerview-v7:28.0.0'
+
+    implementation 'android.arch.lifecycle:extensions:1.1.1'
+    implementation 'com.google.android.gms:play-services-plus:16.0.0'
+    compileOnly "org.projectlombok:lombok:$lombokVersion"
+    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+    implementation "com.google.dagger:dagger:$daggerVersion"
+    annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"
+
+    implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
+    // Because RxAndroid releases are few and far between, it is recommended you also
+    // explicitly depend on RxJava's latest version for bug fixes and new features.
+    // (see https://github.com/ReactiveX/RxJava/releases for latest 2.x.x version)
+    implementation 'io.reactivex.rxjava2:rxjava:2.2.8'
+
+    implementation "com.squareup.retrofit2:retrofit:$retrofit2Version"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofit2Version"
+    implementation "com.squareup.retrofit2:adapter-rxjava2:$retrofit2Version"
+
+    implementation "org.bitcoinj:bitcoinj-core:0.14.7"
+
+    implementation 'org.slf4j:slf4j-api:1.7.25'
+    implementation 'com.github.tony19:logback-android:2.0.0'
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}

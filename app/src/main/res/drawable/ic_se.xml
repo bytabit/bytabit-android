@@ -1,0 +1,64 @@
+<!--
+  ~ Copyright 2019 Bytabit AB
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="684dp"
+    android:height="481dp"
+    android:viewportWidth="684"
+    android:viewportHeight="481">
+    <path
+        android:pathData="M-9.452,0.283h239.999v191.999h-239.999z"
+        android:strokeWidth="1"
+        android:fillColor="#006AA7"
+        android:fillType="nonZero"
+        android:strokeColor="#00000000" />
+    <path
+        android:pathData="M-9.452,287.98h239.999v191.999h-239.999z"
+        android:strokeWidth="1"
+        android:fillColor="#006AA7"
+        android:fillType="nonZero"
+        android:strokeColor="#00000000" />
+    <path
+        android:pathData="M-9.452,192.172h239.999v96h-239.999z"
+        android:strokeWidth="1"
+        android:fillColor="#FECC00"
+        android:fillType="nonZero"
+        android:strokeColor="#00000000" />
+    <path
+        android:pathData="M229.56,0.009h96v479.998h-96z"
+        android:strokeWidth="1"
+        android:fillColor="#FECC00"
+        android:fillType="nonZero"
+        android:strokeColor="#00000000" />
+    <path
+        android:pathData="M322.515,192.2h431.998v96h-431.998z"
+        android:strokeWidth="1"
+        android:fillColor="#FECC00"
+        android:fillType="nonZero"
+        android:strokeColor="#00000000" />
+    <path
+        android:pathData="M325.477,288.007h431.998v191.999h-431.998z"
+        android:strokeWidth="1"
+        android:fillColor="#006AA7"
+        android:fillType="nonZero"
+        android:strokeColor="#00000000" />
+    <path
+        android:pathData="M325.477,0.283h431.998v191.999h-431.998z"
+        android:strokeWidth="1"
+        android:fillColor="#006AA7"
+        android:fillType="nonZero"
+        android:strokeColor="#00000000" />
+</vector>
