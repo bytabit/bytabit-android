@@ -31,6 +31,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -38,6 +39,7 @@ import lombok.NonNull;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
 public class Offer implements Entity {
 
@@ -70,9 +72,6 @@ public class Offer implements Entity {
     @NonNull
     private BigDecimal price;
 
-//    @NonNull
-//    private String makerSignature;
-
     private transient Boolean isMine;
 
     public String getId() {
@@ -84,10 +83,12 @@ public class Offer implements Entity {
 
     public Sha256Hash sha256Hash() {
 
-        return HashUtils.sha256Hash(offerType.toString(), makerProfilePubKey,
-                currencyCode.toString(), paymentMethod.toString(),
-                minAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
-                maxAmount.setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
-                price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP));
+        CurrencyCode currencyCode = getCurrencyCode();
+
+        return HashUtils.sha256Hash(getOfferType(), getMakerProfilePubKey(),
+                getCurrencyCode(), getPaymentMethod(),
+                getMinAmount().setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
+                getMaxAmount().setScale(currencyCode.getScale(), RoundingMode.HALF_UP),
+                getPrice().setScale(currencyCode.getScale(), RoundingMode.HALF_UP));
     }
 }

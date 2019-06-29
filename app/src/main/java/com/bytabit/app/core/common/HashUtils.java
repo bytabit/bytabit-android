@@ -36,7 +36,9 @@ public class HashUtils {
         try {
             for (Object propertyValue : propertyValues) {
                 if (propertyValue != null) {
-                    if (propertyValue instanceof String) {
+                    if (propertyValue instanceof Sha256Hash) {
+                        hashedProperties.write(((Sha256Hash) propertyValue).getBytes());
+                    } else if (propertyValue instanceof String) {
                         hashedProperties.write(Sha256Hash.of(((String) propertyValue).getBytes()).getBytes());
                     } else if (propertyValue instanceof Date) {
                         hashedProperties.write(Sha256Hash.of(dateFormat.format((Date) propertyValue).getBytes()).getBytes());

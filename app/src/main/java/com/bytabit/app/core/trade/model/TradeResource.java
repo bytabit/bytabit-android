@@ -42,10 +42,10 @@ public class TradeResource implements Entity {
     private Offer offer;
 
     // Take Offer Request
-    private TradeRequest takeOfferRequest;
+    private TradeRequest tradeRequest;
 
     // Confirmation
-    private TradeAcceptance confirmation;
+    private TradeAcceptance tradeAcceptance;
 
     // Funding, Payment Request
     private PaymentRequest paymentRequest;
@@ -66,8 +66,8 @@ public class TradeResource implements Entity {
         return Trade.builder()
                 .id(tr.getId())
                 .offer(tr.getOffer())
-                .tradeRequest(tr.getTakeOfferRequest())
-                .tradeAcceptance(tr.getConfirmation())
+                .tradeRequest(tr.getTradeRequest())
+                .tradeAcceptance(tr.getTradeAcceptance())
                 .paymentRequest(tr.getPaymentRequest())
                 .payoutRequest(tr.getPayoutRequest())
                 .arbitrateRequest(tr.getArbitrateRequest())
@@ -80,8 +80,8 @@ public class TradeResource implements Entity {
         return TradeResource.builder()
                 .id(t.getId())
                 .offer(t.getOffer())
-                .takeOfferRequest(t.getTradeRequest())
-                .confirmation(t.getTradeAcceptance())
+                .tradeRequest(t.getTradeRequest())
+                .tradeAcceptance(t.getTradeAcceptance())
                 .paymentRequest(t.getPaymentRequest())
                 .payoutRequest(t.getPayoutRequest())
                 .arbitrateRequest(t.getArbitrateRequest())

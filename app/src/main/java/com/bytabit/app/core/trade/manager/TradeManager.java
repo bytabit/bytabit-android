@@ -322,6 +322,7 @@ public class TradeManager {
         // TODO validate offer, tradeRequest
 
         return Trade.builder()
+                .id(receivedTrade.getId())
                 .status(CREATED)
                 .createdTimestamp(new Date())
                 .offer(receivedTrade.getOffer())

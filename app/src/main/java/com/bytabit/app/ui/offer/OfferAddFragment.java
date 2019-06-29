@@ -92,7 +92,7 @@ public class OfferAddFragment extends Fragment {
                 .flatMapSingle(o -> offerManager.map(om -> om.createOffer(o.getOfferType(),
                         o.getCurrencyCode(), o.getPaymentMethod(), o.getMinAmount(),
                         o.getMaxAmount(), o.getPrice())))
-                .flatMapMaybe(o -> o)
+                .flatMapSingle(o -> o)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnError(this::showError).retry()
                 .subscribe(o -> {

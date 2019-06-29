@@ -19,8 +19,13 @@ package com.bytabit.app.core.offer.manager;
 import com.bytabit.app.core.common.AppConfig;
 import com.bytabit.app.core.common.net.RetrofitService;
 import com.bytabit.app.core.offer.model.Offer;
+import com.bytabit.app.core.offer.model.SignedOffer;
+import com.bytabit.app.core.wallet.manager.WalletManager;
+
+import org.bitcoinj.core.Sha256Hash;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -33,35 +38,74 @@ import lombok.extern.slf4j.Slf4j;
 public class OfferService extends RetrofitService {
 
     private final OfferServiceApi offerServiceApi;
+    private final WalletManager walletManager;
 
     @Inject
-    public OfferService(AppConfig appConfig) {
+    public OfferService(AppConfig appConfig, WalletManager walletManager) {
         super(appConfig);
-
+        this.walletManager = walletManager;
         // create an instance of the ApiService
-        offerServiceApi = retrofit
-                .create(OfferServiceApi.class);
+        this.offerServiceApi = retrofit.create(OfferServiceApi.class);
     }
 
-    Single<Offer> put(Offer offer) {
-        Single<Offer> putOffer = offerServiceApi.put(offer.getId(), offer);
-        return putOffer
+    Single<SignedOffer> put(Offer offer) {
+        Single<SignedOffer> signedOffer = signOffer(offer);
+        Single<SignedOffer> putSignedOffer = signedOffer.flatMap(so -> offerServiceApi.put(so.getId(), so));
+
+        return putSignedOffer
                 .doOnError(t -> log.error("put error: {}", t.getMessage()));
     }
 
-    Single<List<Offer>> getAll() {
+    Single<List<SignedOffer>> getAll() {
         return offerServiceApi.get()
-                .doOnError(t -> log.error("get error: {}", t.getMessage()));
+                .doOnError(t -> log.error("get error: {}", t.getMessage()))
+                .flattenAsObservable(so -> so)
+                .toList();
     }
 
-    Single<Offer> get(String id) {
+    Single<SignedOffer> get(String id) {
         return offerServiceApi.get(id)
-                .doOnError(t -> log.error("get error: {}", t.getMessage()));
+                .doOnError(t -> log.error("get error: {}", t.getMessage()))
+                .filter(this::validateSignedOfferSignature).toSingle()
+                .onErrorResumeNext(t -> {
+                    if (t instanceof NoSuchElementException) {
+                        return Single.error(new OfferException(String.format("No valid offer found for id %s.", id)));
+                    } else {
+                        return Single.error(t);
+                    }
+                });
     }
 
-    Single<Offer> delete(String id) {
+    Single<SignedOffer> delete(String id) {
 
         return offerServiceApi.delete(id)
                 .doOnError(t -> log.error("delete error: {}", t.getMessage()));
+    }
+
+    private Single<SignedOffer> signOffer(Offer offer) {
+        Sha256Hash hash = offer.sha256Hash();
+        Single<String> signature = walletManager.getBase58PubKeySignature(hash);
+
+        return signature.map(s -> createSignedOffer(offer, s));
+    }
+
+    private boolean validateSignedOfferSignature(SignedOffer signedOffer) {
+        Sha256Hash hash = signedOffer.sha256Hash();
+        return walletManager.validateBase58PubKeySignature(signedOffer.getMakerProfilePubKey(),
+                signedOffer.getSignature(), hash);
+    }
+
+    private SignedOffer createSignedOffer(Offer o, String signature) {
+        return SignedOffer.signedBuilder()
+                .id(o.getId())
+                .offerType(o.getOfferType())
+                .makerProfilePubKey(o.getMakerProfilePubKey())
+                .currencyCode(o.getCurrencyCode())
+                .paymentMethod(o.getPaymentMethod())
+                .minAmount(o.getMinAmount())
+                .maxAmount(o.getMaxAmount())
+                .price(o.getPrice())
+                .signature(signature)
+                .build();
     }
 }

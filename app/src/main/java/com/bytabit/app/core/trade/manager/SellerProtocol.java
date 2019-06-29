@@ -70,18 +70,34 @@ public class SellerProtocol extends TradeProtocol {
         }
         return Maybe.zip(walletManager.getEscrowPubKeyBase58(),
                 walletManager.getProfilePubKeyBase58(),
-                (takerEscrowPubKey, takerProfilePubKey) -> Trade.builder()
-                        .role(Trade.Role.SELLER)
-                        .status(Trade.Status.CREATED)
-                        .createdTimestamp(new Date())
-                        .offer(offer)
-                        .tradeRequest(TradeRequest.builder()
-                                .takerProfilePubKey(takerProfilePubKey)
-                                .takerEscrowPubKey(takerEscrowPubKey)
-                                .btcAmount(sellBtcAmount)
-                                .paymentAmount(sellBtcAmount.setScale(8, RoundingMode.UP).multiply(offer.getPrice()).setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
-                                .build())
-                        .build());
+                (takerEscrowPubKey, takerProfilePubKey) -> {
+
+                    TradeRequest tradeRequest = TradeRequest.builder()
+                            .takerProfilePubKey(takerProfilePubKey)
+                            .takerEscrowPubKey(takerEscrowPubKey)
+                            .btcAmount(sellBtcAmount)
+                            .paymentAmount(sellBtcAmount.setScale(8, RoundingMode.UP)
+                                    .multiply(offer.getPrice())
+                                    .setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
+                            .build();
+
+                    String id = getId(offer, tradeRequest);
+
+                    return Trade.builder()
+                            .id(id)
+                            .role(Trade.Role.SELLER)
+                            .status(Trade.Status.CREATED)
+                            .createdTimestamp(new Date())
+                            .offer(offer)
+                            .tradeRequest(TradeRequest.builder()
+                                    .takerProfilePubKey(takerProfilePubKey)
+                                    .takerEscrowPubKey(takerEscrowPubKey)
+                                    .btcAmount(sellBtcAmount)
+                                    .paymentAmount(sellBtcAmount.setScale(8, RoundingMode.UP).multiply(offer.getPrice()).setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
+                                    .build())
+                            .build();
+                }
+        );
     }
 
     // 1.S: seller receives created trade with sell offer + buy request

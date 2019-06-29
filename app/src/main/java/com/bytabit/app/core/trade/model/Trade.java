@@ -16,20 +16,15 @@
 
 package com.bytabit.app.core.trade.model;
 
-import com.bytabit.app.core.common.HashUtils;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;
 import com.bytabit.app.core.wallet.model.TransactionWithAmt;
 
-import org.bitcoinj.core.Base58;
-import org.bitcoinj.core.Sha256Hash;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
 
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -82,8 +77,8 @@ public class Trade {
         }
     }
 
-    @Getter(AccessLevel.NONE)
     @EqualsAndHashCode.Include
+    @NonNull
     private String id;
 
     @EqualsAndHashCode.Exclude
@@ -121,22 +116,6 @@ public class Trade {
     private CancelCompleted cancelCompleted;
 
     private PayoutCompleted payoutCompleted;
-
-    // Use Hex encoded Sha256 Hash of Offer.id and TakeOfferRequest properties
-    public String getId() {
-        if (id == null && hasOffer() && hasTakeOfferRequest()) {
-            id = Base58.encode(sha256Hash().getBytes());
-        }
-        return id;
-    }
-
-    public Sha256Hash sha256Hash() {
-
-        return HashUtils.sha256Hash(offer.getId(), tradeRequest.getTakerProfilePubKey(),
-                tradeRequest.getTakerEscrowPubKey(),
-                tradeRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP),
-                tradeRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
-    }
 
     // Offer
 
@@ -396,6 +375,7 @@ public class Trade {
     public Trade.TradeBuilder copyBuilder() {
 
         return Trade.builder()
+                .id(this.id)
                 .version(this.version)
                 .status(this.status)
                 .role(this.role)

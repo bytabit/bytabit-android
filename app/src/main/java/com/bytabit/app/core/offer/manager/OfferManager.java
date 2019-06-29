@@ -78,16 +78,21 @@ public class OfferManager {
                 .share();
     }
 
+    // update my offers on the server so they don't get removed
     public Observable<Offer> getUpdatedOffers() {
-
-        // update my offers on the server so they don't get removed
         return Observable.interval(0, 5, TimeUnit.MINUTES, Schedulers.io())
                 .flatMapSingle(t -> offerStorage.getAll())
                 .flatMapIterable(ol -> ol)
                 .flatMapMaybe(o -> offerService.put(o).toMaybe().onErrorResumeNext(Maybe.empty()));
     }
 
-    public Single<List<Offer>> getStoredAndLoadedOffers() {
+    public Observable<List<Offer>> getOffers() {
+        return Observable.interval(0, 30, TimeUnit.SECONDS, Schedulers.io())
+                .flatMapSingle(tick -> getStoredAndLoadedOffers()).replay(1).autoConnect();
+    }
+
+    // get offers from storage and server, filter out any that have invalid signatures
+    private Single<List<Offer>> getStoredAndLoadedOffers() {
         return offerStorage.getAll().flattenAsObservable(o -> o)
                 .concatWith(offerService.getAll().retryWhen(errors ->
                         errors.flatMap(e -> Flowable.timer(100, TimeUnit.SECONDS)))
@@ -100,42 +105,37 @@ public class OfferManager {
                 .toList();
     }
 
-    public Observable<List<Offer>> getOffers() {
-        return Observable.interval(0, 30, TimeUnit.SECONDS, Schedulers.io())
-                .flatMapSingle(tick -> getStoredAndLoadedOffers()).replay(1).autoConnect();
-    }
-
-    public Maybe<Offer> createOffer(Offer.OfferType offerType,
-                                    CurrencyCode currencyCode,
-                                    PaymentMethod paymentMethod,
-                                    BigDecimal minAmount,
-                                    BigDecimal maxAmount,
-                                    BigDecimal price) {
+    public Single<Offer> createOffer(Offer.OfferType offerType,
+                                     CurrencyCode currencyCode,
+                                     PaymentMethod paymentMethod,
+                                     BigDecimal minAmount,
+                                     BigDecimal maxAmount,
+                                     BigDecimal price) {
 
         if (offerType == null) {
-            return Maybe.error(new OfferException("Offer type is required."));
+            return Single.error(new OfferException("Offer type is required."));
         }
         if (currencyCode == null) {
-            return Maybe.error(new OfferException("Currency code is required."));
+            return Single.error(new OfferException("Currency code is required."));
         }
         if (paymentMethod == null) {
-            return Maybe.error(new OfferException("Payment method is required."));
+            return Single.error(new OfferException("Payment method is required."));
         }
         if (minAmount.compareTo(currencyCode.getMinTradeAmount()) < 0) {
-            return Maybe.error(new OfferException(String.format("Minimum amount must be greater than %s %s.", currencyCode.getMinTradeAmount(), currencyCode)));
+            return Single.error(new OfferException(String.format("Minimum amount must be greater than %s %s.", currencyCode.getMinTradeAmount(), currencyCode)));
         }
         if (maxAmount.compareTo(currencyCode.getMinTradeAmount()) < 0) {
-            return Maybe.error(new OfferException("Maximum amount must be greater than or equal to minimum amount."));
+            return Single.error(new OfferException("Maximum amount must be greater than or equal to minimum amount."));
         }
         if (maxAmount.compareTo(currencyCode.getMaxTradeAmount()) > 0) {
-            return Maybe.error(new OfferException(String.format("Max offer amount can not be more than %s %s.", currencyCode.getMaxTradeAmount(), currencyCode)));
+            return Single.error(new OfferException(String.format("Max offer amount can not be more than %s %s.", currencyCode.getMaxTradeAmount(), currencyCode)));
         }
         if (price.compareTo(BigDecimal.ZERO) <= 0) {
-            return Maybe.error(new OfferException("Price must be greater than zero."));
+            return Single.error(new OfferException("Price must be greater than zero."));
         }
 
         return badgeManager.getOfferMakerBadge(currencyCode)
-                .flatMapMaybe(b -> walletManager.getProfilePubKeyBase58().map(profilePubKey ->
+                .flatMap(b -> walletManager.getProfilePubKeyBase58().map(profilePubKey ->
                         Offer.builder()
                                 .offerType(offerType)
                                 .makerProfilePubKey(profilePubKey)
@@ -144,10 +144,11 @@ public class OfferManager {
                                 .minAmount(minAmount)
                                 .maxAmount(maxAmount)
                                 .price(price.setScale(currencyCode.getScale(), RoundingMode.HALF_UP))
-                                .build())
-                        .observeOn(Schedulers.io())
-                        .flatMapSingleElement(offerStorage::write)
-                        .flatMapSingleElement(offerService::put));
+                                .build()).toSingle()
+                )
+                .observeOn(Schedulers.io())
+                .flatMap(offerStorage::write)
+                .flatMap(offerService::put);
     }
 
     public Single<String> deleteOffer() {

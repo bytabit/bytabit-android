@@ -56,10 +56,11 @@ public class TradeServiceResource {
     private static Trade.TradeBuilder toTradeBuilder(TradeServiceResource receivedTradeServiceResource) {
 
         return Trade.builder()
+                .id(receivedTradeServiceResource.getTrade().getId())
                 .version(receivedTradeServiceResource.getVersion())
                 .offer(receivedTradeServiceResource.getTrade().getOffer())
-                .tradeRequest(receivedTradeServiceResource.getTrade().getTakeOfferRequest())
-                .tradeAcceptance(receivedTradeServiceResource.getTrade().getConfirmation())
+                .tradeRequest(receivedTradeServiceResource.getTrade().getTradeRequest())
+                .tradeAcceptance(receivedTradeServiceResource.getTrade().getTradeAcceptance())
                 .paymentRequest(receivedTradeServiceResource.getTrade().getPaymentRequest())
                 .payoutRequest(receivedTradeServiceResource.getTrade().getPayoutRequest())
                 .arbitrateRequest(receivedTradeServiceResource.getTrade().getArbitrateRequest())

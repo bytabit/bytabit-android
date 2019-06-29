@@ -16,7 +16,7 @@
 
 package com.bytabit.app.core.offer.manager;
 
-import com.bytabit.app.core.offer.model.Offer;
+import com.bytabit.app.core.offer.model.SignedOffer;
 
 import java.util.List;
 
@@ -30,14 +30,14 @@ import retrofit2.http.Path;
 public interface OfferServiceApi {
 
     @PUT("/offers/{id}")
-    Single<Offer> put(@Path("id") String id, @Body Offer sellOffer);
+    Single<SignedOffer> put(@Path("id") String id, @Body SignedOffer signedOffer);
 
     @GET("/offers")
-    Single<List<Offer>> get();
+    Single<List<SignedOffer>> get();
 
     @GET("/offers/{id}")
-    Single<Offer> get(@Path("id") String id);
+    Single<SignedOffer> get(@Path("id") String id);
 
     @DELETE("/offers/{id}")
-    Single<Offer> delete(@Path("id") String id);
+    Single<SignedOffer> delete(@Path("id") String id);
 }

@@ -57,13 +57,14 @@ public class TradeStorageResource implements Entity {
 
         try {
             return Trade.builder()
+                    .id(tr.getId())
                     .version(tr.getVersion())
                     .status(tr.getStatus())
                     .role(tr.getRole())
                     .createdTimestamp(dateFormat.parse(tr.getCreatedTimestamp()))
                     .offer(tr.getTrade().getOffer())
-                    .tradeRequest(tr.getTrade().getTakeOfferRequest())
-                    .tradeAcceptance(tr.getTrade().getConfirmation())
+                    .tradeRequest(tr.getTrade().getTradeRequest())
+                    .tradeAcceptance(tr.getTrade().getTradeAcceptance())
                     .paymentRequest(tr.getTrade().getPaymentRequest())
                     .payoutRequest(tr.getTrade().getPayoutRequest())
                     .arbitrateRequest(tr.getTrade().getArbitrateRequest())

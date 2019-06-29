@@ -54,6 +54,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
@@ -745,6 +746,27 @@ public class WalletManager {
         return tradeWalletConfig;
     }
 
+    public Single<String> getBase58PubKeySignature(Sha256Hash hash) {
+        return getPubKeySignature(hash)
+                .map(ECKey.ECDSASignature::encodeToDER)
+                .map(Base58::encode)
+                .toSingle()
+                .onErrorResumeNext(t -> {
+                    if (t instanceof NoSuchElementException) {
+                        return Single.error(new WalletException("Unable to sign hash with pubkey"));
+                    } else {
+                        return Single.error(t);
+                    }
+                });
+    }
+
+    public boolean validateBase58PubKeySignature(String pubKey, String signature, Sha256Hash hash) {
+        ECKey pubECKey = ECKey.fromPublicOnly(Base58.decode(pubKey));
+        ECKey.ECDSASignature ecdsaSignature = ECKey.ECDSASignature.decodeFromDER(Base58.decode(signature));
+
+        return pubECKey.verify(hash, ecdsaSignature);
+    }
+
     private Maybe<Sha256Hash> payoutEscrow(Coin payoutAmount, Coin txFeePerKb,
                                            Transaction fundingTx,
                                            ECKey arbitratorProfilePubKey,
@@ -813,5 +835,12 @@ public class WalletManager {
 
     private String getXpubKey(Wallet wallet) {
         return wallet.getWatchingKey().serializePubB58(netParams);
+    }
+
+    private Maybe<ECKey.ECDSASignature> getPubKeySignature(Sha256Hash hash) {
+
+        return getTradeWallet()
+                .map(this::getProfilePubKey)
+                .map(pk -> pk.sign(hash));
     }
 }

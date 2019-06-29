@@ -18,11 +18,20 @@ package com.bytabit.app.core.trade.manager;
 
 
 import com.bytabit.app.core.arbitrate.manager.ArbitratorManager;
+import com.bytabit.app.core.common.HashUtils;
+import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.trade.model.ArbitrateRequest;
 import com.bytabit.app.core.trade.model.Trade;
+import com.bytabit.app.core.trade.model.TradeRequest;
 import com.bytabit.app.core.wallet.manager.WalletManager;
 
+import org.bitcoinj.core.Base58;
+import org.bitcoinj.core.Sha256Hash;
+
+import java.math.RoundingMode;
+
 import io.reactivex.Maybe;
+import lombok.NonNull;
 
 abstract class TradeProtocol {
 
@@ -135,5 +144,19 @@ abstract class TradeProtocol {
     Maybe<Trade> handleCanceled(Trade trade, Trade receivedTrade) {
 
         return Maybe.empty();
+    }
+
+    // Use Hex encoded Sha256 Hash of Offer.id and TakeOfferRequest properties
+    public String getId(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
+        Sha256Hash sha256Hash = sha256Hash(offer, tradeRequest);
+        return Base58.encode(sha256Hash.getBytes());
+    }
+
+    public Sha256Hash sha256Hash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
+
+        return HashUtils.sha256Hash(offer.getId(), tradeRequest.getTakerProfilePubKey(),
+                tradeRequest.getTakerEscrowPubKey(),
+                tradeRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP),
+                tradeRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
     }
 }
