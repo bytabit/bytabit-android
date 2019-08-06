@@ -22,21 +22,21 @@ import com.bytabit.app.core.trade.model.CancelCompleted;
 import com.bytabit.app.core.trade.model.PayoutRequest;
 import com.bytabit.app.core.trade.model.Trade;
 import com.bytabit.app.core.trade.model.TradeAcceptance;
-import com.bytabit.app.core.trade.model.TradeRequest;
 import com.bytabit.app.core.wallet.manager.WalletManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Date;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import io.reactivex.Maybe;
+import io.reactivex.Single;
 
 import static com.bytabit.app.core.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.app.core.offer.model.Offer.OfferType.SELL;
 import static com.bytabit.app.core.trade.model.Trade.Role.ARBITRATOR;
+import static com.bytabit.app.core.trade.model.Trade.Role.BUYER;
 
 @Singleton
 public class BuyerProtocol extends TradeProtocol {
@@ -61,28 +61,8 @@ public class BuyerProtocol extends TradeProtocol {
             return Maybe.error(new TradeException(String.format("Trade amount can not be more than %s %s.", offer.getMaxAmount(), offer.getCurrencyCode())));
         }
         return Maybe.zip(walletManager.getEscrowPubKeyBase58(), walletManager.getProfilePubKeyBase58(),
-                (takerEscrowPubKey, takerProfilePubKey) -> {
-
-                    TradeRequest tradeRequest = TradeRequest.builder()
-                            .takerProfilePubKey(takerProfilePubKey)
-                            .takerEscrowPubKey(takerEscrowPubKey)
-                            .btcAmount(buyBtcAmount)
-                            .paymentAmount(buyBtcAmount.setScale(8, RoundingMode.UP)
-                                    .multiply(offer.getPrice())
-                                    .setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
-                            .build();
-
-                    String id = getId(offer, tradeRequest);
-
-                    return Trade.builder()
-                            .id(id)
-                            .role(Trade.Role.BUYER)
-                            .status(Trade.Status.CREATED)
-                            .createdTimestamp(new Date())
-                            .offer(offer)
-                            .tradeRequest(tradeRequest)
-                            .build();
-                });
+                (takerEscrowPubKey, takerProfilePubKey) -> createTrade(offer, BUYER, buyBtcAmount, takerProfilePubKey, takerEscrowPubKey))
+                .flatMapSingleElement(t -> t);
     }
 
     // 1.B: create trade, post created trade
@@ -119,13 +99,13 @@ public class BuyerProtocol extends TradeProtocol {
         return updatedTrade;
     }
 
-    Maybe<Trade> cancelUnfundedTrade(Trade trade) {
+    Single<Trade> cancelUnfundedTrade(Trade trade) {
 
         // create cancel completed
         CancelCompleted cancelCompleted = CancelCompleted.builder().reason(CancelCompleted.Reason.BUYER_CANCEL_UNFUNDED).build();
 
         // post cancel completed
-        return Maybe.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build().withStatus());
+        return Single.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build());
     }
 
     // 2.B: buyer receives payment request, confirm funding tx
@@ -149,7 +129,7 @@ public class BuyerProtocol extends TradeProtocol {
     }
 
     // 3.B: buyer sends payment to seller and post payout request
-    Maybe<Trade> sendPayment(Trade trade, String paymentReference) {
+    Single<Trade> sendPayment(Trade trade, String paymentReference) {
 
         // 1. create payout request with buyer payout signature
 
@@ -160,33 +140,34 @@ public class BuyerProtocol extends TradeProtocol {
                         .paymentReference(paymentReference)
                         .payoutAddress(payoutAddress)
                         .payoutTxSignature(payoutSignature).build())
-                        .map(pr -> trade.copyBuilder().payoutRequest(pr).build().withStatus()));
+                        .map(pr -> trade.copyBuilder().payoutRequest(pr).build()))
+                .toSingle();
     }
 
-    Maybe<Trade> cancelFundingTrade(Trade trade) {
+    Single<Trade> cancelFundingTrade(Trade trade) {
 
         // 1. sign and broadcast refund tx
-        Maybe<String> refundTxHash = walletManager.refundEscrowToSeller(trade.getBtcAmount(),
+        Single<String> refundTxHash = walletManager.refundEscrowToSeller(trade.getBtcAmount(),
                 trade.getTxFeePerKb(),
                 trade.getFundingTransactionWithAmt().getTransaction(),
                 trade.getArbitratorProfilePubKey(), trade.getSellerEscrowPubKey(), trade.getBuyerEscrowPubKey(),
-                trade.getRefundAddress(), trade.getRefundTxSignature(), ARBITRATOR.equals(trade.getRole()));
+                trade.getRefundAddress(), trade.getRefundTxSignature(), ARBITRATOR.equals(trade.getRole())).toSingle();
 
         // 2. confirm refund tx and create cancel completed
-        Maybe<CancelCompleted> cancelCompleted = refundTxHash.map(ph -> new CancelCompleted(ph, CancelCompleted.Reason.BUYER_CANCEL_FUNDED));
+        Single<CancelCompleted> cancelCompleted = refundTxHash.map(ph -> CancelCompleted.builder().build());
 
         // 5. post cancel completed
-        return cancelCompleted.map(pc -> trade.copyBuilder().cancelCompleted(pc).build().withStatus());
+        return cancelCompleted.map(pc -> trade.copyBuilder().cancelCompleted(pc).build());
     }
 
     Maybe<Trade> handleCanceled(Trade trade, Trade receivedTrade) {
 
-        Maybe<Trade> updatedTrade = Maybe.empty();
+        Maybe<Trade> updatedTrade = Maybe.error(new TradeException("Unable to cancel trade."));
 
         if (trade.getCancelCompleted().getPayoutTxHash() == null
                 && !trade.hasPayoutRequest()
                 && receivedTrade.hasPaymentRequest()) {
-            updatedTrade = cancelFundingTrade(trade);
+            updatedTrade = cancelFundingTrade(trade).toMaybe();
         }
 
         return updatedTrade;

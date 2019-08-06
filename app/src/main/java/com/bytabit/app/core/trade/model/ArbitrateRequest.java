@@ -16,6 +16,10 @@
 
 package com.bytabit.app.core.trade.model;
 
+import com.bytabit.app.core.common.HashUtils;
+
+import org.bitcoinj.core.Sha256Hash;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -40,4 +44,8 @@ public class ArbitrateRequest {
 
     @NonNull
     private Reason reason;
+
+    public Sha256Hash sha256Hash() {
+        return HashUtils.sha256Hash(reason);
+    }
 }

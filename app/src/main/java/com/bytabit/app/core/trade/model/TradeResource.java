@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
 
@@ -38,28 +39,22 @@ public class TradeResource implements Entity {
 
     private String id;
 
-    // Offer
+    @NonNull
     private Offer offer;
 
-    // Take Offer Request
+    @NonNull
     private TradeRequest tradeRequest;
 
-    // Confirmation
     private TradeAcceptance tradeAcceptance;
 
-    // Funding, Payment Request
     private PaymentRequest paymentRequest;
 
-    // Payout Request
     private PayoutRequest payoutRequest;
 
-    // Arbitrate Request
     private ArbitrateRequest arbitrateRequest;
 
-    // Cancel Completed
     private CancelCompleted cancelCompleted;
 
-    // Payout Completed
     private PayoutCompleted payoutCompleted;
 
     public static Trade toTrade(TradeResource tr) {

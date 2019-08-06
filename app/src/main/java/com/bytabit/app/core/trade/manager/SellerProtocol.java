@@ -25,14 +25,12 @@ import com.bytabit.app.core.trade.model.PaymentRequest;
 import com.bytabit.app.core.trade.model.PayoutCompleted;
 import com.bytabit.app.core.trade.model.Trade;
 import com.bytabit.app.core.trade.model.TradeAcceptance;
-import com.bytabit.app.core.trade.model.TradeRequest;
 import com.bytabit.app.core.wallet.manager.WalletManager;
 
 import org.bitcoinj.core.Transaction;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Date;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -42,6 +40,7 @@ import io.reactivex.Single;
 
 import static com.bytabit.app.core.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.app.core.offer.model.Offer.OfferType.SELL;
+import static com.bytabit.app.core.trade.model.Trade.Role.SELLER;
 
 @Singleton
 public class SellerProtocol extends TradeProtocol {
@@ -68,36 +67,10 @@ public class SellerProtocol extends TradeProtocol {
         if (currencyAmount.compareTo(offer.getMaxAmount()) > 0 || currencyAmount.compareTo(offer.getCurrencyCode().getMaxTradeAmount()) > 0) {
             return Maybe.error(new TradeException(String.format("Trade amount can not be more than %s %s.", offer.getMaxAmount(), offer.getCurrencyCode())));
         }
-        return Maybe.zip(walletManager.getEscrowPubKeyBase58(),
-                walletManager.getProfilePubKeyBase58(),
-                (takerEscrowPubKey, takerProfilePubKey) -> {
 
-                    TradeRequest tradeRequest = TradeRequest.builder()
-                            .takerProfilePubKey(takerProfilePubKey)
-                            .takerEscrowPubKey(takerEscrowPubKey)
-                            .btcAmount(sellBtcAmount)
-                            .paymentAmount(sellBtcAmount.setScale(8, RoundingMode.UP)
-                                    .multiply(offer.getPrice())
-                                    .setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
-                            .build();
-
-                    String id = getId(offer, tradeRequest);
-
-                    return Trade.builder()
-                            .id(id)
-                            .role(Trade.Role.SELLER)
-                            .status(Trade.Status.CREATED)
-                            .createdTimestamp(new Date())
-                            .offer(offer)
-                            .tradeRequest(TradeRequest.builder()
-                                    .takerProfilePubKey(takerProfilePubKey)
-                                    .takerEscrowPubKey(takerEscrowPubKey)
-                                    .btcAmount(sellBtcAmount)
-                                    .paymentAmount(sellBtcAmount.setScale(8, RoundingMode.UP).multiply(offer.getPrice()).setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP))
-                                    .build())
-                            .build();
-                }
-        );
+        return Maybe.zip(walletManager.getEscrowPubKeyBase58(), walletManager.getProfilePubKeyBase58(),
+                (takerEscrowPubKey, takerProfilePubKey) -> createTrade(offer, SELLER, sellBtcAmount, takerProfilePubKey, takerEscrowPubKey))
+                .flatMapSingleElement(t -> t);
     }
 
     // 1.S: seller receives created trade with sell offer + buy request
@@ -135,17 +108,17 @@ public class SellerProtocol extends TradeProtocol {
         return updatedTrade;
     }
 
-    Maybe<Trade> cancelUnfundedTrade(Trade trade) {
+    Single<Trade> cancelUnfundedTrade(Trade trade) {
 
         // create cancel completed
         CancelCompleted cancelCompleted = CancelCompleted.builder().reason(CancelCompleted.Reason.SELLER_CANCEL_UNFUNDED).build();
 
         // post cancel completed
-        return Maybe.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build().withStatus());
+        return Single.just(trade.copyBuilder().cancelCompleted(cancelCompleted).build());
     }
 
     // 2.S: seller fund escrow and post payment request
-    Maybe<Trade> fundEscrow(Trade trade) {
+    Single<Trade> fundEscrow(Trade trade) {
 
         Single<PaymentDetails> paymentDetails = paymentDetailsManager.getLoadedPaymentDetails()
                 .filter(pd -> pd.getCurrencyCode().equals(trade.getCurrencyCode()) && pd.getPaymentMethod().equals(trade.getPaymentMethod()))
@@ -168,10 +141,16 @@ public class SellerProtocol extends TradeProtocol {
                 .flatMap(rs -> rs);
 
         // 3. create payment request
-        Maybe<PaymentRequest> paymentRequest = Maybe.zip(paymentDetails.toMaybe(), refundAddressBase58, refundTxSignature, fundingTx,
-                (pd, ra, rs, ftx) -> new PaymentRequest(ftx.getHashAsString(), pd.getDetails(), ra, rs, txFeePerKb));
+        Single<PaymentRequest> paymentRequest = Maybe.zip(paymentDetails.toMaybe(), refundAddressBase58, refundTxSignature, fundingTx,
+                (pd, ra, rs, ftx) -> PaymentRequest.builder()
+                        .fundingTxHash(ftx.getHashAsString())
+                        .paymentDetails(pd.getDetails())
+                        .refundAddress(ra)
+                        .refundTxSignature(rs)
+                        .txFeePerKb(txFeePerKb)
+                        .build()).toSingle();
 
-        return paymentRequest.map(pr -> trade.copyBuilder().paymentRequest(pr).build().withStatus());
+        return paymentRequest.map(pr -> trade.copyBuilder().paymentRequest(pr).build());
     }
 
     @Override
@@ -201,22 +180,25 @@ public class SellerProtocol extends TradeProtocol {
     }
 
     // 3.S: seller payout escrow to buyer and write payout details
-    Maybe<Trade> confirmPaymentReceived(Trade trade) {
+    Single<Trade> confirmPaymentReceived(Trade trade) {
 
         // 1. sign and broadcast payout tx
-        Maybe<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade.getBtcAmount(),
+        Single<String> payoutTxHash = walletManager.payoutEscrowToBuyer(trade.getBtcAmount(),
                 trade.getTxFeePerKb(),
                 trade.getFundingTransactionWithAmt().getTransaction(),
                 trade.getArbitratorProfilePubKey(),
                 trade.getSellerEscrowPubKey(),
                 trade.getBuyerEscrowPubKey(),
                 trade.getPayoutAddress(),
-                trade.getPayoutTxSignature());
+                trade.getPayoutTxSignature()).toSingle();
 
         // 2. confirm payout tx and create payout completed
-        Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.SELLER_BUYER_PAYOUT));
+        Single<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> PayoutCompleted.builder()
+                .payoutTxHash(ph)
+                .reason(PayoutCompleted.Reason.SELLER_BUYER_PAYOUT)
+                .build());
 
         // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
     }
 }

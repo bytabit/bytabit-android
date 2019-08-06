@@ -16,40 +16,18 @@
 
 package com.bytabit.app.core.trade.manager;
 
+import com.bytabit.app.core.common.AppConfig;
+import com.bytabit.app.core.common.file.EntityFileStorage;
 import com.bytabit.app.core.trade.model.Trade;
-import com.bytabit.app.core.trade.model.TradeStorageResource;
-
-import java.util.List;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import io.reactivex.Maybe;
-import io.reactivex.Single;
-
 @Singleton
-public class TradeStorage {
-
-    private final TradeResourceStorage tradeResourceStorage;
+public class TradeStorage extends EntityFileStorage<Trade> {
 
     @Inject
-    public TradeStorage(TradeResourceStorage tradeResourceStorage) {
-        this.tradeResourceStorage = tradeResourceStorage;
-    }
-
-    public Single<Trade> write(Trade trade) {
-        return tradeResourceStorage.write(TradeStorageResource.fromTrade(trade))
-                .map(TradeStorageResource::toTrade);
-    }
-
-    public Maybe<Trade> read(String id) {
-        return tradeResourceStorage.read(id)
-                .map(TradeStorageResource::toTrade);
-    }
-
-    public Single<List<Trade>> getAll() {
-        return tradeResourceStorage.getAll().flattenAsObservable(trl -> trl)
-                .map(TradeStorageResource::toTrade)
-                .toList();
+    public TradeStorage(AppConfig appConfig) {
+        super(appConfig, Trade.class);
     }
 }

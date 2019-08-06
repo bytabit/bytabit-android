@@ -16,6 +16,7 @@
 
 package com.bytabit.app.core.trade.model;
 
+import com.bytabit.app.core.common.file.Entity;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;
@@ -30,30 +31,18 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.ToString;
 
 import static com.bytabit.app.core.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.app.core.offer.model.Offer.OfferType.SELL;
-import static com.bytabit.app.core.trade.model.Trade.Role.ARBITRATOR;
-import static com.bytabit.app.core.trade.model.Trade.Role.BUYER;
-import static com.bytabit.app.core.trade.model.Trade.Role.SELLER;
-import static com.bytabit.app.core.trade.model.Trade.Status.ACCEPTED;
-import static com.bytabit.app.core.trade.model.Trade.Status.ARBITRATING;
-import static com.bytabit.app.core.trade.model.Trade.Status.CANCELED;
-import static com.bytabit.app.core.trade.model.Trade.Status.CANCELING;
-import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETED;
-import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETING;
-import static com.bytabit.app.core.trade.model.Trade.Status.CREATED;
-import static com.bytabit.app.core.trade.model.Trade.Status.FUNDED;
-import static com.bytabit.app.core.trade.model.Trade.Status.FUNDING;
-import static com.bytabit.app.core.trade.model.Trade.Status.PAID;
 
 @AllArgsConstructor
 @Getter
 @Builder
 @EqualsAndHashCode
 @ToString
-public class Trade {
+public class Trade implements Entity {
 
     public enum Status {
 
@@ -77,6 +66,7 @@ public class Trade {
         }
     }
 
+    @Setter
     @EqualsAndHashCode.Include
     @NonNull
     private String id;
@@ -85,11 +75,13 @@ public class Trade {
     @Builder.Default
     private final Long version = 0L;
 
+    @Setter
     @EqualsAndHashCode.Exclude
-    private final Status status;
+    transient private Status status;
 
+    @Setter
     @EqualsAndHashCode.Exclude
-    private final Role role;
+    transient private Role role;
 
     private final Date createdTimestamp;
 
@@ -101,8 +93,9 @@ public class Trade {
 
     private final TradeAcceptance tradeAcceptance;
 
+    @Setter
     @EqualsAndHashCode.Exclude
-    private TransactionWithAmt fundingTransactionWithAmt;
+    transient private TransactionWithAmt fundingTransactionWithAmt;
 
     private PaymentRequest paymentRequest;
 
@@ -110,8 +103,9 @@ public class Trade {
 
     private ArbitrateRequest arbitrateRequest;
 
+    @Setter
     @EqualsAndHashCode.Exclude
-    private TransactionWithAmt payoutTransactionWithAmt;
+    transient private TransactionWithAmt payoutTransactionWithAmt;
 
     private CancelCompleted cancelCompleted;
 
@@ -390,74 +384,5 @@ public class Trade {
                 .payoutTransactionWithAmt(this.payoutTransactionWithAmt)
                 .payoutCompleted(this.payoutCompleted)
                 .cancelCompleted(this.cancelCompleted);
-    }
-
-    public Trade withRole(String profilePubKey) {
-
-        Trade tradeWithRole;
-
-        if (SELL.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
-            tradeWithRole = this.copyBuilder().role(SELLER).build();
-        } else if (BUY.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
-            tradeWithRole = this.copyBuilder().role(BUYER).build();
-        } else if (SELL.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
-            tradeWithRole = this.copyBuilder().role(BUYER).build();
-        } else if (BUY.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
-            tradeWithRole = this.copyBuilder().role(SELLER).build();
-        } else if (hasConfirmation() && getArbitratorProfilePubKey().equals(profilePubKey)) {
-            tradeWithRole = this.copyBuilder().role(ARBITRATOR).build();
-        } else {
-            throw new TradeModelException("Unable to determine trade role.");
-        }
-        return tradeWithRole;
-    }
-
-    public Trade withStatus() {
-
-        Trade.Status newStatus = null;
-        if (hasOffer() && hasTakeOfferRequest()) {
-            newStatus = CREATED;
-        }
-        if (newStatus == CREATED && hasConfirmation()) {
-            newStatus = ACCEPTED;
-        }
-        if (newStatus == ACCEPTED && hasPaymentRequest()) {
-            newStatus = FUNDING;
-        }
-        if (newStatus == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {
-            newStatus = FUNDED;
-        }
-        if (newStatus == FUNDED && hasPayoutRequest()) {
-            newStatus = PAID;
-        }
-        if (newStatus == FUNDED && hasPayoutCompleted() && getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
-            newStatus = COMPLETING;
-        }
-        if (hasArbitrateRequest()) {
-            newStatus = ARBITRATING;
-        }
-        if ((newStatus == PAID || newStatus == ARBITRATING || newStatus == CANCELING) && getPayoutTxHash() != null) {
-            newStatus = COMPLETING;
-        }
-        if (newStatus == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
-            newStatus = COMPLETED;
-        }
-        if ((newStatus == CREATED || newStatus == ACCEPTED) && hasCancelCompleted() &&
-                (getCancelCompleted().getReason().equals(CancelCompleted.Reason.SELLER_CANCEL_UNFUNDED) ||
-                        getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_UNFUNDED))) {
-            newStatus = CANCELED;
-        }
-        if ((newStatus == FUNDING || newStatus == FUNDED) && hasCancelCompleted() &&
-                getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)) {
-            newStatus = CANCELING;
-        }
-        if (newStatus == CANCELING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
-            newStatus = CANCELED;
-        }
-
-        if (newStatus == null) {
-            throw new TradeModelException("Unable to determine trade status.");
-        }
-        return this.copyBuilder().status(newStatus).build();
     }
 }

@@ -18,8 +18,12 @@ package com.bytabit.app.core.trade.manager;
 
 import com.bytabit.app.core.arbitrate.manager.ArbitratorManager;
 import com.bytabit.app.core.offer.model.Offer;
+import com.bytabit.app.core.trade.model.CancelCompleted;
+import com.bytabit.app.core.trade.model.PayoutCompleted;
 import com.bytabit.app.core.trade.model.Trade;
+import com.bytabit.app.core.trade.model.TradeModelException;
 import com.bytabit.app.core.wallet.manager.WalletManager;
+import com.bytabit.app.core.wallet.model.TransactionWithAmt;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,8 +49,13 @@ import static com.bytabit.app.core.trade.model.Trade.Role.BUYER;
 import static com.bytabit.app.core.trade.model.Trade.Role.SELLER;
 import static com.bytabit.app.core.trade.model.Trade.Status.ACCEPTED;
 import static com.bytabit.app.core.trade.model.Trade.Status.ARBITRATING;
+import static com.bytabit.app.core.trade.model.Trade.Status.CANCELED;
+import static com.bytabit.app.core.trade.model.Trade.Status.CANCELING;
+import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETED;
+import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETING;
 import static com.bytabit.app.core.trade.model.Trade.Status.CREATED;
 import static com.bytabit.app.core.trade.model.Trade.Status.FUNDED;
+import static com.bytabit.app.core.trade.model.Trade.Status.FUNDING;
 import static com.bytabit.app.core.trade.model.Trade.Status.PAID;
 
 @Slf4j
@@ -156,8 +165,7 @@ public class TradeManager {
                 .flatMap(profilePubKey -> tradeService.getByOfferId(offer.getId(), 0L)
                         .flattenAsObservable(l -> l)
                         .filter(t -> t.getMakerProfilePubKey().equals(profilePubKey))
-                        .map(Trade::withStatus)
-                        .filter(t -> t.getStatus().equals(CREATED))
+                        .filter(t -> getStatus(t).equals(CREATED))
                         .flatMapMaybe(trade -> handleReceivedTrade(profilePubKey, trade))
                         .flatMapSingle(tradeStorage::write)
                         .observeOn(Schedulers.io())
@@ -182,7 +190,7 @@ public class TradeManager {
                         .flatMapMaybe(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
                                 .map(txa -> t.copyBuilder().payoutTransactionWithAmt(txa).build())
                                 .defaultIfEmpty(t))
-                        .map(Trade::withStatus)
+                        .map(this::withStatus)
                         .subscribeOn(Schedulers.io())
                         .observeOn(Schedulers.io())
                         .toList()
@@ -202,48 +210,52 @@ public class TradeManager {
                 .doOnNext(t -> log.debug("selectedTrade: {}", t));
     }
 
-    public Maybe<Trade> buyerSendPayment(String paymentReference) {
+    public Single<Trade> buyerSendPayment(String paymentReference) {
 
         if (paymentReference == null || paymentReference.length() == 0) {
-            return Maybe.error(new TradeException("No payment reference."));
+            return Single.error(new TradeException("No payment reference."));
 
         }
         return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getStatus().equals(FUNDED))
-                .flatMapSingleElement(this::updateTradeTx)
+                .flatMapSingleElement(this::withTradeTx)
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
-                .flatMap(st -> buyerProtocol.sendPayment(st, paymentReference))
-                .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put);
+                .flatMapSingle(st -> buyerProtocol.sendPayment(st, paymentReference))
+                .map(this::withStatus)
+                .flatMap(tradeStorage::write)
+                .flatMap(tradeService::put);
     }
 
-    public Maybe<Trade> fundEscrow() {
+    public Single<Trade> fundEscrow() {
         return getSelectedTrade().firstOrError()
                 .filter(trade -> ACCEPTED.equals(trade.getStatus()))
-                .flatMap(st -> sellerProtocol.fundEscrow(st))
-                .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put);
+                .flatMapSingle(sellerProtocol::fundEscrow)
+                .map(this::withStatus)
+                .flatMap(tradeStorage::write)
+                .flatMap(tradeService::put);
     }
 
-    public Maybe<Trade> sellerPaymentReceived() {
+    public Single<Trade> sellerPaymentReceived() {
         return getSelectedTrade().firstOrError()
                 .filter(trade -> PAID.equals(trade.getStatus()))
-                .flatMapSingleElement(this::updateTradeTx)
+                .flatMapSingleElement(this::withTradeTx)
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
-                .flatMap(st -> sellerProtocol.confirmPaymentReceived(st))
-                .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put);
+                .flatMapSingle(sellerProtocol::confirmPaymentReceived)
+                .map(this::withStatus)
+                .flatMap(tradeStorage::write)
+                .flatMap(tradeService::put);
     }
 
-    public Maybe<Trade> requestArbitrate() {
+    public Single<Trade> requestArbitrate() {
 
         return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) != 0)
                 .filter(trade -> trade.getStatus().compareTo(CREATED) > 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) < 0)
-                .flatMap(trade -> getProtocol(trade).requestArbitrate(trade))
-                .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put);
+                .flatMapSingle(trade -> getProtocol(trade).requestArbitrate(trade))
+                .map(this::withStatus)
+                .flatMap(tradeStorage::write)
+                .flatMap(tradeService::put);
     }
 
     public Maybe<Trade> arbitratorRefundSeller() {
@@ -251,9 +263,10 @@ public class TradeManager {
         return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
-                .flatMapSingleElement(this::updateTradeTx)
+                .flatMapSingleElement(this::withTradeTx)
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
-                .flatMap(trade -> arbitratorProtocol.refundSeller(trade))
+                .flatMap(arbitratorProtocol::refundSeller)
+                .map(this::withStatus)
                 .flatMapSingleElement(tradeStorage::write)
                 .flatMapSingleElement(tradeService::put);
     }
@@ -263,9 +276,10 @@ public class TradeManager {
         return getSelectedTrade().firstOrError()
                 .filter(trade -> trade.getRole().compareTo(ARBITRATOR) == 0)
                 .filter(trade -> trade.getStatus().compareTo(ARBITRATING) == 0)
-                .flatMapSingleElement(this::updateTradeTx)
+                .flatMapSingleElement(this::withTradeTx)
                 .filter(trade -> trade.getFundingTransactionWithAmt() != null)
-                .flatMap(trade -> arbitratorProtocol.payoutBuyer(trade))
+                .flatMap(arbitratorProtocol::payoutBuyer)
+                .map(this::withStatus)
                 .flatMapSingleElement(tradeStorage::write)
                 .flatMapSingleElement(tradeService::put);
     }
@@ -274,24 +288,26 @@ public class TradeManager {
 
         Single<Trade> trade = getSelectedTrade().firstOrError();
 
-        Maybe<Trade> sellerCancelUnfunded = trade
+        Single<Trade> sellerCancelUnfunded = trade
                 .filter(t -> t.getRole().compareTo(SELLER) == 0)
                 .filter(t -> !t.hasPaymentRequest())
-                .flatMap(t -> sellerProtocol.cancelUnfundedTrade(t));
+                .flatMapSingle(sellerProtocol::cancelUnfundedTrade)
+                .map(this::withStatus);
 
-        Maybe<Trade> buyerCancelUnfunded = trade
+        Single<Trade> buyerCancelUnfunded = trade
                 .filter(t -> t.getRole().compareTo(BUYER) == 0)
                 .filter(t -> !t.hasPaymentRequest())
-                .flatMap(t -> buyerProtocol.cancelUnfundedTrade(t));
+                .flatMapSingle(buyerProtocol::cancelUnfundedTrade)
+                .map(this::withStatus);
 
-        Maybe<Trade> buyerCancelFunding = trade
+        Single<Trade> buyerCancelFunding = trade
                 .filter(t -> t.getRole().compareTo(BUYER) == 0)
                 .filter(Trade::hasPaymentRequest)
-                .flatMapSingleElement(this::updateTradeTx)
+                .flatMapSingleElement(this::withTradeTx)
                 .filter(t -> t.getFundingTransactionWithAmt() != null)
-                .flatMap(t -> buyerProtocol.cancelFundingTrade(t));
+                .flatMapSingle(buyerProtocol::cancelFundingTrade);
 
-        return Maybe.concat(sellerCancelUnfunded, buyerCancelUnfunded, buyerCancelFunding)
+        return Single.concat(sellerCancelUnfunded, buyerCancelUnfunded, buyerCancelFunding)
                 .lastElement()
                 .flatMapSingleElement(tradeStorage::write)
                 .flatMapSingleElement(tradeService::put);
@@ -300,30 +316,113 @@ public class TradeManager {
     private Maybe<Trade> handleReceivedTrade(String profilePubKey, Trade receivedTrade) {
 
         Single<Trade> currentTrade = tradeStorage.read(receivedTrade.getId())
-                .toSingle(createdFromReceivedTrade(receivedTrade))
+                .toSingle(createdFromReceivedTrade(profilePubKey, receivedTrade))
                 // add role
-                .map(ct -> ct.withRole(profilePubKey))
+                .map(t -> withRole(profilePubKey, t))
                 // add trade tx
-                .flatMap(this::updateTradeTx);
+                .flatMap(this::withTradeTx)
+                // add status
+                .map(this::withStatus);
 
         Single<Trade> updatedReceivedTrade = Single.just(receivedTrade)
-                .map(rt -> rt.withRole(profilePubKey))
+                // add role
+                .map(t -> withRole(profilePubKey, t))
                 // add trade tx
-                .flatMap(this::updateTradeTx)
+                .flatMap(this::withTradeTx)
                 // add status
-                .map(Trade::withStatus);
+                .map(this::withStatus);
 
         return Single.zip(currentTrade, updatedReceivedTrade, this::updateTrade)
                 .flatMapMaybe(t -> t);
     }
 
-    private Trade createdFromReceivedTrade(Trade receivedTrade) {
+    private Trade withRole(String profilePubKey, Trade trade) {
+        trade.setRole(getRole(profilePubKey, trade));
+        return trade;
+    }
+
+    private Trade.Role getRole(String profilePubKey, Trade trade) {
+
+        final Trade.Role role;
+
+        if (SELL.equals(trade.getOffer().getOfferType()) && trade.getMakerProfilePubKey().equals(profilePubKey)) {
+            role = SELLER;
+        } else if (BUY.equals(trade.getOffer().getOfferType()) && trade.getMakerProfilePubKey().equals(profilePubKey)) {
+            role = BUYER;
+        } else if (SELL.equals(trade.getOffer().getOfferType()) && trade.getTakerProfilePubKey().equals(profilePubKey)) {
+            role = BUYER;
+        } else if (BUY.equals(trade.getOffer().getOfferType()) && trade.getTakerProfilePubKey().equals(profilePubKey)) {
+            role = SELLER;
+        } else if (trade.hasConfirmation() && trade.getArbitratorProfilePubKey().equals(profilePubKey)) {
+            role = ARBITRATOR;
+        } else {
+            throw new TradeModelException("Unable to determine trade role.");
+        }
+        return role;
+    }
+
+    private Trade withStatus(Trade trade) {
+        trade.setStatus(getStatus(trade));
+        return trade;
+    }
+
+    private Trade.Status getStatus(Trade trade) {
+
+        Trade.Status status = null;
+        if (trade.hasOffer() && trade.hasTakeOfferRequest()) {
+            status = CREATED;
+        }
+        if (status == CREATED && trade.hasConfirmation()) {
+            status = ACCEPTED;
+        }
+        if (status == ACCEPTED && trade.hasPaymentRequest()) {
+            status = FUNDING;
+        }
+        if (status == FUNDING && trade.getFundingTransactionWithAmt() != null && trade.getFundingTransactionWithAmt().getDepth() > 0) {
+            status = FUNDED;
+        }
+        if (status == FUNDED && trade.hasPayoutRequest()) {
+            status = PAID;
+        }
+        if (status == FUNDED && trade.hasPayoutCompleted() && trade.getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
+            status = COMPLETING;
+        }
+        if (trade.hasArbitrateRequest()) {
+            status = ARBITRATING;
+        }
+        if ((status == PAID || status == ARBITRATING || status == CANCELING) && trade.getPayoutTxHash() != null) {
+            status = COMPLETING;
+        }
+        if (status == COMPLETING && trade.getPayoutTransactionWithAmt() != null && trade.getPayoutTransactionWithAmt().getDepth() > 0) {
+            status = COMPLETED;
+        }
+        if ((status == CREATED || status == ACCEPTED) && trade.hasCancelCompleted() &&
+                (trade.getCancelCompleted().getReason().equals(CancelCompleted.Reason.SELLER_CANCEL_UNFUNDED) ||
+                        trade.getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_UNFUNDED))) {
+            status = CANCELED;
+        }
+        if ((status == FUNDING || status == FUNDED) && trade.hasCancelCompleted() &&
+                trade.getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)) {
+            status = CANCELING;
+        }
+        if (status == CANCELING && trade.getPayoutTransactionWithAmt() != null && trade.getPayoutTransactionWithAmt().getDepth() > 0) {
+            status = CANCELED;
+        }
+
+        if (status == null) {
+            throw new TradeModelException("Unable to determine trade status.");
+        }
+        return status;
+    }
+
+    private Trade createdFromReceivedTrade(String profilePubKey, Trade receivedTrade) {
 
         // TODO validate offer, tradeRequest
 
         return Trade.builder()
                 .id(receivedTrade.getId())
                 .status(CREATED)
+                .role(getRole(profilePubKey, receivedTrade))
                 .createdTimestamp(new Date())
                 .offer(receivedTrade.getOffer())
                 .tradeRequest(receivedTrade.getTradeRequest())
@@ -331,14 +430,23 @@ public class TradeManager {
                 .build();
     }
 
-    private Single<Trade> updateTradeTx(Trade trade) {
+    private Single<Trade> withTradeTx(Trade trade) {
 
         return walletManager.getEscrowTransactionWithAmt(trade.getFundingTxHash())
-                .map(ftx -> trade.copyBuilder().fundingTransactionWithAmt(ftx).build())
+                .map(ftx -> withFundingTransaction(trade, ftx))
                 .toSingle(trade)
                 .flatMap(t -> walletManager.getEscrowTransactionWithAmt(t.getPayoutTxHash())
-                        .map(ptx -> t.copyBuilder().payoutTransactionWithAmt(ptx).build())
-                        .toSingle(t));
+                        .map(ptx -> withPayoutTransaction(t, ptx)).toSingle(t));
+    }
+
+    private Trade withFundingTransaction(Trade trade, TransactionWithAmt ftx) {
+        trade.setFundingTransactionWithAmt(ftx);
+        return trade;
+    }
+
+    private Trade withPayoutTransaction(Trade trade, TransactionWithAmt ptx) {
+        trade.setPayoutTransactionWithAmt(ptx);
+        return trade;
     }
 
     private Maybe<Trade> updateTrade(Trade trade, Trade receivedTrade) {
@@ -393,7 +501,7 @@ public class TradeManager {
                 return Maybe.error(new TradeException("Invalid status, can't update trade"));
         }
 
-        return tradeUpdated.map(Trade::withStatus);
+        return tradeUpdated.map(this::withStatus);
     }
 
     private TradeProtocol getProtocol(Trade trade) {

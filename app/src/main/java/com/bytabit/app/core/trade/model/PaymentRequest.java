@@ -16,7 +16,12 @@
 
 package com.bytabit.app.core.trade.model;
 
+import com.bytabit.app.core.common.HashUtils;
+
+import org.bitcoinj.core.Sha256Hash;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,4 +55,9 @@ public class PaymentRequest {
 
     @NonNull
     private BigDecimal txFeePerKb;
+
+    public Sha256Hash sha256Hash() {
+        return HashUtils.sha256Hash(fundingTxHash, paymentDetails, refundAddress, refundTxSignature,
+                txFeePerKb.setScale(8, RoundingMode.UP));
+    }
 }

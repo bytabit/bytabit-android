@@ -16,7 +16,13 @@
 
 package com.bytabit.app.core.trade.model;
 
+import com.bytabit.app.core.common.HashUtils;
+import com.bytabit.app.core.offer.model.Offer;
+
+import org.bitcoinj.core.Sha256Hash;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,6 +51,11 @@ public class TradeRequest {
 
     @NonNull
     private BigDecimal paymentAmount;
+
+    public Sha256Hash sha256Hash(Offer offer) {
+        return HashUtils.sha256Hash(takerProfilePubKey, takerEscrowPubKey,
+                btcAmount.setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
+    }
 
     @Override
     public boolean equals(Object o) {

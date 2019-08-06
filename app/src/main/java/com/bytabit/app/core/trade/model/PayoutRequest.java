@@ -16,6 +16,10 @@
 
 package com.bytabit.app.core.trade.model;
 
+import com.bytabit.app.core.common.HashUtils;
+
+import org.bitcoinj.core.Sha256Hash;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -42,4 +46,8 @@ public class PayoutRequest {
 
     @NonNull
     private String payoutTxSignature;
+
+    public Sha256Hash getHash() {
+        return HashUtils.sha256Hash(paymentReference, payoutAddress, payoutTxSignature);
+    }
 }

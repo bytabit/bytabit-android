@@ -21,16 +21,24 @@ import com.bytabit.app.core.arbitrate.manager.ArbitratorManager;
 import com.bytabit.app.core.common.HashUtils;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.trade.model.ArbitrateRequest;
+import com.bytabit.app.core.trade.model.CancelCompleted;
+import com.bytabit.app.core.trade.model.PaymentRequest;
+import com.bytabit.app.core.trade.model.PayoutCompleted;
+import com.bytabit.app.core.trade.model.PayoutRequest;
 import com.bytabit.app.core.trade.model.Trade;
+import com.bytabit.app.core.trade.model.TradeAcceptance;
 import com.bytabit.app.core.trade.model.TradeRequest;
 import com.bytabit.app.core.wallet.manager.WalletManager;
 
 import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Sha256Hash;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Date;
 
 import io.reactivex.Maybe;
+import io.reactivex.Single;
 import lombok.NonNull;
 
 abstract class TradeProtocol {
@@ -51,6 +59,31 @@ abstract class TradeProtocol {
     // CREATED, ACCEPTED, *FUNDING*, FUNDED, PAID, *COMPLETING*, COMPLETED, ARBITRATING
 
     abstract Maybe<Trade> handleCreated(Trade trade, Trade receivedTrade);
+
+    Single<Trade> createTrade(Offer offer, Trade.Role role, BigDecimal btcAmount, String takerProfilePubKey, String takerEscrowPubKey) {
+
+        BigDecimal paymentAmount = btcAmount.setScale(8, RoundingMode.UP)
+                .multiply(offer.getPrice())
+                .setScale(offer.getCurrencyCode().getScale(), RoundingMode.UP);
+
+        TradeRequest tradeRequest = TradeRequest.builder()
+                .takerProfilePubKey(takerProfilePubKey)
+                .takerEscrowPubKey(takerEscrowPubKey)
+                .btcAmount(btcAmount)
+                .paymentAmount(paymentAmount)
+                .build();
+
+        Trade trade = Trade.builder()
+                .id(getTradeId(offer, tradeRequest))
+                .role(role)
+                .status(Trade.Status.CREATED)
+                .createdTimestamp(new Date())
+                .offer(offer)
+                .tradeRequest(tradeRequest)
+                .build();
+
+        return Single.just(trade);
+    }
 
     Maybe<Trade> handleAccepted(Trade trade, Trade receivedTrade) {
 
@@ -101,7 +134,7 @@ abstract class TradeProtocol {
         return updatedTrade;
     }
 
-    Maybe<Trade> requestArbitrate(Trade trade) {
+    Single<Trade> requestArbitrate(Trade trade) {
 
         ArbitrateRequest.Reason reason;
         if (trade.getRole().equals(Trade.Role.SELLER)) {
@@ -109,13 +142,12 @@ abstract class TradeProtocol {
         } else if (trade.getRole().equals(Trade.Role.BUYER)) {
             reason = ArbitrateRequest.Reason.NO_BTC;
         } else {
-            return Maybe.error(new TradeException("Invalid role, can't request arbitrate"));
+            return Single.error(new TradeException("Invalid role, can't request arbitrate"));
         }
 
-        ArbitrateRequest arbitrateRequest = new ArbitrateRequest(reason);
+        ArbitrateRequest arbitrateRequest = ArbitrateRequest.builder().reason(reason).build();
 
-        return Maybe.just(trade)
-                .map(t -> t.copyBuilder().arbitrateRequest(arbitrateRequest).build().withStatus());
+        return Single.just(trade.copyBuilder().arbitrateRequest(arbitrateRequest).build());
     }
 
     Maybe<Trade> handleCompleting(Trade trade) {
@@ -146,17 +178,66 @@ abstract class TradeProtocol {
         return Maybe.empty();
     }
 
-    // Use Hex encoded Sha256 Hash of Offer.id and TakeOfferRequest properties
-    public String getId(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
-        Sha256Hash sha256Hash = sha256Hash(offer, tradeRequest);
+    // Use Hex encoded Sha256 Hash of Offer and TradeRequest hash properties
+    public String getTradeId(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
+
+        Sha256Hash sha256Hash = getTradeRequestSignedHash(offer, tradeRequest);
+
         return Base58.encode(sha256Hash.getBytes());
     }
 
-    public Sha256Hash sha256Hash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
+    protected Sha256Hash getTradeRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer));
+    }
 
-        return HashUtils.sha256Hash(offer.getId(), tradeRequest.getTakerProfilePubKey(),
-                tradeRequest.getTakerEscrowPubKey(),
-                tradeRequest.getBtcAmount().setScale(8, RoundingMode.HALF_UP),
-                tradeRequest.getPaymentAmount().setScale(offer.getCurrencyCode().getScale(), RoundingMode.HALF_UP));
+    protected Sha256Hash getTradeAcceptanceSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
+                                                      @NonNull TradeAcceptance tradeAcceptance) {
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
+                tradeAcceptance.sha256Hash());
+    }
+
+    protected Sha256Hash getPaymentRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
+                                                     @NonNull TradeAcceptance tradeAcceptance,
+                                                     @NonNull PaymentRequest paymentRequest) {
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
+                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash());
+    }
+
+    protected Sha256Hash getPayoutRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
+                                                    @NonNull TradeAcceptance tradeAcceptance,
+                                                    @NonNull PaymentRequest paymentRequest,
+                                                    @NonNull PayoutRequest payoutRequest) {
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
+                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), payoutRequest.getHash());
+    }
+
+    protected Sha256Hash getPayoutCompletedSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
+                                                      @NonNull TradeAcceptance tradeAcceptance,
+                                                      @NonNull PaymentRequest paymentRequest,
+                                                      @NonNull PayoutRequest payoutRequest,
+                                                      @NonNull PayoutCompleted payoutCompleted) {
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
+                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), payoutRequest.getHash(),
+                payoutCompleted.sha256Hash());
+    }
+
+    protected Sha256Hash getArbitrateRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
+                                                       @NonNull TradeAcceptance tradeAcceptance,
+                                                       @NonNull PaymentRequest paymentRequest,
+                                                       PayoutRequest payoutRequest,
+                                                       @NonNull ArbitrateRequest arbitrateRequest) {
+
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
+                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), payoutRequest.getHash(),
+                arbitrateRequest.sha256Hash());
+    }
+
+    protected Sha256Hash getCancelCompletedSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
+                                                      TradeAcceptance tradeAcceptance,
+                                                      PaymentRequest paymentRequest,
+                                                      @NonNull CancelCompleted cancelCompleted) {
+
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
+                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), cancelCompleted.sha256Hash());
     }
 }

@@ -61,7 +61,7 @@ public class ArbitratorProtocol extends TradeProtocol {
                 tradeBuilder.payoutRequest(receivedTrade.getPayoutRequest());
             }
 
-            updatedTrade = Maybe.just(tradeBuilder.build().withStatus());
+            updatedTrade = Maybe.just(tradeBuilder.build());
         }
 
         return updatedTrade;
@@ -97,7 +97,7 @@ public class ArbitratorProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = refundTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_SELLER_REFUND));
 
         // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
     }
 
     Maybe<Trade> payoutBuyer(Trade trade) {
@@ -116,6 +116,6 @@ public class ArbitratorProtocol extends TradeProtocol {
         Maybe<PayoutCompleted> payoutCompleted = payoutTxHash.map(ph -> new PayoutCompleted(ph, PayoutCompleted.Reason.ARBITRATOR_BUYER_PAYOUT));
 
         // 5. post payout completed
-        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build().withStatus());
+        return payoutCompleted.map(pc -> trade.copyBuilder().payoutCompleted(pc).build());
     }
 }
