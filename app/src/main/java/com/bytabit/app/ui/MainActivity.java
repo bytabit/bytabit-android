@@ -17,7 +17,10 @@
 package com.bytabit.app.ui;
 
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
@@ -220,6 +223,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             fragment = badgeListFragment;
         } else if (id == R.id.nav_help) {
             Toast.makeText(MainActivity.this, getResources().getText(R.string.menu_help), Toast.LENGTH_SHORT).show();
+            try {
+                Intent startTelegram = new Intent(Intent.ACTION_VIEW, Uri.parse("tg://resolve?domain=bytabit"));
+                startActivity(startTelegram);
+            } catch (ActivityNotFoundException anf) {
+                // https://play.google.com/store/apps/details?id=org.telegram.messenger
+                Intent installTelegram = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.telegram.messenger"));
+                startActivity(installTelegram);
+            }
         }
 
         if (fragment != null) {
