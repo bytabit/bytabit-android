@@ -284,33 +284,25 @@ public class TradeManager {
                 .flatMapSingleElement(tradeService::put);
     }
 
-    public Maybe<Trade> cancelTrade() {
+    public Single<Trade> cancelTrade() {
 
         Single<Trade> trade = getSelectedTrade().firstOrError();
 
-        Single<Trade> sellerCancelUnfunded = trade
-                .filter(t -> t.getRole().compareTo(SELLER) == 0)
-                .filter(t -> !t.hasPaymentRequest())
-                .flatMapSingle(sellerProtocol::cancelUnfundedTrade)
-                .map(this::withStatus);
+        Single<Trade> canceledTrade = trade.flatMap(t -> {
 
-        Single<Trade> buyerCancelUnfunded = trade
-                .filter(t -> t.getRole().compareTo(BUYER) == 0)
-                .filter(t -> !t.hasPaymentRequest())
-                .flatMapSingle(buyerProtocol::cancelUnfundedTrade)
-                .map(this::withStatus);
+            if (t.getRole().compareTo(SELLER) == 0 && !t.hasPaymentRequest()) {
+                return sellerProtocol.cancelUnfundedTrade(t);
+            } else if (t.getRole().compareTo(BUYER) == 0 && !t.hasPaymentRequest()) {
+                return buyerProtocol.cancelUnfundedTrade(t);
+            } else if (t.getRole().compareTo(BUYER) == 0 && t.hasPaymentRequest()) {
+                return withTradeTx(t).filter(t2 -> t2.getFundingTransactionWithAmt() != null)
+                        .flatMapSingle(buyerProtocol::cancelFundingTrade);
+            } else {
+                return Single.error(new TradeException("Can't cancel trade."));
+            }
+        });
 
-        Single<Trade> buyerCancelFunding = trade
-                .filter(t -> t.getRole().compareTo(BUYER) == 0)
-                .filter(Trade::hasPaymentRequest)
-                .flatMapSingleElement(this::withTradeTx)
-                .filter(t -> t.getFundingTransactionWithAmt() != null)
-                .flatMapSingle(buyerProtocol::cancelFundingTrade);
-
-        return Single.concat(sellerCancelUnfunded, buyerCancelUnfunded, buyerCancelFunding)
-                .lastElement()
-                .flatMapSingleElement(tradeStorage::write)
-                .flatMapSingleElement(tradeService::put);
+        return canceledTrade.flatMap(tradeStorage::write).flatMap(tradeService::put);
     }
 
     private Maybe<Trade> handleReceivedTrade(String profilePubKey, Trade receivedTrade) {
@@ -353,7 +345,7 @@ public class TradeManager {
             role = BUYER;
         } else if (BUY.equals(trade.getOffer().getOfferType()) && trade.getTakerProfilePubKey().equals(profilePubKey)) {
             role = SELLER;
-        } else if (trade.hasConfirmation() && trade.getArbitratorProfilePubKey().equals(profilePubKey)) {
+        } else if (trade.hasAcceptance() && trade.getArbitratorProfilePubKey().equals(profilePubKey)) {
             role = ARBITRATOR;
         } else {
             throw new TradeModelException("Unable to determine trade role.");
@@ -372,7 +364,7 @@ public class TradeManager {
         if (trade.hasOffer() && trade.hasTakeOfferRequest()) {
             status = CREATED;
         }
-        if (status == CREATED && trade.hasConfirmation()) {
+        if (status == CREATED && trade.hasAcceptance()) {
             status = ACCEPTED;
         }
         if (status == ACCEPTED && trade.hasPaymentRequest()) {

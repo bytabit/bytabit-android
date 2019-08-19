@@ -83,7 +83,7 @@ public class SellerProtocol extends TradeProtocol {
         if (receivedTrade.hasCancelCompleted()) {
             tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
-        } else if (BUY.equals(trade.getOffer().getOfferType()) && receivedTrade.hasConfirmation()) {
+        } else if (BUY.equals(trade.getOffer().getOfferType()) && receivedTrade.hasAcceptance()) {
             tradeBuilder.tradeAcceptance(receivedTrade.getTradeAcceptance());
             updatedTrade = Maybe.just(tradeBuilder.build())
                     .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getTradeAcceptance().getEscrowAddress()).map(ea -> confirmedTrade));

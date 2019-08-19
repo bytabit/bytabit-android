@@ -48,7 +48,7 @@ public class ArbitratorProtocol extends TradeProtocol {
             Trade.TradeBuilder tradeBuilder = trade.copyBuilder().version(receivedTrade.getVersion())
                     .arbitrateRequest(receivedTrade.getArbitrateRequest());
 
-            if (receivedTrade.hasConfirmation()) {
+            if (receivedTrade.hasAcceptance()) {
                 tradeBuilder.tradeAcceptance(receivedTrade.getTradeAcceptance());
                 walletManager.watchNewEscrowAddressAndResetBlockchain(trade.getTradeAcceptance().getEscrowAddress());
             }

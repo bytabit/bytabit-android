@@ -47,7 +47,7 @@ public class PayoutRequest {
     @NonNull
     private String payoutTxSignature;
 
-    public Sha256Hash getHash() {
+    public Sha256Hash sha256Hash() {
         return HashUtils.sha256Hash(paymentReference, payoutAddress, payoutTxSignature);
     }
 }

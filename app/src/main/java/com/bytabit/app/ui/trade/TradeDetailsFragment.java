@@ -222,7 +222,7 @@ public class TradeDetailsFragment extends Fragment {
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnNext(v -> disableEditorAndButtons())
                 .observeOn(Schedulers.io())
-                .flatMapMaybe(v -> tradeManager.flatMapMaybe(TradeManager::cancelTrade))
+                .flatMapSingle(v -> tradeManager.flatMap(TradeManager::cancelTrade))
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnError(this::showError).retry()

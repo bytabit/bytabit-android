@@ -75,7 +75,7 @@ public class BuyerProtocol extends TradeProtocol {
         if (receivedTrade.hasCancelCompleted()) {
             tradeBuilder.cancelCompleted(receivedTrade.getCancelCompleted());
             updatedTrade = Maybe.just(tradeBuilder.build());
-        } else if (SELL.equals(trade.getOffer().getOfferType()) && receivedTrade.hasConfirmation()) {
+        } else if (SELL.equals(trade.getOffer().getOfferType()) && receivedTrade.hasAcceptance()) {
             tradeBuilder.tradeAcceptance(receivedTrade.getTradeAcceptance());
             updatedTrade = Maybe.just(tradeBuilder.build())
                     .flatMap(confirmedTrade -> walletManager.watchNewEscrowAddress(confirmedTrade.getTradeAcceptance().getEscrowAddress()).map(ea -> confirmedTrade));
@@ -154,22 +154,12 @@ public class BuyerProtocol extends TradeProtocol {
                 trade.getRefundAddress(), trade.getRefundTxSignature(), ARBITRATOR.equals(trade.getRole())).toSingle();
 
         // 2. confirm refund tx and create cancel completed
-        Single<CancelCompleted> cancelCompleted = refundTxHash.map(ph -> CancelCompleted.builder().build());
+        Single<CancelCompleted> cancelCompleted = refundTxHash.map(ph -> CancelCompleted.builder()
+                .payoutTxHash(ph)
+                .reason(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)
+                .build());
 
         // 5. post cancel completed
         return cancelCompleted.map(pc -> trade.copyBuilder().cancelCompleted(pc).build());
-    }
-
-    Maybe<Trade> handleCanceled(Trade trade, Trade receivedTrade) {
-
-        Maybe<Trade> updatedTrade = Maybe.error(new TradeException("Unable to cancel trade."));
-
-        if (trade.getCancelCompleted().getPayoutTxHash() == null
-                && !trade.hasPayoutRequest()
-                && receivedTrade.hasPaymentRequest()) {
-            updatedTrade = cancelFundingTrade(trade).toMaybe();
-        }
-
-        return updatedTrade;
     }
 }

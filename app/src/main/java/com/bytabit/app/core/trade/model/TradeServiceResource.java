@@ -37,45 +37,6 @@ public class TradeServiceResource {
 
     private Boolean arbitrate;
 
-    private TradeResource trade;
+    private SignedTrade trade;
 
-    public static Trade toTrade(TradeServiceResource receivedTradeServiceResource) {
-
-        return toTradeBuilder(receivedTradeServiceResource).build();
-    }
-
-    public static Trade toTrade(TradeServiceResource receivedTradeServiceResource, Trade trade) {
-
-        return toTradeBuilder(receivedTradeServiceResource)
-                .createdTimestamp(trade.getCreatedTimestamp())
-                .role(trade.getRole())
-                .status(trade.getStatus())
-                .build();
-    }
-
-    private static Trade.TradeBuilder toTradeBuilder(TradeServiceResource receivedTradeServiceResource) {
-
-        return Trade.builder()
-                .id(receivedTradeServiceResource.getTrade().getId())
-                .version(receivedTradeServiceResource.getVersion())
-                .offer(receivedTradeServiceResource.getTrade().getOffer())
-                .tradeRequest(receivedTradeServiceResource.getTrade().getTradeRequest())
-                .tradeAcceptance(receivedTradeServiceResource.getTrade().getTradeAcceptance())
-                .paymentRequest(receivedTradeServiceResource.getTrade().getPaymentRequest())
-                .payoutRequest(receivedTradeServiceResource.getTrade().getPayoutRequest())
-                .arbitrateRequest(receivedTradeServiceResource.getTrade().getArbitrateRequest())
-                .cancelCompleted(receivedTradeServiceResource.getTrade().getCancelCompleted())
-                .payoutCompleted(receivedTradeServiceResource.getTrade().getPayoutCompleted());
-    }
-
-    public static TradeServiceResource fromTrade(Trade t) {
-
-        TradeServiceResourceBuilder builder = TradeServiceResource.builder()
-                .version(t.getVersion())
-                .offerId(t.getOffer().getId())
-                .arbitrate(t.hasArbitrateRequest())
-                .trade(TradeResource.fromTrade(t));
-
-        return builder.build();
-    }
 }

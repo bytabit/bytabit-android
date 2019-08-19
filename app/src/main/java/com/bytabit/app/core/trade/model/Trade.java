@@ -16,11 +16,14 @@
 
 package com.bytabit.app.core.trade.model;
 
+import com.bytabit.app.core.common.HashUtils;
 import com.bytabit.app.core.common.file.Entity;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;
 import com.bytabit.app.core.wallet.model.TransactionWithAmt;
+
+import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,19 +31,33 @@ import java.util.Date;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.NonNull;
-import lombok.Setter;
 import lombok.ToString;
 
 import static com.bytabit.app.core.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.app.core.offer.model.Offer.OfferType.SELL;
+import static com.bytabit.app.core.trade.model.Trade.Role.ARBITRATOR;
+import static com.bytabit.app.core.trade.model.Trade.Role.BUYER;
+import static com.bytabit.app.core.trade.model.Trade.Role.SELLER;
+import static com.bytabit.app.core.trade.model.Trade.Status.ACCEPTED;
+import static com.bytabit.app.core.trade.model.Trade.Status.ARBITRATING;
+import static com.bytabit.app.core.trade.model.Trade.Status.CANCELED;
+import static com.bytabit.app.core.trade.model.Trade.Status.CANCELING;
+import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETED;
+import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETING;
+import static com.bytabit.app.core.trade.model.Trade.Status.CREATED;
+import static com.bytabit.app.core.trade.model.Trade.Status.FUNDED;
+import static com.bytabit.app.core.trade.model.Trade.Status.FUNDING;
+import static com.bytabit.app.core.trade.model.Trade.Status.PAID;
 
+@NoArgsConstructor
 @AllArgsConstructor
-@Getter
+@Data
+@EqualsAndHashCode(callSuper = false)
 @Builder
-@EqualsAndHashCode
 @ToString
 public class Trade implements Entity {
 
@@ -66,34 +83,31 @@ public class Trade implements Entity {
         }
     }
 
-    @Setter
     @EqualsAndHashCode.Include
     @NonNull
     private String id;
 
     @EqualsAndHashCode.Exclude
     @Builder.Default
-    private final Long version = 0L;
+    private Long version = 0L;
 
-    @Setter
     @EqualsAndHashCode.Exclude
-    transient private Status status;
+    private Status status;
 
-    @Setter
     @EqualsAndHashCode.Exclude
-    transient private Role role;
-
-    private final Date createdTimestamp;
+    private Role role;
 
     @NonNull
-    private final Offer offer;
+    private Date createdTimestamp;
 
     @NonNull
-    private final TradeRequest tradeRequest;
+    private Offer offer;
 
-    private final TradeAcceptance tradeAcceptance;
+    @NonNull
+    private TradeRequest tradeRequest;
 
-    @Setter
+    private TradeAcceptance tradeAcceptance;
+
     @EqualsAndHashCode.Exclude
     transient private TransactionWithAmt fundingTransactionWithAmt;
 
@@ -103,13 +117,87 @@ public class Trade implements Entity {
 
     private ArbitrateRequest arbitrateRequest;
 
-    @Setter
     @EqualsAndHashCode.Exclude
     transient private TransactionWithAmt payoutTransactionWithAmt;
 
     private CancelCompleted cancelCompleted;
 
     private PayoutCompleted payoutCompleted;
+
+    // Status
+
+    public Trade updateStatus() {
+
+        Trade.Status newStatus = null;
+        if (hasOffer() && hasTakeOfferRequest()) {
+            newStatus = CREATED;
+        }
+        if (newStatus == CREATED && hasAcceptance()) {
+            newStatus = ACCEPTED;
+        }
+        if (newStatus == ACCEPTED && hasPaymentRequest()) {
+            newStatus = FUNDING;
+        }
+        if (newStatus == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {
+            newStatus = FUNDED;
+        }
+        if (newStatus == FUNDED && hasPayoutRequest()) {
+            newStatus = PAID;
+        }
+        if (newStatus == FUNDED && hasPayoutCompleted() && getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
+            newStatus = COMPLETING;
+        }
+        if (hasArbitrateRequest()) {
+            newStatus = ARBITRATING;
+        }
+        if ((newStatus == PAID || newStatus == ARBITRATING || newStatus == CANCELING) && getPayoutTxHash() != null) {
+            newStatus = COMPLETING;
+        }
+        if (newStatus == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
+            newStatus = COMPLETED;
+        }
+        if ((newStatus == CREATED || newStatus == ACCEPTED) && hasCancelCompleted() &&
+                (getCancelCompleted().getReason().equals(CancelCompleted.Reason.SELLER_CANCEL_UNFUNDED) ||
+                        getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_UNFUNDED))) {
+            newStatus = CANCELED;
+        }
+        if ((newStatus == FUNDING || newStatus == FUNDED) && hasCancelCompleted() &&
+                getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)) {
+            newStatus = CANCELING;
+        }
+        if (newStatus == CANCELING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
+            newStatus = CANCELED;
+        }
+
+        if (newStatus == null) {
+            throw new TradeModelException("Unable to determine trade status.");
+        }
+        this.status = newStatus;
+        return this;
+    }
+
+    // Role
+
+    private Trade updateRole(String profilePubKey) {
+
+        final Trade.Role newRole;
+
+        if (SELL.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
+            newRole = SELLER;
+        } else if (BUY.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
+            newRole = BUYER;
+        } else if (SELL.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
+            newRole = BUYER;
+        } else if (BUY.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
+            newRole = SELLER;
+        } else if (hasAcceptance() && getArbitratorProfilePubKey().equals(profilePubKey)) {
+            newRole = ARBITRATOR;
+        } else {
+            throw new TradeModelException("Unable to determine trade role.");
+        }
+        this.role = newRole;
+        return this;
+    }
 
     // Offer
 
@@ -197,12 +285,12 @@ public class Trade implements Entity {
 
     // Confirmation
 
-    public boolean hasConfirmation() {
+    public boolean hasAcceptance() {
         return tradeAcceptance != null;
     }
 
     public String getMakerEscrowPubKey() {
-        if (hasConfirmation()) {
+        if (hasAcceptance()) {
             return tradeAcceptance.getMakerEscrowPubKey();
         } else {
             return null;
@@ -210,7 +298,7 @@ public class Trade implements Entity {
     }
 
     public String getArbitratorProfilePubKey() {
-        if (hasConfirmation()) {
+        if (hasAcceptance()) {
             return tradeAcceptance.getArbitratorProfilePubKey();
         } else {
             return null;
@@ -384,5 +472,16 @@ public class Trade implements Entity {
                 .payoutTransactionWithAmt(this.payoutTransactionWithAmt)
                 .payoutCompleted(this.payoutCompleted)
                 .cancelCompleted(this.cancelCompleted);
+    }
+
+    public Sha256Hash sha256Hash() {
+
+        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
+                hasAcceptance() ? tradeAcceptance.sha256Hash() : null,
+                hasPaymentRequest() ? paymentRequest.sha256Hash() : null,
+                hasPayoutRequest() ? payoutRequest.sha256Hash() : null,
+                hasArbitrateRequest() ? arbitrateRequest.sha256Hash() : null,
+                hasPayoutCompleted() ? payoutCompleted.sha256Hash() : null,
+                hasCancelCompleted() ? cancelCompleted.sha256Hash() : null);
     }
 }

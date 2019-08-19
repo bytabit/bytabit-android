@@ -21,21 +21,16 @@ import com.bytabit.app.core.arbitrate.manager.ArbitratorManager;
 import com.bytabit.app.core.common.HashUtils;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.trade.model.ArbitrateRequest;
-import com.bytabit.app.core.trade.model.CancelCompleted;
-import com.bytabit.app.core.trade.model.PaymentRequest;
-import com.bytabit.app.core.trade.model.PayoutCompleted;
-import com.bytabit.app.core.trade.model.PayoutRequest;
 import com.bytabit.app.core.trade.model.Trade;
-import com.bytabit.app.core.trade.model.TradeAcceptance;
 import com.bytabit.app.core.trade.model.TradeRequest;
 import com.bytabit.app.core.wallet.manager.WalletManager;
 
-import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
+import java.util.UUID;
 
 import io.reactivex.Maybe;
 import io.reactivex.Single;
@@ -178,66 +173,13 @@ abstract class TradeProtocol {
         return Maybe.empty();
     }
 
-    // Use Hex encoded Sha256 Hash of Offer and TradeRequest hash properties
     public String getTradeId(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
 
-        Sha256Hash sha256Hash = getTradeRequestSignedHash(offer, tradeRequest);
-
-        return Base58.encode(sha256Hash.getBytes());
+        UUID uuid = UUID.randomUUID();
+        return uuid.toString();
     }
 
     protected Sha256Hash getTradeRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest) {
         return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer));
-    }
-
-    protected Sha256Hash getTradeAcceptanceSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
-                                                      @NonNull TradeAcceptance tradeAcceptance) {
-        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
-                tradeAcceptance.sha256Hash());
-    }
-
-    protected Sha256Hash getPaymentRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
-                                                     @NonNull TradeAcceptance tradeAcceptance,
-                                                     @NonNull PaymentRequest paymentRequest) {
-        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
-                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash());
-    }
-
-    protected Sha256Hash getPayoutRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
-                                                    @NonNull TradeAcceptance tradeAcceptance,
-                                                    @NonNull PaymentRequest paymentRequest,
-                                                    @NonNull PayoutRequest payoutRequest) {
-        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
-                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), payoutRequest.getHash());
-    }
-
-    protected Sha256Hash getPayoutCompletedSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
-                                                      @NonNull TradeAcceptance tradeAcceptance,
-                                                      @NonNull PaymentRequest paymentRequest,
-                                                      @NonNull PayoutRequest payoutRequest,
-                                                      @NonNull PayoutCompleted payoutCompleted) {
-        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
-                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), payoutRequest.getHash(),
-                payoutCompleted.sha256Hash());
-    }
-
-    protected Sha256Hash getArbitrateRequestSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
-                                                       @NonNull TradeAcceptance tradeAcceptance,
-                                                       @NonNull PaymentRequest paymentRequest,
-                                                       PayoutRequest payoutRequest,
-                                                       @NonNull ArbitrateRequest arbitrateRequest) {
-
-        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
-                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), payoutRequest.getHash(),
-                arbitrateRequest.sha256Hash());
-    }
-
-    protected Sha256Hash getCancelCompletedSignedHash(@NonNull Offer offer, @NonNull TradeRequest tradeRequest,
-                                                      TradeAcceptance tradeAcceptance,
-                                                      PaymentRequest paymentRequest,
-                                                      @NonNull CancelCompleted cancelCompleted) {
-
-        return HashUtils.sha256Hash(offer.sha256Hash(), tradeRequest.sha256Hash(offer),
-                tradeAcceptance.sha256Hash(), paymentRequest.sha256Hash(), cancelCompleted.sha256Hash());
     }
 }

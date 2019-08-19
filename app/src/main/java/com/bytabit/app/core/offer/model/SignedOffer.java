@@ -36,7 +36,7 @@ public class SignedOffer extends Offer {
     private String signature;
 
     @Builder(builderMethodName = "signedBuilder")
-    public SignedOffer(String id, @NonNull OfferType offerType, @NonNull String makerProfilePubKey,
+    public SignedOffer(@NonNull String id, @NonNull OfferType offerType, @NonNull String makerProfilePubKey,
                        @NonNull CurrencyCode currencyCode, @NonNull PaymentMethod paymentMethod,
                        @NonNull BigDecimal minAmount, @NonNull BigDecimal maxAmount,
                        @NonNull BigDecimal price, Boolean isMine, @NonNull String signature) {
