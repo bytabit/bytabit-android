@@ -21,18 +21,15 @@ import com.bytabit.app.core.common.file.Entity;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;
 
-import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
 
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.ToString;
@@ -66,7 +63,7 @@ public class Badge implements Entity {
         }
     }
 
-    @Getter(AccessLevel.NONE)
+    @NonNull
     private String id;
 
     @NonNull
@@ -86,13 +83,6 @@ public class Badge implements Entity {
     private PaymentMethod paymentMethod;
 
     private String detailsHash;
-
-    public String getId() {
-        if (id == null) {
-            id = Base58.encode(sha256Hash().getBytes());
-        }
-        return id;
-    }
 
     public Sha256Hash sha256Hash() {
 

@@ -31,6 +31,8 @@ import lombok.ToString;
 @ToString
 public class TradeServiceResource {
 
+    private transient String id;
+
     private Long version;
 
     private String offerId;

@@ -29,6 +29,7 @@ import org.bitcoinj.core.Sha256Hash;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
@@ -57,15 +58,9 @@ public class TradeService extends RetrofitService {
     Single<SignedTrade> put(Trade trade) {
 
         Single<SignedTrade> signedTrade = signTrade(trade);
-        Single<TradeServiceResource> tradeServiceResource =
-                signedTrade.map(t -> TradeServiceResource.builder()
-                        .version(t.getVersion())
-                        .offerId(t.getOffer().getId())
-                        .arbitrate(t.hasArbitrateRequest())
-                        .trade(t)
-                        .build());
+        Single<TradeServiceResource> tradeServiceResource = signedTrade.map(this::toTradeServiceResource);
 
-        return tradeServiceResource.flatMap(tsr -> tradeServiceApi.put(trade.getId(), tsr))
+        return tradeServiceResource.flatMap(tsr -> tradeServiceApi.put(tsr.getId(), tsr))
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("put error: {}", t.getMessage()))
                 .map(this::toSignedTrade)
@@ -119,7 +114,31 @@ public class TradeService extends RetrofitService {
                         .toList());
     }
 
+    private TradeServiceResource toTradeServiceResource(SignedTrade signedTrade) {
+
+        // TODO encrypt signedTrade
+
+        TradeServiceResource tradeServiceResource;
+        if (signedTrade.hasTakeOfferRequest() && !signedTrade.hasAcceptance()) {
+            tradeServiceResource = TradeServiceResource.builder()
+                    .id(UUID.randomUUID().toString())
+                    .offerId(signedTrade.getOffer().getId())
+                    .trade(signedTrade)
+                    .build();
+        } else {
+            tradeServiceResource = TradeServiceResource.builder()
+                    .id(signedTrade.getId())
+                    .arbitrate(signedTrade.hasArbitrateRequest())
+                    .trade(signedTrade)
+                    .build();
+        }
+        return tradeServiceResource;
+    }
+
     private SignedTrade toSignedTrade(TradeServiceResource tradeServiceResource) {
+
+        // TODO decrypt signedTrade
+
         SignedTrade signedTrade = tradeServiceResource.getTrade();
         signedTrade.setVersion(tradeServiceResource.getVersion());
         return signedTrade;

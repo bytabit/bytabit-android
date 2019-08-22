@@ -39,19 +39,6 @@ import lombok.ToString;
 
 import static com.bytabit.app.core.offer.model.Offer.OfferType.BUY;
 import static com.bytabit.app.core.offer.model.Offer.OfferType.SELL;
-import static com.bytabit.app.core.trade.model.Trade.Role.ARBITRATOR;
-import static com.bytabit.app.core.trade.model.Trade.Role.BUYER;
-import static com.bytabit.app.core.trade.model.Trade.Role.SELLER;
-import static com.bytabit.app.core.trade.model.Trade.Status.ACCEPTED;
-import static com.bytabit.app.core.trade.model.Trade.Status.ARBITRATING;
-import static com.bytabit.app.core.trade.model.Trade.Status.CANCELED;
-import static com.bytabit.app.core.trade.model.Trade.Status.CANCELING;
-import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETED;
-import static com.bytabit.app.core.trade.model.Trade.Status.COMPLETING;
-import static com.bytabit.app.core.trade.model.Trade.Status.CREATED;
-import static com.bytabit.app.core.trade.model.Trade.Status.FUNDED;
-import static com.bytabit.app.core.trade.model.Trade.Status.FUNDING;
-import static com.bytabit.app.core.trade.model.Trade.Status.PAID;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -123,81 +110,6 @@ public class Trade implements Entity {
     private CancelCompleted cancelCompleted;
 
     private PayoutCompleted payoutCompleted;
-
-    // Status
-
-    public Trade updateStatus() {
-
-        Trade.Status newStatus = null;
-        if (hasOffer() && hasTakeOfferRequest()) {
-            newStatus = CREATED;
-        }
-        if (newStatus == CREATED && hasAcceptance()) {
-            newStatus = ACCEPTED;
-        }
-        if (newStatus == ACCEPTED && hasPaymentRequest()) {
-            newStatus = FUNDING;
-        }
-        if (newStatus == FUNDING && getFundingTransactionWithAmt() != null && getFundingTransactionWithAmt().getDepth() > 0) {
-            newStatus = FUNDED;
-        }
-        if (newStatus == FUNDED && hasPayoutRequest()) {
-            newStatus = PAID;
-        }
-        if (newStatus == FUNDED && hasPayoutCompleted() && getPayoutCompleted().getReason().equals(PayoutCompleted.Reason.BUYER_SELLER_REFUND)) {
-            newStatus = COMPLETING;
-        }
-        if (hasArbitrateRequest()) {
-            newStatus = ARBITRATING;
-        }
-        if ((newStatus == PAID || newStatus == ARBITRATING || newStatus == CANCELING) && getPayoutTxHash() != null) {
-            newStatus = COMPLETING;
-        }
-        if (newStatus == COMPLETING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
-            newStatus = COMPLETED;
-        }
-        if ((newStatus == CREATED || newStatus == ACCEPTED) && hasCancelCompleted() &&
-                (getCancelCompleted().getReason().equals(CancelCompleted.Reason.SELLER_CANCEL_UNFUNDED) ||
-                        getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_UNFUNDED))) {
-            newStatus = CANCELED;
-        }
-        if ((newStatus == FUNDING || newStatus == FUNDED) && hasCancelCompleted() &&
-                getCancelCompleted().getReason().equals(CancelCompleted.Reason.BUYER_CANCEL_FUNDED)) {
-            newStatus = CANCELING;
-        }
-        if (newStatus == CANCELING && getPayoutTransactionWithAmt() != null && getPayoutTransactionWithAmt().getDepth() > 0) {
-            newStatus = CANCELED;
-        }
-
-        if (newStatus == null) {
-            throw new TradeModelException("Unable to determine trade status.");
-        }
-        this.status = newStatus;
-        return this;
-    }
-
-    // Role
-
-    private Trade updateRole(String profilePubKey) {
-
-        final Trade.Role newRole;
-
-        if (SELL.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
-            newRole = SELLER;
-        } else if (BUY.equals(getOffer().getOfferType()) && getMakerProfilePubKey().equals(profilePubKey)) {
-            newRole = BUYER;
-        } else if (SELL.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
-            newRole = BUYER;
-        } else if (BUY.equals(getOffer().getOfferType()) && getTakerProfilePubKey().equals(profilePubKey)) {
-            newRole = SELLER;
-        } else if (hasAcceptance() && getArbitratorProfilePubKey().equals(profilePubKey)) {
-            newRole = ARBITRATOR;
-        } else {
-            throw new TradeModelException("Unable to determine trade role.");
-        }
-        this.role = newRole;
-        return this;
-    }
 
     // Offer
 

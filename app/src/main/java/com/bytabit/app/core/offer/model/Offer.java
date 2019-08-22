@@ -21,18 +21,15 @@ import com.bytabit.app.core.common.file.Entity;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;
 
-import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Sha256Hash;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 
@@ -48,7 +45,7 @@ public class Offer implements Entity {
         SELL
     }
 
-    @Getter(AccessLevel.NONE)
+    @NonNull
     private String id;
 
     @NonNull
@@ -73,13 +70,6 @@ public class Offer implements Entity {
     private BigDecimal price;
 
     private transient Boolean isMine;
-
-    public String getId() {
-        if (id == null) {
-            id = Base58.encode(sha256Hash().getBytes());
-        }
-        return id;
-    }
 
     public Sha256Hash sha256Hash() {
 

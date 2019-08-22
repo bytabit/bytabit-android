@@ -27,6 +27,7 @@ import com.bytabit.app.core.wallet.manager.WalletManager;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
@@ -137,6 +138,7 @@ public class OfferManager {
         return badgeManager.getOfferMakerBadge(currencyCode)
                 .flatMap(b -> walletManager.getProfilePubKeyBase58().map(profilePubKey ->
                         Offer.builder()
+                                .id(UUID.randomUUID().toString())
                                 .offerType(offerType)
                                 .makerProfilePubKey(profilePubKey)
                                 .currencyCode(currencyCode)

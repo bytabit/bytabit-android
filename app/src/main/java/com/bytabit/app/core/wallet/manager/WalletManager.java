@@ -350,6 +350,13 @@ public class WalletManager {
         //.doOnSuccess(p -> log.debug("escrowPubKeyBase58: {}", p));
     }
 
+    public Maybe<String> getTradePubKeyBase58() {
+        return tradeWalletAppKit.firstElement()
+                .map(WalletAppKit::wallet).map(this::getFreshBase58ReceivePubKey);
+        //.doOnSubscribe(d -> log.debug("escrowPubKeyBase58: subscribe"))
+        //.doOnSuccess(p -> log.debug("escrowPubKeyBase58: {}", p));
+    }
+
     public Maybe<String> getDepositAddressBase58() {
         return tradeWalletAppKit.firstElement()
                 .map(WalletAppKit::wallet)
@@ -578,6 +585,12 @@ public class WalletManager {
                 payoutAddress)
                 .map(TransactionSignature::encodeToBitcoin)
                 .map(Base58::encode);
+    }
+
+    public Maybe<ECKey> getTradePrivateKey(String tradePublicKeyBase58) {
+
+        ECKey tradePublicKey = ECKey.fromPublicOnly(Base58.decode(tradePublicKeyBase58));
+        return getTradeWallet().map(tw -> tw.findKeyFromPubKey(tradePublicKey.getPubKey()));
     }
 
     private Maybe<TransactionSignature> getPayoutSignature(Coin payoutAmount,

@@ -28,6 +28,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -109,6 +110,7 @@ public class BadgeManager {
         return Maybe.zip(paymentTransaction, profilePubKeyBase58, (tx, pubKey) -> {
 
             Badge badge = Badge.builder()
+                    .id(UUID.randomUUID().toString())
                     .profilePubKey(pubKey)
                     .badgeType(Badge.BadgeType.OFFER_MAKER)
                     .currencyCode(currencyCode)
