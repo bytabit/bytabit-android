@@ -96,7 +96,8 @@ public abstract class EntityFileStorage<T extends Entity> {
                 source.onError(new FileStorageException(String.format("Could not write: %s", fileName)));
             }
         }).retryWhen(new RetryWithDelay(3, 500, TimeUnit.MILLISECONDS))
-                .doOnError(t -> log.error("write error: {}", t.getMessage()));
+                .doOnError(t -> log.error("write error: {}", t.getMessage()))
+                .doOnSuccess(e -> log.debug("Write entity: {}", e));
     }
 
     public Maybe<T> read(String id) {

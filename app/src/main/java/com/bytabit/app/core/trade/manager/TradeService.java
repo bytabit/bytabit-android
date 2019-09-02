@@ -17,6 +17,8 @@
 package com.bytabit.app.core.trade.manager;
 
 import com.bytabit.app.core.common.AppConfig;
+import com.bytabit.app.core.common.CryptoUtils;
+import com.bytabit.app.core.common.CryptoUtilsException;
 import com.bytabit.app.core.common.RetryWithDelay;
 import com.bytabit.app.core.common.net.RetrofitService;
 import com.bytabit.app.core.trade.model.SignedTrade;
@@ -25,8 +27,11 @@ import com.bytabit.app.core.trade.model.TradeModelException;
 import com.bytabit.app.core.trade.model.TradeServiceResource;
 import com.bytabit.app.core.wallet.manager.WalletManager;
 
+import org.bitcoinj.core.Base58;
+import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.Sha256Hash;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -35,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
@@ -45,11 +51,13 @@ public class TradeService extends RetrofitService {
 
     private final WalletManager walletManager;
     private final TradeServiceApi tradeServiceApi;
+    private final CryptoUtils cryptoUtils;
 
     @Inject
-    public TradeService(AppConfig appConfig, WalletManager walletManager) {
+    public TradeService(AppConfig appConfig, WalletManager walletManager, CryptoUtils cryptoUtils) {
         super(appConfig);
         this.walletManager = walletManager;
+        this.cryptoUtils = cryptoUtils;
 
         // create an instance of the ApiService
         this.tradeServiceApi = retrofit.create(TradeServiceApi.class);
@@ -57,18 +65,39 @@ public class TradeService extends RetrofitService {
 
     Single<SignedTrade> put(Trade trade) {
 
-        Single<SignedTrade> signedTrade = signTrade(trade);
-        Single<TradeServiceResource> tradeServiceResource = signedTrade.map(this::toTradeServiceResource);
+        Single<SignedTrade> signedTrade = signTrade(trade).cache();
+        Observable<TradeServiceResource> tradeServiceResources = signedTrade
+                .flatMapObservable(st -> getReceiverPubKeys(st).map(pk -> toTradeServiceResource(st, pk)));
 
-        return tradeServiceResource.flatMap(tsr -> tradeServiceApi.put(tsr.getId(), tsr))
+        return tradeServiceResources.flatMapSingle(tsr -> tradeServiceApi.put(tsr.getId(), tsr)
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
-                .doOnError(t -> log.error("put error: {}", t.getMessage()))
-                .map(this::toSignedTrade)
-                .doOnSuccess(st -> {
+                .doOnError(t -> log.error("put error: {}", t.getMessage())))
+                .flatMapSingle(tr -> signedTrade.map(st -> {
+                    st.setVersion(tr.getVersion());
+                    return st;
+                }))
+                .doOnNext(st -> {
                     if (st.getVersion() <= trade.getVersion()) {
                         throw new TradeException("Received trade version less than or equal to trade sent.");
                     }
-                });
+                })
+                .lastOrError();
+    }
+
+    private Observable<String> getReceiverPubKeys(SignedTrade signedTrade) {
+
+        return walletManager.getProfilePubKeyBase58().flatMapObservable(myProfilePubKey -> {
+            List<String> receiverPubKeys = new ArrayList<>();
+            if (signedTrade.getMakerProfilePubKey().equals(myProfilePubKey)) {
+                receiverPubKeys.add(signedTrade.getTakerProfilePubKey());
+            } else {
+                receiverPubKeys.add(signedTrade.getMakerProfilePubKey());
+            }
+            if (signedTrade.hasArbitrateRequest()) {
+                receiverPubKeys.add(signedTrade.getArbitratorProfilePubKey());
+            }
+            return Observable.fromIterable(receiverPubKeys);
+        });
     }
 
     Single<List<SignedTrade>> getByOfferId(String offerId, Long version) {
@@ -77,7 +106,15 @@ public class TradeService extends RetrofitService {
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("get error: {}", t.getMessage()))
                 .flatMap(l -> Observable.fromIterable(l)
-                        .map(this::toSignedTrade)
+                        .flatMapMaybe(tsr -> walletManager.getProfileECKey()
+                                .map(eckey -> toSignedTrade(tsr, eckey))
+                                .onErrorResumeNext(t -> {
+                                    if (t instanceof CryptoUtilsException) {
+                                        return Maybe.empty();
+                                    } else {
+                                        return Maybe.error(t);
+                                    }
+                                }))
                         .filter(this::validateSignedTradeSignature)
                         .toList());
     }
@@ -88,7 +125,15 @@ public class TradeService extends RetrofitService {
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("get error: {}", t.getMessage()))
                 .flatMap(l -> Observable.fromIterable(l)
-                        .map(this::toSignedTrade)
+                        .flatMapMaybe(tsr -> walletManager.getProfileECKey()
+                                .map(eckey -> toSignedTrade(tsr, eckey))
+                                .onErrorResumeNext(t -> {
+                                    if (t instanceof CryptoUtilsException) {
+                                        return Maybe.empty();
+                                    } else {
+                                        return Maybe.error(t);
+                                    }
+                                }))
                         .filter(this::validateSignedTradeSignature)
                         .toList());
     }
@@ -99,8 +144,16 @@ public class TradeService extends RetrofitService {
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("get error: {}", t.getMessage()))
                 .flatMapObservable(l -> Observable.fromIterable(l)
-                        .map(this::toSignedTrade)
-                        .filter(this::validateSignedTradeSignature)))
+                        .flatMapMaybe(tsr -> walletManager.getProfileECKey().map(eckey -> toSignedTrade(tsr, eckey)))
+                ).onErrorResumeNext(t -> {
+                    if (t instanceof CryptoUtilsException) {
+                        return Observable.empty();
+                    } else {
+                        return Observable.error(t);
+                    }
+                }))
+                .filter(this::validateSignedTradeSignature)
+                //.retry(throwable -> throwable instanceof CryptoUtilsException)
                 .toList();
     }
 
@@ -109,39 +162,60 @@ public class TradeService extends RetrofitService {
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("get error: {}", t.getMessage()))
                 .flatMap(l -> Observable.fromIterable(l)
-                        .map(this::toSignedTrade)
+                        .flatMapMaybe(tsr -> walletManager.getProfileECKey().map(eckey -> toSignedTrade(tsr, eckey)))
+                        .onErrorResumeNext(t -> {
+                            if (t instanceof CryptoUtilsException) {
+                                return Observable.empty();
+                            } else {
+                                return Observable.error(t);
+                            }
+                        })
                         .filter(this::validateSignedTradeSignature)
                         .toList());
+        //.retry(throwable -> throwable instanceof CryptoUtilsException);
     }
 
-    private TradeServiceResource toTradeServiceResource(SignedTrade signedTrade) {
+    private TradeServiceResource toTradeServiceResource(SignedTrade signedTrade, String receiverPubKeyBase58) {
 
-        // TODO encrypt signedTrade
+        // encrypt signedTrade
+        ECKey receiverPubKey = ECKey.fromPublicOnly(Base58.decode(receiverPubKeyBase58));
+        String signedTradeJson = gson.toJson(signedTrade);
+        String encryptedSignedTrade = cryptoUtils.encrypt(receiverPubKey, signedTradeJson);
 
         TradeServiceResource tradeServiceResource;
         if (signedTrade.hasTakeOfferRequest() && !signedTrade.hasAcceptance()) {
             tradeServiceResource = TradeServiceResource.builder()
                     .id(UUID.randomUUID().toString())
                     .offerId(signedTrade.getOffer().getId())
-                    .trade(signedTrade)
+                    .trade(encryptedSignedTrade)
+                    .tradeUnencrypted(isRegtest ? signedTrade : null)
                     .build();
         } else {
             tradeServiceResource = TradeServiceResource.builder()
                     .id(signedTrade.getId())
                     .arbitrate(signedTrade.hasArbitrateRequest())
-                    .trade(signedTrade)
+                    .trade(encryptedSignedTrade)
+                    .tradeUnencrypted(isRegtest ? signedTrade : null)
                     .build();
         }
         return tradeServiceResource;
     }
 
-    private SignedTrade toSignedTrade(TradeServiceResource tradeServiceResource) {
+    private SignedTrade toSignedTrade(TradeServiceResource tradeServiceResource, ECKey profileECKey) {
 
-        // TODO decrypt signedTrade
+        // decrypt signedTrade
+        try {
 
-        SignedTrade signedTrade = tradeServiceResource.getTrade();
-        signedTrade.setVersion(tradeServiceResource.getVersion());
-        return signedTrade;
+            String signedTradeJson = cryptoUtils.decrypt(profileECKey, tradeServiceResource.getTrade());
+            SignedTrade signedTrade = gson.fromJson(signedTradeJson, SignedTrade.class);
+
+            signedTrade.setVersion(tradeServiceResource.getVersion());
+            return signedTrade;
+
+        } catch (CryptoUtilsException e) {
+            //log.debug("Couldn't decrypt id: {}, version: {}", tradeServiceResource.getId(), tradeServiceResource.getVersion());
+            throw e;
+        }
     }
 
     private Single<SignedTrade> signTrade(Trade trade) {

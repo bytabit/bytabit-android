@@ -14,32 +14,24 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.trade.model;
+package com.bytabit.app.core.common;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+public class CryptoUtilsException extends RuntimeException {
 
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter
-@Setter
-@Builder
-@ToString
-public class TradeServiceResource {
+    public CryptoUtilsException() {
+        super();
+    }
 
-    private transient String id;
+    public CryptoUtilsException(String message) {
+        super(message);
+    }
 
-    private Long version;
+    public CryptoUtilsException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-    private String offerId;
-
-    private Boolean arbitrate;
-
-    private String trade;
-
-    private SignedTrade tradeUnencrypted;
+    public CryptoUtilsException(Throwable cause) {
+        super(cause);
+    }
 }
+

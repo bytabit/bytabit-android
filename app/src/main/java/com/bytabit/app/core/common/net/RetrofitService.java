@@ -30,10 +30,12 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public abstract class RetrofitService {
 
     protected final Retrofit retrofit;
+    protected final Gson gson;
+    protected final boolean isRegtest;
 
     public RetrofitService(AppConfig appConfig) {
 
-        Gson gson = new GsonBuilder()
+        gson = new GsonBuilder()
                 .setPrettyPrinting()
                 .registerTypeAdapter(Date.class, new DateConverter())
                 .create();
@@ -43,5 +45,7 @@ public abstract class RetrofitService {
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .build();
+
+        isRegtest = appConfig.getBtcNetwork().equals("regtest");
     }
 }

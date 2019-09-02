@@ -312,17 +312,13 @@ public class TradeManager {
                 // add role
                 .map(t -> withRole(profilePubKey, t))
                 // add trade tx
-                .flatMap(this::withTradeTx)
-                // add status
-                .map(this::withStatus);
+                .flatMap(this::withTradeTx);
 
         Single<Trade> updatedReceivedTrade = Single.just(receivedTrade)
                 // add role
                 .map(t -> withRole(profilePubKey, t))
                 // add trade tx
-                .flatMap(this::withTradeTx)
-                // add status
-                .map(this::withStatus);
+                .flatMap(this::withTradeTx);
 
         return Single.zip(currentTrade, updatedReceivedTrade, this::updateTrade)
                 .flatMapMaybe(t -> t);
@@ -442,6 +438,8 @@ public class TradeManager {
     }
 
     private Maybe<Trade> updateTrade(Trade trade, Trade receivedTrade) {
+
+        //log.debug("updateTrade:\ntrade version={} roll={} status={}\nreceivedTrade version={} roll={} status={}", trade.getVersion(), trade.getRole(), trade.getStatus(), receivedTrade.getVersion(), receivedTrade.getRole(), receivedTrade.getStatus());
 
         TradeProtocol tradeProtocol = getProtocol(trade);
 

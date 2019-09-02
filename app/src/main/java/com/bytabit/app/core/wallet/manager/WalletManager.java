@@ -587,10 +587,9 @@ public class WalletManager {
                 .map(Base58::encode);
     }
 
-    public Maybe<ECKey> getTradePrivateKey(String tradePublicKeyBase58) {
+    public Maybe<ECKey> getProfileECKey() {
 
-        ECKey tradePublicKey = ECKey.fromPublicOnly(Base58.decode(tradePublicKeyBase58));
-        return getTradeWallet().map(tw -> tw.findKeyFromPubKey(tradePublicKey.getPubKey()));
+        return getTradeWallet().map(this::getProfilePubKey);
     }
 
     private Maybe<TransactionSignature> getPayoutSignature(Coin payoutAmount,

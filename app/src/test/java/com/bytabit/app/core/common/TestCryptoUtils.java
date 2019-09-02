@@ -20,13 +20,11 @@ import org.bitcoinj.core.ECKey;
 import org.junit.Test;
 import org.spongycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
 import org.spongycastle.jcajce.provider.asymmetric.ec.BCECPublicKey;
-import org.spongycastle.jcajce.provider.util.BadBlockException;
 import org.spongycastle.jce.ECNamedCurveTable;
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 import org.spongycastle.jce.spec.ECParameterSpec;
 import org.spongycastle.math.ec.ECPoint;
 
-import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -36,8 +34,6 @@ import java.security.Security;
 import java.security.spec.InvalidKeySpecException;
 
 import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -87,9 +83,7 @@ public class TestCryptoUtils {
     }
 
     @Test
-    public void whenBitcoinjECKeys_encryptMessage_returnSameMessage() throws NoSuchProviderException,
-            NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException, InvalidKeyException,
-            BadPaddingException, IllegalBlockSizeException {
+    public void whenBitcoinjECKeys_encryptMessage_returnSameMessage() {
 
         Security.addProvider(new BouncyCastleProvider());
 
@@ -97,7 +91,32 @@ public class TestCryptoUtils {
         ECKey bECKey = new ECKey();
         ECKey bPubECKey = ECKey.fromPublicOnly(bECKey.getPubKeyPoint());
 
-        String aClearText = "hello world -- a nice day today";
+        String aClearText = "{\n" +
+                "  \"signature\": \"AN1rKvtJY7qswET68zt5VJpuDSmH5dBX1FfwDfDSt9M9Xbr2p2RoeXEzbm7ke7TxVD7XFJxAwQEYyKj4VVnSsNBqbLUtEftxz\",\n" +
+                "  \"createdTimestamp\": \"2019-08-28T14:36:28.463+0000\",\n" +
+                "  \"id\": \"994e2562-41a8-4225-886a-274e9c2b4fc8\",\n" +
+                "  \"offer\": {\n" +
+                "    \"signature\": \"381yXYromHR8B7e9pq33hSmXxMu4iQCgBn6vJ3um5rnm3LAaSbYp8VusxY761QffA3ZE3empQb2QsYKvtuo7gZ43ohSF2H5W\",\n" +
+                "    \"currencyCode\": \"SEK\",\n" +
+                "    \"id\": \"6df0bfde-c9c4-49ef-b7a9-3666edecd0ed\",\n" +
+                "    \"makerProfilePubKey\": \"cCRytdt5cWyPECc4UGqmEPLsJMhzxeDtwosY6AUgxawM\",\n" +
+                "    \"maxAmount\": 1000,\n" +
+                "    \"minAmount\": 100,\n" +
+                "    \"offerType\": \"SELL\",\n" +
+                "    \"paymentMethod\": \"SWISH\",\n" +
+                "    \"price\": 123000\n" +
+                "  },\n" +
+                "  \"role\": \"BUYER\",\n" +
+                "  \"status\": \"CREATED\",\n" +
+                "  \"tradeRequest\": {\n" +
+                "    \"btcAmount\": 0.00270732,\n" +
+                "    \"paymentAmount\": 334,\n" +
+                "    \"takerEscrowPubKey\": \"mwqtH1bje74A1AgmFA8z4YtmZrofcNk1zTBXb8HQF6Vh\",\n" +
+                "    \"takerProfilePubKey\": \"22bkkTP1a96keNnANfj8jM26o8QUrABsEmTVQLBVYDRUE\"\n" +
+                "  },\n" +
+                "  \"version\": 0\n" +
+                "}";
+
         log.debug("aClearText: {}", aClearText);
 
         String bCypherText = cryptoUtils.encrypt(bPubECKey, aClearText);
@@ -111,8 +130,8 @@ public class TestCryptoUtils {
         try {
             cryptoUtils.decrypt(aECKey, bCypherText);
             assert (false);
-        } catch (BadBlockException bbe) {
-            assert (true);
+        } catch (CryptoUtilsException cue) {
+            assert (cue.getCause() instanceof BadPaddingException);
         }
     }
 

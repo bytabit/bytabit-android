@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.bytabit.app;
+package com.bytabit.app.core.trade;
 
 import com.bytabit.app.core.common.AppConfig;
 import com.bytabit.app.core.offer.model.Offer;
@@ -34,7 +34,6 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.UUID;
 
-import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -115,12 +114,12 @@ public class TestTradeStorage {
                 //.payoutTransactionWithAmt(payoutTx)
                 .build();
 
-        Single<Trade> writtenTrade = tradeStorage.write(trade);
+        Trade writtenTrade = tradeStorage.write(trade).blockingGet();
 
-        writtenTrade.flatMapMaybe(st -> tradeStorage.read(st.getId())).subscribe(rt -> {
-            assert (trade.equals(rt));
-            log.debug("Written trade: {}", trade);
-            log.debug("Read trade: {}", rt);
-        });
+        Trade readTrade = tradeStorage.read(writtenTrade.getId()).blockingGet();
+
+        assert (trade.equals(readTrade));
+        log.debug("Written trade: {}", readTrade);
+        log.debug("Read trade: {}", readTrade);
     }
 }
