@@ -18,8 +18,13 @@ package com.bytabit.app.ui;
 
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -41,6 +46,7 @@ import android.widget.Toast;
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
 import com.bytabit.app.core.badge.model.Badge;
+import com.bytabit.app.core.common.net.TorManager;
 import com.bytabit.app.core.offer.manager.OfferManager;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.payment.model.PaymentDetails;
@@ -58,11 +64,16 @@ import com.bytabit.app.ui.wallet.WalletDepositFragment;
 import com.bytabit.app.ui.wallet.WalletFragment;
 import com.bytabit.app.ui.wallet.WalletRestoreFragment;
 
+import java.io.IOException;
+
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 import lombok.extern.slf4j.Slf4j;
+
+import static android.net.ConnectivityManager.CONNECTIVITY_ACTION;
+import static android.net.ConnectivityManager.EXTRA_NO_CONNECTIVITY;
 
 @Slf4j
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener,
@@ -107,6 +118,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // start tor
+
+        compositeDisposable.add(((BytabitApplication) getApplication()).getApplicationComponent()
+                .map(ApplicationComponent::torManager)
+                .flatMapObservable(tm -> tm.startTor())
+                .observeOn(Schedulers.io())
+                .doOnDispose(() -> {
+                    log.info("torManager.start disposed.");
+                })
+                .doOnComplete(() -> {
+                    log.info("torManager.start complete.");
+                    compositeDisposable.add(((BytabitApplication) getApplication()).getApplicationComponent()
+                            .map(ApplicationComponent::torManager)
+                            .subscribe(tm -> {
+
+                                        NetworkStateReceiver networkStateReceiver = new MainActivity.NetworkStateReceiver(tm);
+                                        IntentFilter filter = new IntentFilter(CONNECTIVITY_ACTION);
+                                        getApplicationContext().registerReceiver(networkStateReceiver, filter);
+                                    }
+                            ));
+                })
+                .subscribe(s -> {
+                    log.info("Tor state: {}", s.toString());
+                }));
 
         // setup tool bar
 
@@ -358,5 +394,40 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public TradeListFragment getTradeListFragment() {
         return tradeListFragment;
+    }
+
+    private class NetworkStateReceiver extends BroadcastReceiver {
+
+        private TorManager torManager;
+
+        public NetworkStateReceiver(TorManager torManager) {
+            this.torManager = torManager;
+        }
+
+        @Override
+        public void onReceive(final Context ctx, final Intent i) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+
+                    boolean online = !i.getBooleanExtra(EXTRA_NO_CONNECTIVITY, false);
+                    if (online) {
+                        // Some devices fail to set EXTRA_NO_CONNECTIVITY, double check
+                        Object o = ctx.getSystemService(CONNECTIVITY_SERVICE);
+                        ConnectivityManager cm = (ConnectivityManager) o;
+                        NetworkInfo net = cm.getActiveNetworkInfo();
+                        if (net == null || !net.isConnected()) {
+                            online = false;
+                        }
+                    }
+                    log.info("Online: " + online);
+                    try {
+                        torManager.enableNetwork(online);
+                    } catch (IOException e) {
+                        log.warn(e.toString(), e);
+                    }
+                }
+            }).start();
+        }
     }
 }
