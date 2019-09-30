@@ -22,7 +22,6 @@ import com.bytabit.app.core.wallet.model.TransactionWithAmt;
 import com.bytabit.app.core.wallet.model.WalletKitConfig;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.Service;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -39,7 +38,6 @@ import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
-import org.bitcoinj.core.listeners.TransactionConfidenceEventListener;
 import org.bitcoinj.crypto.DeterministicKey;
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.kits.WalletAppKit;
@@ -56,7 +54,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -65,12 +62,10 @@ import javax.inject.Singleton;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.BehaviorSubject;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
-import static java.lang.Boolean.TRUE;
 import static org.bitcoinj.wallet.DeterministicKeyChain.BIP44_ACCOUNT_ZERO_PATH;
 
 @Slf4j
@@ -111,143 +106,143 @@ public class WalletManager {
     //@PostConstruct
     public void initialize() {
 
-        // setup trade wallet progress monitoring
-
-        BehaviorSubject<Double> tradeDownloadProgressSubject = BehaviorSubject.create();
-
-        Observable<Double> tradeDownloadProgress = tradeDownloadProgressSubject
-                .startWith(0.0)
-                .doOnSubscribe(d -> log.debug("tradeDownloadProgress: subscribe"))
-                .doOnNext(progress -> log.debug("tradeDownloadProgress: {}%", BigDecimal.valueOf(progress).setScale(0, BigDecimal.ROUND_DOWN)))
-                .replay(1).autoConnect();
-
-        WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
-                .directory(appConfig.getAppStorage()).filePrefix("trade").build();
-
-        // setup escrow wallet progress monitoring
-
-        BehaviorSubject<Double> escrowDownloadProgressSubject = BehaviorSubject.create();
-
-        Observable<Double> escrowDownloadProgress = escrowDownloadProgressSubject
-                .startWith(0.0)
-                .doOnSubscribe(d -> log.debug("escrowDownloadProgress: subscribe"))
-                .doOnNext(progress -> log.debug("escrowDownloadProgress: {}%", BigDecimal.valueOf(progress).setScale(0, BigDecimal.ROUND_DOWN)))
-                .replay(1).autoConnect();
-
-        // monitor download progress
-
-        walletsDownloadProgress = Observable.combineLatest(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
-            if (tp > ep) {
-                return ep;
-            } else {
-                return tp;
-            }
-        })
-                .throttleLast(1, TimeUnit.SECONDS)
-                .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
-                .doOnNext(p -> log.debug("walletsDownloadProgress: {}", p))
-                .replay(100).autoConnect();
-
-        // start trade wallet
-
-        tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig, null), this::reloadWallet)
-                .doOnNext(tw -> setDownloadListener(tw, tradeDownloadProgressSubject))
-                .doOnNext(this::start)
-                .replay(1).autoConnect();
-
-        tradeUpdatedWalletTx = tradeWalletAppKit
-                .map(WalletAppKit::wallet)
-                .switchMap(tw -> Observable.<TransactionWithAmt>create(source -> {
-
-                    TransactionConfidenceEventListener listener = (wallet, tx) -> source.onNext(createTransactionWithAmt(wallet, tx));
-                    tw.addTransactionConfidenceEventListener(executor, listener);
-
-                    source.setCancellable(() -> {
-                        log.debug("tradeUpdatedWalletTx: removeTransactionConfidenceEventListener");
-                        tw.removeTransactionConfidenceEventListener(listener);
-                    });
-                }).startWith(Observable.fromIterable(tw.getTransactions(false))
-                        .map(tx -> createTransactionWithAmt(tw, tx))))
-                .groupBy(TransactionWithAmt::getHash)
-                .flatMap(txg -> txg.throttleLast(1, TimeUnit.SECONDS))
-                .doOnSubscribe(d -> log.debug("tradeUpdatedWalletTx: subscribe"))
-                .doOnNext(tx -> log.debug("tradeUpdatedWalletTx: {}", tx.getHash()))
-                .observeOn(Schedulers.io())
-                .replay(20, TimeUnit.MINUTES).autoConnect();
-
-        // start escrow wallet
-
-        WalletKitConfig escrowConfig = WalletKitConfig.builder().netParams(netParams)
-                .directory(appConfig.getAppStorage()).filePrefix("escrow").build();
-
-        escrowWalletAppKit = escrowWalletConfig.scan(createWalletAppKit(escrowConfig, null), this::reloadWallet)
-                .doOnNext(ew -> setDownloadListener(ew, escrowDownloadProgressSubject))
-                .doOnNext(this::start)
-                .replay(1).autoConnect();
-
-        // triggers for wallet start and synced
-
-        Observable<Boolean> tradeWalletsRunning = tradeWalletAppKit
-                .switchMap(tw -> Observable.<Boolean>create(source -> {
-                    Service.Listener listener = new Service.Listener() {
-                        @Override
-                        public void running() {
-                            source.onNext(TRUE);
-                        }
-
-                        @Override
-                        public void stopping(Service.State from) {
-                            source.onNext(Boolean.FALSE);
-                        }
-                    };
-                    tw.addListener(listener, executor);
-                    source.onNext(tw.isRunning());
-                }))
-                .observeOn(Schedulers.io())
-                .doOnSubscribe(d -> log.debug("tradeWalletRunning: subscribe"))
-                .doOnNext(p -> log.debug("tradeWalletRunning: {}", p));
-
-        Observable<Boolean> escrowWalletsRunning = escrowWalletAppKit
-                .switchMap(ew -> Observable.<Boolean>create(source -> {
-                    Service.Listener listener = new Service.Listener() {
-                        @Override
-                        public void running() {
-                            source.onNext(TRUE);
-                        }
-
-                        @Override
-                        public void stopping(Service.State from) {
-                            source.onNext(Boolean.FALSE);
-                        }
-                    };
-                    ew.addListener(listener, executor);
-                    source.onNext(ew.isRunning());
-                }))
-                .observeOn(Schedulers.io())
-                .doOnSubscribe(d -> log.debug("escrowWalletRunning: subscribe"))
-                .doOnNext(p -> log.debug("EscrowWalletRunning: {}", p));
-
-        walletsRunning = Observable.combineLatest(tradeWalletsRunning, escrowWalletsRunning, (tr, er) -> tr && er)
-                .startWith(false)
-                .replay(1).autoConnect();
-
-        walletSynced = walletsRunning.filter(r -> r.equals(true))
-                .flatMap(r -> walletsDownloadProgress)
-                .map(p -> p == 100.00)
-                .startWith(false)
-                .distinctUntilChanged()
-                .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
-                .doOnNext(p -> log.debug("walletSynced: {}", p))
-                .observeOn(Schedulers.io())
-                .replay(1).autoConnect();
-
-        profilePubKey = tradeWalletAppKit.map(BytabitWalletAppKit::wallet)
-                .map(this::getBase58ProfilePubKey)
-                .doOnSubscribe(d -> log.debug("profilePubKey: subscribe"))
-                .doOnNext(p -> log.debug("profilePubKey: {}", p))
-                .replay(1).autoConnect();
-
-        // TODO shutdown wallet?
+//        // setup trade wallet progress monitoring
+//
+//        BehaviorSubject<Double> tradeDownloadProgressSubject = BehaviorSubject.create();
+//
+//        Observable<Double> tradeDownloadProgress = tradeDownloadProgressSubject
+//                .startWith(0.0)
+//                .doOnSubscribe(d -> log.debug("tradeDownloadProgress: subscribe"))
+//                .doOnNext(progress -> log.debug("tradeDownloadProgress: {}%", BigDecimal.valueOf(progress).setScale(0, BigDecimal.ROUND_DOWN)))
+//                .replay(1).autoConnect();
+//
+//        WalletKitConfig tradeConfig = WalletKitConfig.builder().netParams(netParams)
+//                .directory(appConfig.getAppStorage()).filePrefix("trade").build();
+//
+//        // setup escrow wallet progress monitoring
+//
+//        BehaviorSubject<Double> escrowDownloadProgressSubject = BehaviorSubject.create();
+//
+//        Observable<Double> escrowDownloadProgress = escrowDownloadProgressSubject
+//                .startWith(0.0)
+//                .doOnSubscribe(d -> log.debug("escrowDownloadProgress: subscribe"))
+//                .doOnNext(progress -> log.debug("escrowDownloadProgress: {}%", BigDecimal.valueOf(progress).setScale(0, BigDecimal.ROUND_DOWN)))
+//                .replay(1).autoConnect();
+//
+//        // monitor download progress
+//
+//        walletsDownloadProgress = Observable.combineLatest(tradeDownloadProgress, escrowDownloadProgress, (tp, ep) -> {
+//            if (tp > ep) {
+//                return ep;
+//            } else {
+//                return tp;
+//            }
+//        })
+//                .throttleLast(1, TimeUnit.SECONDS)
+//                .doOnSubscribe(d -> log.debug("walletsDownloadProgress: subscribe"))
+//                .doOnNext(p -> log.debug("walletsDownloadProgress: {}", p))
+//                .replay(100).autoConnect();
+//
+//        // start trade wallet
+//
+//        tradeWalletAppKit = tradeWalletConfig.scan(createWalletAppKit(tradeConfig, null), this::reloadWallet)
+//                .doOnNext(tw -> setDownloadListener(tw, tradeDownloadProgressSubject))
+//                .doOnNext(this::start)
+//                .replay(1).autoConnect();
+//
+//        tradeUpdatedWalletTx = tradeWalletAppKit
+//                .map(WalletAppKit::wallet)
+//                .switchMap(tw -> Observable.<TransactionWithAmt>create(source -> {
+//
+//                    TransactionConfidenceEventListener listener = (wallet, tx) -> source.onNext(createTransactionWithAmt(wallet, tx));
+//                    tw.addTransactionConfidenceEventListener(executor, listener);
+//
+//                    source.setCancellable(() -> {
+//                        log.debug("tradeUpdatedWalletTx: removeTransactionConfidenceEventListener");
+//                        tw.removeTransactionConfidenceEventListener(listener);
+//                    });
+//                }).startWith(Observable.fromIterable(tw.getTransactions(false))
+//                        .map(tx -> createTransactionWithAmt(tw, tx))))
+//                .groupBy(TransactionWithAmt::getHash)
+//                .flatMap(txg -> txg.throttleLast(1, TimeUnit.SECONDS))
+//                .doOnSubscribe(d -> log.debug("tradeUpdatedWalletTx: subscribe"))
+//                .doOnNext(tx -> log.debug("tradeUpdatedWalletTx: {}", tx.getHash()))
+//                .observeOn(Schedulers.io())
+//                .replay(20, TimeUnit.MINUTES).autoConnect();
+//
+//        // start escrow wallet
+//
+//        WalletKitConfig escrowConfig = WalletKitConfig.builder().netParams(netParams)
+//                .directory(appConfig.getAppStorage()).filePrefix("escrow").build();
+//
+//        escrowWalletAppKit = escrowWalletConfig.scan(createWalletAppKit(escrowConfig, null), this::reloadWallet)
+//                .doOnNext(ew -> setDownloadListener(ew, escrowDownloadProgressSubject))
+//                .doOnNext(this::start)
+//                .replay(1).autoConnect();
+//
+//        // triggers for wallet start and synced
+//
+//        Observable<Boolean> tradeWalletsRunning = tradeWalletAppKit
+//                .switchMap(tw -> Observable.<Boolean>create(source -> {
+//                    Service.Listener listener = new Service.Listener() {
+//                        @Override
+//                        public void running() {
+//                            source.onNext(TRUE);
+//                        }
+//
+//                        @Override
+//                        public void stopping(Service.State from) {
+//                            source.onNext(Boolean.FALSE);
+//                        }
+//                    };
+//                    tw.addListener(listener, executor);
+//                    source.onNext(tw.isRunning());
+//                }))
+//                .observeOn(Schedulers.io())
+//                .doOnSubscribe(d -> log.debug("tradeWalletRunning: subscribe"))
+//                .doOnNext(p -> log.debug("tradeWalletRunning: {}", p));
+//
+//        Observable<Boolean> escrowWalletsRunning = escrowWalletAppKit
+//                .switchMap(ew -> Observable.<Boolean>create(source -> {
+//                    Service.Listener listener = new Service.Listener() {
+//                        @Override
+//                        public void running() {
+//                            source.onNext(TRUE);
+//                        }
+//
+//                        @Override
+//                        public void stopping(Service.State from) {
+//                            source.onNext(Boolean.FALSE);
+//                        }
+//                    };
+//                    ew.addListener(listener, executor);
+//                    source.onNext(ew.isRunning());
+//                }))
+//                .observeOn(Schedulers.io())
+//                .doOnSubscribe(d -> log.debug("escrowWalletRunning: subscribe"))
+//                .doOnNext(p -> log.debug("EscrowWalletRunning: {}", p));
+//
+//        walletsRunning = Observable.combineLatest(tradeWalletsRunning, escrowWalletsRunning, (tr, er) -> tr && er)
+//                .startWith(false)
+//                .replay(1).autoConnect();
+//
+//        walletSynced = walletsRunning.filter(r -> r.equals(true))
+//                .flatMap(r -> walletsDownloadProgress)
+//                .map(p -> p == 100.00)
+//                .startWith(false)
+//                .distinctUntilChanged()
+//                .doOnSubscribe(d -> log.debug("walletSynced: subscribe"))
+//                .doOnNext(p -> log.debug("walletSynced: {}", p))
+//                .observeOn(Schedulers.io())
+//                .replay(1).autoConnect();
+//
+//        profilePubKey = tradeWalletAppKit.map(BytabitWalletAppKit::wallet)
+//                .map(this::getBase58ProfilePubKey)
+//                .doOnSubscribe(d -> log.debug("profilePubKey: subscribe"))
+//                .doOnNext(p -> log.debug("profilePubKey: {}", p))
+//                .replay(1).autoConnect();
+//
+//        // TODO shutdown wallet?
     }
 
     private BytabitWalletAppKit reloadWallet(BytabitWalletAppKit currentWallet, WalletKitConfig config) {
@@ -334,7 +329,8 @@ public class WalletManager {
     }
 
     public Maybe<String> getProfilePubKeyBase58() {
-        return profilePubKey.firstElement();
+        return Maybe.empty();
+//        return profilePubKey.firstElement();
 //                .doOnSubscribe(d -> log.debug("profilePubKeyBase58: subscribe"))
 //                .doOnSuccess(p -> log.debug("profilePubKeyBase58: {}", p));
     }

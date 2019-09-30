@@ -18,7 +18,7 @@ package com.bytabit.app.core.common;
 
 import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.Sha256Hash;
-import org.spongycastle.util.encoders.Base64;
+import org.bouncycastle.util.encoders.Base64;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

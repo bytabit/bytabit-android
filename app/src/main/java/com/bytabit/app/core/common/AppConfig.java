@@ -16,6 +16,8 @@
 
 package com.bytabit.app.core.common;
 
+import com.msopentech.thali.toronionproxy.OnionProxyContext;
+
 import java.io.File;
 
 import lombok.Builder;
@@ -41,8 +43,11 @@ public class AppConfig {
 
     private final String peerPort;
 
+    private final OnionProxyContext onionProxyContext;
+
     public AppConfig(File privateStorage, String version, String btcNetwork,
-                     String configName, String baseUrl, String peerAddress, String peerPort) {
+                     String configName, String baseUrl, String peerAddress, String peerPort,
+                     OnionProxyContext onionProxyContext) {
 
         this.version = version;
         this.btcNetwork = btcNetwork;
@@ -50,10 +55,11 @@ public class AppConfig {
         this.baseUrl = baseUrl;
         this.peerAddress = peerAddress.equals("null") ? null : peerAddress;
         this.peerPort = peerPort.equals("null") ? null : peerPort;
+        this.onionProxyContext = onionProxyContext;
 
         appStorage = new File(privateStorage.getPath() + File.separator + getBtcNetwork() + File.separator + getConfigName());
         if (!privateStorage.exists() && !privateStorage.mkdirs()) {
-            log.warn("Can't create private storage sub-directory: {}", privateStorage.getPath());
+            log.error("Can't create private storage sub-directory: {}", privateStorage.getPath());
         }
     }
 }

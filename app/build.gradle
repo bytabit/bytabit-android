@@ -192,21 +192,20 @@ dependencies {
     implementation "com.squareup.retrofit2:converter-gson:$retrofit2Version"
     implementation "com.squareup.retrofit2:adapter-rxjava2:$retrofit2Version"
 
-    implementation "org.bitcoinj:bitcoinj-core:0.14.7"
+    // implementation "org.bitcoinj:bitcoinj-core:0.14.7"
     // implementation 'org.bouncycastle:bcprov-jdk15on:1.55'
-    implementation "com.madgag.spongycastle:prov:1.56.0.0"
+    // implementation "com.madgag.spongycastle:prov:1.56.0.0"
 
     implementation 'org.slf4j:slf4j-api:1.7.27'
     //implementation 'com.github.tony19:logback-android:2.0.0'
+    implementation 'org.slf4j:slf4j-android:1.7.25'
 
     implementation 'com.auth0.android:jwtdecode:1.1.1'
 
     implementation 'org.torproject:tor-android-binary:0.4.1.5'
-
     implementation 'com.msopentech.thali:universal:0.0.3'
+    implementation 'net.freehaven.tor.control:jtorctl:0.2'
     implementation 'com.msopentech.thali.toronionproxy.android:android:0.0.3@aar'
-
-    androidTestImplementation 'org.slf4j:slf4j-android:1.7.25'
 
     implementation ('com.github.Samourai-Wallet:extlibj:0.0.4') {
         exclude group:'com.google.code.findbugs', module:'jsr305'

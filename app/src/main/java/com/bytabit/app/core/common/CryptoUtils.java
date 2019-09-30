@@ -18,12 +18,12 @@ package com.bytabit.app.core.common;
 
 import org.bitcoinj.core.Base58;
 import org.bitcoinj.core.ECKey;
-import org.spongycastle.jce.ECNamedCurveTable;
-import org.spongycastle.jce.provider.BouncyCastleProvider;
-import org.spongycastle.jce.spec.ECParameterSpec;
-import org.spongycastle.jce.spec.ECPrivateKeySpec;
-import org.spongycastle.jce.spec.ECPublicKeySpec;
-import org.spongycastle.math.ec.ECPoint;
+import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.jce.spec.ECPrivateKeySpec;
+import org.bouncycastle.jce.spec.ECPublicKeySpec;
+import org.bouncycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;

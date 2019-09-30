@@ -1,0 +1,9 @@
+RunAsDaemon 1
+AvoidDiskWrites 1
+ControlPort auto
+SOCKSPort auto
+CookieAuthentication 1
+DisableNetwork 1
+SafeSocks 1
+DataDirectory /data/data/com.bytabit.app/files/torfiles/lib/tor
+ControlPortWriteToFile /data/data/com.bytabit.app/files/torfiles/lib/tor/control.txt
