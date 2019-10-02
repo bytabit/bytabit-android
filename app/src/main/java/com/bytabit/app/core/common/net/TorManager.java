@@ -20,11 +20,14 @@ import com.bytabit.app.core.common.AppConfig;
 import com.msopentech.thali.toronionproxy.OnionProxyManager;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import io.reactivex.Observable;
+import io.reactivex.subjects.BehaviorSubject;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -38,12 +41,12 @@ public class TorManager extends OnionProxyManager {
         CONNECTING
     }
 
-    //private final BehaviorSubject<State> torStatus = BehaviorSubject.create();
+    private final BehaviorSubject<State> torState = BehaviorSubject.create();
 
     @Inject
     public TorManager(AppConfig appConfig) {
 
-        super(appConfig.getOnionProxyContext(), null, null);
+        super(appConfig.getOnionProxyContext(), null, new OnionProxyManagerEventHandler());
 
     }
 
@@ -60,6 +63,7 @@ public class TorManager extends OnionProxyManager {
 
             log.info("start tor.");
             s.onNext(State.CONNECTING);
+            torState.onNext(State.CONNECTING);
 
             int totalSecondsPerTorStartup = 4 * 60;
             int totalTriesPerTorStartup = 5;
@@ -76,6 +80,7 @@ public class TorManager extends OnionProxyManager {
                 //currentPort = onionProxyManager.getIPv4LocalHostSocksPort();
 
                 s.onNext(State.CONNECTED);
+                torState.onNext(State.CONNECTED);
                 //isProcessRunning = true;
                 //state = CONNECTION_STATES.CONNECTED;
                 s.onComplete();
@@ -87,13 +92,26 @@ public class TorManager extends OnionProxyManager {
                 if (!isRunning()) {
                     log.error("tor is not running:", e);
                     s.onNext(State.DISCONNECTED);
+                    torState.onNext(State.DISCONNECTED);
                 }
                 s.onError(e);
 //                e.printStackTrace();
 //                return proxy;
             }
         });
+    }
 
+    public Observable<State> getTorState() {
+        return torState;
+    }
+
+    public Proxy getTorProxy() {
+
+        try {
+            return new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", getIPv4LocalHostSocksPort()));
+        } catch (IOException e) {
+            throw new TorException("Unable to get tor proxy address.", e);
+        }
     }
 
 }

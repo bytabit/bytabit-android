@@ -17,6 +17,7 @@
 package com.bytabit.app.core.wallet.manager;
 
 import com.bytabit.app.core.common.AppConfig;
+import com.bytabit.app.core.common.net.TorManager;
 import com.bytabit.app.core.wallet.model.TradeWalletInfo;
 import com.bytabit.app.core.wallet.model.TransactionWithAmt;
 import com.bytabit.app.core.wallet.model.WalletKitConfig;
@@ -80,6 +81,9 @@ public class WalletManager {
     private final NetworkParameters netParams;
     private final Context btcContext;
 
+    private final TorManager torManager;
+    private final WalletService walletService;
+
     private BehaviorSubject<WalletKitConfig> tradeWalletConfig = BehaviorSubject.create();
     private Observable<BytabitWalletAppKit> tradeWalletAppKit;
     private Observable<TransactionWithAmt> tradeUpdatedWalletTx;
@@ -93,18 +97,25 @@ public class WalletManager {
     private Observable<String> profilePubKey;
 
     @Inject
-    public WalletManager(AppConfig appConfig, @Named("wallet") Executor executor) {
+    public WalletManager(AppConfig appConfig, @Named("wallet") Executor executor,
+                         TorManager torManager, WalletService walletService) {
+
         this.appConfig = appConfig;
         this.executor = executor;
+        this.torManager = torManager;
+        this.walletService = walletService;
 
         netParams = BytabitTestNet3Params.fromID("org.bitcoin." + appConfig.getBtcNetwork());
         btcContext = Context.getOrCreate(netParams);
 
-        initialize();
+        // test login
+        torManager.getTorState().filter(s -> s.equals(TorManager.State.CONNECTED))
+                .flatMapSingle(s -> walletService.login("myApiKey"))
+                .subscribe(tokens -> log.info("found tokens: {}", tokens));
     }
 
     //@PostConstruct
-    public void initialize() {
+//    public void initialize() {
 
 //        // setup trade wallet progress monitoring
 //
@@ -243,7 +254,7 @@ public class WalletManager {
 //                .replay(1).autoConnect();
 //
 //        // TODO shutdown wallet?
-    }
+//    }
 
     private BytabitWalletAppKit reloadWallet(BytabitWalletAppKit currentWallet, WalletKitConfig config) {
 
