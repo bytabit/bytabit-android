@@ -17,7 +17,7 @@
 package com.bytabit.app.core.offer.manager;
 
 import com.bytabit.app.core.common.AppConfig;
-import com.bytabit.app.core.common.net.RetrofitService;
+import com.bytabit.app.core.net.RetrofitService;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.offer.model.SignedOffer;
 import com.bytabit.app.core.wallet.manager.WalletManager;

@@ -19,7 +19,7 @@ package com.bytabit.app.core.badge.manager;
 import com.bytabit.app.core.badge.model.Badge;
 import com.bytabit.app.core.badge.model.BadgeRequest;
 import com.bytabit.app.core.common.AppConfig;
-import com.bytabit.app.core.common.net.RetrofitService;
+import com.bytabit.app.core.net.RetrofitService;
 
 import java.util.List;
 

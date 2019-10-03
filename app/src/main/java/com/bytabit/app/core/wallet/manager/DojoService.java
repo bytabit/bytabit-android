@@ -17,7 +17,7 @@
 package com.bytabit.app.core.wallet.manager;
 
 import com.bytabit.app.core.common.RetryWithDelay;
-import com.bytabit.app.core.common.net.ServiceApiFactory;
+import com.bytabit.app.core.net.ServiceApiFactory;
 import com.bytabit.app.core.wallet.model.LoginTokens;
 
 import java.util.concurrent.TimeUnit;
@@ -30,12 +30,12 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Singleton
-public class WalletService {
+public class DojoService {
 
     private final ServiceApiFactory serviceApiFactory;
 
     @Inject
-    public WalletService(ServiceApiFactory serviceApiFactory) {
+    public DojoService(ServiceApiFactory serviceApiFactory) {
         this.serviceApiFactory = serviceApiFactory;
     }
 
@@ -45,7 +45,7 @@ public class WalletService {
 
         String baseUrl = "http://z6xllfv63ftjw6cgnhmot5qt67n6ft7fre774jul64ix6dcu3bms5cid.onion/test/v2/";
 
-        return serviceApiFactory.createService(baseUrl, WalletServiceApi.class, null)
+        return serviceApiFactory.createService(baseUrl, DojoServiceApi.class, null)
                 .login("myApiKey")
                 .retryWhen(new RetryWithDelay(5, 2, TimeUnit.SECONDS))
                 .doOnError(t -> log.error("login error: {}", t.getMessage()));

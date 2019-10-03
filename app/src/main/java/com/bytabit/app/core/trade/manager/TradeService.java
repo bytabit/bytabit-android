@@ -20,7 +20,7 @@ import com.bytabit.app.core.common.AppConfig;
 import com.bytabit.app.core.common.CryptoUtils;
 import com.bytabit.app.core.common.CryptoUtilsException;
 import com.bytabit.app.core.common.RetryWithDelay;
-import com.bytabit.app.core.common.net.RetrofitService;
+import com.bytabit.app.core.net.RetrofitService;
 import com.bytabit.app.core.trade.model.SignedTrade;
 import com.bytabit.app.core.trade.model.Trade;
 import com.bytabit.app.core.trade.model.TradeModelException;

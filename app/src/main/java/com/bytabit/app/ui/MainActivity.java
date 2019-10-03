@@ -46,7 +46,7 @@ import android.widget.Toast;
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
 import com.bytabit.app.core.badge.model.Badge;
-import com.bytabit.app.core.common.net.TorManager;
+import com.bytabit.app.core.net.TorManager;
 import com.bytabit.app.core.offer.manager.OfferManager;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.payment.model.PaymentDetails;
@@ -133,13 +133,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     compositeDisposable.add(((BytabitApplication) getApplication()).getApplicationComponent()
                             .map(ApplicationComponent::torManager)
                             .subscribe(tm -> {
-
                                         NetworkStateReceiver networkStateReceiver = new MainActivity.NetworkStateReceiver(tm);
                                         IntentFilter filter = new IntentFilter(CONNECTIVITY_ACTION);
                                         getApplicationContext().registerReceiver(networkStateReceiver, filter);
                                     }
                             ));
                 })
+                .doOnError(this::showError)
                 .subscribe(s -> {
                     log.info("Tor state: {}", s.toString());
                 }));

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.common.net;
+package com.bytabit.app.core.net;
 
 import net.freehaven.tor.control.EventHandler;
 

@@ -17,7 +17,7 @@
 package com.bytabit.app.core.wallet.manager;
 
 import com.bytabit.app.core.common.AppConfig;
-import com.bytabit.app.core.common.net.TorManager;
+import com.bytabit.app.core.net.TorManager;
 import com.bytabit.app.core.wallet.model.TradeWalletInfo;
 import com.bytabit.app.core.wallet.model.TransactionWithAmt;
 import com.bytabit.app.core.wallet.model.WalletKitConfig;
@@ -82,7 +82,7 @@ public class WalletManager {
     private final Context btcContext;
 
     private final TorManager torManager;
-    private final WalletService walletService;
+    private final DojoService dojoService;
 
     private BehaviorSubject<WalletKitConfig> tradeWalletConfig = BehaviorSubject.create();
     private Observable<BytabitWalletAppKit> tradeWalletAppKit;
@@ -98,20 +98,21 @@ public class WalletManager {
 
     @Inject
     public WalletManager(AppConfig appConfig, @Named("wallet") Executor executor,
-                         TorManager torManager, WalletService walletService) {
+                         TorManager torManager, DojoService dojoService) {
 
         this.appConfig = appConfig;
         this.executor = executor;
         this.torManager = torManager;
-        this.walletService = walletService;
+        this.dojoService = dojoService;
 
         netParams = BytabitTestNet3Params.fromID("org.bitcoin." + appConfig.getBtcNetwork());
         btcContext = Context.getOrCreate(netParams);
 
         // test login
         torManager.getTorState().filter(s -> s.equals(TorManager.State.CONNECTED))
-                .flatMapSingle(s -> walletService.login("myApiKey"))
-                .subscribe(tokens -> log.info("found tokens: {}", tokens));
+                .flatMapSingle(s -> dojoService.login("myApiKey"))
+                .subscribe(tokens -> log.info("found tokens: {}", tokens),
+                        e -> log.error("unable to login: {}", e.getMessage()));
     }
 
     //@PostConstruct

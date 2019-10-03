@@ -18,7 +18,7 @@ package com.bytabit.app;
 
 import com.bytabit.app.core.badge.manager.BadgeManager;
 import com.bytabit.app.core.common.AppConfig;
-import com.bytabit.app.core.common.net.TorManager;
+import com.bytabit.app.core.net.TorManager;
 import com.bytabit.app.core.offer.manager.OfferManager;
 import com.bytabit.app.core.payment.manager.PaymentDetailsManager;
 import com.bytabit.app.core.trade.manager.TradeManager;

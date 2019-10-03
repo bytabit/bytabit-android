@@ -14,18 +14,24 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.wallet.manager;
+package com.bytabit.app.core.net;
 
-import com.bytabit.app.core.wallet.model.LoginTokens;
+public class TorException extends RuntimeException {
 
-import io.reactivex.Single;
-import retrofit2.http.POST;
-import retrofit2.http.Query;
+    public TorException() {
+        super();
+    }
 
-public interface WalletServiceApi {
+    public TorException(String message) {
+        super(message);
+    }
 
-    // POST /auth/login?apikey=myAPIKey
-    @POST("auth/login")
-    Single<LoginTokens> login(@Query("apikey") String apikey);
+    public TorException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
+    public TorException(Throwable cause) {
+        super(cause);
+    }
 }
+

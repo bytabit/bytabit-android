@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.common.net;
+package com.bytabit.app.core.net;
 
 import com.bytabit.app.core.common.json.DateConverter;
 import com.google.gson.Gson;
