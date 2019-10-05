@@ -14,36 +14,12 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.wallet.model;
+package com.bytabit.app.core.common.file;
 
-import lombok.Value;
+import java.io.IOException;
+import java.io.InputStream;
 
-@Value
-public class DojoHdAccountResponse {
+public interface AssetManager {
 
-    private String status;
-
-    private String error;
-
-    private Data data;
-
-    @Value
-    public class Data {
-
-        private Integer balance;
-
-        private AddressIndices unused;
-
-        private String derivation;
-
-        private Integer created;
-
-        @Value
-        public class AddressIndices {
-
-            private Integer external;
-
-            private Integer internal;
-        }
-    }
+    InputStream open(String fileName) throws IOException;
 }

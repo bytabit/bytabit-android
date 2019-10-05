@@ -22,6 +22,7 @@ import com.bytabit.app.core.net.ServiceApiFactory;
 import com.bytabit.app.core.net.TorManager;
 import com.bytabit.app.core.wallet.model.DojoAuthResponse;
 import com.bytabit.app.core.wallet.model.DojoHdAccountResponse;
+import com.bytabit.app.core.wallet.model.DojoResponse;
 
 import java.util.concurrent.TimeUnit;
 
@@ -35,6 +36,16 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Singleton
 public class DojoService {
+
+    public enum WalletType {
+        NEW("new"), RESTORE("restore");
+
+        private final String code;
+
+        WalletType(String code) {
+            this.code = code;
+        }
+    }
 
     private final ServiceApiFactory serviceApiFactory;
     private final TorManager torManager;
@@ -89,9 +100,14 @@ public class DojoService {
         return jwt.isExpired(0);
     }
 
-    public Single<DojoHdAccountResponse.HdAccount> getHdAccount(String xpub) {
+    public Single<DojoHdAccountResponse.Data> getHdAccount(String xpub) {
         return loginIfNeeded().flatMap(a -> serviceApiFactory.createService(baseUrl, DojoServiceApi.class, a.getAccessToken())
                 .getHdAccount(xpub).map(DojoHdAccountResponse::getData));
+    }
+
+    public Single<DojoResponse> addHdAccount(String xpub, WalletType type, WalletManager.SegwitDerivation segwit, Boolean force) {
+        return loginIfNeeded().flatMap(a -> serviceApiFactory.createService(baseUrl, DojoServiceApi.class, a.getAccessToken())
+                .addHdAccount(xpub, type.code, segwit.getCode(), force));
     }
 
 }

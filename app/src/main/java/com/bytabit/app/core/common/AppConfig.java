@@ -16,6 +16,7 @@
 
 package com.bytabit.app.core.common;
 
+import com.bytabit.app.core.common.file.AssetManager;
 import com.msopentech.thali.toronionproxy.OnionProxyContext;
 
 import java.io.File;
@@ -45,9 +46,11 @@ public class AppConfig {
 
     private final OnionProxyContext onionProxyContext;
 
+    private final AssetManager assetManager;
+
     public AppConfig(File privateStorage, String version, String btcNetwork,
                      String configName, String baseUrl, String peerAddress, String peerPort,
-                     OnionProxyContext onionProxyContext) {
+                     OnionProxyContext onionProxyContext, AssetManager assetManager) {
 
         this.version = version;
         this.btcNetwork = btcNetwork;
@@ -56,6 +59,7 @@ public class AppConfig {
         this.peerAddress = peerAddress.equals("null") ? null : peerAddress;
         this.peerPort = peerPort.equals("null") ? null : peerPort;
         this.onionProxyContext = onionProxyContext;
+        this.assetManager = assetManager;
 
         appStorage = new File(privateStorage.getPath() + File.separator + getBtcNetwork() + File.separator + getConfigName());
         if (!privateStorage.exists() && !privateStorage.mkdirs()) {

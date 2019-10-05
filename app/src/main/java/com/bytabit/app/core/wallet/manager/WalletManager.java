@@ -23,6 +23,9 @@ import com.bytabit.app.core.wallet.model.TransactionWithAmt;
 import com.bytabit.app.core.wallet.model.WalletKitConfig;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.samourai.wallet.hd.HD_Address;
+import com.samourai.wallet.hd.HD_Wallet;
+import com.samourai.wallet.segwit.SegwitAddress;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -40,6 +43,7 @@ import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.crypto.DeterministicKey;
+import org.bitcoinj.crypto.MnemonicCode;
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.script.Script;
@@ -49,7 +53,10 @@ import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -63,6 +70,7 @@ import javax.inject.Singleton;
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.subjects.BehaviorSubject;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -73,8 +81,28 @@ import static org.bitcoinj.wallet.DeterministicKeyChain.BIP44_ACCOUNT_ZERO_PATH;
 @Singleton
 public class WalletManager {
 
+    public enum SegwitDerivation {
+        BIP49("bip49", 49), BIP84("bip84", 84);
+
+        private final String code;
+        private final int purposeId;
+
+        SegwitDerivation(String code, int purposeId) {
+            this.code = code;
+            this.purposeId = purposeId;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public int getPurposeId() {
+            return purposeId;
+        }
+    }
+
     private final AppConfig appConfig;
-    private final Executor executor;
+    // private final Executor executor;
 
     private final long ONE_WEEK_MILLISECONDS = 60000 * 60 * 24 * 7;
 
@@ -96,23 +124,83 @@ public class WalletManager {
     private Observable<Boolean> walletSynced;
     private Observable<String> profilePubKey;
 
+    private BehaviorSubject<HD_Wallet> tradeWallet = BehaviorSubject.create();
+
+    public static final String BIP39_ENGLISH_SHA256 = "ad90bf3beb7b0eb7e5acd74727dc0da96e0a280a258354e7293fb7e211ac03db";
+
     @Inject
     public WalletManager(AppConfig appConfig, @Named("wallet") Executor executor,
                          TorManager torManager, DojoService dojoService) {
 
         this.appConfig = appConfig;
-        this.executor = executor;
+        //this.executor = executor;
         this.torManager = torManager;
         this.dojoService = dojoService;
 
         netParams = BytabitTestNet3Params.fromID("org.bitcoin." + appConfig.getBtcNetwork());
         btcContext = Context.getOrCreate(netParams);
 
-        // test login
-        dojoService.getHdAccount("abc123").subscribe(
-                hdAccount -> log.info("found hd account: {}", hdAccount),
-                e -> log.error("unable to get hd account: {}", e.getMessage()));
+        //String xpub = hdw.getXPUBs()[0];
+        Single<HD_Wallet> hdWallet = createWallet(SegwitDerivation.BIP84, 12, null);
 
+        // test login
+        Disposable disposable = hdWallet.map(w -> w.getXPUBs()[0])
+                .doOnSuccess(xpub -> log.info("Created wallet with xpub[0]: {}", xpub))
+                .flatMap(xpub -> dojoService.addHdAccount(xpub, DojoService.WalletType.NEW, SegwitDerivation.BIP84, false)
+                        .doOnSuccess(r -> log.info("addHdAccount response: {}", r))
+                        .flatMap(r -> dojoService.getHdAccount(xpub)))
+                .subscribe(hdAccount -> log.info("getHdAccount hdAccount: {}", hdAccount),
+                        e -> log.error("unable to get hdAccount: {}", e.getMessage()));
+    }
+
+    // create BIP84 based hd wallet
+    public Single<HD_Wallet> createWallet(final SegwitDerivation segwitDerivation, final int wordCount, final String passphrase) {
+
+        return getMnemonicCode().map(mc -> {
+
+            final int wc;
+            if ((wordCount % 3 != 0) || (wordCount < 12 || wordCount > 24)) {
+                wc = 12;
+            } else {
+                wc = wordCount;
+            }
+
+            // len == 16 (12 words), len == 24 (18 words), len == 32 (24 words)
+            final int len = (wc / 3) * 4;
+            SecureRandom random = new SecureRandom();
+            byte seed[] = new byte[len];
+            random.nextBytes(seed);
+
+            final String phrase;
+            if (passphrase == null) {
+                phrase = "";
+            } else {
+                phrase = passphrase;
+            }
+
+            return new HD_Wallet(segwitDerivation.getPurposeId(), mc, netParams, seed, phrase, 1);
+        }).doOnSuccess(w -> tradeWallet.onNext(w));
+    }
+
+    // TODO should be able to use different language mnemonic code words
+    public Single<MnemonicCode> getMnemonicCode() {
+        return Single.fromCallable(() -> {
+            try (InputStream ws = appConfig.getAssetManager().open("BIP39/en.txt")) {
+                return new MnemonicCode(ws, BIP39_ENGLISH_SHA256);
+            } catch (IOException | IllegalArgumentException ex) {
+                log.error("Can't open mnemonic code words file.", ex);
+                throw ex;
+            }
+        });
+    }
+
+    public Single<SegwitAddress> getAddressAt(final int chain, final int idx) {
+        return getAddressAt(0, chain, idx);
+    }
+
+    public Single<SegwitAddress> getAddressAt(final int account, final int chain, final int idx) {
+        Single<HD_Address> addr = tradeWallet.firstOrError().map(w -> w.getAccountAt(account).getChain(chain).getAddressAt(idx));
+        return addr.map(a -> new SegwitAddress(a.getPubKey(), netParams));
     }
 
     //@PostConstruct
@@ -257,7 +345,8 @@ public class WalletManager {
 //        // TODO shutdown wallet?
 //    }
 
-    private BytabitWalletAppKit reloadWallet(BytabitWalletAppKit currentWallet, WalletKitConfig config) {
+    private BytabitWalletAppKit reloadWallet(BytabitWalletAppKit currentWallet, WalletKitConfig
+            config) {
 
         DeterministicSeed currentSeed = null;
         if (currentWallet.isRunning()) {
@@ -267,7 +356,8 @@ public class WalletManager {
         return createWalletAppKit(config, currentSeed);
     }
 
-    private BytabitWalletAppKit createWalletAppKit(WalletKitConfig walletKitConfig, DeterministicSeed currentSeed) {
+    private BytabitWalletAppKit createWalletAppKit(WalletKitConfig
+                                                           walletKitConfig, DeterministicSeed currentSeed) {
         BytabitWalletAppKit walletAppKit = new BytabitWalletAppKit(appConfig, walletKitConfig, currentSeed);
 
         log.debug("created walletAppKit with config {}", walletKitConfig);
@@ -275,7 +365,8 @@ public class WalletManager {
         return walletAppKit;
     }
 
-    private void setDownloadListener(BytabitWalletAppKit wak, BehaviorSubject<Double> subject) {
+    private void setDownloadListener(BytabitWalletAppKit
+                                             wak, BehaviorSubject<Double> subject) {
 
         wak.setDownloadListener(new DownloadProgressTracker() {
 
@@ -377,7 +468,8 @@ public class WalletManager {
                 .map(WalletAppKit::wallet).map(this::getDepositAddress);
     }
 
-    public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal withdrawAmount, BigDecimal txFeePerKb) {
+    public Maybe<TransactionWithAmt> withdrawFromTradeWallet(String withdrawAddress, BigDecimal
+            withdrawAmount, BigDecimal txFeePerKb) {
 
         return tradeWalletAppKit.firstElement().map(WalletAppKit::wallet).flatMap(w ->
                 {
@@ -476,7 +568,8 @@ public class WalletManager {
         return Coin.valueOf(106000);
     }
 
-    public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount, BigDecimal txFeePerKb) {
+    public Maybe<Transaction> fundEscrow(String escrowAddress, BigDecimal amount, BigDecimal
+            txFeePerKb) {
         Context.propagate(btcContext);
 
         Address address = Address.fromBase58(netParams, escrowAddress);
@@ -499,7 +592,8 @@ public class WalletManager {
         );
     }
 
-    private Maybe<Transaction> broadcastTransaction(Wallet wallet, Coin amount, Coin txFeePerKb, Address address) {
+    private Maybe<Transaction> broadcastTransaction(Wallet wallet, Coin amount, Coin
+            txFeePerKb, Address address) {
         return Maybe.create(source -> {
             try {
                 Context.propagate(btcContext);
@@ -737,7 +831,8 @@ public class WalletManager {
         return walletSynced;
     }
 
-    public WalletKitConfig restoreTradeWallet(@NonNull List<String> mnemonicCode, @NonNull Date creationDate) {
+    public WalletKitConfig restoreTradeWallet
+            (@NonNull List<String> mnemonicCode, @NonNull Date creationDate) {
 
         // validate words
         if (mnemonicCode.size() < 12) {
@@ -780,7 +875,8 @@ public class WalletManager {
                 });
     }
 
-    public boolean validateBase58PubKeySignature(String pubKey, String signature, Sha256Hash hash) {
+    public boolean validateBase58PubKeySignature(String pubKey, String signature, Sha256Hash
+            hash) {
         ECKey pubECKey = ECKey.fromPublicOnly(Base58.decode(pubKey));
         ECKey.ECDSASignature ecdsaSignature = ECKey.ECDSASignature.decodeFromDER(Base58.decode(signature));
 

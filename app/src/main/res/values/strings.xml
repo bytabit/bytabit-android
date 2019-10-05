@@ -123,6 +123,7 @@
     <string name="trade_arbitrate_button_label">ARBITRATE</string>
     <string name="trade_refund_seller_button_label">REFUND SELLER</string>
     <string name="trade_payout_buyer_button_label">PAYOUT BUYER</string>
+    <string name="cannot_launch_app">\"Bytabit cannot be run on this device</string>
 
     // test data
 

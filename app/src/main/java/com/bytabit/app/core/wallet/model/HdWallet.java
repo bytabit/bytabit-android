@@ -16,34 +16,34 @@
 
 package com.bytabit.app.core.wallet.model;
 
+import com.bytabit.app.core.common.file.Entity;
+import com.bytabit.app.core.wallet.manager.WalletManager;
+
+import java.time.LocalDateTime;
+
+import lombok.NonNull;
 import lombok.Value;
 
 @Value
-public class DojoHdAccountResponse {
+public class HdWallet implements Entity {
 
-    private String status;
+    @NonNull
+    private String id;
 
-    private String error;
+    @NonNull
+    // base64 encoded
+    private String seed;
 
-    private Data data;
+    @NonNull
+    private WalletManager.SegwitDerivation segwitDerivation;
 
-    @Value
-    public class Data {
+    @NonNull
+    private LocalDateTime created;
 
-        private Integer balance;
+    // in Satoshi
+    private Integer balance;
 
-        private AddressIndices unused;
+    private Integer externalUnusedIndex;
 
-        private String derivation;
-
-        private Integer created;
-
-        @Value
-        public class AddressIndices {
-
-            private Integer external;
-
-            private Integer internal;
-        }
-    }
+    private Integer internalUnusedIndex;
 }

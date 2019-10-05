@@ -17,11 +17,15 @@
 package com.bytabit.app.ui;
 
 import android.app.Application;
+import android.widget.Toast;
 
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.BuildConfig;
 import com.bytabit.app.DaggerApplicationComponent;
+import com.bytabit.app.R;
 import com.bytabit.app.core.common.AppConfig;
+import com.bytabit.app.core.common.PRNGFixes;
+import com.bytabit.app.core.common.file.AssetManager;
 import com.bytabit.app.ui.common.net.AndroidTorInstaller;
 import com.msopentech.thali.android.toronionproxy.AndroidOnionProxyContext;
 import com.msopentech.thali.toronionproxy.OnionProxyContext;
@@ -31,6 +35,7 @@ import com.msopentech.thali.toronionproxy.TorInstaller;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.Security;
 import java.util.concurrent.Executors;
 
 import io.reactivex.Single;
@@ -52,6 +57,8 @@ public class BytabitApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+        applyPRNGFixes();
+
         AppConfig appConfig = AppConfig.builder()
                 .appStorage(getFilesDir())
                 .version(BuildConfig.VERSION_NAME)
@@ -61,6 +68,7 @@ public class BytabitApplication extends Application {
                 .peerAddress(BuildConfig.PEER_ADDRESS)
                 .peerPort(BuildConfig.PEER_PORT)
                 .onionProxyContext(createOnionProxyContext())
+                .assetManager(createAssetManager())
                 .build();
 
         applicationComponent = DaggerApplicationComponent.builder()
@@ -91,6 +99,24 @@ public class BytabitApplication extends Application {
 
     }
 
+    private void applyPRNGFixes() {
+        try {
+            PRNGFixes.apply();
+        } catch (Exception e0) {
+            //
+            // some Android 4.0 devices throw an exception when PRNGFixes is re-applied
+            // removing provider before apply() is a workaround
+            //
+            Security.removeProvider("LinuxPRNG");
+            try {
+                PRNGFixes.apply();
+            } catch (Exception e1) {
+                Toast.makeText(getApplicationContext(), R.string.cannot_launch_app, Toast.LENGTH_SHORT).show();
+                System.exit(0);
+            }
+        }
+    }
+
     public Single<ApplicationComponent> getApplicationComponent() {
         return Single.just(applicationComponent)
                 .subscribeOn(Schedulers.io())
@@ -111,6 +137,19 @@ public class BytabitApplication extends Application {
         };
 
         return new AndroidOnionProxyContext(torConfig, torInstaller, null);
+    }
+
+    private AssetManager createAssetManager() {
+
+        return new AssetManager() {
+
+            android.content.res.AssetManager androidAssetManager = getAssets();
+
+            @Override
+            public InputStream open(String fileName) throws IOException {
+                return androidAssetManager.open(fileName);
+            }
+        };
     }
 
 //    private class NetworkStateReceiver extends BroadcastReceiver {

@@ -14,36 +14,20 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.wallet.model;
+package com.bytabit.app.core.wallet.manager;
 
-import lombok.Value;
+import com.bytabit.app.core.common.AppConfig;
+import com.bytabit.app.core.common.file.EntityFileStorage;
+import com.bytabit.app.core.wallet.model.HdWallet;
 
-@Value
-public class DojoHdAccountResponse {
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
-    private String status;
+@Singleton
+public class HdWalletStorage extends EntityFileStorage<HdWallet> {
 
-    private String error;
-
-    private Data data;
-
-    @Value
-    public class Data {
-
-        private Integer balance;
-
-        private AddressIndices unused;
-
-        private String derivation;
-
-        private Integer created;
-
-        @Value
-        public class AddressIndices {
-
-            private Integer external;
-
-            private Integer internal;
-        }
+    @Inject
+    public HdWalletStorage(AppConfig appConfig) {
+        super(appConfig, HdWallet.class);
     }
 }

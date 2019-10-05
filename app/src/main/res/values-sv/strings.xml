@@ -96,5 +96,6 @@
     <string name="wallet_info_header">Wallet Information</string>
     <string name="wallet_info_seed_words">Seed Words</string>
     <string name="wallet_info_profile_pubkey">Profil PubKey</string>
+    <string name="cannot_launch_app">Bytabit kan inte köras på den här enheten</string>
 
 </resources>
