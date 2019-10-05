@@ -68,7 +68,7 @@ public class ServiceApiFactory {
             clientBuilder.addInterceptor(chain -> {
                 Request original = chain.request();
                 Request request = original.newBuilder()
-                        .header("Authorization", authorizationToken)
+                        .header("Authorization", String.format("Bearer %s", authorizationToken))
                         .build();
                 return chain.proceed(request);
             });

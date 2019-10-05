@@ -109,10 +109,10 @@ public class WalletManager {
         btcContext = Context.getOrCreate(netParams);
 
         // test login
-        torManager.getTorState().filter(s -> s.equals(TorManager.State.CONNECTED))
-                .flatMapSingle(s -> dojoService.login("myApiKey"))
-                .subscribe(tokens -> log.info("found tokens: {}", tokens),
-                        e -> log.error("unable to login: {}", e.getMessage()));
+        dojoService.getHdAccount("abc123").subscribe(
+                hdAccount -> log.info("found hd account: {}", hdAccount),
+                e -> log.error("unable to get hd account: {}", e.getMessage()));
+
     }
 
     //@PostConstruct

@@ -17,17 +17,27 @@
 package com.bytabit.app.core.wallet.model;
 
 
-import java.util.Map;
+import com.google.gson.annotations.SerializedName;
 
 import lombok.Value;
 
 @Value
-public class LoginTokens {
+public class DojoAuthResponse {
 
     // "authorizations": {
     //    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTYW1vdXJhaSBXYWxsZXQgYmFja2VuZCIsInR5cGUiOiJhY2Nlc3MtdG9rZW4iLCJwcmYiOiJhZG1pbiIsImlhdCI6MTU2OTg5NTI4NywiZXhwIjoxNTY5ODk2MTg3fQ.k6QpkY1Sp8mUtGcT67oBCHCcNhACKoRHbtGS5vtQAms",
     //    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJTYW1vdXJhaSBXYWxsZXQgYmFja2VuZCIsInR5cGUiOiJyZWZyZXNoLXRva2VuIiwicHJmIjoiYWRtaW4iLCJpYXQiOjE1Njk4OTUyODcsImV4cCI6MTU2OTkwMjQ4N30.Ow0uvc9yr2ZZjIJ334L-ZYM03sB1B-mt3nHooH1ravc"
     //  }
 
-    private Map<String, String> authorizations;
+    private Authorizations authorizations;
+
+    @Value
+    public class Authorizations {
+
+        @SerializedName("access_token")
+        private String accessToken;
+
+        @SerializedName("refresh_token")
+        private String refreshToken;
+    }
 }
