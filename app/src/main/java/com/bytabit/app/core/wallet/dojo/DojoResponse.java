@@ -14,36 +14,15 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.wallet.model;
+package com.bytabit.app.core.wallet.dojo;
 
-import com.bytabit.app.core.common.file.Entity;
-import com.bytabit.app.core.wallet.WalletManager;
 
-import java.time.LocalDateTime;
-
-import lombok.NonNull;
 import lombok.Value;
 
 @Value
-public class HdWallet implements Entity {
+public class DojoResponse {
 
-    @NonNull
-    private String id;
+    private String status;
 
-    @NonNull
-    // base64 encoded
-    private String seed;
-
-    @NonNull
-    private WalletManager.SegwitDerivation segwitDerivation;
-
-    @NonNull
-    private LocalDateTime created;
-
-    // in Satoshi
-    private Integer balance;
-
-    private Integer externalUnusedIndex;
-
-    private Integer internalUnusedIndex;
+    private String error;
 }

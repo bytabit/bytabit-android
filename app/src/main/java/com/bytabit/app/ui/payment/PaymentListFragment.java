@@ -32,7 +32,7 @@ import android.view.ViewGroup;
 
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
-import com.bytabit.app.core.payment.manager.PaymentDetailsManager;
+import com.bytabit.app.core.payment.PaymentDetailsManager;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentDetails;
 import com.bytabit.app.ui.BytabitApplication;

@@ -36,8 +36,8 @@ import android.widget.TextView;
 
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
-import com.bytabit.app.core.badge.manager.BadgeException;
-import com.bytabit.app.core.badge.manager.BadgeManager;
+import com.bytabit.app.core.badge.BadgeException;
+import com.bytabit.app.core.badge.BadgeManager;
 import com.bytabit.app.core.badge.model.Badge;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;

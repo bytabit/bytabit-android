@@ -20,7 +20,6 @@ import com.bytabit.app.core.common.AppConfig;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;
-import com.bytabit.app.core.trade.manager.TradeStorage;
 import com.bytabit.app.core.trade.model.PaymentRequest;
 import com.bytabit.app.core.trade.model.PayoutRequest;
 import com.bytabit.app.core.trade.model.Trade;

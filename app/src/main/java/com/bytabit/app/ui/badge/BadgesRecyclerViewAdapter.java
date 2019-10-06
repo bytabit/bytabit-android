@@ -24,7 +24,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.bytabit.app.R;
-import com.bytabit.app.core.badge.manager.BadgeException;
+import com.bytabit.app.core.badge.BadgeException;
 import com.bytabit.app.core.badge.model.Badge;
 import com.bytabit.app.core.payment.model.PaymentDetails;
 import com.bytabit.app.ui.payment.PaymentListFragment;

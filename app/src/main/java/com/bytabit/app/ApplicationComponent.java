@@ -16,13 +16,13 @@
 
 package com.bytabit.app;
 
-import com.bytabit.app.core.badge.manager.BadgeManager;
+import com.bytabit.app.core.badge.BadgeManager;
 import com.bytabit.app.core.common.AppConfig;
 import com.bytabit.app.core.net.TorManager;
-import com.bytabit.app.core.offer.manager.OfferManager;
-import com.bytabit.app.core.payment.manager.PaymentDetailsManager;
-import com.bytabit.app.core.trade.manager.TradeManager;
-import com.bytabit.app.core.wallet.manager.WalletManager;
+import com.bytabit.app.core.offer.OfferManager;
+import com.bytabit.app.core.payment.PaymentDetailsManager;
+import com.bytabit.app.core.trade.TradeManager;
+import com.bytabit.app.core.wallet.WalletManager;
 
 import java.util.concurrent.Executor;
 

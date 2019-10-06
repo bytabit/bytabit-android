@@ -31,7 +31,7 @@ import android.view.ViewGroup;
 
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
-import com.bytabit.app.core.offer.manager.OfferManager;
+import com.bytabit.app.core.offer.OfferManager;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.ui.BytabitApplication;
 import com.bytabit.app.ui.MainActivity;

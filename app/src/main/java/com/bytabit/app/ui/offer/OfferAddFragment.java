@@ -34,7 +34,7 @@ import android.widget.Spinner;
 
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
-import com.bytabit.app.core.offer.manager.OfferManager;
+import com.bytabit.app.core.offer.OfferManager;
 import com.bytabit.app.core.offer.model.Offer;
 import com.bytabit.app.core.payment.model.CurrencyCode;
 import com.bytabit.app.core.payment.model.PaymentMethod;

@@ -32,9 +32,9 @@ import android.view.ViewGroup;
 
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
-import com.bytabit.app.core.badge.manager.BadgeManager;
+import com.bytabit.app.core.badge.BadgeManager;
 import com.bytabit.app.core.badge.model.Badge;
-import com.bytabit.app.core.wallet.manager.WalletManager;
+import com.bytabit.app.core.wallet.WalletManager;
 import com.bytabit.app.ui.BytabitApplication;
 import com.bytabit.app.ui.MainActivity;
 

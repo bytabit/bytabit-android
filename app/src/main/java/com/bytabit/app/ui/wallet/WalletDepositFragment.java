@@ -30,7 +30,7 @@ import android.widget.TextView;
 
 import com.bytabit.app.ApplicationComponent;
 import com.bytabit.app.R;
-import com.bytabit.app.core.wallet.manager.WalletManager;
+import com.bytabit.app.core.wallet.WalletManager;
 import com.bytabit.app.ui.BytabitApplication;
 import com.bytabit.app.ui.MainActivity;
 
