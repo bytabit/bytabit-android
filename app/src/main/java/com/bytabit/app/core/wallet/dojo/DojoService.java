@@ -20,7 +20,7 @@ import com.auth0.android.jwt.JWT;
 import com.bytabit.app.core.common.RetryWithDelay;
 import com.bytabit.app.core.net.ServiceApiFactory;
 import com.bytabit.app.core.net.TorManager;
-import com.bytabit.app.core.wallet.WalletManager;
+import com.bytabit.app.core.wallet.model.SegwitDerivation;
 
 import java.util.concurrent.TimeUnit;
 
@@ -103,7 +103,7 @@ public class DojoService {
                 .getHdAccount(xpub).map(DojoHdAccountResponse::getData));
     }
 
-    public Single<DojoResponse> addHdAccount(String xpub, WalletType type, WalletManager.SegwitDerivation segwit, Boolean force) {
+    public Single<DojoResponse> addHdAccount(String xpub, WalletType type, SegwitDerivation segwit, Boolean force) {
         return loginIfNeeded().flatMap(a -> serviceApiFactory.createService(baseUrl, DojoServiceApi.class, a.getAccessToken())
                 .addHdAccount(xpub, type.code, segwit.getCode(), force));
     }

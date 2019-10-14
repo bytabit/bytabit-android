@@ -19,14 +19,15 @@ package com.bytabit.app.core.wallet;
 import com.bytabit.app.core.common.AppConfig;
 import com.bytabit.app.core.net.TorManager;
 import com.bytabit.app.core.wallet.dojo.DojoService;
+import com.bytabit.app.core.wallet.model.HdAccount;
+import com.bytabit.app.core.wallet.model.HdSeed;
+import com.bytabit.app.core.wallet.model.SegwitDerivation;
 import com.bytabit.app.core.wallet.model.TradeWalletInfo;
 import com.bytabit.app.core.wallet.model.TransactionWithAmt;
 import com.bytabit.app.core.wallet.model.WalletKitConfig;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
-import com.samourai.wallet.hd.HD_Address;
 import com.samourai.wallet.hd.HD_Wallet;
-import com.samourai.wallet.segwit.SegwitAddress;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -45,6 +46,7 @@ import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.core.listeners.DownloadProgressTracker;
 import org.bitcoinj.crypto.DeterministicKey;
 import org.bitcoinj.crypto.MnemonicCode;
+import org.bitcoinj.crypto.MnemonicException;
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.script.Script;
@@ -53,6 +55,7 @@ import org.bitcoinj.wallet.DeterministicSeed;
 import org.bitcoinj.wallet.KeyChain;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
+import org.bouncycastle.util.encoders.Base64;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,16 +65,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.concurrent.Executor;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import javax.inject.Singleton;
 
 import io.reactivex.Maybe;
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.disposables.Disposable;
 import io.reactivex.subjects.BehaviorSubject;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -81,26 +81,6 @@ import static org.bitcoinj.wallet.DeterministicKeyChain.BIP44_ACCOUNT_ZERO_PATH;
 @Slf4j
 @Singleton
 public class WalletManager {
-
-    public enum SegwitDerivation {
-        BIP49("bip49", 49), BIP84("bip84", 84);
-
-        private final String code;
-        private final int purposeId;
-
-        SegwitDerivation(String code, int purposeId) {
-            this.code = code;
-            this.purposeId = purposeId;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public int getPurposeId() {
-            return purposeId;
-        }
-    }
 
     private final AppConfig appConfig;
     // private final Executor executor;
@@ -112,6 +92,7 @@ public class WalletManager {
 
     private final TorManager torManager;
     private final DojoService dojoService;
+    private final HdSeedStorage hdSeedStorage;
 
     private BehaviorSubject<WalletKitConfig> tradeWalletConfig = BehaviorSubject.create();
     private Observable<BytabitWalletAppKit> tradeWalletAppKit;
@@ -125,84 +106,144 @@ public class WalletManager {
     private Observable<Boolean> walletSynced;
     private Observable<String> profilePubKey;
 
-    private BehaviorSubject<HD_Wallet> tradeWallet = BehaviorSubject.create();
+    private final Single<HdSeed> tradeHdSeed;
+    private final Single<HD_Wallet> tradeHdWallet;
+    private final Single<HdAccount> tradeHdAccount;
 
     public static final String BIP39_ENGLISH_SHA256 = "ad90bf3beb7b0eb7e5acd74727dc0da96e0a280a258354e7293fb7e211ac03db";
+    private static final String TRADE_ACCOUNT_ID = "trade";
 
     @Inject
-    public WalletManager(AppConfig appConfig, @Named("wallet") Executor executor,
-                         TorManager torManager, DojoService dojoService) {
+    public WalletManager(AppConfig appConfig, TorManager torManager, DojoService dojoService,
+                         HdSeedStorage hdSeedStorage) {
 
         this.appConfig = appConfig;
         //this.executor = executor;
         this.torManager = torManager;
         this.dojoService = dojoService;
+        this.hdSeedStorage = hdSeedStorage;
 
         netParams = BytabitTestNet3Params.fromID("org.bitcoin." + appConfig.getBtcNetwork());
         btcContext = Context.getOrCreate(netParams);
 
-        //String xpub = hdw.getXPUBs()[0];
-        Single<HD_Wallet> hdWallet = createWallet(SegwitDerivation.BIP84, 12, null);
+        tradeHdSeed = hdSeedStorage.read(TRADE_ACCOUNT_ID)
+                .switchIfEmpty(createNewHdSeed(TRADE_ACCOUNT_ID, SegwitDerivation.BIP84, 12, null)).cache();
 
-        // test login
-        Disposable disposable = hdWallet.map(w -> w.getXPUBs()[0])
-                .doOnSuccess(xpub -> log.info("Created wallet with xpub[0]: {}", xpub))
-                .flatMap(xpub -> dojoService.addHdAccount(xpub, DojoService.WalletType.NEW, SegwitDerivation.BIP84, false)
-                        .doOnSuccess(r -> log.info("addHdAccount response: {}", r))
-                        .flatMap(r -> dojoService.getHdAccount(xpub)))
-                .subscribe(hdAccount -> log.info("getHdAccount hdAccount: {}", hdAccount),
-                        e -> log.error("unable to get hdAccount: {}", e.getMessage()));
+        tradeHdWallet = tradeHdSeed.map(s -> createHdWallet(s, null)).cache();
+
+        tradeHdAccount = tradeHdWallet.map(w -> w.getXPUBs()[0])
+                .flatMap(xpub -> dojoService.getHdAccount(xpub)
+                        .onErrorResumeNext(dojoService.addHdAccount(xpub, DojoService.WalletType.NEW, SegwitDerivation.BIP84, false)
+                                .flatMap(r -> dojoService.getHdAccount(xpub)))
+                        .map(d -> HdAccount.builder()
+                                .id(TRADE_ACCOUNT_ID)
+                                .balance(d.getBalance())
+                                .build()));
+
+//        Disposable disposable = tradeHdAccount
+//                .subscribe(hdAccount -> log.info("loadHdAccount hdAccount: {}", hdAccount),
+//                        e -> log.error("unable to get hdAccount: {}", e.getMessage()));
     }
 
-    // create BIP84 based hd wallet
-    public Single<HD_Wallet> createWallet(final SegwitDerivation segwitDerivation, final int wordCount, final String passphrase) {
+    public Single<HdAccount> getTradeHdAccount() {
+        return tradeHdAccount;
+    }
 
-        return getMnemonicCode().map(mc -> {
+//    public Single<HdAccount> getTradeHdAccount(final String passphrase) {
+//        return tradeWallet.firstElement().switchIfEmpty(createNewHdWallet(TRADE_ACCOUNT_ID, passphrase))
+//                .map(w -> w.getXPUBs()[0])
+//                .flatMap(xpub -> dojoService.getHdAccount(xpub)
+//                        .onErrorResumeNext(dojoService.addHdAccount(xpub, DojoService.WalletType.NEW, SegwitDerivation.BIP84, false)
+//                                .flatMap(r -> dojoService.getHdAccount(xpub)))
+//                        .map(d -> HdAccount.builder()
+//                                .id(TRADE_ACCOUNT_ID)
+//                                .balance(d.getBalance())
+//                                .build()));
+//    }
 
-            final int wc;
-            if ((wordCount % 3 != 0) || (wordCount < 12 || wordCount > 24)) {
-                wc = 12;
-            } else {
-                wc = wordCount;
-            }
+//    private Single<HD_Wallet> createNewHdWallet(final String id, final String passphrase) {
+//        return hdSeedStorage.read(id)
+//                .switchIfEmpty(createNewHdSeed(id, SegwitDerivation.BIP84, 12, passphrase))
+//                .map(s -> createHdWallet(s, passphrase));
+//    }
 
-            // len == 16 (12 words), len == 24 (18 words), len == 32 (24 words)
-            final int len = (wc / 3) * 4;
-            SecureRandom random = new SecureRandom();
-            byte seed[] = new byte[len];
-            random.nextBytes(seed);
+    // load saved hd wallet
+    private HD_Wallet createHdWallet(final HdSeed hdSeed, final String passphrase) {
 
-            final String phrase;
-            if (passphrase == null) {
-                phrase = "";
-            } else {
-                phrase = passphrase;
-            }
+        final MnemonicCode mnemonicCode = getMnemonicCode();
+        final byte[] seed = Base64.decode(hdSeed.getSeed());
 
-            return new HD_Wallet(segwitDerivation.getPurposeId(), mc, netParams, seed, phrase, 1);
-        }).doOnSuccess(w -> tradeWallet.onNext(w));
+        final String phrase;
+        if (passphrase == null) {
+            phrase = "";
+        } else {
+            phrase = passphrase;
+        }
+
+        try {
+            HD_Wallet wallet = new HD_Wallet(hdSeed.getSegwitDerivation().getPurposeId(), mnemonicCode, netParams, seed, phrase, 1);
+            log.info("Created wallet from seed: {}, xpub[0]: {}", hdSeed.getId(), wallet.getXPUBs()[0]);
+
+            return wallet;
+        } catch (MnemonicException.MnemonicLengthException le) {
+            throw new WalletException("Mnemonic length exception.", le);
+        }
+    }
+
+    // create new hd seed
+    private Single<HdSeed> createNewHdSeed(final String id, final SegwitDerivation segwitDerivation, final int wordCount, final String passphrase) {
+
+        final int wc;
+        if ((wordCount % 3 != 0) || (wordCount < 12 || wordCount > 24)) {
+            wc = 12;
+        } else {
+            wc = wordCount;
+        }
+
+        // len == 16 (12 words), len == 24 (18 words), len == 32 (24 words)
+        final int len = (wc / 3) * 4;
+        SecureRandom random = new SecureRandom();
+        byte seed[] = new byte[len];
+        random.nextBytes(seed);
+
+        final String phrase;
+        if (passphrase == null) {
+            phrase = "";
+        } else {
+            phrase = passphrase;
+        }
+
+        HdSeed hdSeed = HdSeed.builder()
+                .id(id)
+                .segwitDerivation(segwitDerivation)
+                .created(new Date())
+                .seed(Base64.toBase64String(seed))
+                .seedBackupConfirmed(false)
+                .build();
+
+        log.info("Created new seed: {}", id);
+
+        return hdSeedStorage.write(hdSeed);
     }
 
     // TODO should be able to use different language mnemonic code words
-    public Single<MnemonicCode> getMnemonicCode() {
-        return Single.fromCallable(() -> {
-            try (InputStream ws = appConfig.getAssetManager().open("BIP39/en.txt")) {
-                return new MnemonicCode(ws, BIP39_ENGLISH_SHA256);
-            } catch (IOException | IllegalArgumentException ex) {
-                log.error("Can't open mnemonic code words file.", ex);
-                throw ex;
-            }
-        });
+    private MnemonicCode getMnemonicCode() {
+        try (InputStream ws = appConfig.getAssetManager().open("BIP39/en.txt")) {
+            return new MnemonicCode(ws, BIP39_ENGLISH_SHA256);
+        } catch (IOException | IllegalArgumentException ex) {
+            log.error("Can't open mnemonic code words file.", ex);
+            throw new WalletException("Can't open mnemonic code words file.", ex);
+        }
     }
 
-    public Single<SegwitAddress> getAddressAt(final int chain, final int idx) {
-        return getAddressAt(0, chain, idx);
-    }
-
-    public Single<SegwitAddress> getAddressAt(final int account, final int chain, final int idx) {
-        Single<HD_Address> addr = tradeWallet.firstOrError().map(w -> w.getAccountAt(account).getChain(chain).getAddressAt(idx));
-        return addr.map(a -> new SegwitAddress(a.getPubKey(), netParams));
-    }
+//    private Single<SegwitAddress> getAddressAt(final int chain, final int idx) {
+//        return getAddressAt(0, chain, idx);
+//    }
+//
+//    private Single<SegwitAddress> getAddressAt(final int account, final int chain, final int idx) {
+//        Single<HD_Address> addr = tradeWallet.firstOrError().map(w -> w.getAccountAt(account).getChain(chain).getAddressAt(idx));
+//        return addr.map(a -> new SegwitAddress(a.getPubKey(), netParams));
+//    }
 
     //@PostConstruct
 //    public void initialize() {

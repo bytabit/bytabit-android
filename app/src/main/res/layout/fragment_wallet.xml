@@ -24,19 +24,19 @@
         android:id="@+id/wallet_balance"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/margin_medium"
-        android:layout_marginBottom="@dimen/margin_medium"
+        android:layout_marginTop="@dimen/top_margin_large"
+        android:layout_marginBottom="@dimen/top_margin_large"
         android:gravity="center"
-        android:textSize="18sp"
+        android:textSize="30sp"
         android:textStyle="bold"
-        tools:text="123.45 BTC" />
+        tools:text="1.23456789 BTC" />
 
-    <ProgressBar
-        android:id="@+id/wallet_progress"
-        style="?android:attr/progressBarStyleHorizontal"
+    <View
+        android:id="@+id/divider"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        tools:progress="40" />
+        android:layout_height="3dp"
+        android:background="?attr/colorAccent"
+        android:visibility="visible" />
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/transactions_list"

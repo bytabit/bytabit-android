@@ -32,7 +32,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.bytabit.app.ApplicationComponent;
@@ -122,26 +121,26 @@ public class WalletFragment extends Fragment {
 
             // update transactions
 
-            Disposable walletsDownloadProgressDisposable = walletManager
-                    .flatMapObservable(WalletManager::getWalletsDownloadProgress)
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(progress -> {
-                        ((ProgressBar) view.findViewById(R.id.wallet_progress)).setProgress(progress.intValue());
-                    });
+//            Disposable walletsDownloadProgressDisposable = walletManager
+//                    .flatMapObservable(WalletManager::getWalletsDownloadProgress)
+//                    .subscribeOn(Schedulers.io())
+//                    .observeOn(AndroidSchedulers.mainThread())
+//                    .subscribe(progress -> {
+//                        ((ProgressBar) view.findViewById(R.id.wallet_progress)).setProgress(progress.intValue());
+//                    });
+//
+//            compositeDisposable.add(walletsDownloadProgressDisposable);
 
-            compositeDisposable.add(walletsDownloadProgressDisposable);
-
-            Disposable tradeWalletDisposable = walletManager
-                    .flatMapObservable(WalletManager::getTradeUpdatedWalletTx)
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(transaction -> {
-                        walletViewAdapter.updateTransaction(transaction);
-                        ((TextView) view.findViewById(R.id.wallet_balance)).setText(transaction.getWalletBalance().toFriendlyString());
-                    });
-
-            compositeDisposable.add(tradeWalletDisposable);
+//            Disposable tradeWalletDisposable = walletManager
+//                    .flatMapObservable(WalletManager::getTradeUpdatedWalletTx)
+//                    .subscribeOn(Schedulers.io())
+//                    .observeOn(AndroidSchedulers.mainThread())
+//                    .subscribe(transaction -> {
+//                        walletViewAdapter.updateTransaction(transaction);
+//                        ((TextView) view.findViewById(R.id.wallet_balance)).setText(transaction.getWalletBalance().toFriendlyString());
+//                    });
+//
+//            compositeDisposable.add(tradeWalletDisposable);
 
             recyclerView.setAdapter(walletViewAdapter);
         }
@@ -214,60 +213,89 @@ public class WalletFragment extends Fragment {
         mainActivity.hideAddFab();
         mainActivity.hideRemoveFab();
 
-        Disposable walletsSynced = walletManager
-                .flatMapObservable(WalletManager::getWalletSynced)
+        // update balance
+        Disposable tradeHdAccount = walletManager.flatMap(WalletManager::getTradeHdAccount)
+                .map(a -> a.getBtcBalance())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(synced -> {
+                .subscribe(balance -> {
+                    log.info("loadHdAccount balance: {}", balance);
+                    ((TextView) getView().findViewById(R.id.wallet_balance)).setText(balance);
+                    // setup fab
+                    mainActivity.showAddFab(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            Snackbar.make(view, "Deposit BTC", Snackbar.LENGTH_LONG)
+                                    .setAction("Action", null).show();
 
-                    if (synced) {
-                        // setup fab
-                        mainActivity.showAddFab(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                Snackbar.make(view, "Deposit BTC", Snackbar.LENGTH_LONG)
-                                        .setAction("Action", null).show();
+                            WalletDepositFragment walletDepositFragment = ((MainActivity) getContext()).getWalletDepositFragment();
 
-                                WalletDepositFragment walletDepositFragment = ((MainActivity) getContext()).getWalletDepositFragment();
-
-                                getFragmentManager().beginTransaction().addToBackStack("main")
-                                        .replace(R.id.content_main, walletDepositFragment)
-                                        .commit();
-                            }
-                        });
-
-                        mainActivity.showRemoveFab(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View view) {
-                                Snackbar.make(view, "Withdraw BTC", Snackbar.LENGTH_LONG)
-                                        .setAction("Action", null).show();
-                            }
-                        });
-                    } else {
-                        mainActivity.hideAddFab();
-                        mainActivity.hideRemoveFab();
-                    }
-
+                            getFragmentManager().beginTransaction().addToBackStack("main")
+                                    .replace(R.id.content_main, walletDepositFragment)
+                                    .commit();
+                        }
+                    });
+                }, e -> {
+                    mainActivity.hideAddFab();
+                    showError(e);
                 });
 
-        compositeDisposable.add(walletsSynced);
+        compositeDisposable.add(tradeHdAccount);
 
-        Disposable walletsStarted = walletManager
-                .flatMapObservable(WalletManager::getWalletsRunning)
-                .startWithArray(false)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(running -> {
-                    if (running) {
-                        Snackbar.make(getView(), "Wallet started", Snackbar.LENGTH_LONG)
-                                .setAction("Action", null).show();
-                    } else {
-                        Snackbar.make(getView(), "Wallet starting...", Snackbar.LENGTH_LONG)
-                                .setAction("Action", null).show();
-                    }
-                });
+//        Disposable walletsSynced = walletManager
+//                .flatMapObservable(WalletManager::getWalletSynced)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .subscribe(synced -> {
+//
+//                    if (synced) {
+//                        // setup fab
+//                        mainActivity.showAddFab(new View.OnClickListener() {
+//                            @Override
+//                            public void onClick(View view) {
+//                                Snackbar.make(view, "Deposit BTC", Snackbar.LENGTH_LONG)
+//                                        .setAction("Action", null).show();
+//
+//                                WalletDepositFragment walletDepositFragment = ((MainActivity) getContext()).getWalletDepositFragment();
+//
+//                                getFragmentManager().beginTransaction().addToBackStack("main")
+//                                        .replace(R.id.content_main, walletDepositFragment)
+//                                        .commit();
+//                            }
+//                        });
+//
+//                        mainActivity.showRemoveFab(new View.OnClickListener() {
+//                            @Override
+//                            public void onClick(View view) {
+//                                Snackbar.make(view, "Withdraw BTC", Snackbar.LENGTH_LONG)
+//                                        .setAction("Action", null).show();
+//                            }
+//                        });
+//                    } else {
+//                        mainActivity.hideAddFab();
+//                        mainActivity.hideRemoveFab();
+//                    }
+//
+//                });
+//
+//        compositeDisposable.add(walletsSynced);
 
-        compositeDisposable.add(walletsStarted);
+//        Disposable walletsStarted = walletManager
+//                .flatMapObservable(WalletManager::getWalletsRunning)
+//                .startWithArray(false)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .subscribe(running -> {
+//                    if (running) {
+//                        Snackbar.make(getView(), "Wallet started", Snackbar.LENGTH_LONG)
+//                                .setAction("Action", null).show();
+//                    } else {
+//                        Snackbar.make(getView(), "Wallet starting...", Snackbar.LENGTH_LONG)
+//                                .setAction("Action", null).show();
+//                    }
+//                });
+//
+//        compositeDisposable.add(walletsStarted);
     }
 
     private void showError(Throwable t) {

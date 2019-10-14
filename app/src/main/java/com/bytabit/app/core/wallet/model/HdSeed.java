@@ -14,20 +14,33 @@
  * limitations under the License.
  */
 
-package com.bytabit.app.core.wallet;
+package com.bytabit.app.core.wallet.model;
 
-import com.bytabit.app.core.common.AppConfig;
-import com.bytabit.app.core.common.file.EntityFileStorage;
-import com.bytabit.app.core.wallet.model.HdWallet;
+import com.bytabit.app.core.common.file.Entity;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import java.util.Date;
 
-@Singleton
-public class HdWalletStorage extends EntityFileStorage<HdWallet> {
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.Value;
 
-    @Inject
-    public HdWalletStorage(AppConfig appConfig) {
-        super(appConfig, HdWallet.class);
-    }
+@Value
+@Builder
+public class HdSeed implements Entity {
+
+    @NonNull
+    private String id;
+
+    @NonNull
+    // base64 encoded
+    private String seed;
+
+    @NonNull
+    private SegwitDerivation segwitDerivation;
+
+    @NonNull
+    private Date created;
+
+    @NonNull
+    private Boolean seedBackupConfirmed;
 }

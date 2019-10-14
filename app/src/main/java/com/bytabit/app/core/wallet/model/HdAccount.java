@@ -16,34 +16,31 @@
 
 package com.bytabit.app.core.wallet.model;
 
-import com.bytabit.app.core.common.file.Entity;
-import com.bytabit.app.core.wallet.WalletManager;
+import java.math.BigDecimal;
+import java.util.Locale;
 
-import java.time.LocalDateTime;
-
+import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 
 @Value
-public class HdWallet implements Entity {
+@Builder
+public class HdAccount {
+
+    private final static int SAT_PER_BTC = 100000000;
 
     @NonNull
     private String id;
 
     @NonNull
-    // base64 encoded
-    private String seed;
-
-    @NonNull
-    private WalletManager.SegwitDerivation segwitDerivation;
-
-    @NonNull
-    private LocalDateTime created;
-
-    // in Satoshi
     private Integer balance;
 
-    private Integer externalUnusedIndex;
+    public String getSatBalance() {
+        return String.format(Locale.US, "%d sat", balance);
+    }
 
-    private Integer internalUnusedIndex;
+    public String getBtcBalance() {
+        BigDecimal btc = balance > 0 ? new BigDecimal(balance).divide(new BigDecimal(100000000)) : BigDecimal.ZERO;
+        return String.format(Locale.US, "%s BTC", btc.toPlainString());
+    }
 }
